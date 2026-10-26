@@ -1,0 +1,22 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+falcon = "*"
+spectree = "*"
+pydantic = "*"
+
+[dev-packages]
+flake8 = "*"
+flake8-annotations = "*"
+radon = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-github-report = "*"
+pdbpp = "*"
+gunicorn = "*"
+
+[requires]
+python_version = "3.15"
