@@ -26,41 +26,52 @@ pipenv run flake8 --count --exit-zero --radon-max-cc 6 --radon-no-assert --max-l
 
 ## Project layout
 
-| Path | Contents |
-|---|---|
-| `src/lib` | Calculation rules: durations, breaks, holidays, targets, overtime, PTO |
-| `src/models` | Pydantic models |
-| `src/modules` | Features: storage, import, days, entries, reports, review |
-| `src/utils` | Shared helpers |
-| `src/defaultresources` | Default resource |
-| `src/templates` | Frontend pages (TypeScript) |
-| `src/tests` | Tests, mirroring the packages above |
+| Path                   | Contents                                                               |
+|------------------------|------------------------------------------------------------------------|
+| `src/lib`              | Calculation rules: durations, breaks, holidays, targets, overtime, PTO |
+| `src/models`           | Pydantic models                                                        |
+| `src/modules`          | Features: storage, import, days, entries, reports, review              |
+| `src/utils`            | Shared helpers                                                         |
+| `src/defaultresources` | Default resource                                                       |
+| `src/templates`        | Frontend pages (TypeScript)                                            |
+| `src/tests`            | Tests, mirroring the packages above                                    |
 
 ## Calculation rules (`src/lib`)
 
 All times and durations are whole minutes.
 
-| Module | Rules |
-|---|---|
-| `durations` | Parse and format clock times (`HH:MM`), durations (`h:mm`) and decimal-comma hours (`1,5`); split durations evenly in quarter hours |
-| `worktime` | Worked time = end − start − break; without a break, the legal minimum applies (German ArbZG §4: 0:30 beyond 6 h, 0:45 beyond 9 h) |
-| `public_holidays` | Berlin public holidays (via `holidays`), plus Heiligabend and Silvester as company half days |
-| `daytypes` | Day types (see below) with target time and PTO used; weekends have no target. Overtime = worked − target |
-| `balances` | Overtime balance over every calendar day up to a cut-off date (a weekday without record counts as −8:00); PTO per year (used, planned, remaining), carrying the remainder into the next year |
-| `dates` | Date range helper |
+| Module            | Rules                                                                                                                                                                                        |
+|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `durations`       | Parse and format clock times (`HH:MM`), durations (`h:mm`) and decimal-comma hours (`1,5`); split durations evenly in quarter hours                                                          |
+| `worktime`        | Worked time = end − start − break; without a break, the legal minimum applies (German ArbZG §4: 0:30 beyond 6 h, 0:45 beyond 9 h)                                                            |
+| `public_holidays` | Berlin public holidays (via `holidays`), plus Heiligabend and Silvester as company half days                                                                                                 |
+| `daytypes`        | Day types (see below) with target time and PTO used; weekends have no target. Overtime = worked − target                                                                                     |
+| `balances`        | Overtime balance over every calendar day up to a cut-off date (a weekday without record counts as −8:00); PTO per year (used, planned, remaining), carrying the remainder into the next year |
+| `dates`           | Date range helper                                                                                                                                                                            |
 
 ### Day types
 
 Targets and PTO apply Mon–Fri; on weekends every type has target 0:00 and uses no PTO.
 
-| Type | Description | Target | PTO |
-|---|---|---|---|
-| `work` | Regular work day (default) | 8:00 | 0 |
-| `pto` | Paid time off, full day | 0:00 | 1 |
-| `pto_half` | Paid time off, half day | 4:00 | 0.5 |
-| `sick` | Off sick, full day | 0:00 | 0 |
-| `sick_half` | Off sick, half day | 4:00 | 0 |
-| `overtime_off` | Day off taken from the overtime balance | 8:00 | 0 |
-| `unpaid_leave` | Unpaid day off | 0:00 | 0 |
-| `public_holiday` | Berlin public holiday (automatic) | 0:00 | 0 |
-| `company_half_day` | Heiligabend / Silvester: half PTO, half free (automatic) | 0:00 | 0.5 |
+| Type               | Description                                              | Target | PTO |
+|--------------------|----------------------------------------------------------|--------|-----|
+| `work`             | Regular work day (default)                               | 8:00   | 0   |
+| `pto`              | Paid time off, full day                                  | 0:00   | 1   |
+| `pto_half`         | Paid time off, half day                                  | 4:00   | 0.5 |
+| `sick`             | Off sick, full day                                       | 0:00   | 0   |
+| `sick_half`        | Off sick, half day                                       | 4:00   | 0   |
+| `overtime_off`     | Day off taken from the overtime balance                  | 8:00   | 0   |
+| `unpaid_leave`     | Unpaid day off                                           | 0:00   | 0   |
+| `public_holiday`   | Berlin public holiday (automatic)                        | 0:00   | 0   |
+| `company_half_day` | Heiligabend / Silvester: half PTO, half free (automatic) | 0:00   | 0.5 |
+
+## Domain models (`src/models`)
+
+Pydantic models; times in minutes, validated on creation and assignment.
+
+| Module    | Models                                                                                                                                |
+|-----------|---------------------------------------------------------------------------------------------------------------------------------------|
+| `days`    | `Day`: date, day type (empty = automatic), start / end, break (empty = legal minimum), note; provides worked time                     |
+| `entries` | `TicketEntry` (ticket, duration, description, coding) and `ActivityEntry` (activity type, duration, note); durations in quarter hours |
+| `catalog` | `Service`, `ActivityType` and `Ticket` (key like `ENGINE-461`, remembers its service)                                                 |
+| `review`  | `ReviewFlag`: import flag on an entry or a day (uncertain ticket, weekend hours)                                                      |
