@@ -46,6 +46,8 @@ All times and durations are whole minutes.
 | `worktime` | Worked time = end − start − break; without a break, the legal minimum applies (German ArbZG §4: 0:30 beyond 6 h, 0:45 beyond 9 h) |
 | `public_holidays` | Berlin public holidays (via `holidays`), plus Heiligabend and Silvester as company half days |
 | `daytypes` | Day types (see below) with target time and PTO used; weekends have no target. Overtime = worked − target |
+| `balances` | Overtime balance over every calendar day up to a cut-off date (a weekday without record counts as −8:00); PTO per year (used, planned, remaining), carrying the remainder into the next year |
+| `dates` | Date range helper |
 
 ### Day types
 

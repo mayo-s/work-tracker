@@ -6,6 +6,8 @@ from enum import StrEnum
 
 import holidays
 
+from src.lib.dates import each_day
+
 _BERLIN = holidays.country_holidays('DE', subdiv='BE', language='en_US')
 _COMPANY_HALF_DAYS = {(12, 24): "Christmas Eve", (12, 31): "New Year's Eve"}
 
@@ -33,7 +35,4 @@ def holiday_on(date: dt.date) -> Holiday | None:
 
 def holidays_between(start: dt.date, end: dt.date) -> list[Holiday]:
     """All holidays from start to end (inclusive), in date order."""
-    if end < start:
-        raise ValueError(f'End {end} is before start {start}')
-    days = (start + dt.timedelta(days=offset) for offset in range((end - start).days + 1))
-    return [found for day in days if (found := holiday_on(day))]
+    return [found for day in each_day(start, end) if (found := holiday_on(day))]
