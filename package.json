@@ -1,0 +1,16 @@
+{
+  "name": "work-tracker",
+  "private": true,
+  "description": "Frontend of the work tracker: TypeScript in src/templates/ts, compiled with tsc to src/templates/static/js.",
+  "type": "module",
+  "engines": {
+    "node": ">=26.13"
+  },
+  "scripts": {
+    "build": "tsc --project src/templates",
+    "watch": "tsc --project src/templates --watch"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

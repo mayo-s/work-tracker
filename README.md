@@ -11,12 +11,19 @@ The project was partially implemented using claude.ai.
 
 - Python 3.15
 - [Pipenv](https://pipenv.pypa.io/)
+- Node.js 26.13 (pinned in `.node-version`, e.g. via [fnm](https://github.com/Schniz/fnm)) for building the frontend
 
 ## Setup
 
 ```shell
 pipenv install --dev
+fnm use          # Node version from .node-version
+npm install
+npm run build    # compile the frontend: src/templates/ts → src/templates/static/js
 ```
+
+The compiled JavaScript is not committed; build it after checking out or changing TypeScript
+(`npm run watch` rebuilds on every change).
 
 ## Import the spreadsheet
 
@@ -63,7 +70,7 @@ pipenv run flake8 --count --exit-zero --radon-max-cc 6 --radon-no-assert --max-l
 | `src/modules`          | Features: storage, import, days, entries, reports, review                                                       |
 | `src/utils`            | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types (formats, period query) |
 | `src/defaultresources` | Default resource at `/` (plain-text status)                                                                     |
-| `src/templates`        | Frontend pages (TypeScript)                                                                                     |
+| `src/templates`        | Frontend: TypeScript sources in `ts/`, compiled to `static/js/` (git-ignored); config in `tsconfig.json`        |
 | `src/tests`            | Tests, mirroring the packages above                                                                             |
 
 ## API (`src/modules/<feature>`)
