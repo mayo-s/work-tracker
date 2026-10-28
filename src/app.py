@@ -9,6 +9,7 @@ from src.defaultresources.default import Default
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
 from src.modules.days.resources import DayCollection, DayItem
 from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem
+from src.modules.pages.resources import STATIC_DIR, Page
 from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
 from src.modules.review.resources import Review, ReviewFlagItem
 from src.modules.storage.database import Database, database_path
@@ -27,7 +28,9 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app = falcon.App()
     app.add_error_handler(NotFoundError, _not_found)
     app.add_error_handler(ConflictError, _conflict)
-    app.add_route('/', Default())
+    app.add_route('/', Page('week', 'Week'))
+    app.add_static_route('/static', STATIC_DIR)
+    app.add_route('/health', Default())
     app.add_route('/api/days', DayCollection(database))
     app.add_route('/api/days/{date:dt("%Y-%m-%d")}', DayItem(database))
     app.add_route('/api/entries', EntryCollection(database))

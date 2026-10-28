@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{title}} · Work Tracker</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <script type="module" src="/static/js/main.js"></script>
+</head>
+<body>
+  <header class="app-header">
+    <a class="app-name" href="/">Work Tracker</a>
+    <nav class="app-nav" aria-label="Main">
+      <a href="/">Week</a>
+    </nav>
+  </header>
+  <main id="app" data-page="{{page}}">
+{{content}}
+  </main>
+  <noscript>This page needs JavaScript (build it with <code>npm run build</code>).</noscript>
+</body>
+</html>
