@@ -1,11 +1,15 @@
 """The WSGI application: python -m src for a local server, or e.g. gunicorn 'src.app:create_app()'."""
 
+import datetime as dt
+from collections.abc import Callable
+
 import falcon
 
 from src.defaultresources.default import Default
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
 from src.modules.days.resources import DayCollection, DayItem
 from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem
+from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
 from src.modules.review.resources import Review, ReviewFlagItem
 from src.modules.storage.database import Database, database_path
 from src.modules.storage.errors import ConflictError, NotFoundError
@@ -13,8 +17,11 @@ from src.modules.tickets.resources import TicketCollection, TicketItem, TicketRe
 from src.utils.spec import spec
 
 
-def create_app(database: Database | None = None) -> falcon.App:
-    """The app on the given database (default: $WORK_TRACKER_DB or work_tracker.db), migrated on start."""
+def create_app(database: Database | None = None, today: Callable[[], dt.date] = dt.date.today) -> falcon.App:
+    """The app on the given database (default: $WORK_TRACKER_DB or work_tracker.db), migrated on start.
+
+    `today` decides up to which day reports count (replaceable for tests).
+    """
     database = database or Database(database_path())
     database.migrate()
     app = falcon.App()
@@ -30,6 +37,9 @@ def create_app(database: Database | None = None) -> falcon.App:
     app.add_route('/api/tickets/assign-service', TicketServiceAssignment(database))
     app.add_route('/api/tickets/{key}', TicketItem(database))
     app.add_route('/api/tickets/{key}/rename', TicketRenaming(database))
+    app.add_route('/api/reports/weeks/{week}', WeekReportResource(database, today))
+    app.add_route('/api/reports/months/{month:dt("%Y-%m")}', MonthReportResource(database, today))
+    app.add_route('/api/reports/years/{year:int(4)}', YearReportResource(database, today))
     app.add_route('/api/review', Review(database))
     app.add_route('/api/review/flags/{flag_id:int}', ReviewFlagItem(database))
     app.add_route('/api/services', ServiceCollection(database))

@@ -5,7 +5,7 @@ monthly work report. A Falcon REST API with a small browser frontend, backed by 
 
 The project was partially implemented using claude.ai.
 
-> Work in progress — calculation rules, storage and spreadsheet import are done; the API is being built, the frontend follows.
+> Work in progress — calculation rules, storage, spreadsheet import and REST API are done; the frontend follows.
 
 ## Requirements
 
@@ -70,6 +70,7 @@ pipenv run flake8 --count --exit-zero --radon-max-cc 6 --radon-no-assert --max-l
 
 JSON over HTTP; dates in ISO format (`2026-10-28`), clock times as `HH:MM`, durations as `h:mm` (`-1:30`).
 Invalid input gives 422, unknown records 404, conflicts 409.
+Reports count worked time, target and overtime up to today (today included); planned days off count too.
 
 | Endpoint                                             | Method           | Description                                                                                                                         |
 |------------------------------------------------------|------------------|-------------------------------------------------------------------------------------------------------------------------------------|
@@ -91,6 +92,9 @@ Invalid input gives 422, unknown records 404, conflicts 409.
 | `/api/tickets/{key}`                                 | PUT              | Set or unassign the service (`service_id`); applies to all entries of the ticket                                                    |
 | `/api/tickets/assign-service`                        | POST             | One service for several tickets: `keys`, `service_id` (all or nothing)                                                              |
 | `/api/tickets/{key}/rename`                          | POST             | Rename to `new_key`, or merge into an existing ticket (keeps its service); recorded in the history                                  |
+| `/api/reports/weeks/{week}`                          | GET              | Week (`2026-W44`): worked, target, overtime up to today, balance before and after, days off                                         |
+| `/api/reports/months/{month}`                        | GET              | Month (`2026-10`): totals, days off, PTO days and the work report: coding hours by service and ticket                               |
+| `/api/reports/years/{year}`                          | GET              | Year: totals, per month, days worked and average, days off, PTO account                                                             |
 | `/api/review`                                        | GET              | What needs attention: tickets without service, entries with 0:00 / without ticket / import flag, flagged days                       |
 | `/api/review/flags/{id}`                             | DELETE           | Clear a review flag of an entry or a day                                                                                            |
 | `/api/services`, `/api/activity-types`               | GET, POST        | List and add (names unique)                                                                                                         |
