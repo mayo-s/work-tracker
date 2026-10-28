@@ -78,7 +78,7 @@ def test_component_gallery_page(client):
     assert result.status == falcon.HTTP_200
     assert '<title>Component gallery · Work Tracker</title>' in result.text
     assert 'data-page="components"' in result.text
-    for story in ('colors', 'values', 'badges', 'buttons', 'forms', 'tables', 'cards', 'navigation'):
+    for story in ('colors', 'values', 'badges', 'buttons', 'forms', 'tables', 'entries', 'cards', 'navigation'):
         assert f'<section class="story" id="{story}">' in result.text
 
 

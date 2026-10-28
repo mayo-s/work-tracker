@@ -1,5 +1,5 @@
 // Entry point of the frontend: loaded as an ES module by every page.
-// Modules import each other with the compiled extension, e.g. `import { api } from './api.js'`.
+// Modules import each other with the compiled extension, e.g. `import { api } from './api.ts'`.
 
 export const APP_NAME = 'Work Tracker';
 
@@ -16,7 +16,8 @@ export function markCurrentPage(nav: ParentNode, path: string): void {
 
 /** Page code, loaded only on its page (`<main data-page="…">`). */
 const PAGES: Record<string, () => Promise<void>> = {
-  components: async () => (await import('./gallery.js')).renderGallery(document),
+  components: async () => (await import('./gallery.ts')).renderGallery(document),
+  week: async () => (await import('./week.ts')).renderWeekPage(document),
 };
 
 const nav = document.querySelector('.app-nav');

@@ -1,6 +1,6 @@
 // Typed client for the Work Tracker API. The types come from the OpenAPI spec (`npm run api-types`).
 
-import type { components } from './api-types.js';
+import type { components } from './api-types.ts';
 
 type Schemas = components['schemas'];
 
