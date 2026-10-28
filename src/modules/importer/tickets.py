@@ -26,6 +26,7 @@ _BARE = re.compile(r'#\s?(\d+)\b')  # '#4138', '# 4251'
 class CleanedText:
     text: str
     uncertain: bool = False  # a ticket key was guessed: flag the entries for review
+    corrected: bool = False  # an obvious typo was corrected
     aliases: tuple[str, ...] = ()  # second keys of the same ticket ('#4347 aka #1482' → 'KP-1482')
 
 
@@ -36,13 +37,15 @@ def bare_key(number: str) -> str:
 
 def clean_tickets(text: str) -> CleanedText:
     """Text with ticket keys in proper form, e.g. '#4347 aka #1482 add impersonation' → 'TNG-4347 add impersonation'."""
+    original = text
     for pattern, replacement in _TYPOS:
         text = pattern.sub(replacement, text)
+    corrected = text != original
     aliases = tuple(bare_key(match[2]) for match in _ALIAS.finditer(text))
     text, following = _FOLLOWING.subn(r'\1', text)
     text, aliased = _ALIAS.subn(lambda match: bare_key(match[1]), text)
     text, bare = _BARE.subn(lambda match: bare_key(match[1]), text)
-    return CleanedText(text, bool(following or aliased or bare), aliases)
+    return CleanedText(text, bool(following or aliased or bare), corrected, aliases)
 
 
 def find_tickets(text: str) -> list[str]:

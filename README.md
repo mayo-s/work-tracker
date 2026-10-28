@@ -5,7 +5,7 @@ monthly work report. A Falcon REST API with a small browser frontend, backed by 
 
 The project was partially implemented using claude.ai.
 
-> Work in progress — the calculation rules are being built first; API and frontend follow.
+> Work in progress — calculation rules, storage and spreadsheet import are done; API and frontend follow.
 
 ## Requirements
 
@@ -17,6 +17,18 @@ The project was partially implemented using claude.ai.
 ```shell
 pipenv install --dev
 ```
+
+## Import the spreadsheet
+
+One CSV export per year; the database is `$WORK_TRACKER_DB`, or `work_tracker.db` in the working directory.
+
+```shell
+pipenv run python -m src.modules.importer "examples/Time_tracking_DK - 2024_Data.csv"
+pipenv run python -m src.modules.importer "examples/Time_tracking_DK - 2024_Data.csv" --replace  # import a year again
+```
+
+A year is imported in one transaction: on any error nothing is written. `--replace` deletes the year's days,
+entries, history and flags first; tickets keep their assigned services.
 
 ## Tests and code quality
 
@@ -172,10 +184,13 @@ erDiagram
 
 Imports the yearly spreadsheet exports (CSV with `Date`, `Start`, `End`, `Pause`, `Sum`, `Comment`).
 
-| Module     | Contents                                                                                                                                                                                                |
-|------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `sheet`    | Read a CSV into one `SheetRow` per day: date (weekday checked), times, pause, sum and comment lines; detects empty future days and placeholder times (08:00–16:00 without break)                        |
-| `lines`    | Split leading decimal-comma hours off a comment line (`1,5 KP-2035 refinement` → 1:30)                                                                                                                  |
-| `days`     | Day type (PTO, sick, half days, overtime off; holidays automatic), times (placeholders dropped, half days end 4:00 earlier, weekends `Sum` − 8:00), notes for overtime used, weekend flags              |
-| `tickets`  | Ticket keys (KP, TNG, ENGINE, AGA, MSI) and their clean-up: typos corrected (`EINGINE-`, `TNG4840`, `MSI-02`, `#KP-1494`); guessed keys flagged (`#4138` → `TNG-4138`, `#4347 aka #1482`, `TNG-2035ff`) |
-| `comments` | Comment lines → entries: tickets anywhere in a line (several tickets split evenly), PR reviews without ticket, Meeting, Tool Management, Travel, Other; lines without hours or ticket become day notes  |
+| Module        | Contents                                                                                                                                                                                                |
+|---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `sheet`       | Read a CSV into one `SheetRow` per day: date (weekday checked), times, pause, sum and comment lines; detects empty future days and placeholder times (08:00–16:00 without break)                        |
+| `lines`       | Split leading decimal-comma hours off a comment line (`1,5 KP-2035 refinement` → 1:30)                                                                                                                  |
+| `days`        | Day type (PTO, sick, half days, overtime off; holidays automatic), times (placeholders dropped, half days end 4:00 earlier, weekends `Sum` − 8:00), notes for overtime used, weekend flags              |
+| `tickets`     | Ticket keys (KP, TNG, ENGINE, AGA, MSI) and their clean-up: typos corrected (`EINGINE-`, `TNG4840`, `MSI-02`, `#KP-1494`); guessed keys flagged (`#4138` → `TNG-4138`, `#4347 aka #1482`, `TNG-2035ff`) |
+| `comments`    | Comment lines → entries: tickets anywhere in a line (several tickets split evenly), PR reviews without ticket, Meeting, Tool Management, Travel, Other; lines without hours or ticket become day notes  |
+| `corrections` | Known corrections the sheet cannot express: 2024 unpaid leave days (marked "PTO")                                                                                                                       |
+| `run`         | Import one year in a single transaction: days, entries (history line with the original comment line), review flags; refuses years with data unless replacing; summary                                   |
+| `__main__`    | Command line: `python -m src.modules.importer SHEET.csv [--replace] [--db PATH]`                                                                                                                        |
