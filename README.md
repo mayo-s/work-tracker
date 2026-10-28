@@ -79,9 +79,12 @@ Pydantic models; times in minutes, validated on creation and assignment.
 ## Storage (`src/modules/storage`)
 
 SQLite, one connection per transaction (commit on success, rollback on error), foreign keys enforced.
+Repositories work within the transaction of the connection they are given.
 
-| Module | Contents |
-|---|---|
-| `database` | `Database(path)`: transactions and schema migration (`migrate()`, tracked in `PRAGMA user_version`) |
+| Module       | Contents                                                                                                                                                                        |
+|--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `database`   | `Database(path)`: transactions and schema migration (`migrate()`, tracked in `PRAGMA user_version`)                                                                             |
 | `migrations` | Schema scripts, applied once in order; the first one seeds settings, services and activity types. Entries keep a change history that outlives them (entry ids are never reused) |
-| `settings` | Load and save user settings |
+| `settings`   | Load and save user settings                                                                                                                                                     |
+| `days`       | `DayRepository`: get, list, save (insert or replace) and delete days; records for balances; review flags on days                                                                |
+| `errors`     | `NotFoundError` for records that do not exist                                                                                                                                   |
