@@ -41,6 +41,7 @@ pipenv run gunicorn 'src.app:create_app()' --reload  # alternative with auto-rel
 
 The database (`$WORK_TRACKER_DB` or `work_tracker.db`) is migrated on start. API documentation:
 `/apidoc/swagger`, `/apidoc/redoc` or `/apidoc/scalar`; the OpenAPI spec is at `/apidoc/openapi.json`.
+These documentation routes are listed in the spec as well, under the Maintenance tag.
 `$WORK_TRACKER_HOST` and `$WORK_TRACKER_PORT` change the address of the development server.
 
 ## Tests and code quality
@@ -64,6 +65,18 @@ pipenv run flake8 --count --exit-zero --radon-max-cc 6 --radon-no-assert --max-l
 | `src/defaultresources` | Default resource at `/` (plain-text status)                             |
 | `src/templates`        | Frontend pages (TypeScript)                                             |
 | `src/tests`            | Tests, mirroring the packages above                                     |
+
+## API (`src/modules/<feature>`)
+
+JSON over HTTP; dates in ISO format (`2026-10-28`), clock times as `HH:MM`, durations as `h:mm` (`-1:30`).
+Invalid input gives 422, unknown records 404, conflicts 409.
+
+| Endpoint           | Method | Description                                                                                                                  |
+|--------------------|--------|------------------------------------------------------------------------------------------------------------------------------|
+| `/api/days`        | GET    | Every calendar day of `?week=2026-W44` or `?start=…&end=…` (max. 366 days): day type, times, worked, target, overtime, flags |
+| `/api/days/{date}` | GET    | One calendar day, recorded or not                                                                                            |
+| `/api/days/{date}` | PUT    | Record a day: `day_type`, `start`, `end`, `break_time` (empty: legal minimum), `note`                                        |
+| `/api/days/{date}` | DELETE | Delete a recorded day and its review flags                                                                                   |
 
 ## Calculation rules (`src/lib`)
 
