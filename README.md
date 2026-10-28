@@ -102,13 +102,13 @@ Times and durations are minutes, dates ISO text.
 
 ```mermaid
 erDiagram
-    services |o--o{ tickets : "service of"
-    tickets |o--o{ entries : "ticket of"
-    activity_types |o--o{ entries : "type of"
-    entries |o--o{ review_flags : "flagged"
-    days |o..o{ review_flags : "flagged (by date)"
-    days |o..o{ entries : "on (by date)"
-    entries |o..o{ entry_history : "history (kept after deletion)"
+    services |o--o{ tickets: "service of"
+    tickets |o--o{ entries: "ticket of"
+    activity_types |o--o{ entries: "type of"
+    entries |o--o{ review_flags: "flagged"
+    days |o..o{ review_flags: "flagged (by date)"
+    days |o..o{ entries: "on (by date)"
+    entries |o..o{ entry_history: "history (kept after deletion)"
 
     settings {
         TEXT key PK "balance_start, opening_balance"
@@ -165,3 +165,11 @@ erDiagram
         TEXT detail
     }
 ```
+
+## Import (`src/modules/importer`)
+
+Imports the yearly spreadsheet exports (CSV with `Date`, `Start`, `End`, `Pause`, `Sum`, `Comment`).
+
+| Module  | Contents                                                                                                                                                                         |
+|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `sheet` | Read a CSV into one `SheetRow` per day: date (weekday checked), times, pause, sum and comment lines; detects empty future days and placeholder times (08:00–16:00 without break) |
