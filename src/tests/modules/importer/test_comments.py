@@ -104,3 +104,34 @@ def test_parse_comment_separates_entries_and_notes():
     parsed = parse_comment(['Anreise LÜBECK', '3,0 KP-2058', '2,0 Meeting: TM und KI Koordination', 'ICE 1,5 h delay'])
     assert [(entry.ticket_key, entry.activity) for entry in parsed.entries] == [('KP-2058', None), (None, 'Meeting')]
     assert parsed.notes == ('Anreise LÜBECK', 'ICE 1,5 h delay')
+
+
+@pytest.mark.parametrize('line, tickets, text', [
+    ('1,5 #KP-1494 Discuss solution', ['KP-1494'], 'Discuss solution'),
+    ('2,0 TNG TNG-4828, TNG-4840', ['TNG-4828', 'TNG-4840'], ''),
+    ('6,0 EINGINE-461', ['ENGINE-461'], ''),
+    ('4,0 MSI-02 basic project setup', ['MSI-2'], 'basic project setup'),
+])
+def test_corrected_tickets_are_not_flagged(line, tickets, text):
+    parsed = parse_line(line)
+    expected = [(key, text, False) for key in tickets]
+    assert [(entry.ticket_key, entry.text, entry.uncertain_ticket) for entry in parsed] == expected
+
+
+@pytest.mark.parametrize('line, tickets, durations, text', [
+    ('6,0 #4138, #4139 create meeting service', ['TNG-4138', 'TNG-4139'], [180, 180], 'create meeting service'),
+    ('3,0 #1482 fix tests, add new tests', ['KP-1482'], [180], 'fix tests, add new tests'),
+    ('3,0 #4347 aka #1482 add impersonation', ['TNG-4347'], [180], 'add impersonation (aka KP-1482)'),
+    ('2,0 #4347/#1482 Logging', ['TNG-4347'], [120], 'Logging (aka KP-1482)'),
+    ('1,0 TNG-2035ff PR and deployment', ['TNG-2035'], [60], 'PR and deployment'),
+])
+def test_guessed_tickets_are_flagged(line, tickets, durations, text):
+    parsed = parse_line(line)
+    assert [entry.ticket_key for entry in parsed] == tickets
+    assert [entry.duration for entry in parsed] == durations
+    assert {(entry.text, entry.uncertain_ticket, entry.source) for entry in parsed} == {(text, True, line)}
+
+
+def test_bare_number_without_hours_is_flagged_zero_entry():
+    [parsed] = parse_line('#4250 check results')
+    assert (parsed.ticket_key, parsed.duration, parsed.uncertain_ticket) == ('TNG-4250', 0, True)
