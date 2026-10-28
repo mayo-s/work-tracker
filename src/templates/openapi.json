@@ -1,0 +1,3021 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Work Tracker API",
+    "description": "Working days, task entries, overtime and PTO.",
+    "version": "0.1.0"
+  },
+  "tags": [
+    {
+      "name": "Maintenance"
+    },
+    {
+      "name": "Days"
+    },
+    {
+      "name": "Entries"
+    },
+    {
+      "name": "Tickets"
+    },
+    {
+      "name": "Reports"
+    },
+    {
+      "name": "Review"
+    },
+    {
+      "name": "Services"
+    },
+    {
+      "name": "Activity types"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Handles GET requests. Responds with plain text, not JSON.",
+        "operationId": "get__health",
+        "description": "",
+        "tags": [
+          "Maintenance"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/days": {
+      "get": {
+        "summary": "Every calendar day of a week or date range, recorded or not.",
+        "operationId": "get__api_days",
+        "description": "",
+        "tags": [
+          "Days"
+        ],
+        "parameters": [
+          {
+            "name": "week",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-W\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "examples": [
+                "2026-W44"
+              ],
+              "title": "Week"
+            },
+            "required": false,
+            "description": ""
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Start"
+            },
+            "required": false,
+            "description": ""
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "End"
+            },
+            "required": false,
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayViewList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/days/{date}": {
+      "delete": {
+        "summary": "Delete a recorded day and its review flags.",
+        "operationId": "delete__api_days_{date}",
+        "description": "",
+        "tags": [
+          "Days"
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Date in ISO format, e.g. 2026-10-28"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "One calendar day, recorded or not.",
+        "operationId": "get__api_days_{date}",
+        "description": "",
+        "tags": [
+          "Days"
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Date in ISO format, e.g. 2026-10-28"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Record a day (insert or replace).",
+        "operationId": "put__api_days_{date}",
+        "description": "",
+        "tags": [
+          "Days"
+        ],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Date in ISO format, e.g. 2026-10-28"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DayInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/entries": {
+      "get": {
+        "summary": "Entries of a week or date range, by date and in the order they were created.",
+        "operationId": "get__api_entries",
+        "description": "",
+        "tags": [
+          "Entries"
+        ],
+        "parameters": [
+          {
+            "name": "week",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-W\\d{2}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "examples": [
+                "2026-W44"
+              ],
+              "title": "Week"
+            },
+            "required": false,
+            "description": ""
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Start"
+            },
+            "required": false,
+            "description": ""
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "End"
+            },
+            "required": false,
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryViewList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an entry; a new ticket is created, `service_id` sets the ticket's service.",
+        "operationId": "post__api_entries",
+        "description": "",
+        "tags": [
+          "Entries"
+        ],
+        "parameters": [],
+        "responses": {
+          "409": {
+            "description": "Conflict"
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntryInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/entries/{entry_id}": {
+      "delete": {
+        "summary": "Delete an entry and its review flags; its history is kept.",
+        "operationId": "delete__api_entries_{entry_id}",
+        "description": "",
+        "tags": [
+          "Entries"
+        ],
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the entry"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "One entry.",
+        "operationId": "get__api_entries_{entry_id}",
+        "description": "",
+        "tags": [
+          "Entries"
+        ],
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the entry"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Change an entry; only changed fields are written to its history. The kind cannot change.",
+        "operationId": "put__api_entries_{entry_id}",
+        "description": "",
+        "tags": [
+          "Entries"
+        ],
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the entry"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntryInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/entries/{entry_id}/history": {
+      "get": {
+        "summary": "The history of an entry, oldest first; also available after the entry was deleted.",
+        "operationId": "get__api_entries_{entry_id}_history",
+        "description": "",
+        "tags": [
+          "Entries"
+        ],
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the entry"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeViewList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tickets": {
+      "get": {
+        "summary": "All tickets (sorted by prefix and number) with their service and number of entries.",
+        "operationId": "get__api_tickets",
+        "description": "",
+        "tags": [
+          "Tickets"
+        ],
+        "parameters": [
+          {
+            "name": "without_service",
+            "in": "query",
+            "schema": {
+              "default": false,
+              "description": "Only tickets without a service (for review)",
+              "title": "Without Service",
+              "type": "boolean"
+            },
+            "required": false,
+            "description": "Only tickets without a service (for review)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketViewList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tickets/assign-service": {
+      "post": {
+        "summary": "Assign one service to several tickets at once; if a ticket is unknown, nothing changes.",
+        "operationId": "post__api_tickets_assign-service",
+        "description": "",
+        "tags": [
+          "Tickets"
+        ],
+        "parameters": [],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceAssignment"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/tickets/{key}": {
+      "get": {
+        "summary": "A known ticket with the service it remembers (used to pre-fill the service of a new entry).",
+        "operationId": "get__api_tickets_{key}",
+        "description": "",
+        "tags": [
+          "Tickets"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Ticket key, e.g. ENGINE-461 (case-insensitive)"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Set or unassign the service of a ticket; it applies to all entries of the ticket.",
+        "operationId": "put__api_tickets_{key}",
+        "description": "",
+        "tags": [
+          "Tickets"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Ticket key, e.g. ENGINE-461 (case-insensitive)"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketServiceInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/tickets/{key}/rename": {
+      "post": {
+        "summary": "Rename a ticket, or merge it into an existing one (which keeps its service); recorded in each entry's history.",
+        "operationId": "post__api_tickets_{key}_rename",
+        "description": "",
+        "tags": [
+          "Tickets"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Ticket key, e.g. ENGINE-461 (case-insensitive)"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenameView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketRename"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/reports/weeks/{week}": {
+      "get": {
+        "summary": "Totals of a week (Monday to Sunday) and the overtime balance before and after it.",
+        "operationId": "get__api_reports_weeks_{week}",
+        "description": "",
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "name": "week",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ISO week, e.g. 2026-W44"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/months/{month}": {
+      "get": {
+        "summary": "Totals of a month and the monthly work report: coding work by service and ticket.",
+        "operationId": "get__api_reports_months_{month}",
+        "description": "",
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Month, e.g. 2026-10"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/years/{year}": {
+      "get": {
+        "summary": "Totals of a year, per month, and the PTO account (replaces the spreadsheet dashboard).",
+        "operationId": "get__api_reports_years_{year}",
+        "description": "",
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int4"
+            },
+            "description": "Year, e.g. 2026"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/YearReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/review": {
+      "get": {
+        "summary": "Everything that needs attention; an item disappears once its reason is fixed or its flag is cleared.",
+        "operationId": "get__api_review",
+        "description": "",
+        "tags": [
+          "Review"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/review/flags/{flag_id}": {
+      "delete": {
+        "summary": "Clear a review flag of an entry or a day (e.g. after checking a guessed ticket key).",
+        "operationId": "delete__api_review_flags_{flag_id}",
+        "description": "",
+        "tags": [
+          "Review"
+        ],
+        "parameters": [
+          {
+            "name": "flag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the flag"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services": {
+      "get": {
+        "summary": "All records of the list.",
+        "operationId": "get__api_services",
+        "description": "",
+        "tags": [
+          "Services"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a record.",
+        "operationId": "post__api_services",
+        "description": "",
+        "tags": [
+          "Services"
+        ],
+        "parameters": [],
+        "responses": {
+          "409": {
+            "description": "Conflict"
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/services/{item_id}": {
+      "delete": {
+        "summary": "Delete a record.",
+        "operationId": "delete__api_services_{item_id}",
+        "description": "",
+        "tags": [
+          "Services"
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the record"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "One record.",
+        "operationId": "get__api_services_{item_id}",
+        "description": "",
+        "tags": [
+          "Services"
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the record"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Change a record.",
+        "operationId": "put__api_services_{item_id}",
+        "description": "",
+        "tags": [
+          "Services"
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the record"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/activity-types": {
+      "get": {
+        "summary": "All records of the list.",
+        "operationId": "get__api_activity-types",
+        "description": "",
+        "tags": [
+          "Activity types"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityTypeList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a record.",
+        "operationId": "post__api_activity-types",
+        "description": "",
+        "tags": [
+          "Activity types"
+        ],
+        "parameters": [],
+        "responses": {
+          "409": {
+            "description": "Conflict"
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityType"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityTypeInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/activity-types/{item_id}": {
+      "delete": {
+        "summary": "Delete a record.",
+        "operationId": "delete__api_activity-types_{item_id}",
+        "description": "",
+        "tags": [
+          "Activity types"
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the record"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "One record.",
+        "operationId": "get__api_activity-types_{item_id}",
+        "description": "",
+        "tags": [
+          "Activity types"
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the record"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityType"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Change a record.",
+        "operationId": "put__api_activity-types_{item_id}",
+        "description": "",
+        "tags": [
+          "Activity types"
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the record"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityType"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityTypeInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/apidoc/openapi.json": {
+      "get": {
+        "summary": "OpenAPI specification",
+        "tags": [
+          "Maintenance"
+        ],
+        "operationId": "get_apidoc_openapi_json",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
+    "/apidoc/redoc": {
+      "get": {
+        "summary": "API documentation (ReDoc)",
+        "tags": [
+          "Maintenance"
+        ],
+        "operationId": "get_apidoc_redoc",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/html": {}
+            }
+          }
+        }
+      }
+    },
+    "/apidoc/swagger": {
+      "get": {
+        "summary": "API documentation (Swagger UI)",
+        "tags": [
+          "Maintenance"
+        ],
+        "operationId": "get_apidoc_swagger",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/html": {}
+            }
+          }
+        }
+      }
+    },
+    "/apidoc/scalar": {
+      "get": {
+        "summary": "API documentation (Scalar)",
+        "tags": [
+          "Maintenance"
+        ],
+        "operationId": "get_apidoc_scalar",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/html": {}
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ValidationError": {
+        "description": "Model of a validation error response.",
+        "items": {
+          "$ref": "#/components/schemas/ValidationErrorElement"
+        },
+        "title": "ValidationErrorType",
+        "type": "array"
+      },
+      "ServiceList": {
+        "items": {
+          "$ref": "#/components/schemas/Service"
+        },
+        "title": "ServiceList",
+        "type": "array"
+      },
+      "ServiceInput": {
+        "additionalProperties": false,
+        "properties": {
+          "short_name": {
+            "examples": [
+              "MSB"
+            ],
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Short Name",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "examples": [
+              "microsoft-bookings-service"
+            ],
+            "maxLength": 100,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "short_name"
+        ],
+        "title": "ServiceInput",
+        "type": "object"
+      },
+      "Service": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "short_name": {
+            "description": "e.g. MSB",
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Short Name",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "description": "e.g. microsoft-bookings-service",
+            "maxLength": 100,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "short_name"
+        ],
+        "title": "Service",
+        "type": "object"
+      },
+      "ActivityTypeList": {
+        "items": {
+          "$ref": "#/components/schemas/ActivityType"
+        },
+        "title": "ActivityTypeList",
+        "type": "array"
+      },
+      "ActivityTypeInput": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "examples": [
+              "Travel"
+            ],
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ActivityTypeInput",
+        "type": "object"
+      },
+      "ActivityType": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "name": {
+            "description": "e.g. Tool Management",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ActivityType",
+        "type": "object"
+      },
+      "PeriodQuery": {
+        "description": "Either a week (`2026-W44`) or a start and end date (inclusive, at most 366 days).",
+        "properties": {
+          "week": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{4}-W\\d{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "examples": [
+              "2026-W44"
+            ],
+            "title": "Week"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "End"
+          }
+        },
+        "title": "PeriodQuery",
+        "type": "object"
+      },
+      "DayViewList": {
+        "items": {
+          "$ref": "#/components/schemas/DayView"
+        },
+        "title": "DayViewList",
+        "type": "array"
+      },
+      "DayView": {
+        "description": "A calendar day with its effective day type, times and balance, whether recorded or not.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "weekday": {
+            "examples": [
+              "Mon"
+            ],
+            "title": "Weekday",
+            "type": "string"
+          },
+          "day_type": {
+            "$ref": "#/components/schemas/DayType",
+            "description": "Effective day type: the chosen one, or automatic"
+          },
+          "automatic": {
+            "description": "True if no day type was chosen",
+            "title": "Automatic",
+            "type": "boolean"
+          },
+          "holiday": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the public holiday or company half day",
+            "title": "Holiday"
+          },
+          "recorded": {
+            "title": "Recorded",
+            "type": "boolean"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "break_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Effective break, h:mm",
+            "title": "Break Time"
+          },
+          "break_default": {
+            "description": "True if the break is the legal minimum",
+            "title": "Break Default",
+            "type": "boolean"
+          },
+          "worked": {
+            "title": "Worked",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          },
+          "overtime": {
+            "title": "Overtime",
+            "type": "string"
+          },
+          "pto_days": {
+            "title": "Pto Days",
+            "type": "number"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "flags": {
+            "items": {
+              "$ref": "#/components/schemas/DayFlagView"
+            },
+            "title": "Flags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "date",
+          "weekday",
+          "day_type",
+          "automatic",
+          "holiday",
+          "recorded",
+          "start",
+          "end",
+          "break_time",
+          "break_default",
+          "worked",
+          "target",
+          "overtime",
+          "pto_days",
+          "note",
+          "flags"
+        ],
+        "title": "DayView",
+        "type": "object"
+      },
+      "DayInput": {
+        "additionalProperties": false,
+        "description": "A recorded day; without break_time the legal minimum break applies.",
+        "properties": {
+          "day_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DayType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Empty: automatic (work day or holiday)"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "examples": [
+                  "08:15"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "examples": [
+                  "08:15"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "End"
+          },
+          "break_time": {
+            "anyOf": [
+              {
+                "examples": [
+                  "1:30"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Empty: legal minimum break",
+            "title": "Break Time"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "title": "DayInput",
+        "type": "object"
+      },
+      "EntryViewList": {
+        "items": {
+          "$ref": "#/components/schemas/EntryView"
+        },
+        "title": "EntryViewList",
+        "type": "array"
+      },
+      "EntryInput": {
+        "additionalProperties": false,
+        "description": "A ticket entry (ticket_key, description, coding) or an activity entry (activity_type_id, note).",
+        "properties": {
+          "kind": {
+            "enum": [
+              "ticket",
+              "activity"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "duration": {
+            "description": "h:mm in quarter hours",
+            "examples": [
+              "1:30"
+            ],
+            "title": "Duration",
+            "type": "string"
+          },
+          "ticket_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "examples": [
+              "ENGINE-461"
+            ],
+            "title": "Ticket Key"
+          },
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Ticket entries: set the ticket's service (applies to all its entries); omit to keep it",
+            "title": "Service Id"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "coding": {
+            "default": false,
+            "title": "Coding",
+            "type": "boolean"
+          },
+          "activity_type_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Activity Type Id"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "date",
+          "duration"
+        ],
+        "title": "EntryInput",
+        "type": "object"
+      },
+      "EntryView": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "ticket",
+              "activity"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "string"
+          },
+          "ticket_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Ticket Key"
+          },
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Service Id"
+          },
+          "service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Short name of the ticket's service",
+            "title": "Service"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "coding": {
+            "default": false,
+            "title": "Coding",
+            "type": "boolean"
+          },
+          "activity_type_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Activity Type Id"
+          },
+          "activity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Activity Type"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Note"
+          },
+          "changed": {
+            "description": "Changed after it was created or imported (see its history)",
+            "title": "Changed",
+            "type": "boolean"
+          },
+          "flags": {
+            "items": {
+              "$ref": "#/components/schemas/EntryFlagView"
+            },
+            "title": "Flags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "date",
+          "duration",
+          "changed",
+          "flags"
+        ],
+        "title": "EntryView",
+        "type": "object"
+      },
+      "ChangeViewList": {
+        "items": {
+          "$ref": "#/components/schemas/ChangeView"
+        },
+        "title": "ChangeViewList",
+        "type": "array"
+      },
+      "WeekReport": {
+        "properties": {
+          "week": {
+            "examples": [
+              "2026-W44"
+            ],
+            "title": "Week",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PeriodTotals"
+          },
+          "days_off": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Weekdays by day type other than work, including planned ones",
+            "propertyNames": {
+              "$ref": "#/components/schemas/DayType"
+            },
+            "title": "Days Off",
+            "type": "object"
+          }
+        },
+        "required": [
+          "week",
+          "totals",
+          "days_off"
+        ],
+        "title": "WeekReport",
+        "type": "object"
+      },
+      "MonthReport": {
+        "properties": {
+          "month": {
+            "examples": [
+              "2026-10"
+            ],
+            "title": "Month",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PeriodTotals"
+          },
+          "days_off": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/DayType"
+            },
+            "title": "Days Off",
+            "type": "object"
+          },
+          "pto_days": {
+            "description": "PTO used and planned in the month",
+            "title": "Pto Days",
+            "type": "number"
+          },
+          "coding": {
+            "description": "Coding work by service and ticket; tickets without service last",
+            "items": {
+              "$ref": "#/components/schemas/ServiceWork"
+            },
+            "title": "Coding",
+            "type": "array"
+          },
+          "coding_total": {
+            "title": "Coding Total",
+            "type": "string"
+          }
+        },
+        "required": [
+          "month",
+          "totals",
+          "days_off",
+          "pto_days",
+          "coding",
+          "coding_total"
+        ],
+        "title": "MonthReport",
+        "type": "object"
+      },
+      "YearReport": {
+        "properties": {
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PeriodTotals"
+          },
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/MonthTotals"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "days_worked": {
+            "description": "Days with worked time, up to today",
+            "title": "Days Worked",
+            "type": "integer"
+          },
+          "average_per_day_worked": {
+            "title": "Average Per Day Worked",
+            "type": "string"
+          },
+          "days_off": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/DayType"
+            },
+            "title": "Days Off",
+            "type": "object"
+          },
+          "pto": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PtoView"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for years before the balance start or in the future"
+          }
+        },
+        "required": [
+          "year",
+          "totals",
+          "months",
+          "days_worked",
+          "average_per_day_worked",
+          "days_off",
+          "pto"
+        ],
+        "title": "YearReport",
+        "type": "object"
+      },
+      "ReviewView": {
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/ReviewCounts"
+          },
+          "tickets_without_service": {
+            "description": "Tickets with entries but no service; assign one per ticket",
+            "items": {
+              "$ref": "#/components/schemas/TicketView"
+            },
+            "title": "Tickets Without Service",
+            "type": "array"
+          },
+          "entries": {
+            "description": "Entries with 0:00, without ticket or with an import flag, by date",
+            "items": {
+              "$ref": "#/components/schemas/ReviewEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "days": {
+            "description": "Days with import flags (e.g. weekend hours), by date",
+            "items": {
+              "$ref": "#/components/schemas/DayView"
+            },
+            "title": "Days",
+            "type": "array"
+          }
+        },
+        "required": [
+          "counts",
+          "tickets_without_service",
+          "entries",
+          "days"
+        ],
+        "title": "ReviewView",
+        "type": "object"
+      },
+      "TicketQuery": {
+        "properties": {
+          "without_service": {
+            "default": false,
+            "description": "Only tickets without a service (for review)",
+            "title": "Without Service",
+            "type": "boolean"
+          }
+        },
+        "title": "TicketQuery",
+        "type": "object"
+      },
+      "TicketViewList": {
+        "items": {
+          "$ref": "#/components/schemas/TicketView"
+        },
+        "title": "TicketViewList",
+        "type": "array"
+      },
+      "TicketView": {
+        "properties": {
+          "key": {
+            "examples": [
+              "ENGINE-461"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Id"
+          },
+          "service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Short name of the service",
+            "title": "Service"
+          },
+          "entries": {
+            "description": "Number of entries of the ticket",
+            "title": "Entries",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "service_id",
+          "service",
+          "entries"
+        ],
+        "title": "TicketView",
+        "type": "object"
+      },
+      "TicketServiceInput": {
+        "additionalProperties": false,
+        "properties": {
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The service, or null to unassign it",
+            "title": "Service Id"
+          }
+        },
+        "required": [
+          "service_id"
+        ],
+        "title": "TicketServiceInput",
+        "type": "object"
+      },
+      "ServiceAssignment": {
+        "additionalProperties": false,
+        "properties": {
+          "keys": {
+            "examples": [
+              [
+                "AGA-39",
+                "AGA-40"
+              ]
+            ],
+            "items": {
+              "description": "Ticket key, e.g. ENGINE-461",
+              "maxLength": 30,
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Keys",
+            "type": "array"
+          },
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The service, or null to unassign it",
+            "title": "Service Id"
+          }
+        },
+        "required": [
+          "keys",
+          "service_id"
+        ],
+        "title": "ServiceAssignment",
+        "type": "object"
+      },
+      "AssignmentResult": {
+        "properties": {
+          "assigned": {
+            "description": "Number of distinct tickets changed",
+            "title": "Assigned",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assigned"
+        ],
+        "title": "AssignmentResult",
+        "type": "object"
+      },
+      "TicketRename": {
+        "additionalProperties": false,
+        "properties": {
+          "new_key": {
+            "description": "New key; if it exists, both tickets are merged",
+            "examples": [
+              "KP-2035"
+            ],
+            "maxLength": 30,
+            "title": "New Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "new_key"
+        ],
+        "title": "TicketRename",
+        "type": "object"
+      },
+      "RenameView": {
+        "properties": {
+          "ticket": {
+            "$ref": "#/components/schemas/TicketView"
+          },
+          "action": {
+            "enum": [
+              "renamed",
+              "merged"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "moved": {
+            "description": "Number of entries moved to the new key",
+            "title": "Moved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ticket",
+          "action",
+          "moved"
+        ],
+        "title": "RenameView",
+        "type": "object"
+      },
+      "ValidationErrorElement": {
+        "description": "Model of a validation error response element.",
+        "properties": {
+          "loc": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing field name",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Error message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error type",
+            "type": "string"
+          },
+          "ctx": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error context"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationErrorElement",
+        "type": "object"
+      },
+      "DayFlagView": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/FlagReason"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reason",
+          "detail"
+        ],
+        "title": "DayFlagView",
+        "type": "object"
+      },
+      "DayType": {
+        "enum": [
+          "work",
+          "pto",
+          "pto_half",
+          "sick",
+          "sick_half",
+          "overtime_off",
+          "unpaid_leave",
+          "public_holiday",
+          "company_half_day"
+        ],
+        "title": "DayType",
+        "type": "string"
+      },
+      "FlagReason": {
+        "enum": [
+          "uncertain_ticket",
+          "weekend_hours"
+        ],
+        "title": "FlagReason",
+        "type": "string"
+      },
+      "EntryFlagView": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/FlagReason"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reason",
+          "detail"
+        ],
+        "title": "EntryFlagView",
+        "type": "object"
+      },
+      "ChangeView": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "changed_at": {
+            "format": "date-time",
+            "title": "Changed At",
+            "type": "string"
+          },
+          "action": {
+            "$ref": "#/components/schemas/HistoryAction"
+          },
+          "changes": {
+            "additionalProperties": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                {
+                  "$ref": "#/components/schemas/JsonValue"
+                }
+              ],
+              "type": "array"
+            },
+            "description": "Changed fields: [old, new]; durations in minutes",
+            "title": "Changes",
+            "type": "object"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "changed_at",
+          "action",
+          "changes",
+          "detail"
+        ],
+        "title": "ChangeView",
+        "type": "object"
+      },
+      "HistoryAction": {
+        "enum": [
+          "created",
+          "imported",
+          "updated",
+          "renamed",
+          "merged",
+          "deleted"
+        ],
+        "title": "HistoryAction",
+        "type": "string"
+      },
+      "JsonValue": {},
+      "PeriodTotals": {
+        "properties": {
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Last day counted (today at the latest); null if nothing counted yet",
+            "title": "Until"
+          },
+          "worked": {
+            "title": "Worked",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          },
+          "overtime": {
+            "title": "Overtime",
+            "type": "string"
+          },
+          "balance_in": {
+            "description": "Overtime balance before the period",
+            "title": "Balance In",
+            "type": "string"
+          },
+          "balance_out": {
+            "description": "Overtime balance at the end of the period (today at the latest)",
+            "title": "Balance Out",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "until",
+          "worked",
+          "target",
+          "overtime",
+          "balance_in",
+          "balance_out"
+        ],
+        "title": "PeriodTotals",
+        "type": "object"
+      },
+      "ServiceWork": {
+        "properties": {
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for tickets without service",
+            "title": "Service Id"
+          },
+          "service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "string"
+          },
+          "tickets": {
+            "items": {
+              "$ref": "#/components/schemas/TicketWork"
+            },
+            "title": "Tickets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "service_id",
+          "service",
+          "duration",
+          "tickets"
+        ],
+        "title": "ServiceWork",
+        "type": "object"
+      },
+      "TicketWork": {
+        "properties": {
+          "ticket_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for PR reviews still without ticket",
+            "title": "Ticket Key"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "string"
+          },
+          "descriptions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Descriptions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ticket_key",
+          "duration",
+          "descriptions"
+        ],
+        "title": "TicketWork",
+        "type": "object"
+      },
+      "MonthTotals": {
+        "properties": {
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "worked": {
+            "title": "Worked",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          },
+          "overtime": {
+            "title": "Overtime",
+            "type": "string"
+          }
+        },
+        "required": [
+          "month",
+          "worked",
+          "target",
+          "overtime"
+        ],
+        "title": "MonthTotals",
+        "type": "object"
+      },
+      "PtoView": {
+        "properties": {
+          "carried_over": {
+            "title": "Carried Over",
+            "type": "number"
+          },
+          "allowance": {
+            "title": "Allowance",
+            "type": "number"
+          },
+          "used": {
+            "title": "Used",
+            "type": "number"
+          },
+          "planned": {
+            "title": "Planned",
+            "type": "number"
+          },
+          "remaining": {
+            "title": "Remaining",
+            "type": "number"
+          }
+        },
+        "required": [
+          "carried_over",
+          "allowance",
+          "used",
+          "planned",
+          "remaining"
+        ],
+        "title": "PtoView",
+        "type": "object"
+      },
+      "ReviewCounts": {
+        "properties": {
+          "tickets_without_service": {
+            "title": "Tickets Without Service",
+            "type": "integer"
+          },
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tickets_without_service",
+          "entries",
+          "days"
+        ],
+        "title": "ReviewCounts",
+        "type": "object"
+      },
+      "ReviewEntry": {
+        "properties": {
+          "entry": {
+            "$ref": "#/components/schemas/EntryView"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewReason"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entry",
+          "reasons"
+        ],
+        "title": "ReviewEntry",
+        "type": "object"
+      },
+      "ReviewReason": {
+        "enum": [
+          "zero_duration",
+          "no_ticket",
+          "uncertain_ticket"
+        ],
+        "title": "ReviewReason",
+        "type": "string"
+      }
+    }
+  },
+  "security": []
+}
