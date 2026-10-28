@@ -8,9 +8,10 @@ from spectree import Response
 
 from src.lib.dates import each_day
 from src.models.review import ReviewFlag
-from src.modules.days.schemas import DayInput, DayQuery, DayView, day_view
+from src.modules.days.schemas import DayInput, DayView, day_view
 from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
+from src.utils.api import PeriodQuery
 from src.utils.spec import spec
 
 TAGS = ['Days']
@@ -21,8 +22,8 @@ class DayCollection:
     def __init__(self, database: Database) -> None:
         self._database = database
 
-    @spec.validate(query=DayQuery, resp=Response(HTTP_200=list[DayView]), tags=TAGS)
-    def on_get(self, req: falcon.Request, resp: falcon.Response, query: DayQuery) -> None:
+    @spec.validate(query=PeriodQuery, resp=Response(HTTP_200=list[DayView]), tags=TAGS)
+    def on_get(self, req: falcon.Request, resp: falcon.Response, query: PeriodQuery) -> None:
         """Every calendar day of a week or date range, recorded or not."""
         start, end = query.period()
         with self._database.transaction() as conn:

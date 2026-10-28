@@ -1,10 +1,10 @@
-"""API schemas for days: dates in ISO format, clock times as HH:MM, durations as h:mm."""
+"""API schemas for days (formats: see src.utils.api)."""
 
 import datetime as dt
 from collections.abc import Callable
-from typing import Annotated, Self
+from typing import Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.lib.daytypes import DayType, summarize_day
 from src.lib.durations import format_clock, format_duration, parse_clock, parse_duration
@@ -12,38 +12,9 @@ from src.lib.public_holidays import holiday_on
 from src.lib.worktime import legal_break
 from src.models.days import Day
 from src.models.review import FlagReason, ReviewFlag
+from src.utils.api import ClockText, DurationText, check_domain
 
-MAX_DAYS = 366
 _WEEKDAYS = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
-
-ClockText = Annotated[str, AfterValidator(lambda text: format_clock(parse_clock(text))), Field(examples=['08:15'])]
-DurationText = Annotated[str, AfterValidator(lambda text: format_duration(parse_duration(text))), Field(examples=['0:30'])]
-
-
-class DayQuery(BaseModel):
-    """Either a week (`2026-W44`) or a start and end date (inclusive, at most 366 days)."""
-
-    week: str | None = Field(default=None, pattern=r'^\d{4}-W\d{2}$', examples=['2026-W44'])
-    start: dt.date | None = None
-    end: dt.date | None = None
-
-    @model_validator(mode='after')
-    def check_period(self) -> Self:
-        if (self.week is None) == (self.start is None and self.end is None):
-            raise ValueError('give either week, or start and end')
-        start, end = self.period()
-        if not 0 <= (end - start).days < MAX_DAYS:
-            raise ValueError(f'end must be on or after start, at most {MAX_DAYS} days')
-        return self
-
-    def period(self) -> tuple[dt.date, dt.date]:
-        if self.week:
-            year, week = self.week.split('-W')
-            monday = dt.date.fromisocalendar(int(year), int(week), 1)
-            return monday, monday + dt.timedelta(days=6)
-        if self.start is None or self.end is None:
-            raise ValueError('start and end are both required')
-        return self.start, self.end
 
 
 class DayInput(BaseModel):
@@ -60,10 +31,7 @@ class DayInput(BaseModel):
     @model_validator(mode='after')
     def check_day(self) -> Self:
         """Start and end together, end after start, break not longer than presence."""
-        try:
-            self.to_day(dt.date.min)
-        except ValidationError as error:
-            raise ValueError('; '.join(detail['msg'] for detail in error.errors())) from None
+        check_domain(lambda: self.to_day(dt.date.min))
         return self
 
     def to_day(self, date: dt.date) -> Day:

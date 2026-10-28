@@ -4,6 +4,8 @@ import falcon
 
 from src.defaultresources.default import Default
 from src.modules.days.resources import DayCollection, DayItem
+from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem
+from src.modules.tickets.resources import TicketItem
 from src.modules.storage.database import Database, database_path
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.utils.spec import spec
@@ -19,6 +21,10 @@ def create_app(database: Database | None = None) -> falcon.App:
     app.add_route('/', Default())
     app.add_route('/api/days', DayCollection(database))
     app.add_route('/api/days/{date:dt("%Y-%m-%d")}', DayItem(database))
+    app.add_route('/api/entries', EntryCollection(database))
+    app.add_route('/api/entries/{entry_id:int}', EntryItem(database))
+    app.add_route('/api/entries/{entry_id:int}/history', EntryHistory(database))
+    app.add_route('/api/tickets/{key}', TicketItem(database))
     spec.register(app)
     return app
 
