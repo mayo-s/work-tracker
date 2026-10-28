@@ -87,4 +87,5 @@ Repositories work within the transaction of the connection they are given.
 | `migrations` | Schema scripts, applied once in order; the first one seeds settings, services and activity types. Entries keep a change history that outlives them (entry ids are never reused) |
 | `settings`   | Load and save user settings                                                                                                                                                     |
 | `days`       | `DayRepository`: get, list, save (insert or replace) and delete days; records for balances; review flags on days                                                                |
-| `errors`     | `NotFoundError` for records that do not exist                                                                                                                                   |
+| `catalog`    | `ServiceRepository`, `ActivityTypeRepository`: list, get, add, update, delete (deleting a service unassigns its tickets; an activity type in use cannot be deleted)             |
+| `errors`     | `NotFoundError` for records that do not exist, `ConflictError` for duplicates and records still in use                                                                          |
