@@ -1,0 +1,136 @@
+    <div class="gallery">
+      <nav class="gallery-nav" aria-label="Components">
+        <h2>Components</h2>
+        <ul id="gallery-index"></ul>
+      </nav>
+
+      <div class="gallery-stories">
+        <h1>Component gallery</h1>
+        <p class="muted">The UI elements of the Work Tracker (SPEC 5.5), each with its use and the HTML to copy.
+          Not linked in the navigation.</p>
+
+        <section class="story" id="colors">
+          <h2>Colors</h2>
+          <p>Use the variables, never hex values. Warning colors only for real warnings; mint only for positive values.</p>
+          <div class="swatches" id="swatches" data-no-snippet></div>
+        </section>
+
+        <section class="story" id="text">
+          <h2>Text</h2>
+          <p>Inter, regular and semibold. Muted text for secondary information such as weekday, target or notes.</p>
+          <div class="story-example">
+            <h1>Title</h1>
+            <h2>Section heading</h2>
+            <p>Body text with <strong>emphasis</strong>, <a href="/components">a link</a> and <span class="muted">muted text</span>.</p>
+          </div>
+        </section>
+
+        <section class="story" id="values">
+          <h2>Values</h2>
+          <p>Times and durations always with <code>num</code> (tabular digits). Overtime and balance: negative as warning,
+            positive in mint, zero plain.</p>
+          <div class="story-example inline">
+            <span class="num value-positive">+1:15</span>
+            <span class="num value-negative">-8:00</span>
+            <span class="num">0:00</span>
+            <span class="num">08:15–16:00</span>
+          </div>
+        </section>
+
+        <section class="story" id="badges">
+          <h2>Badges</h2>
+          <p>Short labels: day types, counts, balance. A warning badge for things that need attention.</p>
+          <div class="story-example inline">
+            <span class="badge">PTO</span>
+            <span class="badge positive">Balance 12:30</span>
+            <span class="badge warning">3 to review</span>
+          </div>
+        </section>
+
+        <section class="story" id="buttons">
+          <h2>Buttons</h2>
+          <p>One primary button per area (e.g. Save); everything else normal. Links that act like buttons use <code>button</code> class.</p>
+          <div class="story-example inline">
+            <button class="primary" type="button">Save</button>
+            <button type="button">Cancel</button>
+            <button type="button" disabled>Disabled</button>
+            <a class="button" href="/components">Link as button</a>
+          </div>
+        </section>
+
+        <section class="story" id="forms">
+          <h2>Form fields</h2>
+          <p>Label above the field. Invalid fields get <code>aria-invalid="true"</code> and a warning message below.</p>
+          <div class="story-example">
+            <div class="field">
+              <label for="example-start">Start</label>
+              <input id="example-start" value="08:15">
+            </div>
+            <div class="field">
+              <label for="example-end">End</label>
+              <input id="example-end" value="07:00" aria-invalid="true" aria-describedby="example-end-error">
+              <p class="field-error" id="example-end-error">End is before start</p>
+            </div>
+            <div class="field">
+              <label for="example-type">Day type</label>
+              <select id="example-type"><option>work</option><option>pto</option><option>sick</option></select>
+            </div>
+            <div class="field">
+              <label for="example-note">Note</label>
+              <textarea id="example-note" rows="2">Anreise LÜBECK</textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="story" id="tables">
+          <h2>Tables</h2>
+          <p>Durations right-aligned with <code>td class="num"</code>; clock times stay left-aligned with a
+            <code>span class="num"</code>. Row states: <code>is-today</code>, <code>is-warning</code>
+            (e.g. a past work day without entries), <code>is-weekend</code>.</p>
+          <div class="story-example">
+            <table>
+              <thead>
+                <tr><th>Day</th><th>Times</th><th class="num">Worked</th><th class="num">Overtime</th><th>Note</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Mon 26.10.</td><td><span class="num">08:15–15:45</span></td><td class="num">7:30</td>
+                  <td class="num value-negative">-0:30</td><td class="muted">europace permissions</td></tr>
+                <tr class="is-today"><td><strong>Wed 28.10.</strong></td><td><span class="num">07:15–16:00</span></td>
+                  <td class="num">8:15</td><td class="num value-positive">+0:15</td><td></td></tr>
+                <tr class="is-warning"><td>Thu 29.10.</td><td class="muted">no entries</td><td class="num">0:00</td>
+                  <td class="num value-negative">-8:00</td><td></td></tr>
+                <tr class="is-weekend"><td class="muted">Sat 31.10.</td><td></td><td class="num">0:00</td>
+                  <td class="num">0:00</td><td></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="story" id="cards">
+          <h2>Cards</h2>
+          <p>Group related content. <code>card-surface</code> for secondary areas such as forms or summaries.</p>
+          <div class="story-example">
+            <div class="card">
+              <h3>Week 44</h3>
+              <p>Worked <span class="num">22:15</span> of <span class="num">24:00</span></p>
+            </div>
+            <div class="card card-surface">
+              <h3>Balance</h3>
+              <p class="num value-positive">12:30</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="story" id="navigation">
+          <h2>Navigation</h2>
+          <p>The current page is marked with <code>aria-current="page"</code> (set by <code>main.ts</code>).</p>
+          <div class="story-example inline">
+            <nav class="app-nav" aria-label="Example">
+              <a href="#navigation" aria-current="page">Week</a>
+              <a href="#navigation">Review</a>
+              <a href="#navigation">Reports</a>
+            </nav>
+          </div>
+        </section>
+      </div>
+    </div>

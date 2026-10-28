@@ -46,8 +46,8 @@ pipenv run python -m src                       # http://127.0.0.1:8000/
 pipenv run gunicorn 'src.app:create_app()' --reload  # alternative with auto-reload
 ```
 
-Open http://127.0.0.1:8000/ for the frontend (build it first with `npm run build`); `/style` previews
-the UI components. The database
+Open http://127.0.0.1:8000/ for the frontend (build it first with `npm run build`); `/components` is a
+gallery of the UI components, each with its use and the HTML to copy. The database
 (`$WORK_TRACKER_DB` or `work_tracker.db`) is migrated on start. API documentation:
 `/apidoc/swagger`, `/apidoc/redoc` or `/apidoc/scalar`; the OpenAPI spec is at `/apidoc/openapi.json`.
 These documentation routes are listed in the spec as well, under the Maintenance tag.
