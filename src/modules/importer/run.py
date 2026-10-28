@@ -17,6 +17,7 @@ from src.models.review import FlagReason
 from src.modules.importer.comments import ParsedEntry, parse_comment
 from src.modules.importer.corrections import correct_day
 from src.modules.importer.days import ImportedDay, classify_day
+from src.modules.importer.reconcile import Reconciliation, reconcile
 from src.modules.importer.sheet import SheetRow, read_sheet
 from src.modules.storage.catalog import ActivityTypeRepository
 from src.modules.storage.database import Database
@@ -53,11 +54,15 @@ class ImportSummary:
         ]
 
 
-def import_file(database: Database, path: str | Path, replace: bool = False) -> ImportSummary:
+def import_file(
+    database: Database, path: str | Path, replace: bool = False, today: dt.date | None = None
+) -> tuple[ImportSummary, Reconciliation]:
+    """Import a sheet and compare the result with it, in one transaction."""
     rows = read_sheet(path)
     database.migrate()
     with database.transaction() as conn:
-        return import_rows(conn, rows, replace)
+        summary = import_rows(conn, rows, replace)
+        return summary, reconcile(conn, rows, today or dt.date.today())
 
 
 def import_rows(
