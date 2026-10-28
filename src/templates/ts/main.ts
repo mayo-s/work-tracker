@@ -14,7 +14,17 @@ export function markCurrentPage(nav: ParentNode, path: string): void {
   }
 }
 
+/** Page code, loaded only on its page (`<main data-page="…">`). */
+const PAGES: Record<string, () => Promise<void>> = {
+  components: async () => (await import('./gallery.js')).renderGallery(document),
+};
+
 const nav = document.querySelector('.app-nav');
 if (nav) {
   markCurrentPage(nav, window.location.pathname);
+}
+
+const page = document.querySelector<HTMLElement>('#app')?.dataset.page;
+if (page && page in PAGES) {
+  await PAGES[page]?.();
 }

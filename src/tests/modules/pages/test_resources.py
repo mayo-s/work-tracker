@@ -73,7 +73,14 @@ def test_no_external_requests_in_frame_and_styles(client):
         assert 'https://' not in client.simulate_get(url).text
 
 
-def test_style_preview_page(client):
-    result = client.simulate_get('/style')
+def test_component_gallery_page(client):
+    result = client.simulate_get('/components')
     assert result.status == falcon.HTTP_200
-    assert '<title>Style preview · Work Tracker</title>' in result.text
+    assert '<title>Component gallery · Work Tracker</title>' in result.text
+    assert 'data-page="components"' in result.text
+    for story in ('colors', 'values', 'badges', 'buttons', 'forms', 'tables', 'cards', 'navigation'):
+        assert f'<section class="story" id="{story}">' in result.text
+
+
+def test_gallery_is_not_in_the_main_navigation(client):
+    assert '/components' not in client.simulate_get('/').text
