@@ -1,4 +1,5 @@
 import falcon
+import pytest
 
 from src.modules.pages.resources import STATIC_DIR, TEMPLATES_DIR, render_page
 
@@ -43,3 +44,36 @@ def test_pages_are_not_in_the_api_docs(client):
     paths = client.simulate_get('/apidoc/openapi.json').json['paths']
     assert '/' not in paths
     assert not any(path.startswith('/static') for path in paths)
+
+
+def test_stylesheet(client):
+    result = client.simulate_get('/static/css/main.css')
+    assert result.status == falcon.HTTP_200
+    assert result.headers['content-type'] == 'text/css'
+    for color in ('#36454f', '#e62e6b', '#c81e57', '#1b7f61', '#2f6fd6', '#f4f7fb'):
+        assert color in result.text
+
+
+@pytest.mark.parametrize('font', ['Inter-Regular.woff2', 'Inter-SemiBold.woff2'])
+def test_inter_font_is_served_from_the_project(client, font):
+    result = client.simulate_get(f'/static/fonts/{font}')
+    assert result.status == falcon.HTTP_200
+    assert result.headers['content-type'] == 'font/woff2'
+    assert result.content[:4] == b'wOF2'
+    assert f"url('/static/fonts/{font}')" in client.simulate_get('/static/css/main.css').text
+
+
+def test_inter_license_is_included():
+    assert 'SIL Open Font License' in (STATIC_DIR / 'fonts' / 'Inter-LICENSE.txt').read_text()
+
+
+def test_no_external_requests_in_frame_and_styles(client):
+    for url in ('/', '/static/css/main.css'):
+        assert 'http://' not in client.simulate_get(url).text.replace('http://www.w3.org', '')
+        assert 'https://' not in client.simulate_get(url).text
+
+
+def test_style_preview_page(client):
+    result = client.simulate_get('/style')
+    assert result.status == falcon.HTTP_200
+    assert '<title>Style preview · Work Tracker</title>' in result.text

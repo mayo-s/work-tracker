@@ -46,7 +46,8 @@ pipenv run python -m src                       # http://127.0.0.1:8000/
 pipenv run gunicorn 'src.app:create_app()' --reload  # alternative with auto-reload
 ```
 
-Open http://127.0.0.1:8000/ for the frontend (build it first with `npm run build`). The database
+Open http://127.0.0.1:8000/ for the frontend (build it first with `npm run build`); `/style` previews
+the UI components. The database
 (`$WORK_TRACKER_DB` or `work_tracker.db`) is migrated on start. API documentation:
 `/apidoc/swagger`, `/apidoc/redoc` or `/apidoc/scalar`; the OpenAPI spec is at `/apidoc/openapi.json`.
 These documentation routes are listed in the spec as well, under the Maintenance tag.
@@ -62,17 +63,17 @@ pipenv run flake8 --count --exit-zero --radon-max-cc 6 --radon-no-assert --max-l
 
 ## Project layout
 
-| Path                   | Contents                                                                                                                                                                 |
-|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `src/app.py`           | WSGI app: routes, storage errors as 404 / 409, API docs                                                                                                                  |
-| `src/__main__.py`      | Development server (`python -m src`)                                                                                                                                     |
-| `src/lib`              | Calculation rules: durations, breaks, holidays, targets, overtime, PTO                                                                                                   |
-| `src/models`           | Pydantic models                                                                                                                                                          |
-| `src/modules`          | Features: storage, import, days, entries, reports, review                                                                                                                |
-| `src/utils`            | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types (formats, period query)                                                          |
-| `src/defaultresources` | Default resource at `/health` (plain-text status)                                                                                                                        |
-| `src/templates`        | Frontend: `frame.html` (shared page frame), `pages/` (page content), `static/` (served at `/static`), TypeScript sources in `ts/` compiled to `static/js/` (git-ignored) |
-| `src/tests`            | Tests, mirroring the packages above                                                                                                                                      |
+| Path                   | Contents                                                                                                                                                                                                                                                          |
+|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `src/app.py`           | WSGI app: routes, storage errors as 404 / 409, API docs                                                                                                                                                                                                           |
+| `src/__main__.py`      | Development server (`python -m src`)                                                                                                                                                                                                                              |
+| `src/lib`              | Calculation rules: durations, breaks, holidays, targets, overtime, PTO                                                                                                                                                                                            |
+| `src/models`           | Pydantic models                                                                                                                                                                                                                                                   |
+| `src/modules`          | Features: storage, import, days, entries, reports, review                                                                                                                                                                                                         |
+| `src/utils`            | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types (formats, period query)                                                                                                                                                   |
+| `src/defaultresources` | Default resource at `/health` (plain-text status)                                                                                                                                                                                                                 |
+| `src/templates`        | Frontend: `frame.html` (shared page frame), `pages/` (page content), `static/` (served at `/static`: `css/main.css` with the UI style variables, Inter font with its OFL license in `fonts/`), TypeScript sources in `ts/` compiled to `static/js/` (git-ignored) |
+| `src/tests`            | Tests, mirroring the packages above                                                                                                                                                                                                                               |
 
 ## API (`src/modules/<feature>`)
 
