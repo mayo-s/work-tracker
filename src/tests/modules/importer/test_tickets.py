@@ -13,7 +13,7 @@ from src.modules.importer.tickets import CleanedText, bare_key, clean_tickets, f
     ('MSI-02 basic project setup', 'MSI-2 basic project setup'),
 ])
 def test_obvious_typos_are_corrected_without_flag(text, cleaned):
-    assert clean_tickets(text) == CleanedText(cleaned)
+    assert clean_tickets(text) == CleanedText(cleaned, corrected=True)
 
 
 @pytest.mark.parametrize('text, cleaned', [

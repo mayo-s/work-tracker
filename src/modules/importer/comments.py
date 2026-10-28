@@ -33,6 +33,7 @@ class ParsedEntry:
     text: str = ''  # description of a ticket entry, note of an activity entry
     coding: bool = False
     uncertain_ticket: bool = False  # the ticket key was guessed during clean-up: flag for review
+    ticket_corrected: bool = False  # an obvious typo in the ticket key was corrected
 
 
 @dataclass(frozen=True)
@@ -74,7 +75,10 @@ def _ticket_entries(minutes: int, line: str, cleaned: CleanedText, tickets: list
     description = _description(cleaned)
     shares = split_evenly(minutes, len(tickets))
     return [
-        ParsedEntry(share, line, key, text=description, coding=True, uncertain_ticket=cleaned.uncertain)
+        ParsedEntry(
+            share, line, key, text=description, coding=True,
+            uncertain_ticket=cleaned.uncertain, ticket_corrected=cleaned.corrected,
+        )
         for key, share in zip(tickets, shares)
     ]
 
