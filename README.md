@@ -75,3 +75,13 @@ Pydantic models; times in minutes, validated on creation and assignment.
 | `entries` | `TicketEntry` (ticket, duration, description, coding) and `ActivityEntry` (activity type, duration, note); durations in quarter hours |
 | `catalog` | `Service`, `ActivityType` and `Ticket` (key like `ENGINE-461`, remembers its service)                                                 |
 | `review`  | `ReviewFlag`: import flag on an entry or a day (uncertain ticket, weekend hours)                                                      |
+
+## Storage (`src/modules/storage`)
+
+SQLite, one connection per transaction (commit on success, rollback on error), foreign keys enforced.
+
+| Module | Contents |
+|---|---|
+| `database` | `Database(path)`: transactions and schema migration (`migrate()`, tracked in `PRAGMA user_version`) |
+| `migrations` | Schema scripts, applied once in order; the first one seeds settings, services and activity types. Entries keep a change history that outlives them (entry ids are never reused) |
+| `settings` | Load and save user settings |
