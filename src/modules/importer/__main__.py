@@ -14,11 +14,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument('--db', default=database_path(), help='database file (default: $WORK_TRACKER_DB or work_tracker.db)')
     args = parser.parse_args(argv)
     try:
-        summary = import_file(Database(args.db), args.sheet, args.replace)
+        summary, reconciliation = import_file(Database(args.db), args.sheet, args.replace)
     except (OSError, ValueError, LookupError) as error:
         print(f'Import failed, nothing was written: {error}', file=sys.stderr)
         return 1
-    print('\n'.join(summary.lines()))
+    print('\n'.join([*summary.lines(), '', *reconciliation.lines()]))
     return 0
 
 

@@ -29,6 +29,8 @@ pipenv run python -m src.modules.importer "examples/Time_tracking_DK - 2024_Data
 
 A year is imported in one transaction: on any error nothing is written. `--replace` deletes the year's days,
 entries, history and flags first; tickets keep their assigned services.
+After the import, a reconciliation compares every day up to today with the sheet and shows the overtime
+balance and the year's PTO account.
 
 ## Tests and code quality
 
@@ -193,4 +195,5 @@ Imports the yearly spreadsheet exports (CSV with `Date`, `Start`, `End`, `Pause`
 | `comments`    | Comment lines → entries: tickets anywhere in a line (several tickets split evenly), PR reviews without ticket, Meeting, Tool Management, Travel, Other; lines without hours or ticket become day notes  |
 | `corrections` | Known corrections the sheet cannot express: 2024 unpaid leave days (marked "PTO")                                                                                                                       |
 | `run`         | Import one year in a single transaction: days, entries (history line with the original comment line), review flags; refuses years with data unless replacing; summary                                   |
+| `reconcile`   | Compare an imported year with the sheet (`Sum` − 8:00 per day, up to today): differing days, overtime balance, PTO account                                                                              |
 | `__main__`    | Command line: `python -m src.modules.importer SHEET.csv [--replace] [--db PATH]`                                                                                                                        |

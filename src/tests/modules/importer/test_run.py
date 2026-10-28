@@ -156,7 +156,9 @@ def test_command_line(tmp_path, capsys):
     sheet, db_path = tmp_path / 'sheet.csv', tmp_path / 'cli.db'
     sheet.write_text(SHEET, encoding='utf-8')
     assert main([str(sheet), '--db', str(db_path)]) == 0
-    assert 'Imported 2026' in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert 'Imported 2026' in output
+    assert 'Reconciliation 2026' in output
     assert main([str(sheet), '--db', str(db_path)]) == 1
     assert 'nothing was written' in capsys.readouterr().err
     assert main([str(sheet), '--db', str(db_path), '--replace']) == 0
