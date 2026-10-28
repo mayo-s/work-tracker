@@ -6,9 +6,8 @@ from dataclasses import dataclass
 
 from src.lib.durations import split_evenly
 from src.modules.importer.lines import split_hours
+from src.modules.importer.tickets import TICKET, CleanedText, clean_tickets, find_tickets
 
-TICKET_PREFIXES = ('KP', 'TNG', 'ENGINE', 'AGA', 'MSI')
-TICKET = re.compile(rf'\b(?:{"|".join(TICKET_PREFIXES)})-[1-9]\d*\b')
 _LEADING_TICKETS = re.compile(rf'(?:{TICKET.pattern}\s*(?:,|/|&|\band\b)?\s*)+[:\-–]?\s*')
 
 _PR_REVIEW = re.compile(r'PR\b', re.IGNORECASE)
@@ -33,6 +32,7 @@ class ParsedEntry:
     activity: str | None = None  # activity type name
     text: str = ''  # description of a ticket entry, note of an activity entry
     coding: bool = False
+    uncertain_ticket: bool = False  # the ticket key was guessed during clean-up: flag for review
 
 
 @dataclass(frozen=True)
@@ -54,29 +54,36 @@ def parse_comment(lines: Iterable[str]) -> ParsedComment:
 def parse_line(line: str) -> list[ParsedEntry]:
     """The entries of one comment line; empty if the line is a note (no hours and no ticket)."""
     minutes, rest = split_hours(line)
-    tickets = list(dict.fromkeys(TICKET.findall(rest)))
+    cleaned = clean_tickets(rest)
+    tickets = find_tickets(cleaned.text)
     if minutes is None:
-        return [ParsedEntry(0, line, key, text=_description(rest), coding=True) for key in tickets]
-    if tickets and not _is_meeting(rest):
-        return _ticket_entries(minutes, line, rest, tickets)
-    return [_activity_entry(minutes, line, rest)]
+        return _ticket_entries(0, line, cleaned, tickets)  # tickets without hours become 0:00 entries
+    if tickets and not _is_meeting(cleaned.text):
+        return _ticket_entries(minutes, line, cleaned, tickets)
+    return [_activity_entry(minutes, line, cleaned.text)]
 
 
 def _is_meeting(rest: str) -> bool:
     return bool(_MEETING.match(rest) or _MEETING_NAMES.match(rest))
 
 
-def _ticket_entries(minutes: int, line: str, rest: str, tickets: list[str]) -> list[ParsedEntry]:
+def _ticket_entries(minutes: int, line: str, cleaned: CleanedText, tickets: list[str]) -> list[ParsedEntry]:
     """One entry per ticket, the hours split evenly in quarter hours."""
-    description = _description(rest)
+    if not tickets:
+        return []
+    description = _description(cleaned)
     shares = split_evenly(minutes, len(tickets))
-    return [ParsedEntry(share, line, key, text=description, coding=True) for key, share in zip(tickets, shares)]
+    return [
+        ParsedEntry(share, line, key, text=description, coding=True, uncertain_ticket=cleaned.uncertain)
+        for key, share in zip(tickets, shares)
+    ]
 
 
-def _description(rest: str) -> str:
-    """The text without leading tickets ('KP-1951: data mapping' → 'data mapping'); tickets inside the text stay."""
-    match = _LEADING_TICKETS.match(rest)
-    return rest[match.end():].strip() if match else rest
+def _description(cleaned: CleanedText) -> str:
+    """The text without leading tickets ('KP-1951: data mapping' → 'data mapping'), plus aliases ('(aka KP-1482)')."""
+    match = _LEADING_TICKETS.match(cleaned.text)
+    text = cleaned.text[match.end():].strip() if match else cleaned.text
+    return ' '.join([text, *(f'(aka {alias})' for alias in cleaned.aliases)]).strip()
 
 
 def _activity_entry(minutes: int, line: str, rest: str) -> ParsedEntry:
