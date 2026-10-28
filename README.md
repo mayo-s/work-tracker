@@ -5,7 +5,7 @@ monthly work report. A Falcon REST API with a small browser frontend, backed by 
 
 The project was partially implemented using claude.ai.
 
-> Work in progress — calculation rules, storage and spreadsheet import are done; API and frontend follow.
+> Work in progress — calculation rules, storage and spreadsheet import are done; the API is being built, the frontend follows.
 
 ## Requirements
 
@@ -23,14 +23,25 @@ pipenv install --dev
 One CSV export per year; the database is `$WORK_TRACKER_DB`, or `work_tracker.db` in the working directory.
 
 ```shell
-pipenv run python -m src.modules.importer "examples/Time_tracking_DK - 2024_Data.csv"
-pipenv run python -m src.modules.importer "examples/Time_tracking_DK - 2024_Data.csv" --replace  # import a year again
+pipenv run python -m src.modules.importer "examples/Time_tracking - 2024_Data.csv"
+pipenv run python -m src.modules.importer "examples/Time_tracking - 2024_Data.csv" --replace  # import a year again
 ```
 
 A year is imported in one transaction: on any error nothing is written. `--replace` deletes the year's days,
 entries, history and flags first; tickets keep their assigned services.
 After the import, a reconciliation compares every day up to today with the sheet and shows the overtime
 balance and the year's PTO account.
+
+## Run the app
+
+```shell
+pipenv run python -m src                       # http://127.0.0.1:8000/
+pipenv run gunicorn 'src.app:create_app()' --reload  # alternative with auto-reload
+```
+
+The database (`$WORK_TRACKER_DB` or `work_tracker.db`) is migrated on start. API documentation:
+`/apidoc/swagger`, `/apidoc/redoc` or `/apidoc/scalar`; the OpenAPI spec is at `/apidoc/openapi.json`.
+`$WORK_TRACKER_HOST` and `$WORK_TRACKER_PORT` change the address of the development server.
 
 ## Tests and code quality
 
@@ -42,15 +53,17 @@ pipenv run flake8 --count --exit-zero --radon-max-cc 6 --radon-no-assert --max-l
 
 ## Project layout
 
-| Path                   | Contents                                                               |
-|------------------------|------------------------------------------------------------------------|
-| `src/lib`              | Calculation rules: durations, breaks, holidays, targets, overtime, PTO |
-| `src/models`           | Pydantic models                                                        |
-| `src/modules`          | Features: storage, import, days, entries, reports, review              |
-| `src/utils`            | Shared helpers                                                         |
-| `src/defaultresources` | Default resource                                                       |
-| `src/templates`        | Frontend pages (TypeScript)                                            |
-| `src/tests`            | Tests, mirroring the packages above                                    |
+| Path                   | Contents                                                                |
+|------------------------|-------------------------------------------------------------------------|
+| `src/app.py`           | WSGI app: routes, storage errors as 404 / 409, API docs                 |
+| `src/__main__.py`      | Development server (`python -m src`)                                    |
+| `src/lib`              | Calculation rules: durations, breaks, holidays, targets, overtime, PTO  |
+| `src/models`           | Pydantic models                                                         |
+| `src/modules`          | Features: storage, import, days, entries, reports, review               |
+| `src/utils`            | Shared helpers; `spec`: OpenAPI documentation and validation (spectree) |
+| `src/defaultresources` | Default resource at `/` (plain-text status)                             |
+| `src/templates`        | Frontend pages (TypeScript)                                             |
+| `src/tests`            | Tests, mirroring the packages above                                     |
 
 ## Calculation rules (`src/lib`)
 
