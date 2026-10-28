@@ -1,0 +1,141 @@
+import datetime as dt
+
+import falcon
+import pytest
+
+from src.models.entries import TicketEntry
+from src.models.review import FlagReason
+from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository
+from src.modules.storage.entries import EntryRepository
+
+TICKET = {'kind': 'ticket', 'date': '2026-10-27', 'duration': '0:30', 'ticket_key': 'TNG-5882', 'description': 'PR Review',
+          'coding': True}
+
+
+@pytest.fixture
+def ids(database):
+    with database.transaction() as conn:
+        services = {service.short_name: service.id for service in ServiceRepository(conn).all()}
+        activities = {activity.name: activity.id for activity in ActivityTypeRepository(conn).all()}
+    return services | activities
+
+
+def create(client, body):
+    result = client.simulate_post('/api/entries', json=body)
+    assert result.status == falcon.HTTP_201
+    return result.json
+
+
+def test_create_ticket_entry(client):
+    result = client.simulate_post('/api/entries', json=TICKET)
+    assert result.status == falcon.HTTP_201
+    assert result.headers['location'] == f'/api/entries/{result.json["id"]}'
+    assert (result.json['ticket_key'], result.json['duration'], result.json['service'], result.json['changed']) == (
+        'TNG-5882', '0:30', None, False)
+
+
+def test_create_activity_entry(client, ids):
+    body = {'kind': 'activity', 'date': '2026-10-28', 'duration': '4:00', 'activity_type_id': ids['Tool Management']}
+    entry = create(client, body)
+    assert (entry['activity_type'], entry['ticket_key'], entry['description']) == ('Tool Management', None, None)
+
+
+def test_service_is_remembered_by_the_ticket(client, ids):
+    create(client, TICKET | {'service_id': ids['MSB']})
+    later = create(client, TICKET | {'date': '2026-10-28'})
+    assert (later['service_id'], later['service']) == (ids['MSB'], 'MSB')
+    assert client.simulate_get('/api/tickets/tng-5882').json == {'key': 'TNG-5882', 'service_id': ids['MSB'], 'service': 'MSB'}
+
+
+def test_changing_the_service_applies_to_all_entries_of_the_ticket(client, ids):
+    first = create(client, TICKET | {'service_id': ids['MSB']})
+    create(client, TICKET | {'date': '2026-10-28', 'service_id': ids['HiS']})
+    assert client.simulate_get(f'/api/entries/{first["id"]}').json['service'] == 'HiS'
+
+
+def test_unknown_service_rolls_back_the_entry(client):
+    assert client.simulate_post('/api/entries', json=TICKET | {'service_id': 404}).status == falcon.HTTP_409
+    assert client.simulate_get('/api/entries', params={'week': '2026-W44'}).json == []
+
+
+def test_unknown_activity_type(client):
+    body = {'kind': 'activity', 'date': '2026-10-28', 'duration': '1:00', 'activity_type_id': 404}
+    assert client.simulate_post('/api/entries', json=body).status == falcon.HTTP_409
+
+
+@pytest.mark.parametrize('body', [
+    {'kind': 'ticket', 'date': '2026-10-27', 'duration': '0:30'},
+    TICKET | {'duration': '0:20'},
+    TICKET | {'ticket_key': '#4138'},
+])
+def test_create_rejects_invalid_entry(client, body):
+    assert client.simulate_post('/api/entries', json=body).status_code == 422
+
+
+def test_list_entries_of_a_week(client, ids):
+    create(client, TICKET | {'date': '2026-11-02'})
+    create(client, TICKET)
+    create(client, {'kind': 'activity', 'date': '2026-10-26', 'duration': '1:00', 'activity_type_id': ids['Meeting']})
+    entries = client.simulate_get('/api/entries', params={'week': '2026-W44'}).json
+    assert [(entry['date'], entry['kind']) for entry in entries] == [('2026-10-26', 'activity'), ('2026-10-27', 'ticket')]
+
+
+def test_update_entry_marks_it_changed(client):
+    created = create(client, TICKET)
+    result = client.simulate_put(f'/api/entries/{created["id"]}', json=TICKET | {'duration': '1:00'})
+    assert result.status == falcon.HTTP_200
+    assert (result.json['duration'], result.json['changed']) == ('1:00', True)
+
+
+def test_update_cannot_change_kind(client, ids):
+    created = create(client, TICKET)
+    body = {'kind': 'activity', 'date': '2026-10-27', 'duration': '0:30', 'activity_type_id': ids['Meeting']}
+    assert client.simulate_put(f'/api/entries/{created["id"]}', json=body).status == falcon.HTTP_409
+
+
+def test_update_missing_entry(client):
+    assert client.simulate_put('/api/entries/404', json=TICKET).status == falcon.HTTP_404
+
+
+def test_get_missing_entry(client):
+    assert client.simulate_get('/api/entries/404').status == falcon.HTTP_404
+
+
+def test_delete_entry_keeps_history(client):
+    created = create(client, TICKET)
+    client.simulate_put(f'/api/entries/{created["id"]}', json=TICKET | {'duration': '1:00'})
+    assert client.simulate_delete(f'/api/entries/{created["id"]}').status == falcon.HTTP_204
+    assert client.simulate_get(f'/api/entries/{created["id"]}').status == falcon.HTTP_404
+    history = client.simulate_get(f'/api/entries/{created["id"]}/history').json
+    assert [change['action'] for change in history] == ['created', 'updated', 'deleted']
+    assert history[1]['changes'] == {'duration': [30, 60]}
+
+
+def test_delete_missing_entry(client):
+    assert client.simulate_delete('/api/entries/404').status == falcon.HTTP_404
+
+
+def test_entry_shows_its_flags(client, database):
+    created = create(client, TICKET)
+    with database.transaction() as conn:
+        EntryRepository(conn).add_flag(created['id'], FlagReason.UNCERTAIN_TICKET, '#4138')
+    [flag] = client.simulate_get(f'/api/entries/{created["id"]}').json['flags']
+    assert (flag['reason'], flag['detail']) == ('uncertain_ticket', '#4138')
+
+
+def test_history_of_unknown_entry_is_empty(client):
+    assert client.simulate_get('/api/entries/404/history').json == []
+
+
+@pytest.mark.parametrize('key', ['ENGINE-404', 'not-a-ticket'])
+def test_unknown_ticket(client, key):
+    assert client.simulate_get(f'/api/tickets/{key}').status == falcon.HTTP_404
+
+
+def test_imported_entry_without_ticket_must_get_one_when_changed(client, database):
+    with database.transaction() as conn:
+        created = EntryRepository(conn).create(TicketEntry(date=dt.date(2025, 11, 26), duration=360, coding=True))
+    body = {'kind': 'ticket', 'date': '2025-11-26', 'duration': '6:00', 'coding': True}
+    assert client.simulate_put(f'/api/entries/{created.id}', json=body).status_code == 422
+    result = client.simulate_put(f'/api/entries/{created.id}', json=body | {'ticket_key': 'TNG-5096'})
+    assert result.json['ticket_key'] == 'TNG-5096'

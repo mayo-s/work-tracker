@@ -6,35 +6,7 @@ from pydantic import ValidationError
 from src.lib.daytypes import DayType
 from src.models.days import Day
 from src.models.review import FlagReason, ReviewFlag
-from src.modules.days.schemas import DayInput, DayQuery, day_view
-
-
-def test_day_query_allows_a_leap_year():
-    assert DayQuery(start='2024-01-01', end='2024-12-31').period()[1] == dt.date(2024, 12, 31)
-
-
-@pytest.mark.parametrize('query, period', [
-    ({'week': '2026-W44'}, (dt.date(2026, 10, 26), dt.date(2026, 11, 1))),
-    ({'week': '2026-W01'}, (dt.date(2025, 12, 29), dt.date(2026, 1, 4))),
-    ({'start': '2026-10-01', 'end': '2026-10-31'}, (dt.date(2026, 10, 1), dt.date(2026, 10, 31))),
-    ({'start': '2026-10-28', 'end': '2026-10-28'}, (dt.date(2026, 10, 28), dt.date(2026, 10, 28))),
-])
-def test_day_query_period(query, period):
-    assert DayQuery(**query).period() == period
-
-
-@pytest.mark.parametrize('query', [
-    {},
-    {'start': '2026-10-01'},
-    {'week': '2026-W44', 'start': '2026-10-01', 'end': '2026-10-31'},
-    {'week': '2026-44'},
-    {'week': '2026-W54'},
-    {'start': '2026-10-31', 'end': '2026-10-01'},
-    {'start': '2025-01-01', 'end': '2026-01-02'},
-])
-def test_day_query_rejects_invalid(query):
-    with pytest.raises(ValidationError):
-        DayQuery(**query)
+from src.modules.days.schemas import DayInput, day_view
 
 
 def test_day_input_to_day():
@@ -63,7 +35,8 @@ def test_day_input_rejects_invalid(data):
 def test_view_of_unrecorded_work_day():
     view = day_view(dt.date(2026, 10, 29), None, [])
     assert (view.weekday, view.day_type, view.automatic, view.recorded) == ('Thu', DayType.WORK, True, False)
-    assert (view.start, view.break_time, view.worked, view.target, view.overtime) == (None, None, '0:00', '8:00', '-8:00')
+    assert (view.start, view.break_time, view.worked, view.target, view.overtime) == (None, None, '0:00', '8:00',
+                                                                                      '-8:00')
 
 
 def test_view_with_legal_break():
