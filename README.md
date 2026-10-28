@@ -61,19 +61,34 @@ pipenv run flake8 --count --exit-zero --radon-max-cc 6 --radon-no-assert --max-l
   --statistics --exclude=.idea,.venv,test,.terraform --extend-ignore=E203,W503,ANN101,ANN102
 ```
 
+```shell
+npm test           # frontend: API client tests (Node runs the TypeScript tests directly)
+```
+
+## API types for the frontend
+
+The TypeScript types of the API are generated from its OpenAPI spec. After changing the API, run
+
+```shell
+npm run api-types  # writes src/templates/openapi.json, generates src/templates/ts/api-types.ts
+```
+
+and commit both files; a test fails while `openapi.json` is outdated. The generator (`openapi-typescript`)
+runs through `npx` with its own TypeScript 5, as it does not support the project's TypeScript 7 yet.
+
 ## Project layout
 
-| Path                   | Contents                                                                                                                                                                                                                                                          |
-|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `src/app.py`           | WSGI app: routes, storage errors as 404 / 409, API docs                                                                                                                                                                                                           |
-| `src/__main__.py`      | Development server (`python -m src`)                                                                                                                                                                                                                              |
-| `src/lib`              | Calculation rules: durations, breaks, holidays, targets, overtime, PTO                                                                                                                                                                                            |
-| `src/models`           | Pydantic models                                                                                                                                                                                                                                                   |
-| `src/modules`          | Features: storage, import, days, entries, reports, review                                                                                                                                                                                                         |
-| `src/utils`            | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types (formats, period query)                                                                                                                                                   |
-| `src/defaultresources` | Default resource at `/health` (plain-text status)                                                                                                                                                                                                                 |
-| `src/templates`        | Frontend: `frame.html` (shared page frame), `pages/` (page content), `static/` (served at `/static`: `css/main.css` with the UI style variables, Inter font with its OFL license in `fonts/`), TypeScript sources in `ts/` compiled to `static/js/` (git-ignored) |
-| `src/tests`            | Tests, mirroring the packages above                                                                                                                                                                                                                               |
+| Path                   | Contents                                                                                                                                                                                                                                                                                                                                                    |
+|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `src/app.py`           | WSGI app: routes, storage errors as 404 / 409, API docs                                                                                                                                                                                                                                                                                                     |
+| `src/__main__.py`      | Development server (`python -m src`)                                                                                                                                                                                                                                                                                                                        |
+| `src/lib`              | Calculation rules: durations, breaks, holidays, targets, overtime, PTO                                                                                                                                                                                                                                                                                      |
+| `src/models`           | Pydantic models                                                                                                                                                                                                                                                                                                                                             |
+| `src/modules`          | Features: storage, import, days, entries, reports, review                                                                                                                                                                                                                                                                                                   |
+| `src/utils`            | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types; `openapi`: spec file for the frontend types                                                                                                                                                                                                                        |
+| `src/defaultresources` | Default resource at `/health` (plain-text status)                                                                                                                                                                                                                                                                                                           |
+| `src/templates`        | Frontend: `frame.html` (shared page frame), `pages/` (page content), `static/` (served at `/static`: `css/main.css` with the UI style variables, Inter font with its OFL license in `fonts/`), TypeScript in `ts/` (`api.ts`: typed API client, `api-types.ts`: generated) compiled to `static/js/` (git-ignored), `openapi.json`, client tests in `tests/` |
+| `src/tests`            | Tests, mirroring the packages above                                                                                                                                                                                                                                                                                                                         |
 
 ## API (`src/modules/<feature>`)
 

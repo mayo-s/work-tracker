@@ -44,4 +44,6 @@ spec = WorkTrackerSpec(
     description='Working days, task entries, overtime and PTO.',
     version='0.1.0',
     mode='strict',  # document only routes validated by this spec, not static files
+    naming_strategy=lambda model: model.__name__,  # plain schema names (e.g. DayView) for the generated TypeScript types
+    nested_naming_strategy=lambda _parent, child: child,  # shared nested schemas (e.g. DayType) instead of one per parent
 )
