@@ -79,6 +79,15 @@ class EntryRepository:
         )
         return [_to_entry(row) for row in rows]
 
+    def for_review(self) -> list[Entry]:
+        """Entries with 0:00, ticket entries without ticket and flagged entries, by date."""
+        rows = self._conn.execute(
+            f'SELECT {_ENTRY_COLUMNS} FROM entries '
+            "WHERE duration = 0 OR (kind = 'ticket' AND ticket_key IS NULL) "
+            'OR id IN (SELECT entry_id FROM review_flags WHERE entry_id IS NOT NULL) ORDER BY date, id'
+        )
+        return [_to_entry(row) for row in rows]
+
     def create(self, entry: Entry, action: HistoryAction = HistoryAction.CREATED, detail: str = '') -> Entry:
         """Store a new entry; its ticket is created if needed. `action` is `created` or `imported`."""
         self._ensure_ticket(entry)

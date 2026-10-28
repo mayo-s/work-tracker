@@ -6,6 +6,7 @@ from src.defaultresources.default import Default
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
 from src.modules.days.resources import DayCollection, DayItem
 from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem
+from src.modules.review.resources import Review, ReviewFlagItem
 from src.modules.storage.database import Database, database_path
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.tickets.resources import TicketCollection, TicketItem, TicketRenaming, TicketServiceAssignment
@@ -29,6 +30,8 @@ def create_app(database: Database | None = None) -> falcon.App:
     app.add_route('/api/tickets/assign-service', TicketServiceAssignment(database))
     app.add_route('/api/tickets/{key}', TicketItem(database))
     app.add_route('/api/tickets/{key}/rename', TicketRenaming(database))
+    app.add_route('/api/review', Review(database))
+    app.add_route('/api/review/flags/{flag_id:int}', ReviewFlagItem(database))
     app.add_route('/api/services', ServiceCollection(database))
     app.add_route('/api/services/{item_id:int}', ServiceItem(database))
     app.add_route('/api/activity-types', ActivityTypeCollection(database))
