@@ -3,6 +3,8 @@
 Simple tracker for daily tasks: working hours, overtime balance, PTO and task entries for the
 monthly work report. A Falcon REST API with a small browser frontend, backed by SQLite, run locally.
 
+The project was partially implemented using claude.ai.
+
 > Work in progress — the calculation rules are being built first; API and frontend follow.
 
 ## Requirements
@@ -170,6 +172,8 @@ erDiagram
 
 Imports the yearly spreadsheet exports (CSV with `Date`, `Start`, `End`, `Pause`, `Sum`, `Comment`).
 
-| Module  | Contents                                                                                                                                                                         |
-|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `sheet` | Read a CSV into one `SheetRow` per day: date (weekday checked), times, pause, sum and comment lines; detects empty future days and placeholder times (08:00–16:00 without break) |
+| Module  | Contents                                                                                                                                                                                   |
+|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `sheet` | Read a CSV into one `SheetRow` per day: date (weekday checked), times, pause, sum and comment lines; detects empty future days and placeholder times (08:00–16:00 without break)           |
+| `lines` | Split leading decimal-comma hours off a comment line (`1,5 KP-2035 refinement` → 1:30)                                                                                                     |
+| `days`  | Day type (PTO, sick, half days, overtime off; holidays automatic), times (placeholders dropped, half days end 4:00 earlier, weekends `Sum` − 8:00), notes for overtime used, weekend flags |
