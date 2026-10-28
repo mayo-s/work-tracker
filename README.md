@@ -71,19 +71,28 @@ pipenv run flake8 --count --exit-zero --radon-max-cc 6 --radon-no-assert --max-l
 JSON over HTTP; dates in ISO format (`2026-10-28`), clock times as `HH:MM`, durations as `h:mm` (`-1:30`).
 Invalid input gives 422, unknown records 404, conflicts 409.
 
-| Endpoint                    | Method | Description                                                                                                                         |
-|-----------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------|
-| `/api/days`                 | GET    | Every calendar day of `?week=2026-W44` or `?start=…&end=…` (max. 366 days): day type, times, worked, target, overtime, flags        |
-| `/api/days/{date}`          | GET    | One calendar day, recorded or not                                                                                                   |
-| `/api/days/{date}`          | PUT    | Record a day: `day_type`, `start`, `end`, `break_time` (empty: legal minimum), `note`                                               |
-| `/api/days/{date}`          | DELETE | Delete a recorded day and its review flags                                                                                          |
-| `/api/entries`              | GET    | Entries of `?week=…` or `?start=…&end=…`, with service, activity type, flags and `changed` marker                                   |
-| `/api/entries`              | POST   | Create a ticket entry (`ticket_key`, `description`, `coding`, optional `service_id`) or activity entry (`activity_type_id`, `note`) |
-| `/api/entries/{id}`         | GET    | One entry                                                                                                                           |
-| `/api/entries/{id}`         | PUT    | Change an entry (same kind); a given `service_id` applies to all entries of the ticket                                              |
-| `/api/entries/{id}`         | DELETE | Delete an entry and its flags; the history is kept                                                                                  |
-| `/api/entries/{id}/history` | GET    | Change history of an entry (also after deletion)                                                                                    |
-| `/api/tickets/{key}`        | GET    | A known ticket with its remembered service (pre-fill)                                                                               |
+| Endpoint                                             | Method           | Description                                                                                                                         |
+|------------------------------------------------------|------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| `/`                                                  | GET              | Status in plain text (Maintenance)                                                                                                  |
+| `/apidoc/openapi.json`                               | GET              | OpenAPI specification (Maintenance)                                                                                                 |
+| `/apidoc/swagger`, `/apidoc/redoc`, `/apidoc/scalar` | GET              | API documentation pages (Maintenance)                                                                                               |
+| `/api/days`                                          | GET              | Every calendar day of `?week=2026-W44` or `?start=…&end=…` (max. 366 days): day type, times, worked, target, overtime, flags        |
+| `/api/days/{date}`                                   | GET              | One calendar day, recorded or not                                                                                                   |
+| `/api/days/{date}`                                   | PUT              | Record a day: `day_type`, `start`, `end`, `break_time` (empty: legal minimum), `note`                                               |
+| `/api/days/{date}`                                   | DELETE           | Delete a recorded day and its review flags                                                                                          |
+| `/api/entries`                                       | GET              | Entries of `?week=…` or `?start=…&end=…`, with service, activity type, flags and `changed` marker                                   |
+| `/api/entries`                                       | POST             | Create a ticket entry (`ticket_key`, `description`, `coding`, optional `service_id`) or activity entry (`activity_type_id`, `note`) |
+| `/api/entries/{id}`                                  | GET              | One entry                                                                                                                           |
+| `/api/entries/{id}`                                  | PUT              | Change an entry (same kind); a given `service_id` applies to all entries of the ticket                                              |
+| `/api/entries/{id}`                                  | DELETE           | Delete an entry and its flags; the history is kept                                                                                  |
+| `/api/entries/{id}/history`                          | GET              | Change history of an entry (also after deletion)                                                                                    |
+| `/api/tickets`                                       | GET              | All tickets with service and number of entries; `?without_service=true` for review                                                  |
+| `/api/tickets/{key}`                                 | GET              | A known ticket with its remembered service (pre-fill)                                                                               |
+| `/api/tickets/{key}`                                 | PUT              | Set or unassign the service (`service_id`); applies to all entries of the ticket                                                    |
+| `/api/tickets/assign-service`                        | POST             | One service for several tickets: `keys`, `service_id` (all or nothing)                                                              |
+| `/api/tickets/{key}/rename`                          | POST             | Rename to `new_key`, or merge into an existing ticket (keeps its service); recorded in the history                                  |
+| `/api/services`, `/api/activity-types`               | GET, POST        | List and add (names unique)                                                                                                         |
+| `/api/services/{id}`, `/api/activity-types/{id}`     | GET, PUT, DELETE | Read, change, delete (activity types in use cannot be deleted; deleting a service unassigns its tickets)                            |
 
 ## Calculation rules (`src/lib`)
 

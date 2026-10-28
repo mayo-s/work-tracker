@@ -38,6 +38,11 @@ class TicketRepository:
     def without_service(self) -> list[Ticket]:
         return _to_tickets(self._conn.execute('SELECT key, service_id FROM tickets WHERE service_id IS NULL'))
 
+    def entry_counts(self) -> dict[str, int]:
+        """Number of entries per ticket key (tickets without entries are missing)."""
+        rows = self._conn.execute('SELECT ticket_key, COUNT(*) FROM entries WHERE ticket_key IS NOT NULL GROUP BY ticket_key')
+        return {key: count for key, count in rows}
+
     def ensure(self, key: str) -> Ticket:
         """The ticket with this key, created without a service if it does not exist yet."""
         self._conn.execute('INSERT INTO tickets (key) VALUES (?) ON CONFLICT (key) DO NOTHING', (_key(key),))

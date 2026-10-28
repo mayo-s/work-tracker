@@ -1,37 +1,92 @@
-"""Tickets endpoints: /api/tickets/{key}, used to pre-fill the service of a known ticket."""
+"""Tickets endpoints: list, service per ticket (also for several at once), rename and merge."""
+
+import sqlite3
 
 import falcon
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import ValidationError
 from spectree import Response
 
-from src.modules.storage.catalog import ServiceRepository
+from src.models.catalog import Ticket
 from src.modules.storage.database import Database
+from src.modules.storage.renames import rename_ticket
 from src.modules.storage.tickets import TicketRepository
+from src.modules.tickets.schemas import (
+    AssignmentResult,
+    RenameView,
+    ServiceAssignment,
+    TicketQuery,
+    TicketRename,
+    TicketServiceInput,
+    TicketView,
+    ticket_views,
+)
 from src.utils.spec import spec
 
 TAGS = ['Tickets']
+KEY_PARAMETER = {'key': 'Ticket key, e.g. ENGINE-461 (case-insensitive)'}
 
 
-class TicketView(BaseModel):
-    key: str = Field(examples=['ENGINE-461'])
-    service_id: int | None
-    service: str | None = Field(description='Short name of the service')
+class TicketCollection:
+    def __init__(self, database: Database) -> None:
+        self._database = database
+
+    @spec.validate(query=TicketQuery, resp=Response(HTTP_200=list[TicketView]), tags=TAGS)
+    def on_get(self, req: falcon.Request, resp: falcon.Response, query: TicketQuery) -> None:
+        """All tickets (sorted by prefix and number) with their service and number of entries."""
+        with self._database.transaction() as conn:
+            tickets = TicketRepository(conn)
+            resp.media = ticket_views(conn, tickets.without_service() if query.without_service else tickets.all())
 
 
 class TicketItem:
     def __init__(self, database: Database) -> None:
         self._database = database
 
-    @spec.validate(resp=Response('HTTP_404', HTTP_200=TicketView), tags=TAGS,
-                   path_parameter_descriptions={'key': 'Ticket key, e.g. ENGINE-461 (case-insensitive)'})
+    @spec.validate(resp=Response('HTTP_404', HTTP_200=TicketView), tags=TAGS, path_parameter_descriptions=KEY_PARAMETER)
     def on_get(self, req: falcon.Request, resp: falcon.Response, key: str) -> None:
-        """A known ticket with the service it remembers."""
+        """A known ticket with the service it remembers (used to pre-fill the service of a new entry)."""
         with self._database.transaction() as conn:
-            try:
-                ticket = TicketRepository(conn).get(key)
-            except ValidationError:
-                ticket = None
-            if ticket is None:
-                raise falcon.HTTPNotFound(description=f'Unknown ticket {key}')
-            services = {service.id: service.short_name for service in ServiceRepository(conn).all()}
-        resp.media = TicketView(key=ticket.key, service_id=ticket.service_id, service=services.get(ticket.service_id))
+            resp.media = ticket_views(conn, [_existing(conn, key)])[0]
+
+    @spec.validate(json=TicketServiceInput, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=TicketView), tags=TAGS,
+                   path_parameter_descriptions=KEY_PARAMETER)
+    def on_put(self, req: falcon.Request, resp: falcon.Response, key: str, json: TicketServiceInput) -> None:
+        """Set or unassign the service of a ticket; it applies to all entries of the ticket."""
+        with self._database.transaction() as conn:
+            ticket = TicketRepository(conn).set_service(_existing(conn, key).key, json.service_id)
+            resp.media = ticket_views(conn, [ticket])[0]
+
+
+class TicketServiceAssignment:
+    def __init__(self, database: Database) -> None:
+        self._database = database
+
+    @spec.validate(json=ServiceAssignment, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=AssignmentResult), tags=TAGS)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, json: ServiceAssignment) -> None:
+        """Assign one service to several tickets at once; if a ticket is unknown, nothing changes."""
+        with self._database.transaction() as conn:
+            resp.media = AssignmentResult(assigned=TicketRepository(conn).assign_service(json.keys, json.service_id))
+
+
+class TicketRenaming:
+    def __init__(self, database: Database) -> None:
+        self._database = database
+
+    @spec.validate(json=TicketRename, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=RenameView), tags=TAGS,
+                   path_parameter_descriptions=KEY_PARAMETER)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, key: str, json: TicketRename) -> None:
+        """Rename a ticket, or merge it into an existing one (which keeps its service); recorded in each entry's history."""
+        with self._database.transaction() as conn:
+            result = rename_ticket(conn, _existing(conn, key).key, json.new_key)
+            resp.media = RenameView(ticket=ticket_views(conn, [result.ticket])[0], action=result.action, moved=result.moved)
+
+
+def _existing(conn: sqlite3.Connection, key: str) -> Ticket:
+    """The ticket with this key; 404 for unknown or invalid keys."""
+    try:
+        ticket = TicketRepository(conn).get(key)
+    except ValidationError:
+        ticket = None
+    if ticket is None:
+        raise falcon.HTTPNotFound(description=f'Unknown ticket {key}')
+    return ticket
