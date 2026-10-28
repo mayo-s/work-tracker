@@ -69,12 +69,14 @@ Targets and PTO apply Mon–Fri; on weekends every type has target 0:00 and uses
 
 Pydantic models; times in minutes, validated on creation and assignment.
 
-| Module    | Models                                                                                                                                |
-|-----------|---------------------------------------------------------------------------------------------------------------------------------------|
-| `days`    | `Day`: date, day type (empty = automatic), start / end, break (empty = legal minimum), note; provides worked time                     |
-| `entries` | `TicketEntry` (ticket, duration, description, coding) and `ActivityEntry` (activity type, duration, note); durations in quarter hours |
-| `catalog` | `Service`, `ActivityType` and `Ticket` (key like `ENGINE-461`, remembers its service)                                                 |
-| `review`  | `ReviewFlag`: import flag on an entry or a day (uncertain ticket, weekend hours)                                                      |
+| Module     | Models                                                                                                                                  |
+|------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| `days`     | `Day`: date, day type (empty = automatic), start / end, break (empty = legal minimum), note; provides worked time                       |
+| `entries`  | `TicketEntry` (ticket, duration, description, coding) and `ActivityEntry` (activity type, duration, note); durations in quarter hours   |
+| `catalog`  | `Service`, `ActivityType` and `Ticket` (key like `ENGINE-461`, remembers its service)                                                   |
+| `history`  | `EntryChange`: one line of an entry's history (created, imported, updated, renamed, merged, deleted) with the changed fields, old → new |
+| `review`   | `ReviewFlag`: import flag on an entry or a day (uncertain ticket, weekend hours)                                                        |
+| `settings` | `Settings`: balance start date, opening balance, PTO allowance per year (valid from that year on)                                       |
 
 ## Storage (`src/modules/storage`)
 
@@ -89,4 +91,76 @@ Repositories work within the transaction of the connection they are given.
 | `days`       | `DayRepository`: get, list, save (insert or replace) and delete days; records for balances; review flags on days                                                                |
 | `catalog`    | `ServiceRepository`, `ActivityTypeRepository`: list, get, add, update, delete (deleting a service unassigns its tickets; an activity type in use cannot be deleted)             |
 | `tickets`    | `TicketRepository`: get, list (sorted by prefix and number), create on first use; set a service on one or several tickets; tickets without service                              |
+| `entries`    | `EntryRepository`: get, list, create, update and delete entries, each change written to the entry's history (kept after deletion); review flags on entries                      |
 | `errors`     | `NotFoundError` for records that do not exist, `ConflictError` for duplicates and records still in use                                                                          |
+
+### Database schema
+
+Solid lines are foreign keys; dotted lines are links without one (by date, or kept after deletion).
+Times and durations are minutes, dates ISO text.
+
+```mermaid
+erDiagram
+    services |o--o{ tickets : "service of"
+    tickets |o--o{ entries : "ticket of"
+    activity_types |o--o{ entries : "type of"
+    entries |o--o{ review_flags : "flagged"
+    days |o..o{ review_flags : "flagged (by date)"
+    days |o..o{ entries : "on (by date)"
+    entries |o..o{ entry_history : "history (kept after deletion)"
+
+    settings {
+        TEXT key PK "balance_start, opening_balance"
+        TEXT value
+    }
+    pto_allowances {
+        INTEGER year PK "valid from this year on"
+        TEXT days "e.g. 17.5"
+    }
+    services {
+        INTEGER id PK
+        TEXT short_name UK "case-insensitive"
+        TEXT name
+    }
+    activity_types {
+        INTEGER id PK
+        TEXT name UK "case-insensitive"
+    }
+    tickets {
+        TEXT key PK "e.g. ENGINE-461"
+        INTEGER service_id FK "nullable"
+    }
+    days {
+        TEXT date PK
+        TEXT day_type "nullable: automatic"
+        INTEGER start_time "nullable"
+        INTEGER end_time "nullable"
+        INTEGER break_minutes "nullable: legal minimum"
+        TEXT note
+    }
+    entries {
+        INTEGER id PK "never reused"
+        TEXT date
+        TEXT kind "ticket or activity"
+        TEXT ticket_key FK "ticket entries"
+        INTEGER activity_type_id FK "activity entries"
+        INTEGER duration
+        TEXT text "description or note"
+        INTEGER coding "0 or 1"
+    }
+    entry_history {
+        INTEGER id PK
+        INTEGER entry_id
+        TEXT changed_at
+        TEXT action "created, imported, updated, renamed, merged, deleted"
+        TEXT changes "JSON: field to old and new"
+        TEXT detail
+    }
+    review_flags {
+        INTEGER id PK
+        INTEGER entry_id FK "entry flag"
+        TEXT date "day flag"
+        TEXT reason "uncertain_ticket, weekend_hours"
+        TEXT detail
+    }
+```
