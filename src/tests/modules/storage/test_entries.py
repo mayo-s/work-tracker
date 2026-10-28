@@ -183,3 +183,13 @@ def test_clear_missing_entry_flag(entries, conn):
     day_flag = DayRepository(conn).add_flag(MONDAY, FlagReason.WEEKEND_HOURS)
     with pytest.raises(NotFoundError):
         entries.clear_flag(day_flag.id)
+
+
+def test_entries_for_review(entries, ticket_entry, activity_entry):
+    entries.create(ticket_entry)
+    entries.create(activity_entry)
+    zero = entries.create(ticket_entry.model_copy(update={'duration': 0, 'date': MONDAY + dt.timedelta(days=1)}))
+    no_ticket = entries.create(TicketEntry(date=MONDAY - dt.timedelta(days=1), duration=360, coding=True))
+    flagged = entries.create(activity_entry)
+    entries.add_flag(flagged.id, FlagReason.UNCERTAIN_TICKET)
+    assert [entry.id for entry in entries.for_review()] == [no_ticket.id, flagged.id, zero.id]

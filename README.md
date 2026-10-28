@@ -91,6 +91,8 @@ Invalid input gives 422, unknown records 404, conflicts 409.
 | `/api/tickets/{key}`                                 | PUT              | Set or unassign the service (`service_id`); applies to all entries of the ticket                                                    |
 | `/api/tickets/assign-service`                        | POST             | One service for several tickets: `keys`, `service_id` (all or nothing)                                                              |
 | `/api/tickets/{key}/rename`                          | POST             | Rename to `new_key`, or merge into an existing ticket (keeps its service); recorded in the history                                  |
+| `/api/review`                                        | GET              | What needs attention: tickets without service, entries with 0:00 / without ticket / import flag, flagged days                       |
+| `/api/review/flags/{id}`                             | DELETE           | Clear a review flag of an entry or a day                                                                                            |
 | `/api/services`, `/api/activity-types`               | GET, POST        | List and add (names unique)                                                                                                         |
 | `/api/services/{id}`, `/api/activity-types/{id}`     | GET, PUT, DELETE | Read, change, delete (activity types in use cannot be deleted; deleting a service unassigns its tickets)                            |
 
