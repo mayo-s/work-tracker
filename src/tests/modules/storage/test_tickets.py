@@ -90,3 +90,12 @@ def test_without_service(tickets, service_ids):
         tickets.ensure(key)
     tickets.set_service('KP-1951', service_ids['ImmoDrop'])
     assert [ticket.key for ticket in tickets.without_service()] == ['ENGINE-461', 'TNG-4138']
+
+
+def test_entry_counts(conn, tickets):
+    tickets.ensure('TNG-4138')
+    for key in ('KP-1951', 'KP-1951', 'TNG-5214'):
+        tickets.ensure(key)
+        conn.execute("INSERT INTO entries (date, kind, ticket_key, duration) VALUES ('2026-01-08', 'ticket', ?, 60)", (key,))
+    conn.execute("INSERT INTO entries (date, kind, duration) VALUES ('2026-01-08', 'ticket', 60)")
+    assert tickets.entry_counts() == {'KP-1951': 2, 'TNG-5214': 1}

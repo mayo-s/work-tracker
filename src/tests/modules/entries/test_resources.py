@@ -44,7 +44,8 @@ def test_service_is_remembered_by_the_ticket(client, ids):
     create(client, TICKET | {'service_id': ids['MSB']})
     later = create(client, TICKET | {'date': '2026-10-28'})
     assert (later['service_id'], later['service']) == (ids['MSB'], 'MSB')
-    assert client.simulate_get('/api/tickets/tng-5882').json == {'key': 'TNG-5882', 'service_id': ids['MSB'], 'service': 'MSB'}
+    ticket = client.simulate_get('/api/tickets/tng-5882').json
+    assert ticket == {'key': 'TNG-5882', 'service_id': ids['MSB'], 'service': 'MSB', 'entries': 2}
 
 
 def test_changing_the_service_applies_to_all_entries_of_the_ticket(client, ids):
