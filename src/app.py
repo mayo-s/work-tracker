@@ -29,6 +29,7 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_error_handler(NotFoundError, _not_found)
     app.add_error_handler(ConflictError, _conflict)
     app.add_route('/', Page('week', 'Week'))
+    app.add_route('/style', Page('style', 'Style preview'))
     app.add_static_route('/static', STATIC_DIR)
     app.add_route('/health', Default())
     app.add_route('/api/days', DayCollection(database))

@@ -1,0 +1,353 @@
+/* Work Tracker — base layout and styles (UI style: docs/SPEC.md 5.5).
+   All colors, sizes and spacings are variables in :root, so a dark mode (TASKS.md L.2) only needs a
+   second set of values. */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/static/fonts/Inter-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/static/fonts/Inter-SemiBold.woff2') format('woff2');
+}
+
+:root {
+  /* Colors */
+  --color-text: #36454f;
+  --color-muted: #66737d;
+  --color-background: #ffffff;
+  --color-surface: #f4f7fb;
+  --color-border: #dce4ee;
+  --color-accent: #2f6fd6;
+  --color-accent-light: #e8f0fc;
+  --color-warning: #e62e6b;
+  --color-warning-text: #c81e57;
+  --color-warning-light: #fdecf2;
+  --color-positive: #1b7f61;
+  --color-positive-light: #e6f6f0;
+  --color-on-accent: #ffffff;
+
+  /* Typography */
+  --font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-size-small: 0.8125rem;
+  --font-size-base: 0.9375rem;
+  --font-size-large: 1.125rem;
+  --font-size-title: 1.5rem;
+  --font-weight-normal: 400;
+  --font-weight-strong: 600;
+  --line-height: 1.5;
+
+  /* Spacing, shapes and layout */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --radius: 6px;
+  --border: 1px solid var(--color-border);
+  --focus-ring: 0 0 0 3px var(--color-accent-light);
+  --content-width: 72rem;
+  --header-height: 3.5rem;
+}
+
+/* Base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 var(--space-4);
+  font-weight: var(--font-weight-strong);
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: var(--font-size-title);
+}
+
+h2 {
+  font-size: var(--font-size-large);
+}
+
+h3 {
+  font-size: var(--font-size-base);
+}
+
+p {
+  margin: 0 0 var(--space-4);
+}
+
+strong,
+b {
+  font-weight: var(--font-weight-strong);
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius);
+}
+
+/* Frame: header, navigation and content */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: var(--header-height);
+  padding: 0 var(--space-5);
+  border-bottom: var(--border);
+  background: var(--color-background);
+}
+
+.app-name {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-strong);
+  font-size: var(--font-size-large);
+}
+
+.app-name:hover {
+  text-decoration: none;
+}
+
+.app-nav {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.app-nav a {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  color: var(--color-muted);
+}
+
+.app-nav a:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.app-nav a[aria-current='page'] {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  font-weight: var(--font-weight-strong);
+}
+
+#app {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5);
+}
+
+/* Cards */
+
+.card {
+  padding: var(--space-5);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--color-background);
+}
+
+.card + .card {
+  margin-top: var(--space-4);
+}
+
+.card-surface {
+  background: var(--color-surface);
+}
+
+/* Tables */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-strong);
+}
+
+tbody tr:hover {
+  background: var(--color-accent-light);
+}
+
+/* Buttons */
+
+button,
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--color-background);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: var(--font-weight-strong);
+  cursor: pointer;
+}
+
+button:hover,
+.button:hover {
+  background: var(--color-surface);
+  text-decoration: none;
+}
+
+button.primary,
+.button.primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+button.primary:hover,
+.button.primary:hover {
+  background: var(--color-accent);
+  filter: brightness(0.92);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Forms */
+
+label {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--font-size-small);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--color-background);
+  color: var(--color-text);
+  font: inherit;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--color-accent);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+input[aria-invalid='true'] {
+  border-color: var(--color-warning);
+}
+
+/* Badges, values and states */
+
+.badge {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-strong);
+}
+
+.badge.warning {
+  background: var(--color-warning-light);
+  color: var(--color-warning-text);
+}
+
+.badge.positive {
+  background: var(--color-positive-light);
+  color: var(--color-positive);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+td.num,
+th.num {
+  text-align: right;
+}
+
+.value-negative {
+  color: var(--color-warning-text);
+  font-weight: var(--font-weight-strong);
+}
+
+.value-positive {
+  color: var(--color-positive);
+}
+
+.muted {
+  color: var(--color-muted);
+}
+
+.is-warning {
+  border-left: 3px solid var(--color-warning);
+  background: var(--color-warning-light);
+}
+
+.is-today {
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.is-weekend {
+  background: var(--color-surface);
+}
