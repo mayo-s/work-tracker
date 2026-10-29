@@ -70,3 +70,32 @@ export function formatDay(value: IsoDate, weekday: string): string {
   const [, month, day] = value.split('-');
   return `${weekday} ${day}.${month}.`;
 }
+
+export type IsoMonth = string;
+
+const MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/** `2026-10-28` → `2026-10` */
+export function isoMonth(value: IsoDate): IsoMonth {
+  return value.slice(0, 7);
+}
+
+export function isValidMonth(month: string): boolean {
+  return MONTH_PATTERN.test(month);
+}
+
+/** `2026-12`, +1 → `2027-01` */
+export function shiftMonth(month: IsoMonth, months: number): IsoMonth {
+  const [year = 0, number = 1] = month.split('-').map(Number);
+  const date = new Date(year, number - 1 + months, 1);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
+}
+
+/** `2026-10` → `October 2026` */
+export function formatMonth(month: IsoMonth): string {
+  const [year, number] = month.split('-');
+  return `${MONTH_NAMES[Number(number) - 1]} ${year}`;
+}

@@ -747,3 +747,37 @@ button.button-danger {
   width: 16rem;
   padding: 0 var(--space-2);
 }
+
+/* Month report (/month) */
+
+.work-report {
+  margin-top: var(--space-5);
+}
+
+.work-service {
+  margin-bottom: var(--space-5);
+}
+
+.work-service-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.work-service-header h2,
+.work-service-header h3 {
+  margin: 0;
+}
+
+.work-ticket {
+  width: 9rem;
+  white-space: nowrap;
+}
+
+.work-descriptions {
+  margin: 0;
+  padding-left: var(--space-4);
+}

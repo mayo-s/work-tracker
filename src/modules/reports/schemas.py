@@ -209,9 +209,12 @@ class _CodingWork:
 
 
 def _ticket_work(key: str | None, entries: list[TicketEntry]) -> TicketWork:
-    descriptions = dict.fromkeys(entry.description for entry in entries if entry.description)
+    descriptions: dict[str, str] = {}  # first spelling per description, ignoring case ('PR Review' = 'PR review')
+    for entry in entries:
+        if entry.description:
+            descriptions.setdefault(entry.description.casefold(), entry.description)
     return TicketWork(ticket_key=key, duration=format_duration(sum(entry.duration for entry in entries)),
-                      descriptions=list(descriptions))
+                      descriptions=list(descriptions.values()))
 
 
 def _ticket_order(key: str | None) -> tuple[bool, str, int]:
