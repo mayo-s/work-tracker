@@ -4,6 +4,7 @@ import { api, ApiError, type DashboardView } from './api.ts';
 import { formatDate, formatDay, formatMonth, type IsoDate } from './dates.ts';
 import { el } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
+import { fullName, viewedMember } from './team-view.ts';
 import { valueClass } from './week.ts';
 import { formatDays } from './year.ts';
 
@@ -72,8 +73,9 @@ function keyFigures(data: DashboardView): HTMLElement {
       '/year', pto.remaining < 0 ? 'value-negative' : '')
       : tile('PTO', '—', 'No PTO days entered', '/settings#pto-years'),
     tile('This week', `${week.worked} of ${data.week_target}`, `Overtime so far ${week.overtime}`, `/week?week=${data.week}`),
-    tile('To review', String(data.review_open), data.review_open ? 'open items' : 'nothing to review', '/review',
-      data.review_open ? 'value-negative' : ''));
+    data.visible_from ? null  // the team view shows no review
+      : tile('To review', String(data.review_open), data.review_open ? 'open items' : 'nothing to review', '/review',
+        data.review_open ? 'value-negative' : ''));
 }
 
 function svg<K extends keyof SVGElementTagNameMap>(
@@ -277,14 +279,33 @@ function yearSection(figures: DashboardView['this_year']): HTMLElement {
       row('Top services', top || '—'))));
 }
 
+/** For team admins: whose data to see, their own or a member's of their team (read-only). */
+async function memberChooser(member: string | null): Promise<HTMLElement | null> {
+  const status = await api.authStatus();
+  if (status.user?.role !== 'team_admin' || !status.team) {
+    return null;
+  }
+  const others = (await api.team(status.team.id)).members.filter((item) => item.user_id !== status.user!.id);
+  if (!others.length) {
+    return null;
+  }
+  return el('form', { class: 'member-chooser', method: 'get', action: '/' },
+    el('label', { for: 'dashboard-member' }, 'Viewing'),
+    el('select', { id: 'dashboard-member', name: 'member' }, el('option', { value: '' }, 'Your data'),
+      ...others.map((item) => el('option', { value: item.user_id, selected: item.user_id === member }, fullName(item)))),
+    el('button', { type: 'submit', class: 'button-small' }, 'Show'));
+}
+
 export async function renderDashboardPage(doc: Document): Promise<void> {
   const root = doc.querySelector<HTMLElement>('#dashboard');
   if (!root) {
     return;
   }
+  const member = viewedMember(doc.location.search);
+  memberChooser(member).then((chooser) => chooser && doc.querySelector('.week-header')?.append(chooser), () => undefined);
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
-    const data = await api.dashboard();
+    const data = await api.dashboard(member);
     doc.querySelector('#dashboard-today')!.textContent = `Today, ${formatDate(data.today)} · counted up to today`;
     root.replaceChildren(keyFigures(data), balanceSection(data),
       el('div', { class: 'dashboard-columns' }, comingUpSection(data.coming_up), yearSection(data.this_year)));

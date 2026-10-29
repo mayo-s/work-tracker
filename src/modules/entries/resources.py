@@ -9,8 +9,8 @@ from src.modules.entries.schemas import ChangeView, EntryInput, EntrySplitInput,
 from src.modules.storage.database import Database
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.tickets import TicketRepository
-from src.utils.api import PeriodQuery
 from src.modules.auth.sessions import current_user
+from src.modules.teams.view import MemberPeriodQuery, viewing
 from src.utils.spec import spec
 
 TAGS = ['Entries']
@@ -21,12 +21,15 @@ class EntryCollection:
     def __init__(self, database: Database) -> None:
         self._database = database
 
-    @spec.validate(query=PeriodQuery, resp=Response(HTTP_200=list[EntryView]), tags=TAGS)
-    def on_get(self, req: falcon.Request, resp: falcon.Response, query: PeriodQuery) -> None:
-        """Entries of a week or date range, by date and in the order they were created."""
+    @spec.validate(query=MemberPeriodQuery, resp=Response('HTTP_403', HTTP_200=list[EntryView]), tags=TAGS)
+    def on_get(self, req: falcon.Request, resp: falcon.Response, query: MemberPeriodQuery) -> None:
+        """Entries of a week or date range, by date and in the order they were created; `member` shows a member of the
+        team admin's team (team view: from the day they joined the team)."""
+        start, end = query.period()
         with self._database.transaction() as conn:
-            user_id = current_user(req)
-            resp.media = EntryViewer(conn, user_id).views(EntryRepository(conn, user_id).between(*query.period()))
+            view = viewing(req, conn, query.member)
+            entries = EntryRepository(conn, view.user_id).between(max(start, view.visible_from or start), end)
+            resp.media = EntryViewer(conn, view.user_id).views(entries)
 
     @spec.validate(json=EntryInput, resp=Response('HTTP_409', HTTP_201=EntryView), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: EntryInput) -> None:

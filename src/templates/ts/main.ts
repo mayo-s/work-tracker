@@ -3,10 +3,10 @@
 
 export const APP_NAME = 'Work Tracker';
 
-/** Marks the navigation link of the current page, e.g. `/` for the week page. */
+/** Marks the navigation link of the current page, e.g. `/week` (also with a query like `/week?member=…`). */
 export function markCurrentPage(nav: ParentNode, path: string): void {
   for (const link of nav.querySelectorAll<HTMLAnchorElement>('a[href]')) {
-    if (link.getAttribute('href') === path) {
+    if (link.getAttribute('href')?.split(/[?#]/)[0] === path) {
       link.setAttribute('aria-current', 'page');
     } else {
       link.removeAttribute('aria-current');
@@ -79,6 +79,12 @@ if (nav && !['login', 'register', 'setup'].includes(page ?? '')) {
   markCurrentPage(nav, window.location.pathname);
   showReviewCount(nav).catch(() => undefined);  // the count is a hint; pages work without it
   showUser(document.querySelector('.app-header')!, nav).catch(() => undefined);
+}
+
+const member = new URLSearchParams(window.location.search).get('member');
+if (member && ['dashboard', 'week', 'month', 'year'].includes(page ?? '')) {
+  const { showTeamView } = await import('./team-view.ts');
+  showTeamView(document, member).catch(() => undefined);  // the banner is a hint; the page shows the data anyway
 }
 
 if (page && page in PAGES) {

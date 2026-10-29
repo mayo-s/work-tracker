@@ -4,6 +4,7 @@ import { api, ApiError, type DayType, type MonthReport } from './api.ts';
 import { formatMonth, isoDate, isoMonth, isValidMonth, shiftMonth, type IsoDate } from './dates.ts';
 import { el } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
+import { viewedMember } from './team-view.ts';
 import { periodSummary } from './week.ts';
 
 type ServiceWork = MonthReport['coding'][number];
@@ -34,12 +35,12 @@ function daysOff(report: MonthReport): HTMLElement | null {
     : null;
 }
 
-function serviceSection(work: ServiceWork): HTMLElement {
+function serviceSection(work: ServiceWork, readOnly: boolean): HTMLElement {
   const unassigned = work.service_id === null;
   return el('section', { class: 'work-service' },
     el('div', { class: 'work-service-header' },
       el('h3', {}, unassigned ? 'No service ' : `${work.service} `,
-        unassigned ? el('a', { class: 'badge warning', href: '/review#tickets' }, 'assign in review') : null),
+        unassigned && !readOnly ? el('a', { class: 'badge warning', href: '/review#tickets' }, 'assign in review') : null),
       el('span', { class: 'num' }, work.duration)),
     el('table', {},
       el('tbody', {}, ...work.tickets.map((ticket) => el('tr', {},
@@ -57,7 +58,7 @@ function workReport(report: MonthReport): HTMLElement {
     el('div', { class: 'work-service-header' }, el('h2', {}, 'Coding work'),
       el('span', { class: 'num' }, el('span', { class: 'muted' }, 'Total '), el('strong', {}, report.coding_total))),
     report.coding.length
-      ? el('div', {}, ...report.coding.map(serviceSection))
+      ? el('div', {}, ...report.coding.map((work) => serviceSection(work, Boolean(report.visible_from))))
       : el('p', { class: 'muted' }, 'No coding work recorded in this month.'),
   );
 }
@@ -72,7 +73,7 @@ export async function renderMonthPage(doc: Document): Promise<void> {
   renderHeader(doc, month, today);
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
-    const report = await api.monthReport(month);
+    const report = await api.monthReport(month, viewedMember(doc.location.search));
     root.replaceChildren(periodSummary(report.totals, daysOff(report)), workReport(report));
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },

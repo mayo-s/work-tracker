@@ -508,4 +508,16 @@ MIGRATIONS = (
     DROP TABLE services;
     ALTER TABLE new_services RENAME TO services;
     """,
+    # 12: team view (TASKS.md L.10): which team admin looked at which report of a member, shown to the member
+    """
+    CREATE TABLE report_views (
+        id        INTEGER PRIMARY KEY,
+        member_id TEXT    NOT NULL REFERENCES users (id),
+        viewer_id TEXT    NOT NULL REFERENCES users (id),
+        report    TEXT    NOT NULL CHECK (report IN ('dashboard', 'week', 'month', 'year')),
+        period    TEXT    NOT NULL DEFAULT '',  -- e.g. 2026-W44, 2026-10, 2026; empty for the dashboard
+        viewed_at TEXT    NOT NULL
+    );
+    CREATE INDEX report_views_by_member ON report_views (member_id, viewed_at);
+    """,
 )

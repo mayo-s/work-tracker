@@ -1,6 +1,8 @@
 """The dashboard (start page): key figures, the overtime balance over time, the days off coming up and this year's figures.
 
-Everything counts up to today, like the reports; "coming up" looks at the next 60 days.
+Everything counts up to today, like the reports; "coming up" looks at the next 60 days. In the team view, the balance
+over time and this week's and this year's figures start on the day the member joined the team; the balance and the PTO
+account are running figures.
 """
 
 import datetime as dt
@@ -13,7 +15,7 @@ from src.lib.balances import summarize_period
 from src.lib.daytypes import DaySummary, DayType
 from src.lib.durations import format_duration, parse_duration
 from src.lib.public_holidays import holiday_on
-from src.modules.reports.schemas import CodingWork, PeriodTotals, PtoView, Reports
+from src.modules.reports.schemas import CodingWork, PeriodTotals, PtoView, Reports, VisibleFrom
 from src.modules.review.schemas import review
 from src.modules.storage.days import DayRepository
 from src.modules.storage.schedules import ScheduleRepository
@@ -75,20 +77,23 @@ class DashboardView(BaseModel):
     coming_up: list[ComingUp] = Field(description=f'Public holidays, company half days and planned days off in the next '
                                                   f'{COMING_UP_DAYS} days; days in a row combined')
     this_year: YearFigures
+    visible_from: VisibleFrom = None
 
 
 class Dashboard:
     """Builds the dashboard within the transaction of the given connection."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: str, today: dt.date) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: str, today: dt.date, visible_from: dt.date | None = None) -> None:
         self._conn = conn
         self._user = user_id
         self._today = today
+        self._visible_from = visible_from
         self._settings = load_settings(conn, user_id)
+        self._first = max(self._settings.balance_start, visible_from or dt.date.min)
         self._schedules = ScheduleRepository(conn, user_id).schedules()
         last = today + dt.timedelta(days=COMING_UP_DAYS)
         self._records = DayRepository(conn, user_id).records(self._settings.balance_start, last)
-        self._reports = Reports(conn, user_id, today)
+        self._reports = Reports(conn, user_id, today, visible_from)
         self._balances = self._daily_balances()
 
     def view(self) -> DashboardView:
@@ -104,11 +109,13 @@ class Dashboard:
             pto=year.pto,
             week=week,
             this_week=self._reports.week(week, monday).totals,
-            week_target=format_duration(sum(day.target for day in self._summaries(monday, monday + dt.timedelta(days=6)))),
-            review_open=sum(review(self._conn, self._user).counts.model_dump().values()),
+            week_target=format_duration(sum(day.target for day in self._summaries(max(monday, self._first),
+                                                                                  monday + dt.timedelta(days=6)))),
+            review_open=0 if self._visible_from else sum(review(self._conn, self._user).counts.model_dump().values()),
             balance_series=self._series(),
             coming_up=self._coming_up(),
             this_year=self._year_figures(year.days_worked, year.average_per_day_worked, year.days_off),
+            visible_from=self._visible_from,
         )
 
     def _daily_balances(self) -> dict[dt.date, int]:
@@ -125,7 +132,7 @@ class Dashboard:
         return self._balances.get(date, self._settings.opening_balance if date < self._settings.balance_start else 0)
 
     def _series(self) -> BalanceSeries:
-        start, today = self._settings.balance_start, self._today
+        start, today = self._first, self._today
         month_start = max(start, today.replace(day=1))
         return BalanceSeries(
             month=[self._point(day.date) for day in self._summaries(month_start, today)],
@@ -160,7 +167,8 @@ class Dashboard:
 
     def _year_figures(self, days_worked: int, average: str, days_off: dict[DayType, int]) -> YearFigures:
         year = self._today.year
-        coding = CodingWork(self._conn, self._user).by_service(dt.date(year, 1, 1), dt.date(year, 12, 31))
+        first = max(dt.date(year, 1, 1), self._visible_from or dt.date.min)
+        coding = CodingWork(self._conn, self._user).by_service(first, dt.date(year, 12, 31))
         top = sorted(coding, key=lambda work: parse_duration(work.duration), reverse=True)[:3]
         return YearFigures(
             year=year, days_worked=days_worked, average_per_day_worked=average,

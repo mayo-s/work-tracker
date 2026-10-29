@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { acceptQuestion, applyTheme, formatWorkDays, ptoYearInput, scheduleInput } from '../ts/settings.ts';
+import { acceptQuestion, applyTheme, formatWorkDays, ptoYearInput, reportLabel, scheduleInput } from '../ts/settings.ts';
 
 test('PTO year input: empty extra days are 0, an empty carry-over is calculated', () => {
   assert.deepEqual(ptoYearInput({ year: '2027', allowance: '25', extra_days: '', carried_over: '', note: 'pro rata' }),
@@ -44,4 +44,11 @@ test('accepting an invitation tells which team is left', () => {
   assert.equal(acceptQuestion(invitation, null), 'Join Billing?');
   assert.equal(acceptQuestion(invitation, 'Platform'),
     'Join Billing? You leave Platform; the services of Platform your tickets use become personal services.');
+});
+
+test('the reports a team admin looked at', () => {
+  const view = { viewer: 'Hans Dampf', viewed_at: '2026-11-06T12:00:00' };
+  assert.equal(reportLabel({ ...view, report: 'week', period: '2026-W45' }), 'Week 2026-W45');
+  assert.equal(reportLabel({ ...view, report: 'month', period: '2026-10' }), 'Month October 2026');
+  assert.equal(reportLabel({ ...view, report: 'dashboard', period: '' }), 'Dashboard');
 });

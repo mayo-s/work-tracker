@@ -28,7 +28,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Every calendar day of a week or date range, recorded or not. */
+        /** Every calendar day of a week or date range, recorded or not; `member` shows a member of the team admin's team (team view: no notes or review flags; days before they joined the team without data). */
         get: operations["get__api_days"];
         put?: never;
         post?: never;
@@ -84,7 +84,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Entries of a week or date range, by date and in the order they were created. */
+        /** Entries of a week or date range, by date and in the order they were created; `member` shows a member of the team admin's team (team view: from the day they joined the team). */
         get: operations["get__api_entries"];
         put?: never;
         /** Create an entry; a new ticket is created, `service_id` sets the ticket's service. */
@@ -224,7 +224,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Key figures, the overtime balance over time, days off coming up and this year's figures, up to today. */
+        /** Key figures, the overtime balance over time, days off coming up and this year's figures, up to today; `member` shows a member of the team admin's team (team view, logged for the member). */
         get: operations["get__api_dashboard"];
         put?: never;
         post?: never;
@@ -1257,6 +1257,15 @@ export interface components {
              */
             name: string;
         };
+        /** MemberQuery */
+        MemberQuery: {
+            /**
+             * Member
+             * @description Team view: id (UUID) of a member of the team admin's team
+             * @default null
+             */
+            member?: string | null;
+        };
         /** DashboardView */
         DashboardView: {
             /**
@@ -1300,12 +1309,15 @@ export interface components {
              */
             coming_up: components["schemas"]["ComingUp"][];
             this_year: components["schemas"]["YearFigures"];
+            /**
+             * Visible From
+             * @description Team view: the first day shown (the member joined the team)
+             * @default null
+             */
+            visible_from?: string | null;
         };
-        /**
-         * PeriodQuery
-         * @description Either a week (`2026-W44`) or a start and end date (inclusive, at most 366 days).
-         */
-        PeriodQuery: {
+        /** MemberPeriodQuery */
+        MemberPeriodQuery: {
             /**
              * Week
              * @default null
@@ -1322,6 +1334,12 @@ export interface components {
              * @default null
              */
             end?: string | null;
+            /**
+             * Member
+             * @description Team view: id (UUID) of a member of the team admin's team
+             * @default null
+             */
+            member?: string | null;
         };
         /** DayViewList */
         DayViewList: components["schemas"]["DayView"][];
@@ -1385,6 +1403,12 @@ export interface components {
             note: string;
             /** Flags */
             flags: components["schemas"]["DayFlagView"][];
+            /**
+             * In Team
+             * @description Team view: false for days before the member joined the team, shown without data
+             * @default true
+             */
+            in_team?: boolean;
         };
         /**
          * DayInput
@@ -1689,6 +1713,12 @@ export interface components {
             days_off: {
                 [key: string]: number;
             };
+            /**
+             * Visible From
+             * @description Team view: the first day shown (the member joined the team)
+             * @default null
+             */
+            visible_from?: string | null;
         };
         /** MonthReport */
         MonthReport: {
@@ -1714,6 +1744,12 @@ export interface components {
             coding: components["schemas"]["ServiceWork"][];
             /** Coding Total */
             coding_total: string;
+            /**
+             * Visible From
+             * @description Team view: the first day shown (the member joined the team)
+             * @default null
+             */
+            visible_from?: string | null;
         };
         /** YearReport */
         YearReport: {
@@ -1735,6 +1771,12 @@ export interface components {
             };
             /** @description Null for years before the balance start, in the future or without PTO days entered */
             pto: components["schemas"]["PtoView"] | null;
+            /**
+             * Visible From
+             * @description Team view: the first day shown (the member joined the team)
+             * @default null
+             */
+            visible_from?: string | null;
         };
         /** ReviewView */
         ReviewView: {
@@ -1950,12 +1992,22 @@ export interface components {
         };
         /**
          * MyTeamView
-         * @description The user's team (null without one) and their open invitations.
+         * @description The user's team (null without one), their open invitations, who can see their reports and who looked.
          */
         MyTeamView: {
             team: components["schemas"]["TeamRef"] | null;
             /** Invitations */
             invitations: components["schemas"]["MyInvitationView"][];
+            /**
+             * Team Admins
+             * @description Names of the team admins who can see your reports
+             */
+            team_admins: string[];
+            /**
+             * Viewed By
+             * @description The latest views of your reports, newest first
+             */
+            viewed_by: components["schemas"]["ReportViewEntry"][];
         };
         /** ServiceChoiceList */
         ServiceChoiceList: components["schemas"]["ServiceChoice"][];
@@ -2483,6 +2535,29 @@ export interface components {
              */
             invited_by: string;
         };
+        /** ReportViewEntry */
+        ReportViewEntry: {
+            /**
+             * Viewer
+             * @description Name of the team admin who looked
+             */
+            viewer: string;
+            /**
+             * Report
+             * @description dashboard, week, month or year
+             */
+            report: string;
+            /**
+             * Period
+             * @description e.g. 2026-W44, 2026-10, 2026; empty for the dashboard
+             */
+            period: string;
+            /**
+             * Viewed At
+             * Format: date-time
+             */
+            viewed_at: string;
+        };
         /**
          * ServiceChoice
          * @description A service to choose in an entry: a personal one, or one of the user's team (`team`: its name).
@@ -2559,6 +2634,8 @@ export interface operations {
                 week?: string | null;
                 start?: string | null;
                 end?: string | null;
+                /** @description Team view: id (UUID) of a member of the team admin's team */
+                member?: string | null;
             };
             header?: never;
             path?: never;
@@ -2574,6 +2651,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DayViewList"];
                 };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Unprocessable Content */
             422: {
@@ -2737,6 +2821,8 @@ export interface operations {
                 week?: string | null;
                 start?: string | null;
                 end?: string | null;
+                /** @description Team view: id (UUID) of a member of the team admin's team */
+                member?: string | null;
             };
             header?: never;
             path?: never;
@@ -2752,6 +2838,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["EntryViewList"];
                 };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Unprocessable Content */
             422: {
@@ -3232,7 +3325,10 @@ export interface operations {
     };
     get__api_dashboard: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Team view: id (UUID) of a member of the team admin's team */
+                member?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3248,6 +3344,13 @@ export interface operations {
                     "application/json": components["schemas"]["DashboardView"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -3261,7 +3364,10 @@ export interface operations {
     };
     "get__api_reports_weeks_{week}": {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Team view: id (UUID) of a member of the team admin's team */
+                member?: string | null;
+            };
             header?: never;
             path: {
                 /** @description ISO week, e.g. 2026-W44 */
@@ -3279,6 +3385,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["WeekReport"];
                 };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Not Found */
             404: {
@@ -3300,7 +3413,10 @@ export interface operations {
     };
     "get__api_reports_months_{month}": {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Team view: id (UUID) of a member of the team admin's team */
+                member?: string | null;
+            };
             header?: never;
             path: {
                 /** @description Month, e.g. 2026-10 */
@@ -3319,6 +3435,13 @@ export interface operations {
                     "application/json": components["schemas"]["MonthReport"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -3332,7 +3455,10 @@ export interface operations {
     };
     "get__api_reports_years_{year}": {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Team view: id (UUID) of a member of the team admin's team */
+                member?: string | null;
+            };
             header?: never;
             path: {
                 /** @description Year, e.g. 2026 */
@@ -3350,6 +3476,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["YearReport"];
                 };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Unprocessable Content */
             422: {

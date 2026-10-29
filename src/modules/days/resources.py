@@ -10,12 +10,12 @@ from spectree import Response
 from src.lib.dates import each_day
 from src.models.review import ReviewFlag
 from src.modules.days.ranges import DayRangeInput, DayRangeResult, book_range
-from src.modules.days.schemas import DayInput, DayView, day_view
+from src.modules.days.schemas import DayInput, DayView, day_view, team_view_day
 from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
 from src.modules.storage.schedules import ScheduleRepository
-from src.utils.api import PeriodQuery
 from src.modules.auth.sessions import current_user
+from src.modules.teams.view import MemberPeriodQuery, viewing
 from src.utils.spec import spec
 
 TAGS = ['Days']
@@ -26,17 +26,19 @@ class DayCollection:
     def __init__(self, database: Database) -> None:
         self._database = database
 
-    @spec.validate(query=PeriodQuery, resp=Response(HTTP_200=list[DayView]), tags=TAGS)
-    def on_get(self, req: falcon.Request, resp: falcon.Response, query: PeriodQuery) -> None:
-        """Every calendar day of a week or date range, recorded or not."""
+    @spec.validate(query=MemberPeriodQuery, resp=Response('HTTP_403', HTTP_200=list[DayView]), tags=TAGS)
+    def on_get(self, req: falcon.Request, resp: falcon.Response, query: MemberPeriodQuery) -> None:
+        """Every calendar day of a week or date range, recorded or not; `member` shows a member of the team admin's team
+        (team view: no notes or review flags; days before they joined the team without data)."""
         start, end = query.period()
         with self._database.transaction() as conn:
-            user_id = current_user(req)
-            days = DayRepository(conn, user_id)
+            view = viewing(req, conn, query.member)
+            days = DayRepository(conn, view.user_id)
             recorded = {day.date: day for day in days.between(start, end)}
             flags = _flags_by_date(days.day_flags(), start, end)
-            schedules = ScheduleRepository(conn, user_id).schedules()
-        resp.media = [day_view(date, recorded.get(date), flags[date], schedules.on(date)) for date in each_day(start, end)]
+            schedules = ScheduleRepository(conn, view.user_id).schedules()
+        shown = [day_view(date, recorded.get(date), flags[date], schedules.on(date)) for date in each_day(start, end)]
+        resp.media = [team_view_day(day, view.visible_from) for day in shown] if view.team_view else shown
 
 
 class DayItem:
