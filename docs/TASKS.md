@@ -63,7 +63,7 @@ and ends with passing tests and the flake8 check.
   migration 3, taking over the current values; carry-over is calculated unless a fixed value is entered (later years
   build on it); a year without a row has no PTO account (no "valid from that year on"); API `GET /api/pto-years`,
   `PUT /api/pto-years/{year}`; migration 2 stays as it is
-- [ ] **5.8** Page for managing services and activity types
+- [x] **5.8** Page for managing services and activity types
 
 ## Later (to be discussed)
 

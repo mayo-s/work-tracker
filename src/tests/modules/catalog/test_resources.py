@@ -34,7 +34,9 @@ def test_create_read_update_delete(client, path, body, changed):
     ('/api/activity-types', {'name': 'travel'}),
 ])
 def test_duplicate_name(client, path, body):
-    assert client.simulate_post(path, json=body).status == falcon.HTTP_409
+    response = client.simulate_post(path, json=body)
+    assert response.status == falcon.HTTP_409
+    assert response.json['description'].endswith(f'named "{next(iter(body.values()))}" already exists')
 
 
 @pytest.mark.parametrize('path, body', [
@@ -58,7 +60,9 @@ def test_activity_type_in_use_cannot_be_deleted(client):
     meeting = next(activity for activity in client.simulate_get('/api/activity-types').json if activity['name'] == 'Meeting')
     body = {'kind': 'activity', 'date': '2026-10-28', 'duration': '1:00', 'activity_type_id': meeting['id']}
     client.simulate_post('/api/entries', json=body)
-    assert client.simulate_delete(f'/api/activity-types/{meeting["id"]}').status == falcon.HTTP_409
+    response = client.simulate_delete(f'/api/activity-types/{meeting["id"]}')
+    assert response.status == falcon.HTTP_409
+    assert response.json['description'] == 'The activity type is used by entries and cannot be deleted'
 
 
 def test_deleting_a_service_unassigns_its_tickets(client):

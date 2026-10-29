@@ -51,7 +51,8 @@ other weeks via `/?week=2026-W44`; days and entries are edited in place (`&edit=
 `&entry=129` an entry's form; each entry shows its change history). `/month` shows the month report with the work report
 (coding hours by service and ticket), `/year` the year report (totals, PTO account, balance month by month); `/review` lists what needs attention after
 the import: guessed tickets (confirm, rename or split), entries without duration or ticket, flagged days, and tickets
-without service (assign one to several at once). `/components` is a
+without service (assign one to several at once). `/lists` manages services and activity types (add, edit, delete;
+an activity type used by entries cannot be deleted). `/components` is a
 gallery of the UI components, each with its use and the HTML to copy. The database
 (`$WORK_TRACKER_DB` or `work_tracker.db`) is migrated on start. API documentation:
 `/apidoc/swagger`, `/apidoc/redoc` or `/apidoc/scalar`; the OpenAPI spec is at `/apidoc/openapi.json`.
