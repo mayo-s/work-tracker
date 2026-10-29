@@ -30,6 +30,7 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_error_handler(ConflictError, _conflict)
     app.add_route('/', Page('week', 'Week'))
     app.add_route('/month', Page('month', 'Month'))
+    app.add_route('/year', Page('year', 'Year'))
     app.add_route('/review', Page('review', 'Review'))
     app.add_route('/components', Page('components', 'Component gallery'))
     app.add_static_route('/static', STATIC_DIR)

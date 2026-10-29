@@ -49,7 +49,7 @@ pipenv run gunicorn 'src.app:create_app()' --reload  # alternative with auto-rel
 Open http://127.0.0.1:8000/ for the frontend (build it first with `npm run build`): the current week,
 other weeks via `/?week=2026-W44`; days and entries are edited in place (`&edit=2025-12-06` opens a day's form,
 `&entry=129` an entry's form; each entry shows its change history). `/month` shows the month report with the work report
-(coding hours by service and ticket); `/review` lists what needs attention after
+(coding hours by service and ticket), `/year` the year report (totals, PTO account, balance month by month); `/review` lists what needs attention after
 the import: guessed tickets (confirm, rename or split), entries without duration or ticket, flagged days, and tickets
 without service (assign one to several at once). `/components` is a
 gallery of the UI components, each with its use and the HTML to copy. The database

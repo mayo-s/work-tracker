@@ -781,3 +781,38 @@ button.button-danger {
   margin: 0;
   padding-left: var(--space-4);
 }
+
+/* Year report (/year) */
+
+.year-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.year-cards .card + .card {
+  margin-top: 0;
+}
+
+.pto-account td {
+  padding: var(--space-1) 0;
+  border-bottom: 0;
+}
+
+.pto-account tr:hover {
+  background: none;
+}
+
+.pto-remaining td {
+  border-top: var(--border);
+}
+
+.days-off {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.year-months tr.is-future td {
+  color: var(--color-muted);
+}
