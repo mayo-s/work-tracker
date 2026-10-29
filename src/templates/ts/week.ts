@@ -102,6 +102,14 @@ type Actions = {
 
 const COLUMNS = 8;
 
+/** The key of the button that opens a form (`data-opens`), so focus can return to it when the form closes. */
+export function openerKey(editing: Editing): string | null {
+  if (!editing) {
+    return null;
+  }
+  return editing.kind === 'day' ? `day-${editing.date}` : editing.id === null ? `add-${editing.date}` : `entry-${editing.id}`;
+}
+
 function button(label: string, onClick: () => void, attributes: Record<string, string> = {}): HTMLButtonElement {
   const element = el('button', { type: 'button', class: 'button-small', ...attributes }, label);
   element.addEventListener('click', onClick);
@@ -145,7 +153,8 @@ function entryItem(entry: EntryView, view: View): HTMLElement {
     el('div', { class: 'entry' }, ...entryContent(entry),
       el('span', { class: 'entry-actions' },
         button(historyOpen ? 'Hide history' : 'History', () => view.actions.toggleHistory(entry.id), { 'aria-expanded': String(historyOpen) }),
-        button('Edit', () => view.actions.edit({ kind: 'entry', date: entry.date, id: entry.id })))),
+        button('Edit', () => view.actions.edit({ kind: 'entry', date: entry.date, id: entry.id }),
+          { 'data-opens': `entry-${entry.id}` }))),
     historyOpen ? historyPanel(entry.id, activityNames) : null,
   );
 }
@@ -168,7 +177,7 @@ function rowClass(day: DayView, warning: boolean, today: IsoDate): string | null
 function dayRow(day: DayView, warning: boolean, view: View): HTMLElement {
   const editingDay = view.editing?.kind === 'day' && view.editing.date === day.date;
   const edit = editingDay ? null : button('Edit', () => view.actions.edit({ kind: 'day', date: day.date }),
-    { 'aria-label': `Edit ${formatDay(day.date, day.weekday)}` });
+    { 'aria-label': `Edit ${formatDay(day.date, day.weekday)}`, 'data-opens': `day-${day.date}` });
   return el('tr', { class: rowClass(day, warning, view.today) },
     dayCell(day, warning, view.today),
     el('td', {}, day.day_type === 'work' ? null : el('span', { class: 'badge' }, DAY_TYPE_LABELS[day.day_type])),
@@ -186,7 +195,8 @@ function newEntry(day: DayView, view: View): HTMLElement {
   if (editing?.kind === 'entry' && editing.id === null && editing.date === day.date) {
     return el('div', { class: 'entry-editing' }, entryEditor(editorOptions(view, day.date, null)));
   }
-  return button('+ Add entry', () => view.actions.edit({ kind: 'entry', date: day.date, id: null }));
+  return button('+ Add entry', () => view.actions.edit({ kind: 'entry', date: day.date, id: null }),
+    { 'data-opens': `add-${day.date}` });
 }
 
 function detailsRow(day: DayView, entries: EntryView[], className: string | null, view: View): HTMLElement {
@@ -231,7 +241,7 @@ function weekendLinks(view: View): HTMLElement | null {
   }
   return el('p', { class: 'muted week-weekend' }, 'Worked on a day off? ',
     ...hidden.map((day) => button(`Record ${formatDay(day.date, day.weekday)}`,
-      () => view.actions.edit({ kind: 'day', date: day.date }))));
+      () => view.actions.edit({ kind: 'day', date: day.date }), { 'data-opens': `day-${day.date}` })));
 }
 
 function errorCard(error: unknown): HTMLElement {
@@ -258,6 +268,7 @@ export async function renderWeekPage(doc: Document): Promise<void> {
   const initialDay = editFromSearch(doc.location.search, week);
   let editing: Editing = initialDay ? { kind: 'day', date: initialDay } : null;
   let history: number | null = null;
+  let returnFocus: { key: string | null; date: IsoDate } | null = null;  // the opener of the form that just closed
 
   const draw = (): void => {
     if (!data) {
@@ -265,7 +276,15 @@ export async function renderWeekPage(doc: Document): Promise<void> {
     }
     const view: View = { data, today, editing, history, actions };
     root.replaceChildren(periodSummary(data.report.totals), dayTable(view), weekendLinks(view) ?? '');
-    root.querySelector<HTMLElement>('form input:not([type="radio"]):not(:disabled), form select')?.focus();
+    const form = root.querySelector<HTMLElement>('form input:not([type="radio"]):not(:disabled), form select');
+    const opener = returnFocus && (root.querySelector<HTMLElement>(`[data-opens="${returnFocus.key}"]`)
+      ?? root.querySelector<HTMLElement>(`[data-opens="add-${returnFocus.date}"]`));  // e.g. after deleting an entry
+    returnFocus = null;
+    (form ?? opener)?.focus();
+  };
+  const close = (): void => {
+    returnFocus = editing ? { key: openerKey(editing), date: editing.date } : null;
+    editing = null;
   };
   let firstLoad = true;
   const load = async (): Promise<void> => {
@@ -284,11 +303,11 @@ export async function renderWeekPage(doc: Document): Promise<void> {
       draw();
     },
     cancel: () => {
-      editing = null;
+      close();
       draw();
     },
     changed: () => {
-      editing = null;
+      close();
       void load();
     },
     toggleHistory: (entryId) => {

@@ -1,4 +1,4 @@
-"""The two palettes of main.css: dark mode keeps every role readable (WCAG AA, 4.5:1 for text)."""
+"""The two palettes of main.css: every text color is readable on its backgrounds (WCAG AA, 4.5:1 for text)."""
 
 import re
 
@@ -46,9 +46,11 @@ def test_text_colors_are_readable_on_the_background(palette, color):
     assert contrast(palette[color], palette['background']) >= 4.5
 
 
+@pytest.mark.parametrize('palette', [LIGHT, DARK], ids=['light', 'dark'])
 @pytest.mark.parametrize('foreground, background', [
     *[(color, 'surface') for color in TEXT_COLORS],
     ('on-accent', 'accent'), ('accent', 'accent-light'), ('warning-text', 'warning-light'), ('positive', 'positive-light'),
+    ('text', 'warning-light'),  # muted text in warning rows shows as text
 ])
-def test_dark_mode_is_readable_on_surfaces_and_tints(foreground, background):
-    assert contrast(DARK[foreground], DARK[background]) >= 4.5
+def test_text_is_readable_on_surfaces_and_tints(palette, foreground, background):
+    assert contrast(palette[foreground], palette[background]) >= 4.5

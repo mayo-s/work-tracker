@@ -219,13 +219,13 @@ corners, one accent color. Warnings are the only loud element.
 | Background       | `#FFFFFF` | `#16191D` | Page                                                |
 | Surface          | `#F4F7FB` | `#1F242A` | Cards, table headers, weekend columns               |
 | Border           | `#DCE4EE` | `#333C46` | Lines between rows and cards                        |
-| Accent           | `#2F6FD6` | `#6EA2F0` | Links, primary buttons, active navigation, today    |
+| Accent           | `#2C69CB` | `#6EA2F0` | Links, primary buttons, active navigation, today    |
 | Accent light     | `#E8F0FC` | `#1E2F48` | Hover, selected row                                 |
 | Text on accent   | `#FFFFFF` | `#10233F` | Text of primary buttons                             |
 | Warning          | `#E62E6B` | `#F06A93` | Highlights: borders, badges, bold text, icons       |
 | Warning text     | `#C81E57` | `#FF8FB0` | Small warning text (better contrast than warning)   |
 | Warning light    | `#FDECF2` | `#3A1F2B` | Background of warning rows                          |
-| Positive         | `#1B7F61` | `#4CC59A` | Positive overtime and balance (mint green)          |
+| Positive         | `#1A7B5E` | `#4CC59A` | Positive overtime and balance (mint green)          |
 | Positive light   | `#E6F6F0` | `#173A2F` | Background of positive badges                       |
 
 - **Negative** overtime and balance are shown as a warning (including −8:00 on a work day without
@@ -237,8 +237,12 @@ corners, one accent color. Warnings are the only loud element.
   values; the theme (System, Light, Dark) is chosen on the settings page and stored in the database. System follows
   the light or dark setting of the system.
 - Text contrast is at least 4.5:1 on its background, except the warning highlight color, which is
-  only used for large or bold text, borders and icons (checked by a test; in light mode three pairs on surfaces and
-  tints are still just below, see TASKS.md L.5).
+  only used for large or bold text, borders and icons. A test checks every text color on background, surface and
+  its tint, in both themes.
+- **Accessibility**: WCAG 2.2 AA (checked with axe-core on all pages, both themes). Links in text are underlined;
+  hints and errors describe their field (`aria-describedby`); every field has a visible label; Escape closes inline
+  forms, and focus returns to the button that opened them; "Skip to content" is the first link on each page.
+  Narrow screens and zoom follow in TASKS.md L.9.
 
 ## 6. Import (spreadsheet CSV)
 

@@ -2,7 +2,7 @@
 
 import { api, ApiError, type DayRangeInput, type DayRangeResult } from './api.ts';
 import { addDays, formatDate, formatDay, isoWeek, type IsoDate } from './dates.ts';
-import { el } from './dom.ts';
+import { el, onEscape } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 
 type RangeType = DayRangeInput['day_type'];
@@ -138,6 +138,7 @@ export function daysOffForm(monday: IsoDate, onClose: () => void): HTMLElement {
     control.addEventListener('change', () => void update());
   }
   cancel.addEventListener('click', onClose);
+  onEscape(form, onClose);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     void (async () => {

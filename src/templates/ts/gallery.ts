@@ -38,6 +38,8 @@ function renderSnippets(stories: HTMLElement[]): void {
     code.textContent = snippet(example.innerHTML);
     const block = document.createElement('pre');
     block.className = 'story-code';
+    block.tabIndex = 0;  // scrollable, so it must be reachable by keyboard
+    block.setAttribute('aria-label', 'HTML of the example');
     block.append(code);
     example.after(block);
   }
