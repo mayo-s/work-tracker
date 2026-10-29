@@ -105,6 +105,13 @@ describe('requests', () => {
     ]);
   });
 
+  test('booking a range of days off', async () => {
+    respond(200, {});
+    await api.bookRange({ start: '2026-07-13', end: '2026-07-31', day_type: 'pto', preview: true });
+    assert.deepEqual([calls[0]?.method, calls[0]?.url, calls[0]?.body], [
+      'POST', '/api/days/range', { start: '2026-07-13', end: '2026-07-31', day_type: 'pto', preview: true }]);
+  });
+
   test('204 No Content resolves to undefined', async () => {
     respond(204);
     assert.equal(await api.deleteEntry(7), undefined);

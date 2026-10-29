@@ -7,6 +7,8 @@ type Schemas = components['schemas'];
 export type DayType = Schemas['DayType'];
 export type DayView = Schemas['DayView'];
 export type DayInput = Schemas['DayInput'];
+export type DayRangeInput = Schemas['DayRangeInput'];
+export type DayRangeResult = Schemas['DayRangeResult'];
 export type EntryView = Schemas['EntryView'];
 export type EntryInput = Schemas['EntryInput'];
 export type ChangeView = Schemas['ChangeView'];
@@ -96,6 +98,7 @@ export const api = {
   day: (date: string) => request<DayView>('GET', `/api/days/${segment(date)}`),
   saveDay: (date: string, input: DayInput) => request<DayView>('PUT', `/api/days/${segment(date)}`, input),
   deleteDay: (date: string) => request<void>('DELETE', `/api/days/${segment(date)}`),
+  bookRange: (input: DayRangeInput) => request<DayRangeResult>('POST', '/api/days/range', input),
 
   entries: (period: Period) => request<EntryView[]>('GET', `/api/entries?${periodQuery(period)}`),
   entry: (id: number) => request<EntryView>('GET', `/api/entries/${segment(id)}`),

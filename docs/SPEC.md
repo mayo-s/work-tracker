@@ -170,6 +170,10 @@ Every change to a task entry is recorded, so it can be checked later what change
   navigation.
 - Per day: day type, start / end / break, worked vs. target, overtime, the task entries and the warning.
 - Add, edit and delete days and entries inline; open an entry's history (4.5).
+- **Book days off** as a range (from, to, full-day type: PTO, sick, unpaid leave or overtime off; optional note): only
+  the work days of the schedule get the type, public holidays and company half days stay automatic. A preview shows
+  the days and the PTO used; days that already hold times or entries are listed in a popup to skip them, book them too
+  (keeping times and entries) or cancel. Clearing a range is not offered: single days can be deleted.
 - Week totals and the overtime balance at the end of the week.
 
 ### 5.2 Month report
