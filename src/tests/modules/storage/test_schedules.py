@@ -5,13 +5,14 @@ import pytest
 from src.models.schedules import Schedule
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.schedules import ScheduleRepository
+from src.tests.users import USER
 
 PART_TIME = Schedule(valid_from=dt.date(2027, 3, 1), weekly_minutes=1920, work_days=[1, 2, 3, 4])
 
 
 @pytest.fixture
 def schedules(conn):
-    return ScheduleRepository(conn)
+    return ScheduleRepository(conn, USER)
 
 
 def test_migrated_schedule_starts_with_the_balance(schedules):

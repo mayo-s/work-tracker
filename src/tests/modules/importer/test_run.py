@@ -7,14 +7,17 @@ from src.lib.daytypes import DayType
 from src.models.history import HistoryAction
 from src.models.review import FlagReason
 from src.modules.importer.__main__ import main
-from src.modules.importer.run import SheetImportError, import_rows
+from src.modules.importer.run import SheetImportError, import_rows, import_user
 from src.modules.importer.sheet import parse_sheet
 from src.modules.storage.catalog import ActivityTypeRepository
 from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.errors import ConflictError
+from src.modules.storage.owners import NO_OWNER
 from src.modules.storage.tickets import TicketRepository
+from src.modules.storage.users import UserRepository
+from src.tests.users import HANS, PASSWORD, USER
 
 NOW = dt.datetime(2026, 10, 28, 16, 0)
 SHEET = '''Date,Start,End,Pause,Sum,Comment
@@ -38,12 +41,12 @@ def rows(text=SHEET):
 
 
 def run(conn, sheet=SHEET, replace=False):
-    return import_rows(conn, rows(sheet), replace, clock=lambda: NOW)
+    return import_rows(conn, USER, rows(sheet), replace, clock=lambda: NOW)
 
 
 def test_days_with_times_types_and_notes(conn):
     run(conn)
-    days = DayRepository(conn)
+    days = DayRepository(conn, USER)
     assert days.get(dt.date(2026, 3, 3)).worked == 8 * 60
     assert days.get(dt.date(2026, 3, 4)).note == 'Anreise LÜBECK'
     assert days.get(dt.date(2026, 3, 5)).day_type is DayType.PTO
@@ -52,14 +55,14 @@ def test_days_with_times_types_and_notes(conn):
 
 def test_blank_days_are_not_stored(conn):
     run(conn)
-    days = DayRepository(conn)
+    days = DayRepository(conn, USER)
     assert days.get(dt.date(2026, 3, 7)) is None
     assert days.get(dt.date(2026, 3, 10)) is None
 
 
 def test_entries_with_history_of_the_original_line(conn):
     run(conn)
-    entries = EntryRepository(conn)
+    entries = EntryRepository(conn, USER)
     first_day = entries.between(dt.date(2026, 3, 3), dt.date(2026, 3, 3))
     assert [(entry.kind, entry.duration) for entry in first_day] == [
         ('ticket', 60), ('ticket', 30), ('ticket', 30), ('ticket', 15), ('ticket', 15), ('activity', 120),
@@ -70,20 +73,20 @@ def test_entries_with_history_of_the_original_line(conn):
 
 def test_activity_entries_reference_activity_types(conn):
     run(conn)
-    meeting = next(activity for activity in ActivityTypeRepository(conn).all() if activity.name == 'Meeting')
-    first_day = EntryRepository(conn).between(dt.date(2026, 3, 3), dt.date(2026, 3, 3))
+    meeting = next(activity for activity in ActivityTypeRepository(conn, USER).all() if activity.name == 'Meeting')
+    first_day = EntryRepository(conn, USER).between(dt.date(2026, 3, 3), dt.date(2026, 3, 3))
     [entry] = [entry for entry in first_day if entry.kind == 'activity']
     assert (entry.activity_type_id, entry.note) == (meeting.id, 'Stages for AWS Lambdas')
 
 
 def test_tickets_are_created_without_service(conn):
     run(conn)
-    assert TicketRepository(conn).get('ENGINE-461').service_id is None
+    assert TicketRepository(conn, USER).get('ENGINE-461').service_id is None
 
 
 def test_flags_for_review(conn):
     run(conn)
-    entries, days = EntryRepository(conn), DayRepository(conn)
+    entries, days = EntryRepository(conn, USER), DayRepository(conn, USER)
     [entry_flag] = entries.entry_flags()
     assert (entry_flag.reason, entry_flag.detail) == (FlagReason.UNCERTAIN_TICKET, '1,0 TNG-2035ff PR and deployment')
     assert entries.get(entry_flag.entry_id).ticket_key == 'TNG-2035'
@@ -103,7 +106,7 @@ def test_summary(conn):
 
 def test_unpaid_leave_correction(conn):
     summary = run(conn, 'Date,Start,End,Pause,Sum,Comment\n 08.08.2024 Thu,08:00,16:00,0,8:00,PTO\n')
-    assert DayRepository(conn).get(dt.date(2024, 8, 8)).day_type is DayType.UNPAID_LEAVE
+    assert DayRepository(conn, USER).get(dt.date(2024, 8, 8)).day_type is DayType.UNPAID_LEAVE
     assert summary.unpaid_leave == 1
 
 
@@ -111,16 +114,16 @@ def test_second_import_is_refused(conn):
     run(conn)
     sheet = rows()
     with pytest.raises(ConflictError):
-        import_rows(conn, sheet)
+        import_rows(conn, USER, sheet)
 
 
 def test_replace_imports_again_and_keeps_ticket_services(conn):
     run(conn)
-    tickets = TicketRepository(conn)
+    tickets = TicketRepository(conn, USER)
     tickets.set_service('KP-2039', 3)
-    old_ids = {entry.id for entry in EntryRepository(conn).between(dt.date(2026, 1, 1), dt.date(2026, 12, 31))}
+    old_ids = {entry.id for entry in EntryRepository(conn, USER).between(dt.date(2026, 1, 1), dt.date(2026, 12, 31))}
     summary = run(conn, replace=True)
-    entries = EntryRepository(conn)
+    entries = EntryRepository(conn, USER)
     new = entries.between(dt.date(2026, 1, 1), dt.date(2026, 12, 31))
     assert summary.replaced
     assert len(new) == 11
@@ -133,7 +136,7 @@ def test_replace_imports_again_and_keeps_ticket_services(conn):
 def test_replace_keeps_other_years(conn):
     run(conn)
     run(conn, 'Date,Start,End,Pause,Sum,Comment\n 08.08.2024 Thu,08:00,16:00,0,8:00,PTO\n', replace=True)
-    assert DayRepository(conn).get(dt.date(2026, 3, 5)) is not None
+    assert DayRepository(conn, USER).get(dt.date(2026, 3, 5)) is not None
 
 
 @pytest.mark.parametrize('sheet', [
@@ -143,13 +146,13 @@ def test_replace_keeps_other_years(conn):
 def test_sheet_must_hold_one_year(conn, sheet):
     sheet_rows = rows(sheet)
     with pytest.raises(SheetImportError):
-        import_rows(conn, sheet_rows)
+        import_rows(conn, USER, sheet_rows)
 
 
 def test_invalid_duration_names_the_line(conn):
     sheet_rows = rows('Date,Start,End,Pause,Sum,Comment\n 09.03.2026 Mon,07:30,16:30,30,8:30,"0,1 TNG-5214"\n')
     with pytest.raises(SheetImportError, match="'0,1 TNG-5214'"):
-        import_rows(conn, sheet_rows)
+        import_rows(conn, USER, sheet_rows)
 
 
 def test_command_line(tmp_path, capsys):
@@ -162,8 +165,8 @@ def test_command_line(tmp_path, capsys):
     assert main([str(sheet), '--db', str(db_path)]) == 1
     assert 'nothing was written' in capsys.readouterr().err
     assert main([str(sheet), '--db', str(db_path), '--replace']) == 0
-    with Database(db_path).transaction() as conn:
-        assert len(EntryRepository(conn).between(dt.date(2026, 1, 1), dt.date(2026, 12, 31))) == 11
+    with Database(db_path).transaction() as conn:  # a database without users: no owner yet
+        assert len(EntryRepository(conn, NO_OWNER).between(dt.date(2026, 1, 1), dt.date(2026, 12, 31))) == 11
 
 
 def test_command_line_rolls_back_failed_import(tmp_path):
@@ -171,4 +174,35 @@ def test_command_line_rolls_back_failed_import(tmp_path):
     sheet.write_text(SHEET.replace('"3,5 ABREISE Lübeck"', '"0,1 ABREISE Lübeck"'), encoding='utf-8')
     assert main([str(sheet), '--db', str(db_path)]) == 1
     with Database(db_path).transaction() as conn:
-        assert DayRepository(conn).get(dt.date(2026, 3, 3)) is None
+        assert DayRepository(conn, USER).get(dt.date(2026, 3, 3)) is None
+
+
+def test_imports_for_the_only_user(conn):
+    assert import_user(conn, None) == USER
+
+
+def test_imports_for_the_named_user(conn):
+    second = UserRepository(conn).add(HANS, PASSWORD)
+    assert import_user(conn, 'hans.dampf@example.com') == second.id
+
+
+def test_several_users_need_a_name(conn):
+    UserRepository(conn).add(HANS, PASSWORD)
+    with pytest.raises(SheetImportError, match='--user'):
+        import_user(conn, None)
+
+
+def test_unknown_user_is_refused(conn):
+    with pytest.raises(SheetImportError, match='No user'):
+        import_user(conn, 'nobody')
+
+
+def test_command_line_imports_for_the_user(tmp_path, database, capsys):
+    sheet = tmp_path / 'sheet.csv'
+    sheet.write_text(SHEET, encoding='utf-8')
+    with database.transaction() as conn:
+        second = UserRepository(conn).add(HANS, PASSWORD)
+    assert main([str(sheet), '--db', str(database.path), '--user', 'hans']) == 0
+    with database.transaction() as conn:
+        assert DayRepository(conn, second.id).get(dt.date(2026, 3, 3)) is not None
+        assert DayRepository(conn, USER).get(dt.date(2026, 3, 3)) is None

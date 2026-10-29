@@ -9,6 +9,7 @@ from src.models.days import Day
 from src.models.review import FlagReason
 from src.modules.storage.days import DayRepository
 from src.modules.storage.errors import NotFoundError
+from src.tests.users import USER
 
 MONDAY = dt.date(2026, 10, 26)
 WORK_DAY = Day(date=MONDAY, start=parse_clock('08:15'), end=parse_clock('15:45'), note='ENGINE-597 europace permissions')
@@ -16,7 +17,7 @@ WORK_DAY = Day(date=MONDAY, start=parse_clock('08:15'), end=parse_clock('15:45')
 
 @pytest.fixture
 def days(conn):
-    return DayRepository(conn)
+    return DayRepository(conn, USER)
 
 
 def test_get_missing_day(days):
@@ -83,9 +84,10 @@ def test_add_and_list_flags(days):
 
 def test_day_flags_ignore_entry_flags(days, conn):
     entry_id = conn.execute(
-        "INSERT INTO entries (date, kind, activity_type_id, duration) VALUES ('2026-10-26', 'activity', 1, 0)"
+        "INSERT INTO entries (user_id, date, kind, activity_type_id, duration) VALUES (?, '2026-10-26', 'activity', 1, 0)",
+        (USER,),
     ).lastrowid
-    conn.execute("INSERT INTO review_flags (entry_id, reason) VALUES (?, 'uncertain_ticket')", (entry_id,))
+    conn.execute("INSERT INTO review_flags (user_id, entry_id, reason) VALUES (?, ?, 'uncertain_ticket')", (USER, entry_id))
     assert days.day_flags() == []
 
 

@@ -1,4 +1,11 @@
+import pytest
+
 from src.lib.passwords import hash_password, verify_password
+
+
+@pytest.fixture
+def fast_password_hashes():
+    """The real scrypt parameters here (overrides the cheap ones of conftest)."""
 
 
 def test_hash_and_verify():

@@ -19,22 +19,22 @@ class RenameResult(NamedTuple):
 
 
 def rename_ticket(
-    conn: sqlite3.Connection, old_key: str, new_key: str, clock: Callable[[], dt.datetime] | None = None
+    conn: sqlite3.Connection, user_id: int, old_key: str, new_key: str, clock: Callable[[], dt.datetime] | None = None
 ) -> RenameResult:
-    """Move all entries of a ticket to a new key and delete the old ticket; each moved entry's history records it.
+    """Move all entries of a user's ticket to a new key and delete the old ticket; each moved entry's history records it.
 
     If the new key already exists, both tickets are merged and the existing ticket keeps its service
     (it takes the old ticket's service only if it has none).
     """
-    tickets = TicketRepository(conn)
+    tickets = TicketRepository(conn, user_id)
     source, target = tickets.get(old_key), tickets.get(new_key)
     new = _new_key(source, old_key, new_key)
     tickets.ensure(new)
     tickets.set_service(new, _kept_service(source, target))
-    moved = _move_entries(conn, source.key, new)
-    conn.execute('DELETE FROM tickets WHERE key = ?', (source.key,))
+    moved = _move_entries(conn, user_id, source.key, new)
+    conn.execute('DELETE FROM tickets WHERE user_id = ? AND key = ?', (user_id, source.key))
     action = HistoryAction.MERGED if target else HistoryAction.RENAMED
-    entries = EntryRepository(conn, clock)
+    entries = EntryRepository(conn, user_id, clock)
     for entry_id in moved:
         entries.add_history(entry_id, action, {'ticket_key': (source.key, new)})
     return RenameResult(tickets.get(new), action, len(moved))
@@ -57,8 +57,9 @@ def _kept_service(source: Ticket, target: Ticket | None) -> int | None:
     return source.service_id
 
 
-def _move_entries(conn: sqlite3.Connection, old_key: str, new_key: str) -> list[int]:
-    """Move all entries from the old to the new key; returns the ids of the moved entries."""
-    moved = [row['id'] for row in conn.execute('SELECT id FROM entries WHERE ticket_key = ? ORDER BY id', (old_key,))]
-    conn.execute('UPDATE entries SET ticket_key = ? WHERE ticket_key = ?', (new_key, old_key))
+def _move_entries(conn: sqlite3.Connection, user_id: int, old_key: str, new_key: str) -> list[int]:
+    """Move all of the user's entries from the old to the new key; returns the ids of the moved entries."""
+    moved = [row['id'] for row in conn.execute('SELECT id FROM entries WHERE user_id = ? AND ticket_key = ? ORDER BY id',
+                                               (user_id, old_key))]
+    conn.execute('UPDATE entries SET ticket_key = ? WHERE user_id = ? AND ticket_key = ?', (new_key, user_id, old_key))
     return moved

@@ -328,12 +328,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Whether the database is set up; until then, pages forward to /setup. */
+        /** Whether the user's data is set up (not logged in: a new database's); until then, pages forward to /setup. */
         get: operations["get__api_setup"];
         put?: never;
         /**
-         * Set up a new database at once: the first user, start day, opening balance, work schedule, PTO years and services; the new user is logged in.
-         * @description The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once the database is set up: then the settings page changes everything.
+         * Set up the user's data at once: start day, opening balance, work schedule, PTO years and services. On a new database, it first creates the first user (`user`), who takes over its data and is logged in.
+         * @description The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything.
          */
         post: operations["post__api_setup"];
         delete?: never;
@@ -733,8 +733,11 @@ export interface components {
         };
         /** UserView */
         UserView: {
-            /** Id */
-            id: number;
+            /**
+             * Id
+             * @description Random UUID
+             */
+            id: string;
             /** Username */
             username: string;
             /** Email */
@@ -743,6 +746,12 @@ export interface components {
             first_name: string;
             /** Last Name */
             last_name: string;
+            /**
+             * Role
+             * @description admin, team_admin or user
+             * @enum {string}
+             */
+            role: "admin" | "team_admin" | "user";
         };
         /** NewUserInput */
         NewUserInput: {

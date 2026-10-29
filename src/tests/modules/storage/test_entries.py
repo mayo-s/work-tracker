@@ -9,6 +9,7 @@ from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.tickets import TicketRepository
+from src.tests.users import USER
 
 MONDAY = dt.date(2026, 10, 26)
 NOW = dt.datetime(2026, 10, 28, 14, 5)
@@ -16,7 +17,7 @@ NOW = dt.datetime(2026, 10, 28, 14, 5)
 
 @pytest.fixture
 def entries(conn):
-    return EntryRepository(conn, clock=lambda: NOW)
+    return EntryRepository(conn, USER,  clock=lambda: NOW)
 
 
 @pytest.fixture
@@ -37,7 +38,7 @@ def test_create_and_get_ticket_entry(entries, ticket_entry):
 
 def test_create_ticket_entry_creates_ticket(entries, conn, ticket_entry):
     entries.create(ticket_entry)
-    assert TicketRepository(conn).get('ENGINE-597') is not None
+    assert TicketRepository(conn, USER).get('ENGINE-597') is not None
 
 
 def test_create_ticket_entry_without_ticket(entries):
@@ -106,7 +107,7 @@ def test_update_records_only_changed_fields(entries, ticket_entry):
 def test_update_to_new_ticket_creates_ticket(entries, conn, ticket_entry):
     created = entries.create(ticket_entry)
     entries.update(created.model_copy(update={'ticket_key': 'ENGINE-598'}))
-    assert TicketRepository(conn).get('ENGINE-598') is not None
+    assert TicketRepository(conn, USER).get('ENGINE-598') is not None
     assert entries.history(created.id)[-1].changes == {'ticket_key': ('ENGINE-597', 'ENGINE-598')}
 
 
@@ -162,7 +163,7 @@ def test_changed_marks_entries_changed_after_creation(entries, ticket_entry, act
 def test_entry_flags(entries, conn, ticket_entry):
     created = entries.create(ticket_entry)
     flag = entries.add_flag(created.id, FlagReason.UNCERTAIN_TICKET, '#4347 aka #1482')
-    DayRepository(conn).add_flag(MONDAY, FlagReason.WEEKEND_HOURS)
+    DayRepository(conn, USER).add_flag(MONDAY, FlagReason.WEEKEND_HOURS)
     assert entries.flags_of(created.id) == [flag]
     assert entries.entry_flags() == [flag]
 
@@ -180,7 +181,7 @@ def test_clear_entry_flag(entries, ticket_entry):
 
 
 def test_clear_missing_entry_flag(entries, conn):
-    day_flag = DayRepository(conn).add_flag(MONDAY, FlagReason.WEEKEND_HOURS)
+    day_flag = DayRepository(conn, USER).add_flag(MONDAY, FlagReason.WEEKEND_HOURS)
     with pytest.raises(NotFoundError):
         entries.clear_flag(day_flag.id)
 
@@ -202,7 +203,7 @@ def test_split_entry_evenly_with_history(entries, conn):
     first, second = entries.split(entry.id, ['tng-4347', 'KP-1482'])
     assert (first.id, first.ticket_key, first.duration) == (entry.id, 'TNG-4347', 180)
     assert (second.ticket_key, second.duration, second.description, second.coding) == ('KP-1482', 180, 'adapt tests', True)
-    assert TicketRepository(conn).get('KP-1482') is not None
+    assert TicketRepository(conn, USER).get('KP-1482') is not None
     original = entries.history(entry.id)[-1]
     assert (original.action, original.changes, original.detail) == (
         HistoryAction.SPLIT, {'duration': (360, 180)}, 'Split into TNG-4347, KP-1482')

@@ -29,7 +29,7 @@ class _AuthResource:
         set_session_cookie(req, resp, SessionRepository(conn).start(user.id, self._clock()))
 
 
-def _user_id(req: falcon.Request) -> int:
+def _user_id(req: falcon.Request) -> str:
     user_id = req.context.get('user_id')
     if user_id is None:
         raise falcon.HTTPUnauthorized(title='401 Unauthorized', description='Log in first')
@@ -40,7 +40,7 @@ class AuthStatusResource(_AuthResource):
     @spec.validate(resp=Response(HTTP_200=AuthStatus), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         """Whether the login is on, whether a user exists, and who is logged in."""
-        user_id = req.context.get('user_id')
+        user_id = req.context.get('user_id') if self._enabled else None  # with the login off, nobody is logged in
         with self._database.transaction() as conn:
             users = UserRepository(conn)
             user = UserView.of(users.get(user_id)) if user_id is not None else None

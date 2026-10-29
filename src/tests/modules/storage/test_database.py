@@ -4,10 +4,12 @@ import pytest
 
 from src.modules.storage import migrations
 from src.modules.storage.database import Database, SchemaVersionError
+from src.modules.storage.owners import NO_OWNER
+from src.tests.users import USER
 
 TABLES = {
-    'settings', 'pto_years', 'work_schedules', 'services', 'activity_types', 'tickets', 'days', 'entries', 'entry_history',
-    'review_flags', 'users', 'sessions', 'failed_logins',
+    'settings', 'user_settings', 'pto_years', 'work_schedules', 'services', 'activity_types', 'tickets', 'days', 'entries',
+    'entry_history', 'review_flags', 'users', 'sessions', 'failed_logins',
 }
 
 
@@ -38,7 +40,8 @@ def test_migrate_twice_keeps_data_once(fresh_database):
 def test_new_database_starts_clean(fresh_database):
     with fresh_database.transaction() as conn:
         names = [row['name'] for row in conn.execute('SELECT name FROM activity_types ORDER BY id')]
-        setup_done = conn.execute("SELECT value FROM settings WHERE key = 'setup_done'").fetchone()[0]
+        setup_done = conn.execute("SELECT value FROM user_settings WHERE user_id = ? AND key = 'setup_done'",
+                                  (NO_OWNER,)).fetchone()[0]
     assert names == ['Tool Management', 'Meeting', 'Travel', 'Other']
     assert (count(fresh_database, 'services'), count(fresh_database, 'pto_years'), setup_done) == (0, 0, '0')
 
@@ -52,7 +55,8 @@ def test_database_in_use_keeps_its_data_and_counts_as_set_up(tmp_path, monkeypat
     monkeypatch.undo()
     db.migrate()
     with db.transaction() as conn:
-        setup_done = conn.execute("SELECT value FROM settings WHERE key = 'setup_done'").fetchone()[0]
+        setup_done = conn.execute("SELECT value FROM user_settings WHERE user_id = ? AND key = 'setup_done'",
+                                  (NO_OWNER,)).fetchone()[0]
     assert (count(db, 'services'), count(db, 'pto_years'), setup_done) == (5, 4, '1')
 
 
@@ -73,14 +77,14 @@ def test_failed_migration_is_rolled_back(database, monkeypatch):
 
 def test_transaction_commits(database):
     with database.transaction() as conn:
-        conn.execute("INSERT INTO activity_types (name) VALUES ('Incident')")
+        conn.execute("INSERT INTO activity_types (user_id, name) VALUES (?, 'Incident')", (USER,))
     with database.transaction() as conn:
         assert conn.execute("SELECT COUNT(*) FROM activity_types WHERE name = 'Incident'").fetchone()[0] == 1
 
 
 def insert_then_fail(db):
     with db.transaction() as conn:
-        conn.execute("INSERT INTO activity_types (name) VALUES ('Incident')")
+        conn.execute("INSERT INTO activity_types (user_id, name) VALUES (?, 'Incident')", (USER,))
         raise RuntimeError('abort')
 
 
@@ -92,21 +96,23 @@ def test_transaction_rolls_back_on_error(database):
 
 
 @pytest.mark.parametrize('statement', [
-    "INSERT INTO tickets (key, service_id) VALUES ('TNG-1', 99)",
-    "INSERT INTO entries (date, kind, ticket_key, duration) VALUES ('2026-10-26', 'ticket', 'TNG-404', 60)",
-    "INSERT INTO entries (date, kind, duration) VALUES ('2026-10-26', 'activity', 60)",
-    "INSERT INTO entries (date, kind, activity_type_id, duration) VALUES ('2026-10-26', 'meeting', 1, 60)",
-    "INSERT INTO review_flags (reason) VALUES ('weekend_hours')",
-    "INSERT INTO services (short_name) VALUES ('msb')",
+    "INSERT INTO tickets (user_id, key, service_id) VALUES (?, 'TNG-1', 99)",
+    "INSERT INTO entries (user_id, date, kind, ticket_key, duration) VALUES (?, '2026-10-26', 'ticket', 'TNG-404', 60)",
+    "INSERT INTO entries (user_id, date, kind, duration) VALUES (?, '2026-10-26', 'activity', 60)",
+    "INSERT INTO entries (user_id, date, kind, activity_type_id, duration) VALUES (?, '2026-10-26', 'meeting', 1, 60)",
+    "INSERT INTO review_flags (user_id, reason) VALUES (?, 'weekend_hours')",
+    "INSERT INTO services (user_id, short_name) VALUES (?, 'msb')",
+    "INSERT INTO days (user_id) VALUES (?)",
 ])
 def test_constraints(database, statement):
     with database.transaction() as conn:
         with pytest.raises(sqlite3.IntegrityError):
-            conn.execute(statement)
+            conn.execute(statement, (USER,))
 
 
 def test_deleted_entry_ids_are_not_reused(database):
-    insert = "INSERT INTO entries (date, kind, activity_type_id, duration) VALUES ('2026-10-26', 'activity', 1, 60)"
+    insert = ("INSERT INTO entries (user_id, date, kind, activity_type_id, duration)"
+              f" VALUES ('{USER}', '2026-10-26', 'activity', 1, 60)")
     with database.transaction() as conn:
         deleted_id = conn.execute(insert).lastrowid
         conn.execute('DELETE FROM entries WHERE id = ?', (deleted_id,))

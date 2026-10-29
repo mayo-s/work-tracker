@@ -9,6 +9,7 @@ from src.models.entries import TicketEntry
 from src.modules.storage.catalog import ServiceRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.settings import load_settings, save_settings
+from src.tests.users import USER
 
 TODAY = dt.date(2026, 10, 28)
 
@@ -17,15 +18,15 @@ TODAY = dt.date(2026, 10, 28)
 def client(database):
     """Reports up to 28.10.2026; the balance starts on 01.10.2026."""
     with database.transaction() as conn:
-        settings = load_settings(conn)
-        save_settings(conn, settings.model_copy(update={'balance_start': dt.date(2026, 10, 1)}))
+        settings = load_settings(conn, USER)
+        save_settings(conn, USER, settings.model_copy(update={'balance_start': dt.date(2026, 10, 1)}))
     return testing.TestClient(create_app(database, today=lambda: TODAY))
 
 
 @pytest.fixture
 def service_ids(database):
     with database.transaction() as conn:
-        return {service.short_name: service.id for service in ServiceRepository(conn).all()}
+        return {service.short_name: service.id for service in ServiceRepository(conn, USER).all()}
 
 
 def work(client, date, start='08:00', end='16:30', break_time='0:30'):
@@ -98,7 +99,7 @@ def test_month_lists_pr_reviews_without_ticket_last(client, database):
     ticket(client, '2026-10-05', 'TNG-999', '1:00')
     with database.transaction() as conn:
         review = TicketEntry(date=dt.date(2026, 10, 6), duration=120, description='PR reviews', coding=True)
-        EntryRepository(conn).create(review)
+        EntryRepository(conn, USER).create(review)
     [unassigned] = client.simulate_get('/api/reports/months/2026-10').json['coding']
     assert [(work['ticket_key'], work['duration']) for work in unassigned['tickets']] == [('TNG-999', '1:00'), (None, '2:00')]
 

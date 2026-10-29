@@ -5,6 +5,7 @@ from falcon import testing
 
 from src.app import create_app
 from src.modules.storage.settings import load_settings, save_settings
+from src.tests.users import USER
 
 TODAY = dt.date(2026, 10, 28)  # a Wednesday
 
@@ -13,8 +14,8 @@ TODAY = dt.date(2026, 10, 28)  # a Wednesday
 def client(database):
     """The dashboard on 28.10.2026; the balance starts on 01.09.2026 with 2:00 taken over."""
     with database.transaction() as conn:
-        settings = load_settings(conn)
-        save_settings(conn, settings.model_copy(update={'balance_start': dt.date(2026, 9, 1), 'opening_balance': 120}))
+        settings = load_settings(conn, USER)
+        save_settings(conn, USER, settings.model_copy(update={'balance_start': dt.date(2026, 9, 1), 'opening_balance': 120}))
     return testing.TestClient(create_app(database, today=lambda: TODAY))
 
 
@@ -80,7 +81,7 @@ def test_this_year(client):
 
 def test_before_the_balance_start(client, database):
     with database.transaction() as conn:
-        save_settings(conn, load_settings(conn).model_copy(update={'balance_start': dt.date(2027, 3, 1)}))
+        save_settings(conn, USER, load_settings(conn, USER).model_copy(update={'balance_start': dt.date(2027, 3, 1)}))
     result = dashboard(client)
     assert (result['balance'], result['balance_series']['all'], result['balance_series']['month']) == ('2:00', [], [])
 

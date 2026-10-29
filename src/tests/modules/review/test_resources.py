@@ -9,12 +9,13 @@ from src.models.review import FlagReason
 from src.modules.storage.catalog import ServiceRepository
 from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
+from src.tests.users import USER
 
 
 @pytest.fixture
 def his(database):
     with database.transaction() as conn:
-        return next(service.id for service in ServiceRepository(conn).all() if service.short_name == 'HiS')
+        return next(service.id for service in ServiceRepository(conn, USER).all() if service.short_name == 'HiS')
 
 
 def add_entry(client, key, duration='1:00', date='2026-03-02'):
@@ -49,7 +50,7 @@ def test_tickets_without_service_leave_once_assigned(client, his):
 
 def test_tickets_without_entries_are_not_listed(client, database):
     with database.transaction() as conn:
-        conn.execute("INSERT INTO tickets (key) VALUES ('TNG-4138')")
+        conn.execute("INSERT INTO tickets (user_id, key) VALUES (?, 'TNG-4138')", (USER,))
     assert get_review(client)['tickets_without_service'] == []
 
 
@@ -65,7 +66,7 @@ def test_entry_with_zero_duration_leaves_once_fixed(client):
 def test_entry_without_ticket(client, database):
     with database.transaction() as conn:
         review_entry = TicketEntry(date=dt.date(2025, 11, 26), duration=360, description='PR reviews', coding=True)
-        EntryRepository(conn).create(review_entry)
+        EntryRepository(conn, USER).create(review_entry)
     [item] = get_review(client)['entries']
     assert (item['entry']['description'], item['reasons']) == ('PR reviews', ['no_ticket'])
 
@@ -73,7 +74,7 @@ def test_entry_without_ticket(client, database):
 def test_flagged_entry_leaves_once_flag_is_cleared(client, database):
     entry = add_entry(client, 'TNG-4347', duration='0:00')
     with database.transaction() as conn:
-        flag = EntryRepository(conn).add_flag(entry['id'], FlagReason.UNCERTAIN_TICKET, '#4347 aka #1482')
+        flag = EntryRepository(conn, USER).add_flag(entry['id'], FlagReason.UNCERTAIN_TICKET, '#4347 aka #1482')
     [item] = get_review(client)['entries']
     assert item['reasons'] == ['uncertain_ticket', 'zero_duration']
     assert client.simulate_delete(f'/api/review/flags/{flag.id}').status == falcon.HTTP_204
@@ -84,7 +85,7 @@ def test_flagged_entry_leaves_once_flag_is_cleared(client, database):
 def test_flagged_day_leaves_once_flag_is_cleared(client, database):
     client.simulate_put('/api/days/2025-12-06', json={'start': '08:00', 'end': '11:30', 'break_time': '0:00'})
     with database.transaction() as conn:
-        flag = DayRepository(conn).add_flag(dt.date(2025, 12, 6), FlagReason.WEEKEND_HOURS, '3,5 ABREISE Lübeck')
+        flag = DayRepository(conn, USER).add_flag(dt.date(2025, 12, 6), FlagReason.WEEKEND_HOURS, '3,5 ABREISE Lübeck')
     [day] = get_review(client)['days']
     assert (day['date'], day['worked'], day['flags'][0]['detail']) == ('2025-12-06', '3:30', '3,5 ABREISE Lübeck')
     assert get_review(client)['counts']['days'] == 1
@@ -94,7 +95,7 @@ def test_flagged_day_leaves_once_flag_is_cleared(client, database):
 
 def test_flagged_day_without_record(client, database):
     with database.transaction() as conn:
-        DayRepository(conn).add_flag(dt.date(2024, 11, 9), FlagReason.WEEKEND_HOURS, '5,0 Secretary')
+        DayRepository(conn, USER).add_flag(dt.date(2024, 11, 9), FlagReason.WEEKEND_HOURS, '5,0 Secretary')
     [day] = get_review(client)['days']
     assert (day['date'], day['recorded']) == ('2024-11-09', False)
 
@@ -106,7 +107,7 @@ def test_clear_unknown_flag(client):
 def test_entry_split_on_import_is_shown(client, database):
     line = '6,0 #4138, #4139 create meeting service'
     with database.transaction() as conn:
-        repository = EntryRepository(conn)
+        repository = EntryRepository(conn, USER)
         for key in ('TNG-4138', 'TNG-4139'):
             created = repository.create(TicketEntry(date=dt.date(2024, 6, 10), ticket_key=key, duration=180),
                                         HistoryAction.IMPORTED, line)
@@ -118,7 +119,7 @@ def test_entry_split_on_import_is_shown(client, database):
 
 def test_entry_imported_alone_has_no_split(client, database):
     with database.transaction() as conn:
-        repository = EntryRepository(conn)
+        repository = EntryRepository(conn, USER)
         created = repository.create(TicketEntry(date=dt.date(2024, 6, 19), ticket_key='TNG-4156', duration=60),
                                     HistoryAction.IMPORTED, '1,0 #4156')
         repository.add_flag(created.id, FlagReason.UNCERTAIN_TICKET, '1,0 #4156')

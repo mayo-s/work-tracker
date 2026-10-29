@@ -9,7 +9,7 @@ from src.defaultresources.default import Default
 from src.modules.auth.resources import (
     AuthStatusResource, FirstUserResource, LoginResource, LogoutResource, MeResource, PasswordResource,
 )
-from src.modules.auth.sessions import Authentication, auth_enabled
+from src.modules.auth.sessions import Authentication, LocalUser, auth_enabled
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
 from src.modules.dashboard.resources import DashboardResource
 from src.modules.days.resources import DayCollection, DayItem, DayRange
@@ -39,7 +39,7 @@ def create_app(
     database = database or Database(database_path())
     database.migrate()
     enabled = auth_enabled() if auth is None else auth
-    login = [Authentication(database, clock)] if enabled else []
+    login = [Authentication(database, clock)] if enabled else [LocalUser(database)]
     app = falcon.App(middleware=[*login, RevalidateStaticFiles(), PageSettings(database)])
     app.add_error_handler(NotFoundError, _not_found)
     app.add_error_handler(ConflictError, _conflict)

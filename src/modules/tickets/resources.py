@@ -20,6 +20,7 @@ from src.modules.tickets.schemas import (
     TicketView,
     ticket_views,
 )
+from src.modules.auth.sessions import current_user
 from src.utils.spec import spec
 
 TAGS = ['Tickets']
@@ -34,8 +35,9 @@ class TicketCollection:
     def on_get(self, req: falcon.Request, resp: falcon.Response, query: TicketQuery) -> None:
         """All tickets (sorted by prefix and number) with their service and number of entries."""
         with self._database.transaction() as conn:
-            tickets = TicketRepository(conn)
-            resp.media = ticket_views(conn, tickets.without_service() if query.without_service else tickets.all())
+            user_id = current_user(req)
+            tickets = TicketRepository(conn, user_id)
+            resp.media = ticket_views(conn, user_id, tickets.without_service() if query.without_service else tickets.all())
 
 
 class TicketItem:
@@ -46,15 +48,17 @@ class TicketItem:
     def on_get(self, req: falcon.Request, resp: falcon.Response, key: str) -> None:
         """A known ticket with the service it remembers (used to pre-fill the service of a new entry)."""
         with self._database.transaction() as conn:
-            resp.media = ticket_views(conn, [_existing(conn, key)])[0]
+            user_id = current_user(req)
+            resp.media = ticket_views(conn, user_id, [_existing(conn, user_id, key)])[0]
 
     @spec.validate(json=TicketServiceInput, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=TicketView), tags=TAGS,
                    path_parameter_descriptions=KEY_PARAMETER)
     def on_put(self, req: falcon.Request, resp: falcon.Response, key: str, json: TicketServiceInput) -> None:
         """Set or unassign the service of a ticket; it applies to all entries of the ticket."""
         with self._database.transaction() as conn:
-            ticket = TicketRepository(conn).set_service(_existing(conn, key).key, json.service_id)
-            resp.media = ticket_views(conn, [ticket])[0]
+            user_id = current_user(req)
+            ticket = TicketRepository(conn, user_id).set_service(_existing(conn, user_id, key).key, json.service_id)
+            resp.media = ticket_views(conn, user_id, [ticket])[0]
 
 
 class TicketServiceAssignment:
@@ -65,7 +69,8 @@ class TicketServiceAssignment:
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: ServiceAssignment) -> None:
         """Assign one service to several tickets at once; if a ticket is unknown, nothing changes."""
         with self._database.transaction() as conn:
-            resp.media = AssignmentResult(assigned=TicketRepository(conn).assign_service(json.keys, json.service_id))
+            assigned = TicketRepository(conn, current_user(req)).assign_service(json.keys, json.service_id)
+            resp.media = AssignmentResult(assigned=assigned)
 
 
 class TicketRenaming:
@@ -77,14 +82,16 @@ class TicketRenaming:
     def on_post(self, req: falcon.Request, resp: falcon.Response, key: str, json: TicketRename) -> None:
         """Rename a ticket, or merge it into an existing one (which keeps its service); recorded in each entry's history."""
         with self._database.transaction() as conn:
-            result = rename_ticket(conn, _existing(conn, key).key, json.new_key)
-            resp.media = RenameView(ticket=ticket_views(conn, [result.ticket])[0], action=result.action, moved=result.moved)
+            user_id = current_user(req)
+            result = rename_ticket(conn, user_id, _existing(conn, user_id, key).key, json.new_key)
+            resp.media = RenameView(ticket=ticket_views(conn, user_id, [result.ticket])[0], action=result.action,
+                                    moved=result.moved)
 
 
-def _existing(conn: sqlite3.Connection, key: str) -> Ticket:
-    """The ticket with this key; 404 for unknown or invalid keys."""
+def _existing(conn: sqlite3.Connection, user_id: int, key: str) -> Ticket:
+    """The user's ticket with this key; 404 for unknown or invalid keys."""
     try:
-        ticket = TicketRepository(conn).get(key)
+        ticket = TicketRepository(conn, user_id).get(key)
     except ValidationError:
         ticket = None
     if ticket is None:

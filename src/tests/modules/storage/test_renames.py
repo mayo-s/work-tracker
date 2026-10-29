@@ -10,23 +10,24 @@ from src.modules.storage.entries import EntryRepository
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.renames import rename_ticket
 from src.modules.storage.tickets import TicketRepository
+from src.tests.users import USER
 
 NOW = dt.datetime(2026, 10, 28, 15, 30)
 
 
 @pytest.fixture
 def entries(conn):
-    return EntryRepository(conn, clock=lambda: NOW)
+    return EntryRepository(conn, USER,  clock=lambda: NOW)
 
 
 @pytest.fixture
 def tickets(conn):
-    return TicketRepository(conn)
+    return TicketRepository(conn, USER)
 
 
 @pytest.fixture
 def service_ids(conn):
-    return {service.short_name: service.id for service in ServiceRepository(conn).all()}
+    return {service.short_name: service.id for service in ServiceRepository(conn, USER).all()}
 
 
 def ticket_entry(key, day=1):
@@ -34,7 +35,7 @@ def ticket_entry(key, day=1):
 
 
 def rename(conn, old_key, new_key):
-    return rename_ticket(conn, old_key, new_key, clock=lambda: NOW)
+    return rename_ticket(conn, USER, old_key, new_key, clock=lambda: NOW)
 
 
 def test_rename_moves_entries_and_keeps_service(conn, entries, tickets, service_ids):

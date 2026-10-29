@@ -9,6 +9,7 @@ import falcon
 
 from src.modules.storage.database import Database
 from src.modules.storage.settings import setup_done
+from src.modules.storage.owners import NO_OWNER
 from src.modules.storage.users import SESSION_LIFETIME, SessionRepository, UserRepository
 
 COOKIE = 'wt_session'
@@ -19,6 +20,14 @@ OPEN_PREFIXES = ('/static/', '/apidoc')
 def auth_enabled() -> bool:
     """The login is on unless switched off for local development with WORK_TRACKER_AUTH=off."""
     return os.environ.get('WORK_TRACKER_AUTH', 'on').lower() != 'off'
+
+
+def current_user(req: falcon.Request) -> str:
+    """The user whose data a request works on: the logged-in user (or, with the login off, the first user)."""
+    user_id = req.context.get('user_id')
+    if user_id is None:
+        raise falcon.HTTPUnauthorized(title='401 Unauthorized', description='Log in first')
+    return user_id
 
 
 def set_session_cookie(req: falcon.Request, resp: falcon.Response, token: str) -> None:
@@ -45,7 +54,7 @@ class Authentication:
         with self._database.transaction() as conn:
             user_id, renewed = SessionRepository(conn).user_id(token, self._clock()) if token else (None, False)
             first_user_missing = not UserRepository(conn).count()
-            set_up = setup_done(conn)
+            set_up = setup_done(conn, NO_OWNER)
         req.context.user_id = user_id
         if renewed:
             set_session_cookie(req, resp, token)
@@ -65,3 +74,16 @@ def _refuse(req: falcon.Request) -> None:
     if req.path.startswith('/api/'):
         raise falcon.HTTPUnauthorized(title='401 Unauthorized', description='Log in first')
     raise falcon.HTTPSeeOther(f'/login?next={quote(req.relative_uri, safe="")}')
+
+
+class LocalUser:
+    """Middleware with the login off (local development): every request works on the first user's data, or on the
+    data without an owner while there is no user yet."""
+
+    def __init__(self, database: Database) -> None:
+        self._database = database
+
+    def process_request(self, req: falcon.Request, resp: falcon.Response) -> None:
+        with self._database.transaction() as conn:
+            first = UserRepository(conn).first_id()
+        req.context.user_id = NO_OWNER if first is None else first

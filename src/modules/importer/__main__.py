@@ -1,4 +1,4 @@
-"""Import a yearly spreadsheet export: python -m src.modules.importer SHEET.csv [--replace] [--db PATH]."""
+"""Import a yearly spreadsheet export: python -m src.modules.importer SHEET.csv [--replace] [--user LOGIN] [--db PATH]."""
 
 import argparse
 import sys
@@ -11,10 +11,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog='python -m src.modules.importer', description=__doc__.split(':')[0] + '.')
     parser.add_argument('sheet', help='CSV export of one year (Date, Start, End, Pause, Sum, Comment)')
     parser.add_argument('--replace', action='store_true', help="replace the year's days and entries if it was imported before")
+    parser.add_argument('--user', help='username or e-mail address to import for (needed with several users)')
     parser.add_argument('--db', default=database_path(), help='database file (default: $WORK_TRACKER_DB or work_tracker.db)')
     args = parser.parse_args(argv)
     try:
-        summary, reconciliation = import_file(Database(args.db), args.sheet, args.replace)
+        summary, reconciliation = import_file(Database(args.db), args.sheet, args.replace, login=args.user)
     except (OSError, ValueError, LookupError) as error:
         print(f'Import failed, nothing was written: {error}', file=sys.stderr)
         return 1

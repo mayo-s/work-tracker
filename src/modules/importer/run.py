@@ -24,6 +24,8 @@ from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.errors import ConflictError
+from src.modules.storage.owners import NO_OWNER
+from src.modules.storage.users import UserRepository
 
 
 class SheetImportError(ValueError):
@@ -55,23 +57,38 @@ class ImportSummary:
 
 
 def import_file(
-    database: Database, path: str | Path, replace: bool = False, today: dt.date | None = None
+    database: Database, path: str | Path, replace: bool = False, today: dt.date | None = None, login: str | None = None,
 ) -> tuple[ImportSummary, Reconciliation]:
-    """Import a sheet and compare the result with it, in one transaction."""
+    """Import a sheet into a user's data (`login`: username or e-mail address) and compare the result with it, in one
+    transaction."""
     rows = read_sheet(path)
     database.migrate()
     with database.transaction() as conn:
-        summary = import_rows(conn, rows, replace)
-        return summary, reconcile(conn, rows, today or dt.date.today())
+        user_id = import_user(conn, login)
+        summary = import_rows(conn, user_id, rows, replace)
+        return summary, reconcile(conn, user_id, rows, today or dt.date.today())
+
+
+def import_user(conn: sqlite3.Connection, login: str | None) -> str:
+    """The given user; without one, the only user, or no owner yet while there is no user (the first user takes it)."""
+    users = UserRepository(conn)
+    if login:
+        if (user := users.by_login(login)) is None:
+            raise SheetImportError(f'No user {login!r}')
+        return user.id
+    if users.count() > 1:
+        raise SheetImportError('Several users: name the one to import for with --user')
+    return users.first_id() or NO_OWNER
 
 
 def import_rows(
-    conn: sqlite3.Connection, rows: Sequence[SheetRow], replace: bool = False, clock: Callable[[], dt.datetime] | None = None
+    conn: sqlite3.Connection, user_id: int, rows: Sequence[SheetRow], replace: bool = False,
+    clock: Callable[[], dt.datetime] | None = None,
 ) -> ImportSummary:
-    """Import the rows of one year; refused if the year already holds data, unless `replace` is set."""
+    """Import the rows of one year into a user's data; refused if the year already holds data, unless `replace`."""
     year = _year_of(rows)
-    summary = ImportSummary(year, replaced=_clear_year(conn, year, replace))
-    importer = _YearImporter(conn, summary, clock)
+    summary = ImportSummary(year, replaced=_clear_year(conn, user_id, year, replace))
+    importer = _YearImporter(conn, user_id, summary, clock)
     for row in rows:
         if imported := classify_day(row):
             importer.add(imported)
@@ -88,24 +105,28 @@ def _year_of(rows: Sequence[SheetRow]) -> int:
 _YEAR_TABLES = ('days', 'entries', 'review_flags')
 
 
-def _clear_year(conn: sqlite3.Connection, year: int, replace: bool) -> bool:
-    """Delete the year's data if `replace` is set; returns whether there was data. Tickets and services stay."""
-    bounds = (f'{year}-01-01', f'{year}-12-31')
-    query = 'SELECT 1 FROM {} WHERE date BETWEEN ? AND ?'
-    has_data = any(conn.execute(query.format(table), bounds).fetchone() for table in _YEAR_TABLES)
+def _clear_year(conn: sqlite3.Connection, user_id: int, year: int, replace: bool) -> bool:
+    """Delete the user's data of the year if `replace` is set; returns whether there was data. Tickets and services
+    stay."""
+    scope = (user_id, f'{year}-01-01', f'{year}-12-31')
+    query = 'SELECT 1 FROM {} WHERE user_id = ? AND date BETWEEN ? AND ?'
+    has_data = any(conn.execute(query.format(table), scope).fetchone() for table in _YEAR_TABLES)
     if has_data and not replace:
         raise ConflictError(f'{year} already holds data; import with replace to overwrite it')
-    conn.execute('DELETE FROM entry_history WHERE entry_id IN (SELECT id FROM entries WHERE date BETWEEN ? AND ?)', bounds)
+    conn.execute('DELETE FROM entry_history WHERE entry_id IN '
+                 '(SELECT id FROM entries WHERE user_id = ? AND date BETWEEN ? AND ?)', scope)
     for table in _YEAR_TABLES:
-        conn.execute(f'DELETE FROM {table} WHERE date BETWEEN ? AND ?', bounds)
+        conn.execute(f'DELETE FROM {table} WHERE user_id = ? AND date BETWEEN ? AND ?', scope)
     return has_data
 
 
 class _YearImporter:
-    def __init__(self, conn: sqlite3.Connection, summary: ImportSummary, clock: Callable[[], dt.datetime] | None) -> None:
-        self._days = DayRepository(conn)
-        self._entries = EntryRepository(conn, clock)
-        self._activity_ids = {activity.name.lower(): activity.id for activity in ActivityTypeRepository(conn).all()}
+    def __init__(
+        self, conn: sqlite3.Connection, user_id: int, summary: ImportSummary, clock: Callable[[], dt.datetime] | None,
+    ) -> None:
+        self._days = DayRepository(conn, user_id)
+        self._entries = EntryRepository(conn, user_id, clock)
+        self._activity_ids = {activity.name.lower(): activity.id for activity in ActivityTypeRepository(conn, user_id).all()}
         self._summary = summary
 
     def add(self, imported: ImportedDay) -> None:

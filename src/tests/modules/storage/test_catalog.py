@@ -3,16 +3,17 @@ import pytest
 from src.models.catalog import ActivityType, Service
 from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository
 from src.modules.storage.errors import ConflictError, NotFoundError
+from src.tests.users import USER
 
 
 @pytest.fixture
 def services(conn):
-    return ServiceRepository(conn)
+    return ServiceRepository(conn, USER)
 
 
 @pytest.fixture
 def activity_types(conn):
-    return ActivityTypeRepository(conn)
+    return ActivityTypeRepository(conn, USER)
 
 
 def test_all_services_sorted_by_short_name(services):
@@ -62,7 +63,7 @@ def test_update_service_to_duplicate_name(services):
 
 def test_delete_service_unassigns_tickets(services, conn):
     added = services.add(Service(short_name='AUTH'))
-    conn.execute("INSERT INTO tickets (key, service_id) VALUES ('AGA-39', ?)", (added.id,))
+    conn.execute("INSERT INTO tickets (user_id, key, service_id) VALUES (?, 'AGA-39', ?)", (USER, added.id))
     services.delete(added.id)
     assert added.id not in [service.id for service in services.all()]
     assert conn.execute("SELECT service_id FROM tickets WHERE key = 'AGA-39'").fetchone()[0] is None
@@ -90,8 +91,8 @@ def test_add_duplicate_activity_type(activity_types):
 def test_delete_activity_type_in_use(activity_types, conn):
     meeting = activity_types.all()[1]
     conn.execute(
-        "INSERT INTO entries (date, kind, activity_type_id, duration) VALUES ('2026-10-26', 'activity', ?, 60)",
-        (meeting.id,),
+        "INSERT INTO entries (user_id, date, kind, activity_type_id, duration) VALUES (?, '2026-10-26', 'activity', ?, 60)",
+        (USER, meeting.id),
     )
     with pytest.raises(ConflictError):
         activity_types.delete(meeting.id)

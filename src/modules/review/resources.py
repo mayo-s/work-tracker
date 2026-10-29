@@ -8,6 +8,7 @@ from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.errors import NotFoundError
+from src.modules.auth.sessions import current_user
 from src.utils.spec import spec
 
 TAGS = ['Review']
@@ -21,7 +22,7 @@ class Review:
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         """Everything that needs attention; an item disappears once its reason is fixed or its flag is cleared."""
         with self._database.transaction() as conn:
-            resp.media = review(conn)
+            resp.media = review(conn, current_user(req))
 
 
 class ReviewFlagItem:
@@ -33,7 +34,7 @@ class ReviewFlagItem:
         """Clear a review flag of an entry or a day (e.g. after checking a guessed ticket key)."""
         with self._database.transaction() as conn:
             try:
-                EntryRepository(conn).clear_flag(flag_id)
+                EntryRepository(conn, current_user(req)).clear_flag(flag_id)
             except NotFoundError:
-                DayRepository(conn).clear_flag(flag_id)
+                DayRepository(conn, current_user(req)).clear_flag(flag_id)
         resp.status = falcon.HTTP_204

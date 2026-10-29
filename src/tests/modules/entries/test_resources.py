@@ -7,6 +7,7 @@ from src.models.entries import TicketEntry
 from src.models.review import FlagReason
 from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository
 from src.modules.storage.entries import EntryRepository
+from src.tests.users import USER
 
 TICKET = {'kind': 'ticket', 'date': '2026-10-27', 'duration': '0:30', 'ticket_key': 'TNG-5882', 'description': 'PR Review',
           'coding': True}
@@ -15,8 +16,8 @@ TICKET = {'kind': 'ticket', 'date': '2026-10-27', 'duration': '0:30', 'ticket_ke
 @pytest.fixture
 def ids(database):
     with database.transaction() as conn:
-        services = {service.short_name: service.id for service in ServiceRepository(conn).all()}
-        activities = {activity.name: activity.id for activity in ActivityTypeRepository(conn).all()}
+        services = {service.short_name: service.id for service in ServiceRepository(conn, USER).all()}
+        activities = {activity.name: activity.id for activity in ActivityTypeRepository(conn, USER).all()}
     return services | activities
 
 
@@ -119,7 +120,7 @@ def test_delete_missing_entry(client):
 def test_entry_shows_its_flags(client, database):
     created = create(client, TICKET)
     with database.transaction() as conn:
-        EntryRepository(conn).add_flag(created['id'], FlagReason.UNCERTAIN_TICKET, '#4138')
+        EntryRepository(conn, USER).add_flag(created['id'], FlagReason.UNCERTAIN_TICKET, '#4138')
     [flag] = client.simulate_get(f'/api/entries/{created["id"]}').json['flags']
     assert (flag['reason'], flag['detail']) == ('uncertain_ticket', '#4138')
 
@@ -130,7 +131,7 @@ def test_history_of_unknown_entry_is_empty(client):
 
 def test_imported_entry_without_ticket_must_get_one_when_changed(client, database):
     with database.transaction() as conn:
-        created = EntryRepository(conn).create(TicketEntry(date=dt.date(2025, 11, 26), duration=360, coding=True))
+        created = EntryRepository(conn, USER).create(TicketEntry(date=dt.date(2025, 11, 26), duration=360, coding=True))
     body = {'kind': 'ticket', 'date': '2025-11-26', 'duration': '6:00', 'coding': True}
     assert client.simulate_put(f'/api/entries/{created.id}', json=body).status_code == 422
     result = client.simulate_put(f'/api/entries/{created.id}', json=body | {'ticket_key': 'TNG-5096'})

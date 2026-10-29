@@ -95,14 +95,15 @@ class YearReport(BaseModel):
 
 
 class Reports:
-    """Builds reports within the transaction of the given connection."""
+    """Builds a user's reports within the transaction of the given connection."""
 
-    def __init__(self, conn: sqlite3.Connection, today: dt.date) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: int, today: dt.date) -> None:
         self._conn = conn
+        self._user = user_id
         self._today = today
-        self._settings = load_settings(conn)
-        self._pto_terms = PtoYearRepository(conn).terms()
-        self._schedules = ScheduleRepository(conn).schedules()
+        self._settings = load_settings(conn, user_id)
+        self._pto_terms = PtoYearRepository(conn, user_id).terms()
+        self._schedules = ScheduleRepository(conn, user_id).schedules()
 
     def week(self, week: str, monday: dt.date) -> WeekReport:
         sunday = monday + dt.timedelta(days=6)
@@ -113,7 +114,7 @@ class Reports:
     def month(self, year: int, month: int) -> MonthReport:
         start, end = _month_bounds(year, month)
         records = self._records(end)
-        coding = CodingWork(self._conn).by_service(start, end)
+        coding = CodingWork(self._conn, self._user).by_service(start, end)
         return MonthReport(
             month=f'{year}-{month:02d}',
             totals=self._totals(records, start, end),
@@ -139,7 +140,7 @@ class Reports:
         )
 
     def _records(self, end: dt.date) -> Records:
-        return DayRepository(self._conn).records(self._settings.balance_start, end)
+        return DayRepository(self._conn, self._user).records(self._settings.balance_start, end)
 
     def _period_days(self, records: Records, start: dt.date, end: dt.date) -> list[DaySummary]:
         """Days of the period from the balance start on (days before it are ignored)."""
@@ -194,12 +195,12 @@ class Reports:
 
 
 class CodingWork:
-    """Coding entries of a period, grouped by the service of their ticket and by ticket."""
+    """A user's coding entries of a period, grouped by the service of their ticket and by ticket."""
 
-    def __init__(self, conn: sqlite3.Connection) -> None:
-        self._entries = EntryRepository(conn)
-        self._ticket_services = {ticket.key: ticket.service_id for ticket in TicketRepository(conn).all()}
-        self._services = {service.id: service.short_name for service in ServiceRepository(conn).all()}
+    def __init__(self, conn: sqlite3.Connection, user_id: int) -> None:
+        self._entries = EntryRepository(conn, user_id)
+        self._ticket_services = {ticket.key: ticket.service_id for ticket in TicketRepository(conn, user_id).all()}
+        self._services = {service.id: service.short_name for service in ServiceRepository(conn, user_id).all()}
 
     def by_service(self, start: dt.date, end: dt.date) -> list[ServiceWork]:
         grouped = defaultdict(lambda: defaultdict(list))

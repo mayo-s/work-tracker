@@ -2,7 +2,7 @@
 
 import sqlite3
 
-from src.lib.schedules import Schedules
+from src.lib.schedules import STANDARD, Schedules
 from src.models.schedules import Schedule
 from src.modules.storage.errors import ConflictError, NotFoundError
 
@@ -10,31 +10,34 @@ _COLUMNS = 'id, valid_from, weekly_minutes, work_days, state, company_half_days'
 
 
 class ScheduleRepository:
-    """Works within the transaction of the given connection."""
+    """The work schedules of one user; works within the transaction of the given connection."""
 
-    def __init__(self, conn: sqlite3.Connection) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: int) -> None:
         self._conn = conn
+        self._user = user_id
 
     def all(self) -> list[Schedule]:
-        rows = self._conn.execute(f'SELECT {_COLUMNS} FROM work_schedules ORDER BY valid_from')
+        sql = f'SELECT {_COLUMNS} FROM work_schedules WHERE user_id = ? ORDER BY valid_from'
+        rows = self._conn.execute(sql, (self._user,))
         return [_schedule(row) for row in rows]
 
     def get(self, schedule_id: int) -> Schedule:
-        row = self._conn.execute(f'SELECT {_COLUMNS} FROM work_schedules WHERE id = ?', (schedule_id,)).fetchone()
+        row = self._conn.execute(f'SELECT {_COLUMNS} FROM work_schedules WHERE id = ? AND user_id = ?',
+                                 (schedule_id, self._user)).fetchone()
         if row is None:
             raise NotFoundError(f'No work schedule with id {schedule_id}')
         return _schedule(row)
 
     def add(self, schedule: Schedule) -> Schedule:
-        sql = ('INSERT INTO work_schedules (valid_from, weekly_minutes, work_days, state, company_half_days)'
-               ' VALUES (?, ?, ?, ?, ?)')
-        cursor = self._write(sql, _values(schedule), schedule)
+        sql = ('INSERT INTO work_schedules (user_id, valid_from, weekly_minutes, work_days, state, company_half_days)'
+               ' VALUES (?, ?, ?, ?, ?, ?)')
+        cursor = self._write(sql, (self._user, *_values(schedule)), schedule)
         return schedule.model_copy(update={'id': cursor.lastrowid})
 
     def update(self, schedule: Schedule) -> Schedule:
         sql = ('UPDATE work_schedules SET valid_from = ?, weekly_minutes = ?, work_days = ?, state = ?, company_half_days = ?'
-               ' WHERE id = ?')
-        if not self._write(sql, (*_values(schedule), schedule.id), schedule).rowcount:
+               ' WHERE id = ? AND user_id = ?')
+        if not self._write(sql, (*_values(schedule), schedule.id, self._user), schedule).rowcount:
             raise NotFoundError(f'No work schedule with id {schedule.id}')
         return schedule
 
@@ -42,16 +45,17 @@ class ScheduleRepository:
         self.get(schedule_id)
         if len(self.all()) == 1:
             raise ConflictError('The only work schedule cannot be deleted')
-        self._conn.execute('DELETE FROM work_schedules WHERE id = ?', (schedule_id,))
+        self._conn.execute('DELETE FROM work_schedules WHERE id = ? AND user_id = ?', (schedule_id, self._user))
 
     def replace_all(self, schedule: Schedule) -> Schedule:
         """The given schedule as the only one, e.g. on the initial setup."""
-        self._conn.execute('DELETE FROM work_schedules')
+        self._conn.execute('DELETE FROM work_schedules WHERE user_id = ?', (self._user,))
         return self.add(schedule)
 
     def schedules(self) -> Schedules:
-        """All schedules for the calculations: each day follows the latest one starting on or before it."""
-        return Schedules(schedule.to_work_schedule() for schedule in self.all())
+        """All schedules for the calculations: each day follows the latest one starting on or before it (without any
+        yet, e.g. before the setup: 40 h, Monday to Friday, Berlin)."""
+        return Schedules([schedule.to_work_schedule() for schedule in self.all()] or [STANDARD])
 
     def _write(self, sql: str, params: tuple, schedule: Schedule) -> sqlite3.Cursor:
         try:
