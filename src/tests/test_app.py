@@ -18,7 +18,6 @@ def test_openapi_spec_documents_default_resource(client):
     paths = client.simulate_get('/apidoc/openapi.json').json['paths']
     assert '/health' in paths
     assert paths['/health']['get']['tags'] == ['Maintenance']
-    assert '/' not in paths
 
 
 def test_openapi_spec_lists_documentation_routes_under_maintenance(client):

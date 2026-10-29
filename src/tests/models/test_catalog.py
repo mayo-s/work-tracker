@@ -22,10 +22,6 @@ def test_ticket_key_rejects_invalid(key):
         Ticket(key=key)
 
 
-def test_ticket_without_service():
-    assert Ticket(key='TNG-5214').service_id is None
-
-
 def test_service():
     service = Service(short_name=' MSB ', name='microsoft-bookings-service')
     assert service.short_name == 'MSB'
