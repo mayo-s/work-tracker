@@ -1,5 +1,4 @@
 import datetime as dt
-from decimal import Decimal
 
 import falcon
 import pytest
@@ -132,14 +131,27 @@ def test_year_days_before_balance_start_are_ignored(client):
     assert report['totals']['target'] == '160:00'  # 20 weekdays from 01.10. to 28.10.
 
 
-def test_year_pto_account(client, database):
-    with database.transaction() as conn:
-        settings = load_settings(conn)
-        save_settings(conn, settings.model_copy(update={'pto_allowances': {2026: Decimal(30)}}))
+def test_year_pto_account(client):
+    client.simulate_put('/api/pto-years/2026', json={'allowance': 30, 'extra_days': 1})
     client.simulate_put('/api/days/2026-10-02', json={'day_type': 'pto'})
     client.simulate_put('/api/days/2026-12-28', json={'day_type': 'pto'})
     pto = client.simulate_get('/api/reports/years/2026').json['pto']
-    assert pto == {'carried_over': 0.0, 'allowance': 30.0, 'used': 1.0, 'planned': 2.0, 'remaining': 27.0}
+    assert pto == {
+        'carried_over': 0.0, 'carried_over_fixed': False, 'allowance': 30.0, 'extra_days': 1.0, 'used': 1.0,
+        'planned': 2.0, 'remaining': 28.0,
+    }
+
+
+def test_year_pto_account_with_fixed_carry_over(client):
+    client.simulate_put('/api/pto-years/2026', json={'allowance': 30, 'carried_over': 3})
+    pto = client.simulate_get('/api/reports/years/2026').json['pto']
+    assert (pto['carried_over'], pto['carried_over_fixed'], pto['remaining']) == (3.0, True, 32.0)
+
+
+def test_year_without_pto_days_entered(client, database):
+    with database.transaction() as conn:
+        conn.execute('DELETE FROM pto_years WHERE year = 2026')
+    assert client.simulate_get('/api/reports/years/2026').json['pto'] is None
 
 
 @pytest.mark.parametrize('year', [2025, 2027])

@@ -59,6 +59,10 @@ and ends with passing tests and the flake8 check.
 - [x] **5.5** Review page
 - [x] **5.6** Month report
 - [x] **5.7** Year report
+- [x] **5.7b** PTO years as data, not code: table `pto_years` (year, allowance, extra days, carried over, note) in
+  migration 3, taking over the current values; carry-over is calculated unless a fixed value is entered (later years
+  build on it); a year without a row has no PTO account (no "valid from that year on"); API `GET /api/pto-years`,
+  `PUT /api/pto-years/{year}`; migration 2 stays as it is
 - [ ] **5.8** Page for managing services and activity types
 
 ## Later (to be discussed)

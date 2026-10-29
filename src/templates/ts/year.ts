@@ -47,12 +47,13 @@ function cardRow(label: string, value: string): HTMLElement {
 function ptoCard(report: YearReport): HTMLElement {
   const pto = report.pto;
   if (!pto) {
-    return el('div', { class: 'card' }, el('h3', {}, 'PTO'), el('p', { class: 'muted' }, 'No PTO account for this year.'));
+    return el('div', { class: 'card' }, el('h3', {}, 'PTO'), el('p', { class: 'muted' }, 'No PTO days entered for this year.'));
   }
   return el('div', { class: 'card' }, el('h3', {}, 'PTO'),
     el('table', { class: 'card-table' }, el('tbody', {},
-      cardRow('Carried over', formatDays(pto.carried_over)),
+      cardRow(pto.carried_over_fixed ? 'Carried over (fixed)' : 'Carried over', formatDays(pto.carried_over)),
       cardRow('+ Allowance', formatDays(pto.allowance)),
+      pto.extra_days ? cardRow('+ Extra days', formatDays(pto.extra_days)) : null,
       cardRow('− Used', formatDays(pto.used)),
       cardRow('− Planned', formatDays(pto.planned)),
       el('tr', { class: 'card-table-total' }, el('td', {}, el('strong', {}, 'Remaining')),

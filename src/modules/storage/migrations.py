@@ -91,4 +91,16 @@ MIGRATIONS = (
     INSERT INTO pto_allowances (year, days) VALUES (2024, '17.5'), (2025, '31'), (2026, '31'), (2027, '30')
         ON CONFLICT (year) DO UPDATE SET days = excluded.days;
     """,
+    # 3: PTO years as data: allowance, extra days and an optional fixed carry-over; no "valid from that year on"
+    """
+    CREATE TABLE pto_years (
+        year         INTEGER PRIMARY KEY,
+        allowance    TEXT NOT NULL,
+        extra_days   TEXT NOT NULL DEFAULT '0',
+        carried_over TEXT,  -- NULL: the remainder of the year before
+        note         TEXT NOT NULL DEFAULT ''
+    );
+    INSERT INTO pto_years (year, allowance) SELECT year, days FROM pto_allowances;
+    DROP TABLE pto_allowances;
+    """,
 )

@@ -10,6 +10,7 @@ from src.lib.daytypes import FULL_DAY, summarize_day
 from src.lib.durations import format_duration
 from src.modules.importer.sheet import SheetRow
 from src.modules.storage.days import DayRepository
+from src.modules.storage.pto_years import PtoYearRepository
 from src.modules.storage.settings import load_settings
 
 
@@ -29,7 +30,7 @@ class Reconciliation:
     app_overtime: int
     differences: tuple[DayDifference, ...]
     balance: int  # overtime balance on `until`, including earlier years
-    pto: PtoAccount | None  # None for years before the balance start
+    pto: PtoAccount | None  # None for years before the balance start or without PTO days entered
 
     def lines(self) -> list[str]:
         result = [
@@ -43,6 +44,7 @@ class Reconciliation:
         if self.pto:
             result.append(
                 f'  PTO:         {self.pto.carried_over} carried over + {self.pto.allowance} allowance'
+                f' + {self.pto.extra_days} extra'
                 f' − {self.pto.used} used − {self.pto.planned} planned = {self.pto.remaining} remaining'
             )
         return result
@@ -55,7 +57,7 @@ def reconcile(conn: sqlite3.Connection, rows: Sequence[SheetRow], today: dt.date
     until = min(today, dt.date(year, 12, 31))
     records = DayRepository(conn).records(settings.balance_start, dt.date(year, 12, 31))
     compared = [row for row in rows if settings.balance_start <= row.date <= until]
-    accounts = pto_accounts(records, settings.pto_allowances, settings.balance_start, until)
+    accounts = pto_accounts(records, PtoYearRepository(conn).terms(), settings.balance_start, until)
     return Reconciliation(
         year=year,
         until=until,

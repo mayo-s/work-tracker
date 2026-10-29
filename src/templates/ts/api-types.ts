@@ -248,6 +248,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/pto-years": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every year with PTO days entered, oldest first. */
+        get: operations["get__api_pto-years"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pto-years/{year}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The PTO days of one year. */
+        get: operations["get__api_pto-years_{year}"];
+        /** Enter the PTO days of a year (insert or replace). */
+        put: operations["put__api_pto-years_{year}"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/review": {
         parameters: {
             query?: never;
@@ -738,6 +773,64 @@ export interface components {
         };
         /** ChangeViewList */
         ChangeViewList: components["schemas"]["ChangeView"][];
+        /** PtoYearList */
+        PtoYearList: components["schemas"]["PtoYear"][];
+        /** PtoYear */
+        PtoYear: {
+            /**
+             * Allowance
+             * @description Regular PTO days of the year
+             * @example 30
+             */
+            allowance: number;
+            /**
+             * Extra Days
+             * @description Days granted on top
+             * @default 0
+             */
+            extra_days?: number;
+            /**
+             * Carried Over
+             * @description Fixed carry-over, e.g. as stated by HR; null: the remainder of the year before
+             * @default null
+             */
+            carried_over?: number | null;
+            /**
+             * Note
+             * @default
+             * @example one extra day granted
+             */
+            note?: string;
+            /** Year */
+            year: number;
+        };
+        /** PtoYearInput */
+        PtoYearInput: {
+            /**
+             * Allowance
+             * @description Regular PTO days of the year
+             * @example 30
+             */
+            allowance: number | string;
+            /**
+             * Extra Days
+             * @description Days granted on top
+             * @default 0
+             */
+            extra_days?: number | string;
+            /**
+             * Carried Over
+             * @description Fixed carry-over, e.g. as stated by HR; null: the remainder of the year before
+             * @default null
+             */
+            carried_over?: number | string | null;
+            /**
+             * Note
+             * @default
+             * @example one extra day granted
+             */
+            note?: string;
+        };
         /** WeekReport */
         WeekReport: {
             /**
@@ -797,7 +890,7 @@ export interface components {
             days_off: {
                 [key: string]: number;
             };
-            /** @description Null for years before the balance start or in the future */
+            /** @description Null for years before the balance start, in the future or without PTO days entered */
             pto: components["schemas"]["PtoView"] | null;
         };
         /** ReviewView */
@@ -1054,8 +1147,18 @@ export interface components {
         PtoView: {
             /** Carried Over */
             carried_over: number;
+            /**
+             * Carried Over Fixed
+             * @description Entered for the year instead of the remainder of the year before
+             */
+            carried_over_fixed: boolean;
             /** Allowance */
             allowance: number;
+            /**
+             * Extra Days
+             * @description Days granted on top of the allowance
+             */
+            extra_days: number;
             /** Used */
             used: number;
             /** Planned */
@@ -1865,6 +1968,110 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["YearReport"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "get__api_pto-years": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PtoYearList"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "get__api_pto-years_{year}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Year, e.g. 2026 */
+                year: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PtoYear"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "put__api_pto-years_{year}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Year, e.g. 2026 */
+                year: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PtoYearInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PtoYear"];
                 };
             };
             /** @description Unprocessable Content */

@@ -1,15 +1,13 @@
 import datetime as dt
 from decimal import Decimal
 
-import pytest
-
-from src.lib.balances import DayRecord, allowance_for, overtime_balance, pto_accounts, summarize_period
+from src.lib.balances import DayRecord, PtoTerms, overtime_balance, pto_accounts, summarize_period
 from src.lib.dates import each_day
 from src.lib.daytypes import DayType
 from src.lib.durations import parse_duration
 
 BALANCE_START = dt.date(2024, 6, 1)
-ALLOWANCES = {2024: Decimal(18), 2025: Decimal(30)}
+TERMS = {2024: PtoTerms(Decimal(18)), 2025: PtoTerms(Decimal(30)), 2026: PtoTerms(Decimal(30))}
 
 
 def worked(text):
@@ -59,16 +57,6 @@ def test_overtime_balance_until_before_start_is_opening():
     assert overtime_balance({}, BALANCE_START, BALANCE_START - dt.timedelta(days=1), opening=30) == 30
 
 
-@pytest.mark.parametrize('year, allowance', [(2024, 18), (2025, 30), (2031, 30)])
-def test_allowance_for(year, allowance):
-    assert allowance_for(ALLOWANCES, year) == Decimal(allowance)
-
-
-def test_allowance_for_rejects_year_before_configuration():
-    with pytest.raises(ValueError):
-        allowance_for(ALLOWANCES, 2023)
-
-
 def pto_2024():
     """PTO, unpaid leave and sick days of 2024 as in the spreadsheet (Heiligabend / Silvester are automatic)."""
     records = {
@@ -88,7 +76,7 @@ def pto_2024():
 
 
 def test_pto_2024_from_spreadsheet_carries_half_a_day_into_2025():
-    accounts = pto_accounts(pto_2024(), ALLOWANCES, BALANCE_START, dt.date(2025, 1, 31))
+    accounts = pto_accounts(pto_2024(), TERMS, BALANCE_START, dt.date(2025, 1, 31))
     assert [account.year for account in accounts] == [2024, 2025]
     assert accounts[0].used == Decimal('17.5')
     assert accounts[0].remaining == Decimal('0.5')
@@ -97,7 +85,7 @@ def test_pto_2024_from_spreadsheet_carries_half_a_day_into_2025():
 
 def test_pto_accounts_split_used_and_planned():
     records = full_pto(dt.date(2026, 7, 13), dt.date(2026, 7, 17)) | full_pto(dt.date(2026, 12, 28), dt.date(2026, 12, 30))
-    account = pto_accounts(records, ALLOWANCES, dt.date(2026, 1, 1), dt.date(2026, 10, 27))[0]
+    account = pto_accounts(records, TERMS, dt.date(2026, 1, 1), dt.date(2026, 10, 27))[0]
     assert account.used == Decimal(5)
     assert account.planned == Decimal(4)
     assert account.remaining == Decimal(21)
@@ -105,12 +93,36 @@ def test_pto_accounts_split_used_and_planned():
 
 def test_pto_accounts_carry_over_negative_remainder():
     # 25 weekdays of PTO plus the automatic half days on Heiligabend and Silvester: 18 - 26 = -8
-    accounts = pto_accounts(full_pto(dt.date(2024, 6, 3), dt.date(2024, 7, 5)), ALLOWANCES, BALANCE_START, dt.date(2025, 1, 1))
+    accounts = pto_accounts(full_pto(dt.date(2024, 6, 3), dt.date(2024, 7, 5)), TERMS, BALANCE_START, dt.date(2025, 1, 1))
     assert accounts[0].remaining == Decimal(-8)
     assert accounts[1].carried_over == Decimal(-8)
 
 
 def test_pto_accounts_ignore_days_before_start():
     records = full_pto(dt.date(2024, 5, 27), dt.date(2024, 5, 31))
-    account = pto_accounts(records, ALLOWANCES, BALANCE_START, dt.date(2024, 12, 31))[0]
+    account = pto_accounts(records, TERMS, BALANCE_START, dt.date(2024, 12, 31))[0]
     assert account.used == Decimal(1)
+
+
+def test_pto_accounts_add_extra_days():
+    terms = {2026: PtoTerms(Decimal(30), extra_days=Decimal(1))}
+    account = pto_accounts(full_pto(dt.date(2026, 7, 13), dt.date(2026, 7, 17)), terms, dt.date(2026, 1, 1),
+                           dt.date(2026, 10, 27))[0]
+    assert (account.extra_days, account.remaining) == (Decimal(1), Decimal(25))  # 30 + 1 − 5 − 2 × 0.5 planned
+
+
+def test_fixed_carry_over_replaces_the_remainder_and_later_years_build_on_it():
+    terms = TERMS | {2025: PtoTerms(Decimal(30), carried_over=Decimal(3))}
+    accounts = pto_accounts(pto_2024(), terms, BALANCE_START, dt.date(2026, 1, 31))
+    assert [account.carried_over for account in accounts] == [Decimal(0), Decimal(3), Decimal(32)]  # 3 + 30 − 1
+
+
+def test_year_without_terms_has_no_account():
+    accounts = pto_accounts({}, {2026: PtoTerms(Decimal(30))}, dt.date(2025, 1, 1), dt.date(2026, 1, 31))
+    assert accounts == []  # 2025 has no terms, so the remainder carried into 2026 is unknown
+
+
+def test_fixed_carry_over_starts_an_account_after_a_year_without_terms():
+    terms = {2026: PtoTerms(Decimal(30), carried_over=Decimal(3))}
+    accounts = pto_accounts({}, terms, dt.date(2025, 1, 1), dt.date(2026, 1, 31))
+    assert [(account.year, account.carried_over) for account in accounts] == [(2026, Decimal(3))]

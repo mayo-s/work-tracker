@@ -18,6 +18,7 @@ from src.models.entries import TicketEntry
 from src.modules.storage.catalog import ServiceRepository
 from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
+from src.modules.storage.pto_years import PtoYearRepository
 from src.modules.storage.settings import load_settings
 from src.modules.storage.tickets import TicketRepository
 
@@ -72,7 +73,9 @@ class MonthTotals(BaseModel):
 
 class PtoView(BaseModel):
     carried_over: float
+    carried_over_fixed: bool = Field(description='Entered for the year instead of the remainder of the year before')
     allowance: float
+    extra_days: float = Field(description='Days granted on top of the allowance')
     used: float
     planned: float
     remaining: float
@@ -85,7 +88,9 @@ class YearReport(BaseModel):
     days_worked: int = Field(description='Days with worked time, up to today')
     average_per_day_worked: str
     days_off: dict[DayType, int]
-    pto: PtoView | None = Field(description='Null for years before the balance start or in the future')
+    pto: PtoView | None = Field(
+        description='Null for years before the balance start, in the future or without PTO days entered',
+    )
 
 
 class Reports:
@@ -95,6 +100,7 @@ class Reports:
         self._conn = conn
         self._today = today
         self._settings = load_settings(conn)
+        self._pto_terms = PtoYearRepository(conn).terms()
 
     def week(self, week: str, monday: dt.date) -> WeekReport:
         sunday = monday + dt.timedelta(days=6)
@@ -174,10 +180,13 @@ class Reports:
         if not self._settings.balance_start.year <= year <= self._today.year:
             return None
         until = min(dt.date(year, 12, 31), self._today)
-        accounts = pto_accounts(records, self._settings.pto_allowances, self._settings.balance_start, until)
-        account = next(account for account in accounts if account.year == year)
+        accounts = pto_accounts(records, self._pto_terms, self._settings.balance_start, until)
+        account = next((account for account in accounts if account.year == year), None)
+        if account is None:
+            return None
         return PtoView(
-            carried_over=float(account.carried_over), allowance=float(account.allowance), used=float(account.used),
+            carried_over=float(account.carried_over), carried_over_fixed=self._pto_terms[year].carried_over is not None,
+            allowance=float(account.allowance), extra_days=float(account.extra_days), used=float(account.used),
             planned=float(account.planned), remaining=float(account.remaining),
         )
 

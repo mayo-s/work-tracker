@@ -10,6 +10,7 @@ from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeIt
 from src.modules.days.resources import DayCollection, DayItem
 from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem, EntrySplit
 from src.modules.pages.resources import STATIC_DIR, Page, RevalidateStaticFiles
+from src.modules.pto.resources import PtoYearCollection, PtoYearItem
 from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
 from src.modules.review.resources import Review, ReviewFlagItem
 from src.modules.storage.database import Database, database_path
@@ -48,6 +49,8 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_route('/api/reports/weeks/{week}', WeekReportResource(database, today))
     app.add_route('/api/reports/months/{month:dt("%Y-%m")}', MonthReportResource(database, today))
     app.add_route('/api/reports/years/{year:int(4)}', YearReportResource(database, today))
+    app.add_route('/api/pto-years', PtoYearCollection(database))
+    app.add_route('/api/pto-years/{year:int(4)}', PtoYearItem(database))
     app.add_route('/api/review', Review(database))
     app.add_route('/api/review/flags/{flag_id:int}', ReviewFlagItem(database))
     app.add_route('/api/services', ServiceCollection(database))
