@@ -20,6 +20,7 @@ export type ActivityTypeInput = Schemas['ActivityTypeInput'];
 export type ReviewView = Schemas['ReviewView'];
 export type ReviewEntry = Schemas['ReviewEntry'];
 export type ReviewReason = Schemas['ReviewReason'];
+export type PeriodTotals = Schemas['PeriodTotals'];
 export type WeekReport = Schemas['WeekReport'];
 export type MonthReport = Schemas['MonthReport'];
 export type YearReport = Schemas['YearReport'];

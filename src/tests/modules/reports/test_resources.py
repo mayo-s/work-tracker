@@ -150,3 +150,11 @@ def test_year_pto_outside_balance_years(client, year):
 def test_reports_are_documented(client):
     paths = client.simulate_get('/apidoc/openapi.json').json['paths']
     assert {'/api/reports/weeks/{week}', '/api/reports/months/{month}', '/api/reports/years/{year}'} <= set(paths)
+
+
+def test_month_descriptions_are_merged_ignoring_case(client):
+    ticket(client, '2026-10-07', 'ENGINE-565', '1:00', 'PR Review')
+    ticket(client, '2026-10-15', 'ENGINE-565', '1:00', 'PR review')
+    ticket(client, '2026-10-19', 'ENGINE-565', '2:00', 'WAF/ACL deployment')
+    [unassigned] = client.simulate_get('/api/reports/months/2026-10').json['coding']
+    assert unassigned['tickets'][0]['descriptions'] == ['PR Review', 'WAF/ACL deployment']

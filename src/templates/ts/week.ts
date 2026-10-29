@@ -1,6 +1,8 @@
 // Week view (/): the days of a week with times, balance and task entries (read-only).
 
-import { api, ApiError, type ActivityType, type DayView, type EntryView, type Service, type WeekReport } from './api.ts';
+import {
+  api, ApiError, type ActivityType, type DayView, type EntryView, type PeriodTotals, type Service, type WeekReport,
+} from './api.ts';
 import { addDays, formatDate, formatDay, isoDate, isoWeek, isValidWeek, mondayOf, shiftWeek, type IsoDate } from './dates.ts';
 import { dayEditor } from './day-editor.ts';
 import { el } from './dom.ts';
@@ -60,7 +62,8 @@ export function entryFromSearch(search: string, entries: Map<IsoDate, EntryView[
   return entry ? { kind: 'entry', date: entry.date, id: entry.id } : null;
 }
 
-function value(duration: string, withSign = false): HTMLElement {
+/** A duration as warning (negative), in mint (positive) or plain (zero). */
+export function value(duration: string, withSign = false): HTMLElement {
   return el('span', { class: `num ${valueClass(duration)}`.trim() }, withSign ? signed(duration) : duration);
 }
 
@@ -74,8 +77,8 @@ function renderHeader(doc: Document, week: string, today: IsoDate): void {
   doc.querySelector<HTMLAnchorElement>('#week-today')!.toggleAttribute('aria-disabled', week === isoWeek(today));
 }
 
-function summary(report: WeekReport): HTMLElement {
-  const totals = report.totals;
+/** Worked of target, overtime and balance of a week, month or year (shared by the week view and the reports). */
+export function periodSummary(totals: PeriodTotals, extra: HTMLElement | null = null): HTMLElement {
   return el('div', { class: 'card card-surface week-summary' },
     el('div', {}, el('span', { class: 'muted' }, 'Worked '), el('span', { class: 'num' }, totals.worked),
       el('span', { class: 'muted' }, ' of '), el('span', { class: 'num' }, totals.target)),
@@ -84,6 +87,7 @@ function summary(report: WeekReport): HTMLElement {
       value(totals.balance_out)),
     totals.until && totals.until < totals.end
       ? el('div', { class: 'muted' }, `counted up to ${formatDate(totals.until)}`) : null,
+    extra,
   );
 }
 
@@ -261,7 +265,7 @@ export async function renderWeekPage(doc: Document): Promise<void> {
       return;
     }
     const view: View = { data, today, editing, history, actions };
-    root.replaceChildren(summary(data.report), dayTable(view), weekendLinks(view) ?? '');
+    root.replaceChildren(periodSummary(data.report.totals), dayTable(view), weekendLinks(view) ?? '');
     root.querySelector<HTMLElement>('form input:not([type="radio"]):not(:disabled), form select')?.focus();
   };
   let firstLoad = true;

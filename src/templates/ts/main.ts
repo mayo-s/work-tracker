@@ -18,6 +18,7 @@ export function markCurrentPage(nav: ParentNode, path: string): void {
 const PAGES: Record<string, () => Promise<void>> = {
   components: async () => (await import('./gallery.ts')).renderGallery(document),
   week: async () => (await import('./week.ts')).renderWeekPage(document),
+  month: async () => (await import('./month.ts')).renderMonthPage(document),
   review: async () => (await import('./review.ts')).renderReviewPage(document),
 };
 

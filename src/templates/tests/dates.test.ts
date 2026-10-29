@@ -3,7 +3,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { addDays, formatDate, formatDay, isoDate, isoWeek, isValidWeek, mondayOf, shiftWeek } from '../ts/dates.ts';
+import {
+  addDays, formatDate, formatDay, formatMonth, isoDate, isoMonth, isoWeek, isValidMonth, isValidWeek, mondayOf, shiftMonth, shiftWeek,
+} from '../ts/dates.ts';
 
 test('iso date of a local date', () => {
   assert.equal(isoDate(new Date(2026, 9, 28)), '2026-10-28');
@@ -49,4 +51,15 @@ test('shifting weeks across years', () => {
 test('formatting dates', () => {
   assert.equal(formatDate('2026-10-28'), '28.10.2026');
   assert.equal(formatDay('2026-10-28', 'Wed'), 'Wed 28.10.');
+});
+
+test('months', () => {
+  assert.equal(isoMonth('2026-10-28'), '2026-10');
+  assert.ok(isValidMonth('2026-10'));
+  assert.ok(!isValidMonth('2026-13'));
+  assert.ok(!isValidMonth('2026-1'));
+  assert.equal(shiftMonth('2026-12', 1), '2027-01');
+  assert.equal(shiftMonth('2026-01', -1), '2025-12');
+  assert.equal(shiftMonth('2026-10', 0), '2026-10');
+  assert.equal(formatMonth('2026-10'), 'October 2026');
 });

@@ -57,7 +57,7 @@ and ends with passing tests and the flake8 check.
 - [x] **5.3** Week view: edit days (type, times, default break, note)
 - [x] **5.4** Week view: add, edit and delete entries
 - [x] **5.5** Review page
-- [ ] **5.6** Month report
+- [x] **5.6** Month report
 - [ ] **5.7** Year report
 - [ ] **5.8** Page for managing services and activity types
 
