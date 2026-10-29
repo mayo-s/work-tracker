@@ -1,10 +1,11 @@
 // Review page (/review): tickets without service, entries and days that need attention after the import.
 
 import {
-  api, ApiError, type DayView, type ReviewEntry, type ReviewReason, type ReviewView, type Service, type TicketView,
+  api, ApiError, type DayView, type ReviewEntry, type ReviewReason, type ReviewView, type ServiceChoice, type TicketView,
 } from './api.ts';
 import { formatDay, isoWeek, type IsoDate } from './dates.ts';
 import { el, onEscape } from './dom.ts';
+import { serviceOptions } from './lists.ts';
 import { entryContent } from './week.ts';
 
 export const REASON_LABELS: Record<ReviewReason, string> = {
@@ -87,7 +88,7 @@ export function splitSuggestion(group: GuessedTicket): string[] | null {
   return [...new Set([group.key, ...originals.flatMap(mentionedTickets)])];
 }
 
-type Page = { data: ReviewView; services: Service[]; reload: (message: string) => void; fail: (error: unknown) => void };
+type Page = { data: ReviewView; services: ServiceChoice[]; reload: (message: string) => void; fail: (error: unknown) => void };
 
 function button(label: string, onClick: () => void, className = 'button-small'): HTMLButtonElement {
   const element = el('button', { type: 'button', class: className }, label);
@@ -163,9 +164,9 @@ function ticketRow(ticket: TicketView, page: Page, selected: Set<string>, onSele
     actions);
 }
 
-function serviceSelect(services: Service[]): HTMLSelectElement {
+function serviceSelect(services: ServiceChoice[]): HTMLSelectElement {
   return el('select', { 'aria-label': 'Service to assign' },
-    ...services.map((service) => el('option', { value: service.id ?? '' }, `${service.short_name}${service.name ? ` · ${service.name}` : ''}`)));
+    ...serviceOptions(services, (service) => `${service.short_name}${service.name ? ` · ${service.name}` : ''}`));
 }
 
 function ticketsSection(page: Page): HTMLElement {
@@ -352,7 +353,7 @@ export async function renderReviewPage(doc: Document): Promise<void> {
   };
   const load = async (message = ''): Promise<void> => {
     try {
-      const [data, services] = await Promise.all([api.review(), api.services()]);
+      const [data, services] = await Promise.all([api.review(), api.serviceChoices()]);
       const page: Page = { data, services, reload: (text) => void load(text), fail: (error) => show(errorText(error), true) };
       const { guessed, others } = groupReview(data.entries);
       root.replaceChildren(guessedSection(guessed, page), entriesSection(others, page), daysSection(page), ticketsSection(page));

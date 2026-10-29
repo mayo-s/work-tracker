@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { applyTheme, formatWorkDays, ptoYearInput, scheduleInput } from '../ts/settings.ts';
+import { acceptQuestion, applyTheme, formatWorkDays, ptoYearInput, scheduleInput } from '../ts/settings.ts';
 
 test('PTO year input: empty extra days are 0, an empty carry-over is calculated', () => {
   assert.deepEqual(ptoYearInput({ year: '2027', allowance: '25', extra_days: '', carried_over: '', note: 'pro rata' }),
@@ -37,4 +37,11 @@ test('a chosen theme is set on the root element, system removes it', () => {
   assert.equal(root.dataset.theme, 'dark');
   applyTheme(root, 'system');
   assert.equal(root.dataset.theme, undefined);
+});
+
+test('accepting an invitation tells which team is left', () => {
+  const invitation = { id: 1, team_name: 'Billing', invited_at: '2026-11-02T09:00:00', invited_by: 'Klara Himmel' };
+  assert.equal(acceptQuestion(invitation, null), 'Join Billing?');
+  assert.equal(acceptQuestion(invitation, 'Platform'),
+    'Join Billing? You leave Platform; the services of Platform your tickets use become personal services.');
 });

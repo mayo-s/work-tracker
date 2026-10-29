@@ -17,6 +17,7 @@ export type RenameView = Schemas['RenameView'];
 export type AssignmentResult = Schemas['AssignmentResult'];
 export type Service = Schemas['Service'];
 export type ServiceInput = Schemas['ServiceInput'];
+export type ServiceChoice = Schemas['ServiceChoice'];
 export type ActivityType = Schemas['ActivityType'];
 export type ActivityTypeInput = Schemas['ActivityTypeInput'];
 export type ReviewView = Schemas['ReviewView'];
@@ -34,6 +35,13 @@ export type NewUserInput = Schemas['NewUserInput'];
 export type AdminUserView = Schemas['AdminUserView'];
 export type AdminUserInput = Schemas['AdminUserInput'];
 export type AdminSettings = Schemas['AdminSettings'];
+export type AdminTeamView = Schemas['AdminTeamView'];
+export type TeamPageView = Schemas['TeamPageView'];
+export type MemberView = Schemas['MemberView'];
+export type InvitationView = Schemas['InvitationView'];
+export type InvitationSent = Schemas['InvitationSent'];
+export type MyTeamView = Schemas['MyTeamView'];
+export type MyInvitationView = Schemas['MyInvitationView'];
 export type SettingsView = Schemas['SettingsView'];
 export type ThemeView = Schemas['ThemeView'];
 export type Theme = ThemeView['theme'];
@@ -140,6 +148,7 @@ export const api = {
     request<RenameView>('POST', `/api/tickets/${segment(key)}/rename`, { new_key: newKey }),
 
   services: () => request<Service[]>('GET', '/api/services'),
+  serviceChoices: () => request<ServiceChoice[]>('GET', '/api/service-choices'),
   addService: (input: ServiceInput) => request<Service>('POST', '/api/services', input),
   updateService: (id: number, input: ServiceInput) => request<Service>('PUT', `/api/services/${segment(id)}`, input),
   deleteService: (id: number) => request<void>('DELETE', `/api/services/${segment(id)}`),
@@ -172,6 +181,30 @@ export const api = {
     request<AdminUserView>('PUT', `/api/admin/users/${segment(id)}`, input),
   adminSettings: () => request<AdminSettings>('GET', '/api/admin/settings'),
   saveAdminSettings: (input: AdminSettings) => request<AdminSettings>('PUT', '/api/admin/settings', input),
+  adminTeams: () => request<AdminTeamView[]>('GET', '/api/admin/teams'),
+  addTeam: (name: string) => request<AdminTeamView>('POST', '/api/admin/teams', { name }),
+  renameTeam: (id: number, name: string) => request<AdminTeamView>('PUT', `/api/admin/teams/${segment(id)}`, { name }),
+  deleteTeam: (id: number) => request<void>('DELETE', `/api/admin/teams/${segment(id)}`),
+
+  team: (id: number) => request<TeamPageView>('GET', `/api/teams/${segment(id)}`),
+  invite: (teamId: number, email: string) =>
+    request<InvitationSent>('POST', `/api/teams/${segment(teamId)}/invitations`, { email }),
+  withdrawInvitation: (teamId: number, id: number) =>
+    request<void>('DELETE', `/api/teams/${segment(teamId)}/invitations/${segment(id)}`),
+  removeMember: (teamId: number, userId: string) =>
+    request<void>('DELETE', `/api/teams/${segment(teamId)}/members/${segment(userId)}`),
+  teamServices: (teamId: number) => request<Service[]>('GET', `/api/teams/${segment(teamId)}/services`),
+  addTeamService: (teamId: number, input: ServiceInput) =>
+    request<Service>('POST', `/api/teams/${segment(teamId)}/services`, input),
+  updateTeamService: (teamId: number, id: number, input: ServiceInput) =>
+    request<Service>('PUT', `/api/teams/${segment(teamId)}/services/${segment(id)}`, input),
+  deleteTeamService: (teamId: number, id: number) =>
+    request<void>('DELETE', `/api/teams/${segment(teamId)}/services/${segment(id)}`),
+
+  myTeam: () => request<MyTeamView>('GET', '/api/team'),
+  leaveTeam: () => request<void>('DELETE', '/api/team'),
+  acceptInvitation: (id: number) => request<MyTeamView>('POST', `/api/team/invitations/${segment(id)}/accept`),
+  declineInvitation: (id: number) => request<void>('DELETE', `/api/team/invitations/${segment(id)}`),
 
   setupStatus: () => request<SetupStatus>('GET', '/api/setup'),
   setup: (input: SetupInput) => request<SetupStatus>('POST', '/api/setup', input),

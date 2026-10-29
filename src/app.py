@@ -6,7 +6,9 @@ from collections.abc import Callable
 import falcon
 
 from src.defaultresources.default import Default
-from src.modules.admin.resources import AdminSettingsResource, AdminUserCollection, AdminUserItem
+from src.modules.admin.resources import (
+    AdminSettingsResource, AdminTeamCollection, AdminTeamItem, AdminUserCollection, AdminUserItem,
+)
 from src.modules.auth.resources import (
     AuthStatusResource, FirstUserResource, LoginResource, LogoutResource, MeResource, PasswordResource, RegisterResource,
 )
@@ -26,6 +28,10 @@ from src.modules.setup.resources import SetupResource
 from src.modules.settings.resources import SettingsResource, ThemeResource
 from src.modules.storage.database import Database, database_path
 from src.modules.storage.errors import ConflictError, NotFoundError
+from src.modules.teams.resources import (
+    MyInvitationAcceptance, MyInvitationItem, MyTeam, ServiceChoices, TeamInvitationItem, TeamInvitations, TeamItem,
+    TeamMemberItem, TeamServiceCollection, TeamServiceItem,
+)
 from src.modules.tickets.resources import TicketCollection, TicketItem, TicketRenaming, TicketServiceAssignment
 from src.utils.spec import spec
 
@@ -57,6 +63,7 @@ def create_app(
     app.add_route('/login', Page('login', 'Log in'))
     app.add_route('/register', RegisterPage(database, enabled))
     app.add_route('/admin', Page('admin', 'Admin'))
+    app.add_route('/team', Page('team', 'Team'))
     app.add_route('/components', Page('components', 'Component gallery'))
     app.add_static_route('/static', STATIC_DIR)
     app.add_route('/health', Default())
@@ -88,6 +95,17 @@ def create_app(
     app.add_route('/api/admin/users', AdminUserCollection(database))
     app.add_route('/api/admin/users/{user_id}', AdminUserItem(database))
     app.add_route('/api/admin/settings', AdminSettingsResource(database))
+    app.add_route('/api/admin/teams', AdminTeamCollection(database))
+    app.add_route('/api/admin/teams/{team_id:int}', AdminTeamItem(database, clock))
+    app.add_route('/api/teams/{team_id:int}', TeamItem(database, clock))
+    app.add_route('/api/teams/{team_id:int}/invitations', TeamInvitations(database, clock))
+    app.add_route('/api/teams/{team_id:int}/invitations/{invitation_id:int}', TeamInvitationItem(database, clock))
+    app.add_route('/api/teams/{team_id:int}/members/{user_id}', TeamMemberItem(database, clock))
+    app.add_route('/api/teams/{team_id:int}/services', TeamServiceCollection(database, clock))
+    app.add_route('/api/teams/{team_id:int}/services/{service_id:int}', TeamServiceItem(database, clock))
+    app.add_route('/api/team', MyTeam(database, clock))
+    app.add_route('/api/team/invitations/{invitation_id:int}', MyInvitationItem(database, clock))
+    app.add_route('/api/team/invitations/{invitation_id:int}/accept', MyInvitationAcceptance(database, clock))
     app.add_route('/api/work-schedules', ScheduleCollection(database))
     app.add_route('/api/work-schedules/{schedule_id:int}', ScheduleItem(database))
     app.add_route('/api/pto-years', PtoYearCollection(database))
@@ -95,6 +113,7 @@ def create_app(
     app.add_route('/api/review', Review(database))
     app.add_route('/api/review/flags/{flag_id:int}', ReviewFlagItem(database))
     app.add_route('/api/services', ServiceCollection(database))
+    app.add_route('/api/service-choices', ServiceChoices(database))
     app.add_route('/api/services/{item_id:int}', ServiceItem(database))
     app.add_route('/api/activity-types', ActivityTypeCollection(database))
     app.add_route('/api/activity-types/{item_id:int}', ActivityTypeItem(database))

@@ -26,8 +26,11 @@ export type Field = {
   placeholder?: string;
 };
 
-/** A record as text values by field name; `label` names it in messages, `usage` fills the optional usage column. */
-export type Item = { id: number; label: string; values: Record<string, string>; usage?: string };
+/** A record as text values by field name; `label` names it in messages, `usage` fills the optional usage column, `link`
+ * leads to a page of the record (e.g. a team's). */
+export type Item = {
+  id: number; label: string; values: Record<string, string>; usage?: string; link?: { href: string; label: string };
+};
 
 /** One editable table: its records and how to save and delete them. */
 export type EditableTable = {
@@ -165,6 +168,7 @@ function itemRow(table: EditableTable, item: Item, page: Page): HTMLTableRowElem
     ...table.fields.map((field, index) => cell(field, item.values[field.name], index === 0)),
     table.usageLabel ? el('td', { class: 'num' }, item.usage ?? '') : '',
     el('td', { class: 'row-actions' },
+      item.link ? el('a', { href: item.link.href, class: 'button-small' }, item.link.label) : '',
       edit,
       button('Delete', () => {
         if (window.confirm(table.deleteQuestion(item))) {

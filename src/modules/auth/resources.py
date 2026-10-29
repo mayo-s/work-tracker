@@ -9,10 +9,12 @@ from spectree import Response
 
 from src.models.users import User
 from src.modules.auth.schemas import AuthStatus, LoginInput, NewUserInput, PasswordInput, ProfileInput, UserView
+from src.modules.teams.schemas import TeamRef
 from src.modules.auth.sessions import COOKIE, clear_session_cookie, set_session_cookie
 from src.modules.storage.database import Database
 from src.modules.storage.errors import ConflictError
 from src.modules.storage.settings import registration_open
+from src.modules.storage.teams import InvitationRepository, TeamRepository
 from src.modules.storage.users import LoginAttempts, SessionRepository, UserRepository
 from src.utils.spec import spec
 
@@ -48,13 +50,19 @@ def _user_id(req: falcon.Request) -> str:
 class AuthStatusResource(_AuthResource):
     @spec.validate(resp=Response(HTTP_200=AuthStatus), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
-        """Whether the login is on, whether a user exists, who is logged in, and whether new users can register."""
+        """Whether the login is on, whether a user exists, who is logged in (with their team and number of open
+        invitations), and whether new users can register."""
         user_id = req.context.get('user_id') if self._enabled else None  # with the login off, nobody is logged in
         with self._database.transaction() as conn:
             users = UserRepository(conn)
-            user = UserView.of(users.get(user_id)) if user_id is not None else None
-            resp.media = AuthStatus(enabled=self._enabled, has_users=users.count() > 0, user=user,
-                                    registration=self._enabled and registration_open(conn))
+            status = AuthStatus(enabled=self._enabled, has_users=users.count() > 0, user=None,
+                                registration=self._enabled and registration_open(conn))
+            if user_id is not None:
+                membership = TeamRepository(conn).membership(user_id)
+                status.user = UserView.of(users.get(user_id))
+                status.team = TeamRef.of(membership) if membership else None
+                status.invitations = len(InvitationRepository(conn).of_user(user_id))
+            resp.media = status
 
 
 class LoginResource(_AuthResource):

@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
-  addDays, formatDate, formatDay, formatMonth, isoDate, isoMonth, isoWeek, isValidMonth, isValidWeek, mondayOf, shiftMonth, shiftWeek,
+  addDays, formatDate, formatDay, formatMonth, formatTimestamp, isoDate, isoMonth, isoWeek, isValidMonth, isValidWeek,
+  mondayOf, shiftMonth, shiftWeek,
 } from '../ts/dates.ts';
 
 test('iso date of a local date', () => {
@@ -62,4 +63,8 @@ test('months', () => {
   assert.equal(shiftMonth('2026-01', -1), '2025-12');
   assert.equal(shiftMonth('2026-10', 0), '2026-10');
   assert.equal(formatMonth('2026-10'), 'October 2026');
+});
+
+test('timestamps show date and minutes', () => {
+  assert.equal(formatTimestamp('2026-10-29T08:05:12'), '29.10.2026 08:05');
 });

@@ -27,6 +27,7 @@ const PAGES: Record<string, () => Promise<void>> = {
   login: async () => (await import('./account.ts')).renderLoginPage(document),
   register: async () => (await import('./account.ts')).renderRegisterPage(document),
   admin: async () => (await import('./admin.ts')).renderAdminPage(document),
+  team: async () => (await import('./team.ts')).renderTeamPage(document),
 };
 
 /** Shows the number of open review items next to the Review link, as a warning badge. */
@@ -43,17 +44,25 @@ async function showReviewCount(nav: Element): Promise<void> {
   }
 }
 
-/** The logged-in user's first name and "Log out" in the header, and for admins the Admin link (nothing when the login
- * is off). */
+/** The logged-in user's first name and "Log out" in the header, the Team link for team admins, the Admin link for
+ * admins, and a badge on Settings for open team invitations (nothing when the login is off). */
 async function showUser(header: Element, nav: Element): Promise<void> {
   const { api } = await import('./api.ts');
   const status = await api.authStatus();
   if (!status.enabled || !status.user) {
     return;
   }
+  if (status.user.role === 'team_admin') {
+    nav.append(Object.assign(document.createElement('a'), { href: '/team', textContent: 'Team' }));
+  }
   if (status.user.role === 'admin') {
     nav.append(Object.assign(document.createElement('a'), { href: '/admin', textContent: 'Admin' }));
-    markCurrentPage(nav, window.location.pathname);
+  }
+  markCurrentPage(nav, window.location.pathname);
+  if (status.invitations) {  // open team invitations wait in the settings
+    nav.querySelector('a[href="/settings"]')?.append(' ', Object.assign(document.createElement('span'), {
+      className: 'badge warning', textContent: String(status.invitations), title: 'Open team invitations',
+    }));
   }
   const logout = Object.assign(document.createElement('button'), { type: 'button', className: 'button-small',
     textContent: 'Log out' });

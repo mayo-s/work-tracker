@@ -1,11 +1,13 @@
-// Settings page (/settings): overtime balance, PTO days per year, services and activity types.
+// Settings page (/settings): overtime balance, schedules, PTO days per year, services, activity types, team, theme and
+// account.
 
 import {
-  api, ApiError, type PtoYear, type PtoYearInput, type ScheduleInput, type ScheduleView, type SettingsView, type Theme,
+  api, ApiError, type MyInvitationView, type MyTeamView, type PtoYear, type PtoYearInput, type ScheduleInput,
+  type ScheduleView, type SettingsView, type Theme,
 } from './api.ts';
-import { formatDate } from './dates.ts';
+import { formatDate, formatTimestamp } from './dates.ts';
 import { el } from './dom.ts';
-import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
+import { button, renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 import { accountSection } from './account.ts';
 import { field, submit } from './forms.ts';
 import { STATE_NAMES, WEEKDAY_NAMES } from './labels.ts';
@@ -14,7 +16,7 @@ import { activityTypesTable, servicesTable } from './lists.ts';
 const BALANCE_FIELDS = ['balance_start', 'opening_balance'] as const;
 const SECTIONS = [
   ['balance', 'Overtime balance'], ['schedules', 'Work schedules'], ['pto-years', 'PTO years'], ['services', 'Services'],
-  ['activity-types', 'Activity types'], ['appearance', 'Appearance'], ['account', 'Account'],
+  ['activity-types', 'Activity types'], ['team', 'Team'], ['appearance', 'Appearance'], ['account', 'Account'],
 ];
 const THEMES: [Theme, string][] = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
 
@@ -183,6 +185,48 @@ function appearanceSection(theme: Theme, page: Page): HTMLElement {
     el('fieldset', { class: 'theme-preview' }, el('legend', {}, 'Theme'), ...choices));
 }
 
+/** What accepting an invitation means: joining, and leaving the current team if there is one. */
+export function acceptQuestion(invitation: MyInvitationView, current: string | null): string {
+  return current
+    ? `Join ${invitation.team_name}? You leave ${current}; the services of ${current} your tickets use become personal `
+      + 'services.'
+    : `Join ${invitation.team_name}?`;
+}
+
+function invitationItem(invitation: MyInvitationView, current: string | null, page: Page): HTMLElement {
+  const team = invitation.team_name;
+  return el('li', {},
+    el('strong', {}, team),
+    el('span', { class: 'muted' }, ` · invited by ${invitation.invited_by} on ${formatTimestamp(invitation.invited_at)} `),
+    button('Accept', () => {
+      if (window.confirm(acceptQuestion(invitation, current))) {
+        api.acceptInvitation(invitation.id).then(() => page.reload(`You joined ${team}`), page.fail);
+      }
+    }, 'button-small primary'),
+    button('Decline', () => {
+      api.declineInvitation(invitation.id).then(() => page.reload(`Declined the invitation to ${team}`), page.fail);
+    }));
+}
+
+function teamSection(mine: MyTeamView, page: Page): HTMLElement {
+  const current = mine.team;
+  const invitations = mine.invitations.map((invitation) => invitationItem(invitation, current?.name ?? null, page));
+  const leave = current && button('Leave the team', () => {
+    if (window.confirm(`Leave ${current.name}? The team services your tickets use become personal services.`)) {
+      api.leaveTeam().then(() => page.reload(`You left ${current.name}`), page.fail);
+    }
+  });
+  return el('section', { class: 'review-section', id: 'team' },
+    el('h2', {}, 'Team ', invitations.length ? el('span', { class: 'badge warning' }, String(invitations.length)) : ''),
+    el('p', { class: 'muted' }, current
+      ? `You are in ${current.name} since ${formatDate(current.joined_on)}; you choose its services in your entries.`
+      : 'You are not in a team. A team admin invites you by your e-mail address; you then choose the team\'s services '
+        + 'in your entries.'),
+    leave,
+    invitations.length ? el('h3', { class: 'account-heading' }, 'Invitations') : null,
+    invitations.length ? el('ul', { class: 'invitation-list' }, ...invitations) : null);
+}
+
 function contents(): HTMLElement {
   return el('nav', { class: 'settings-contents', 'aria-label': 'Sections' },
     ...SECTIONS.map(([id, title]) => el('a', { href: `#${id}` }, title)));
@@ -190,9 +234,9 @@ function contents(): HTMLElement {
 
 export async function renderSettingsPage(doc: Document): Promise<void> {
   await renderEditablePage(doc, 'settings', 'settings-status', async (page) => {
-    const [settings, schedules, years, services, activityTypes, tickets, theme, status] = await Promise.all([
+    const [settings, schedules, years, services, activityTypes, tickets, theme, status, mine] = await Promise.all([
       api.settings(), api.schedules(), api.ptoYears(), api.services(), api.activityTypes(), api.tickets(), api.theme(),
-      api.authStatus(),
+      api.authStatus(), api.myTeam(),
     ]);
     return [
       contents(),
@@ -201,6 +245,7 @@ export async function renderSettingsPage(doc: Document): Promise<void> {
       tableSection(ptoYearsTable(years), page),
       tableSection(servicesTable(services, tickets), page),
       tableSection(activityTypesTable(activityTypes), page),
+      teamSection(mine, page),
       appearanceSection(theme.theme, page),
       accountSection(status.user ?? null, status.enabled, page.reload),
     ];

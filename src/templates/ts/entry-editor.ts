@@ -1,8 +1,9 @@
 // Form to add or change a task entry: a ticket entry or an activity entry.
 
-import { api, ApiError, type ActivityType, type EntryInput, type EntryView, type Service } from './api.ts';
+import { api, ApiError, type ActivityType, type EntryInput, type EntryView, type ServiceChoice } from './api.ts';
 import { el } from './dom.ts';
 import { field, formFooter, submit } from './forms.ts';
+import { serviceOptions } from './lists.ts';
 
 export type EntryKind = 'ticket' | 'activity';
 export type EntryFormValues = {
@@ -16,7 +17,7 @@ const FIELDS = ['duration', 'ticket_key', 'service_id', 'description', 'coding',
 export type EntryEditorOptions = {
   date: string;
   entry: EntryView | null;  // null: a new entry
-  services: Service[];
+  services: ServiceChoice[];
   activityTypes: ActivityType[];
   onDone: () => void;
   onCancel: () => void;
@@ -54,9 +55,11 @@ export function entryInput(values: EntryFormValues, date: string, serviceChanged
   return input;
 }
 
-function select(name: string, value: string, empty: string, options: [number, string][]): HTMLSelectElement {
+function select(name: string, value: string, empty: string, options: [number, string][] | HTMLElement[]): HTMLSelectElement {
+  const children = options.map((option) => (option instanceof HTMLElement ? option
+    : el('option', { value: option[0] }, option[1])));
   const element = el('select', { id: `${PREFIX}-${name}`, name, 'aria-describedby': `${PREFIX}-${name}-error` },
-    el('option', { value: '' }, empty), ...options.map(([id, label]) => el('option', { value: id }, label)));
+    el('option', { value: '' }, empty), ...children);
   element.value = value;
   return element;
 }
@@ -110,7 +113,7 @@ function onlyFor(kind: EntryKind, element: HTMLElement): HTMLElement {
 }
 
 function fields(initial: EntryFormValues, options: EntryEditorOptions): HTMLElement {
-  const services = options.services.map((service): [number, string] => [service.id ?? 0, service.short_name]);
+  const services = serviceOptions(options.services, (service) => service.short_name);
   const activities = options.activityTypes.map((activity): [number, string] => [activity.id ?? 0, activity.name]);
   return el('div', {},
     kindToggle(initial.kind, options.entry !== null),

@@ -465,4 +465,47 @@ MIGRATIONS = (
     ALTER TABLE login_attempts ADD COLUMN kind TEXT NOT NULL DEFAULT 'failed_login'
         CHECK (kind IN ('failed_login', 'registration'));
     """,
+    # 11: teams (TASKS.md L.8a.3): memberships kept as history, invitations by e-mail address, and services of a team
+    """
+    CREATE TABLE teams (
+        id         INTEGER PRIMARY KEY,
+        name       TEXT    NOT NULL COLLATE NOCASE,
+        deleted_at TEXT  -- deleted teams stay for the membership history
+    );
+    CREATE UNIQUE INDEX team_names ON teams (name) WHERE deleted_at IS NULL;
+
+    CREATE TABLE team_memberships (
+        id        INTEGER PRIMARY KEY,
+        team_id   INTEGER NOT NULL REFERENCES teams (id),
+        user_id   TEXT    NOT NULL REFERENCES users (id),
+        joined_on TEXT    NOT NULL,
+        left_on   TEXT,  -- the first day no longer in the team; NULL: still a member
+        CHECK (left_on IS NULL OR left_on >= joined_on)
+    );
+    CREATE UNIQUE INDEX one_team_per_user ON team_memberships (user_id) WHERE left_on IS NULL;
+    CREATE INDEX team_memberships_by_team ON team_memberships (team_id);
+
+    CREATE TABLE team_invitations (
+        id         INTEGER PRIMARY KEY,
+        team_id    INTEGER NOT NULL REFERENCES teams (id) ON DELETE CASCADE,
+        email      TEXT    NOT NULL COLLATE NOCASE,  -- no user id: an invitation does not tell whether the user exists
+        invited_by TEXT    NOT NULL REFERENCES users (id),
+        invited_at TEXT    NOT NULL,
+        UNIQUE (team_id, email)
+    );
+
+    CREATE TABLE new_services (
+        id         INTEGER PRIMARY KEY,
+        user_id    TEXT,     -- a personal service
+        team_id    INTEGER REFERENCES teams (id),  -- or a service of a team
+        short_name TEXT    NOT NULL COLLATE NOCASE,
+        name       TEXT    NOT NULL DEFAULT '',
+        CHECK ((user_id IS NULL) != (team_id IS NULL)),
+        UNIQUE (user_id, short_name),
+        UNIQUE (team_id, short_name)
+    );
+    INSERT INTO new_services (id, user_id, short_name, name) SELECT id, user_id, short_name, name FROM services;
+    DROP TABLE services;
+    ALTER TABLE new_services RENAME TO services;
+    """,
 )

@@ -349,7 +349,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Whether the login is on, whether a user exists, who is logged in, and whether new users can register. */
+        /** Whether the login is on, whether a user exists, who is logged in (with their team and number of open invitations), and whether new users can register. */
         get: operations["get__api_auth_status"];
         put?: never;
         post?: never;
@@ -475,7 +475,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** All users in the order they registered, with role, status, registration and last login. */
+        /** All users in the order they registered, with role, status, registration, last login and team. */
         get: operations["get__api_admin_users"];
         put?: never;
         post?: never;
@@ -495,7 +495,7 @@ export interface paths {
         get?: never;
         /**
          * Change a user's role, or deactivate (their sessions end, their data is kept) or reactivate them.
-         * @description Nobody demotes or deactivates themselves (409), so an active admin always remains.
+         * @description Nobody demotes or deactivates themselves (409), so an active admin always remains. Only a member of a team can be a team admin (409); they manage that team.
          */
         put: operations["put__api_admin_users_{user_id}"];
         post?: never;
@@ -517,6 +517,198 @@ export interface paths {
         /** Switch registration on or off; the login page links to /register only while it is on. */
         put: operations["put__api_admin_settings"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** All teams with their number of members and their team admins. */
+        get: operations["get__api_admin_teams"];
+        put?: never;
+        /** Create a team; names are unique, ignoring case (409). */
+        post: operations["post__api_admin_teams"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/teams/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Rename a team. */
+        put: operations["put__api_admin_teams_{team_id}"];
+        post?: never;
+        /** Delete a team without members (409 otherwise); its invitations and services go with it, the membership history keeps it. */
+        delete: operations["delete__api_admin_teams_{team_id}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The team with its members (accounts only) and open invitations. */
+        get: operations["get__api_teams_{team_id}"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invite the user with this exact e-mail address (ignoring case); the answer does not tell whether they exist. */
+        post: operations["post__api_teams_{team_id}_invitations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}/invitations/{invitation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Withdraw an open invitation. */
+        delete: operations["delete__api_teams_{team_id}_invitations_{invitation_id}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}/members/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a member: the team services their tickets use become personal services; a team admin becomes a user. */
+        delete: operations["delete__api_teams_{team_id}_members_{user_id}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The team's services, which its members choose in entries. */
+        get: operations["get__api_teams_{team_id}_services"];
+        put?: never;
+        /** Add a team service. */
+        post: operations["post__api_teams_{team_id}_services"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/teams/{team_id}/services/{service_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change a team service. */
+        put: operations["put__api_teams_{team_id}_services_{service_id}"];
+        post?: never;
+        /** Delete a team service; the members' tickets with it become "without service". */
+        delete: operations["delete__api_teams_{team_id}_services_{service_id}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The user's team (null without one) and their open invitations. */
+        get: operations["get__api_team"];
+        put?: never;
+        post?: never;
+        /** Leave the team: the team services the user's tickets use become personal services. */
+        delete: operations["delete__api_team"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/team/invitations/{invitation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Decline an invitation. */
+        delete: operations["delete__api_team_invitations_{invitation_id}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/team/invitations/{invitation_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept an invitation: join the team (leaving the current one); the other invitations are declined. */
+        post: operations["post__api_team_invitations_{invitation_id}_accept"];
         delete?: never;
         options?: never;
         head?: never;
@@ -667,6 +859,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/service-choices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The services to choose in entries: the team's (`team`: its name) first, then the personal ones. */
+        get: operations["get__api_service-choices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/activity-types": {
         parameters: {
             query?: never;
@@ -787,10 +996,10 @@ export interface components {
         AdminUserInput: {
             /**
              * Role
-             * @description Team admins follow with teams (TASKS.md L.8a.3)
+             * @description A team admin manages the team they are in
              * @enum {string}
              */
-            role: "admin" | "user";
+            role: "admin" | "team_admin" | "user";
             /**
              * Active
              * @description False deactivates the user: they cannot log in, their sessions end
@@ -829,6 +1038,38 @@ export interface components {
             registered_at: string | null;
             /** Last Login At */
             last_login_at: string | null;
+            /**
+             * Team
+             * @description Name of the team the user is in
+             */
+            team: string | null;
+        };
+        /** AdminTeamViewList */
+        AdminTeamViewList: components["schemas"]["AdminTeamView"][];
+        /** TeamInput */
+        TeamInput: {
+            /**
+             * Name
+             * @example Platform
+             */
+            name: string;
+        };
+        /** AdminTeamView */
+        AdminTeamView: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Members
+             * @description Number of current members
+             */
+            members: number;
+            /**
+             * Team Admins
+             * @description Usernames of the team admins
+             */
+            team_admins: string[];
         };
         /** AdminSettings */
         AdminSettings: {
@@ -857,6 +1098,17 @@ export interface components {
              * @description True while new users can register on /register
              */
             registration: boolean;
+            /**
+             * @description The team of the logged-in user
+             * @default null
+             */
+            team?: components["schemas"]["TeamRef"] | null;
+            /**
+             * Invitations
+             * @description Open team invitations of the logged-in user
+             * @default 0
+             */
+            invitations?: number;
         };
         /** LoginInput */
         LoginInput: {
@@ -1666,6 +1918,47 @@ export interface components {
              */
             theme: "system" | "light" | "dark";
         };
+        /**
+         * TeamPageView
+         * @description A team as its admins see it: members and open invitations.
+         */
+        TeamPageView: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Members */
+            members: components["schemas"]["MemberView"][];
+            /** Invitations */
+            invitations: components["schemas"]["InvitationView"][];
+        };
+        /** InvitationInput */
+        InvitationInput: {
+            /**
+             * Email
+             * @description The exact e-mail address (ignoring case)
+             */
+            email: string;
+        };
+        /** InvitationSent */
+        InvitationSent: {
+            /**
+             * Message
+             * @description The same whether a user with this e-mail address exists or not
+             */
+            message: string;
+        };
+        /**
+         * MyTeamView
+         * @description The user's team (null without one) and their open invitations.
+         */
+        MyTeamView: {
+            team: components["schemas"]["TeamRef"] | null;
+            /** Invitations */
+            invitations: components["schemas"]["MyInvitationView"][];
+        };
+        /** ServiceChoiceList */
+        ServiceChoiceList: components["schemas"]["ServiceChoice"][];
         /** TicketQuery */
         TicketQuery: {
             /**
@@ -1770,6 +2063,18 @@ export interface components {
             ctx?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /** TeamRef */
+        TeamRef: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Joined On
+             * Format: date
+             */
+            joined_on: string;
         };
         /** BalancePoint */
         BalancePoint: {
@@ -2125,6 +2430,85 @@ export interface components {
              * @default true
              */
             company_half_days?: boolean;
+        };
+        /** InvitationView */
+        InvitationView: {
+            /** Id */
+            id: number;
+            /** Email */
+            email: string;
+            /**
+             * Invited At
+             * Format: date-time
+             */
+            invited_at: string;
+        };
+        /** MemberView */
+        MemberView: {
+            /** User Id */
+            user_id: string;
+            /** Username */
+            username: string;
+            /** Email */
+            email: string;
+            /** First Name */
+            first_name: string;
+            /** Last Name */
+            last_name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "team_admin" | "user";
+            /**
+             * Joined On
+             * Format: date
+             */
+            joined_on: string;
+        };
+        /** MyInvitationView */
+        MyInvitationView: {
+            /** Id */
+            id: number;
+            /** Team Name */
+            team_name: string;
+            /**
+             * Invited At
+             * Format: date-time
+             */
+            invited_at: string;
+            /**
+             * Invited By
+             * @description Name of the inviting admin
+             */
+            invited_by: string;
+        };
+        /**
+         * ServiceChoice
+         * @description A service to choose in an entry: a personal one, or one of the user's team (`team`: its name).
+         */
+        ServiceChoice: {
+            /**
+             * Id
+             * @default null
+             */
+            id?: number | null;
+            /**
+             * Short Name
+             * @description e.g. MSB
+             */
+            short_name: string;
+            /**
+             * Name
+             * @description e.g. microsoft-bookings-service
+             * @default
+             */
+            name?: string;
+            /**
+             * Team
+             * @default null
+             */
+            team?: string | null;
         };
     };
     responses: never;
@@ -3672,6 +4056,725 @@ export interface operations {
             };
         };
     };
+    get__api_admin_teams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeamViewList"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    post__api_admin_teams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeamView"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "put__api_admin_teams_{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeamView"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "delete__api_admin_teams_{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "get__api_teams_{team_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamPageView"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_teams_{team_id}_invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationInput"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationSent"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "delete__api_teams_{team_id}_invitations_{invitation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: number;
+                /** @description Id of the invitation */
+                invitation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "delete__api_teams_{team_id}_members_{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: number;
+                /** @description Id (UUID) of the member */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "get__api_teams_{team_id}_services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceList"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_teams_{team_id}_services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServiceInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Service"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "put__api_teams_{team_id}_services_{service_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: number;
+                /** @description Id of the service */
+                service_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServiceInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Service"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "delete__api_teams_{team_id}_services_{service_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: number;
+                /** @description Id of the service */
+                service_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_team: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyTeamView"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    delete__api_team: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "delete__api_team_invitations_{invitation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the invitation */
+                invitation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_team_invitations_{invitation_id}_accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the invitation */
+                invitation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyTeamView"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
     "get__api_work-schedules": {
         parameters: {
             query?: never;
@@ -4271,6 +5374,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "get__api_service-choices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceChoiceList"];
+                };
             };
             /** @description Unprocessable Content */
             422: {

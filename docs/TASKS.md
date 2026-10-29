@@ -123,10 +123,10 @@ and ends with passing tests and the flake8 check.
   API docs stay open. The first user is created in the setup (new databases) or once on the next visit (existing ones);
   the settings page changes the profile and password; a command resets a forgotten password. `WORK_TRACKER_AUTH=off`
   switches the login off for local development
-- [ ] **L.8a** Multi-user app, run locally (a later AWS Lambda deployment stays possible; it is a task of its own):
+- [x] **L.8a** Multi-user app, run locally (a later AWS Lambda deployment stays possible; it is a task of its own):
   several users with their own time tracking in one database, data per user. Ownership: days, entries, history, review
   flags, settings (balance start, opening balance, theme), work schedules, PTO years, tickets with their service and
-  activity types belong to a user; services belong to a team (shared) or to a user without a team (starting empty);
+  activity types belong to a user; services belong to a user (personal) or to a team (shared with its members);
   users, teams and memberships are app-wide. Nobody sees someone else's days and entries, the admin neither (technical
   support works on the database directly; team admins get a read-only view in L.10). Roles: admin, team admin, user. In
   three steps:
@@ -146,15 +146,31 @@ and ends with passing tests and the flake8 check.
       cannot log in, their sessions end at once, their data is kept. Nobody deactivates or demotes themselves, so an
       active admin always remains. Users are not deleted
     - Forgotten passwords stay with the command on the computer running the app
-  - [ ] **L.8a.3** Teams: the admin creates teams and names team admins (the team admin role is offered from here on); a
-    team is chosen at registration or later in the settings, and stays pending until an admin or that team's admin
-    approves it; then the team's services are shared. Leaving a team removes them; tickets with such a service become
-    "without service" (review)
+  - [x] **L.8a.3** Teams:
+    - A user is a member of at most one team. Memberships are kept as history (team, joined on, left on), so it stays
+      known which team a user was in on each day (e.g. for L.10)
+    - Admin page: a Teams section to create, rename and delete teams (only without members; open invitations are
+      dropped), and to name team admins. A team admin is a role on the user and admin of their own team only; leaving
+      or being removed from it makes them a user again
+    - Invitations: the admin, and a team admin for their team, invite a user by their exact e-mail address (ignoring
+      case); the answer is the same whether such a user exists or not. Only the admin sees the list of users and teams;
+      users never see which teams exist. The inviter can withdraw an open invitation
+    - The invited user accepts or declines in the settings; the Settings link shows a badge while an invitation is
+      open. Several invitations may be open; accepting one declines the others. A user in a team can be invited to
+      another; accepting means leaving the old team
+    - Team page `/team` for team admins and the admin (the admin opens it for any team from the admin page): members
+      (names and e-mail addresses, none of their time data) with "Remove", open invitations, and the team's services
+    - Services: team services are added, changed and deleted only by the admin and the team's admins; members choose
+      them in entries, grouped as "Team <name>" and "Personal" (the same short name may be in both). Personal services
+      stay with the user, and they can still add their own
+    - Leaving: a member leaves in the settings or is removed by the admin or a team admin. The team services their
+      tickets use are copied into their personal services (a personal service with the same short name is used
+      instead of a copy), so their tickets keep their service
 - [ ] **L.9** Narrow screens and zoom (WCAG 1.4.10 Reflow, 320 CSS px / 200 % zoom): wide tables scroll in their own
   container, the navigation wraps, form grids fall back to one column
 - [ ] **L.10** Team view for team admins (after L.8a.3, to be discussed): on the dashboard, a team admin switches to a
-  member of their team and sees that member's summary and reports, read-only. To decide: which reports (dashboard, week,
-  month with the coding work and its descriptions, year), whether members see who looked at their data, and whether
-  admins get the same view
+  member of their team and sees that member's summary and reports, read-only, only for the days the member was in their
+  team (membership history from L.8a.3). To decide: which reports (dashboard, week, month with the coding work and its
+  descriptions, year), whether members see who looked at their data, and whether admins get the same view
 - [ ] **L.11** AWS Lambda deployment (to be discussed); with it, the admin sets a one-time password for a user who
   forgot theirs (changed at the next login), since nobody has a shell on the computer running the app
