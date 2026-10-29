@@ -9,6 +9,7 @@ from typing import Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from src.lib.durations import format_duration, parse_duration
+from src.models.catalog import TicketKey
 from src.models.entries import ActivityEntry, Entry, TicketEntry
 from src.models.history import HistoryAction
 from src.models.review import FlagReason
@@ -65,6 +66,13 @@ class EntryInput(BaseModel):
         if self.kind == 'ticket':
             return TicketEntry(**common, ticket_key=self.ticket_key, description=self.description, coding=self.coding)
         return ActivityEntry(**common, activity_type_id=self.activity_type_id, note=self.note)
+
+
+class EntrySplitInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    ticket_keys: list[TicketKey] = Field(min_length=2, examples=[['TNG-4347', 'KP-1482']],
+                                         description='The entry keeps the first ticket; the hours are split evenly')
 
 
 class EntryFlagView(BaseModel):

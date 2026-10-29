@@ -615,6 +615,66 @@
         }
       }
     },
+    "/api/entries/{entry_id}/split": {
+      "post": {
+        "summary": "Divide a ticket entry among several tickets (e.g. an alias like #4347 aka #1482), hours split evenly.",
+        "operationId": "post__api_entries_{entry_id}_split",
+        "description": "",
+        "tags": [
+          "Entries"
+        ],
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the entry"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryViewList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntrySplitInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/tickets": {
       "get": {
         "summary": "All tickets (sorted by prefix and number) with their service and number of entries.",
@@ -2219,6 +2279,33 @@
         "title": "EntryView",
         "type": "object"
       },
+      "EntrySplitInput": {
+        "additionalProperties": false,
+        "properties": {
+          "ticket_keys": {
+            "description": "The entry keeps the first ticket; the hours are split evenly",
+            "examples": [
+              [
+                "TNG-4347",
+                "KP-1482"
+              ]
+            ],
+            "items": {
+              "description": "Ticket key, e.g. ENGINE-461",
+              "maxLength": 30,
+              "type": "string"
+            },
+            "minItems": 2,
+            "title": "Ticket Keys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ticket_keys"
+        ],
+        "title": "EntrySplitInput",
+        "type": "object"
+      },
       "ChangeViewList": {
         "items": {
           "$ref": "#/components/schemas/ChangeView"
@@ -2755,6 +2842,7 @@
           "updated",
           "renamed",
           "merged",
+          "split",
           "deleted"
         ],
         "title": "HistoryAction",
@@ -2997,11 +3085,20 @@
             },
             "title": "Reasons",
             "type": "array"
+          },
+          "split_on_import": {
+            "description": "All entries the import made from the same spreadsheet line, if it named several tickets",
+            "items": {
+              "$ref": "#/components/schemas/SplitPart"
+            },
+            "title": "Split On Import",
+            "type": "array"
           }
         },
         "required": [
           "entry",
-          "reasons"
+          "reasons",
+          "split_on_import"
         ],
         "title": "ReviewEntry",
         "type": "object"
@@ -3014,6 +3111,31 @@
         ],
         "title": "ReviewReason",
         "type": "string"
+      },
+      "SplitPart": {
+        "properties": {
+          "ticket_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticket Key"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket_key",
+          "duration"
+        ],
+        "title": "SplitPart",
+        "type": "object"
       }
     }
   },

@@ -135,7 +135,7 @@ Every change to a task entry is recorded, so it can be checked later what change
 | Field | Example |
 |---|---|
 | When | 27.10.2026 14:05 |
-| Action | `created`, `imported`, `updated`, `renamed`, `merged`, `deleted` |
+| Action | `created`, `imported`, `updated`, `renamed`, `merged`, `split`, `deleted` |
 | Changes | only the changed fields, old → new: `ticket: TNG-4321 → KP-1234`, `duration: 1:00 → 1:30` |
 | Detail | optional, e.g. the original spreadsheet line on import (`3,0 TNG-5213, TNG-5214`) |
 
@@ -176,6 +176,11 @@ Lists everything that needs attention, each with its reason:
 - Entries with duration **0:00**.
 - Ticket entries **without a ticket** (imported PR reviews).
 - Entries and days **flagged during import** (uncertain ticket ids, weekend hours, …; see 6).
+- Guessed tickets are grouped by ticket: confirm the key, rename (or merge) the ticket, or **split** its
+  entries among several tickets when the spreadsheet line named an alias (`#4347 aka #1482`) or "ff";
+  the hours are split evenly in quarter hours. Each of these clears the flags of the ticket's entries.
+- A spreadsheet line the import already split among several tickets shows that split under the original
+  line ("Split on import: TNG-4138 3:00 · TNG-4139 3:00"), so it is not split a second time.
 
 An item leaves the list once the reason is fixed or the flag is cleared.
 

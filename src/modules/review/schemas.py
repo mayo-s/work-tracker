@@ -6,6 +6,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+from src.lib.durations import format_duration
+
 from src.models.review import FlagReason
 from src.modules.days.schemas import DayView, day_view
 from src.modules.entries.schemas import EntryView, EntryViewer
@@ -21,9 +23,16 @@ class ReviewReason(StrEnum):
     UNCERTAIN_TICKET = FlagReason.UNCERTAIN_TICKET.value  # import flag: the ticket key was guessed
 
 
+class SplitPart(BaseModel):
+    ticket_key: str | None
+    duration: str
+
+
 class ReviewEntry(BaseModel):
     entry: EntryView
     reasons: list[ReviewReason]
+    split_on_import: list[SplitPart] = Field(
+        description='All entries the import made from the same spreadsheet line, if it named several tickets')
 
 
 class ReviewCounts(BaseModel):
@@ -41,8 +50,11 @@ class ReviewView(BaseModel):
 
 def review(conn: sqlite3.Connection) -> ReviewView:
     tickets = [ticket for ticket in ticket_views(conn, TicketRepository(conn).without_service()) if ticket.entries]
-    views = EntryViewer(conn).views(EntryRepository(conn).for_review())
-    entries = [ReviewEntry(entry=view, reasons=_reasons(view)) for view in views]
+    repository = EntryRepository(conn)
+    views = EntryViewer(conn).views(repository.for_review())
+    entries = [
+        ReviewEntry(entry=view, reasons=_reasons(view), split_on_import=_split_on_import(repository, view)) for view in views
+    ]
     days = _flagged_days(conn)
     return ReviewView(
         counts=ReviewCounts(tickets_without_service=len(tickets), entries=len(entries), days=len(days)),
@@ -50,6 +62,13 @@ def review(conn: sqlite3.Connection) -> ReviewView:
         entries=entries,
         days=days,
     )
+
+
+def _split_on_import(repository: EntryRepository, entry: EntryView) -> list[SplitPart]:
+    together = repository.imported_together(entry.id) if entry.kind == 'ticket' else []
+    if len(together) < 2:
+        return []
+    return [SplitPart(ticket_key=part.ticket_key, duration=format_duration(part.duration)) for part in together]
 
 
 def _reasons(entry: EntryView) -> list[ReviewReason]:

@@ -140,3 +140,26 @@ def test_imported_entry_without_ticket_must_get_one_when_changed(client, databas
     assert client.simulate_put(f'/api/entries/{created.id}', json=body).status_code == 422
     result = client.simulate_put(f'/api/entries/{created.id}', json=body | {'ticket_key': 'TNG-5096'})
     assert result.json['ticket_key'] == 'TNG-5096'
+
+
+def test_split_entry(client):
+    body = TICKET | {'ticket_key': 'TNG-4347', 'duration': '6:00', 'description': 'adapt tests (aka KP-1482)'}
+    created = create(client, body)
+    result = client.simulate_post(f'/api/entries/{created["id"]}/split', json={'ticket_keys': ['TNG-4347', 'kp-1482']})
+    assert result.status == falcon.HTTP_200
+    assert [(entry['ticket_key'], entry['duration'], entry['changed']) for entry in result.json] == [
+        ('TNG-4347', '3:00', True), ('KP-1482', '3:00', True)]  # both point to the split in their history
+    history = client.simulate_get(f'/api/entries/{created["id"]}/history').json
+    assert (history[-1]['action'], history[-1]['detail']) == ('split', 'Split into TNG-4347, KP-1482')
+
+
+@pytest.mark.parametrize('entry_id, body, status', [
+    (404, {'ticket_keys': ['TNG-1', 'TNG-2']}, 404),
+    (None, {'ticket_keys': ['TNG-4347']}, 422),
+    (None, {'ticket_keys': ['TNG-4347', '#1482']}, 422),
+    (None, {'ticket_keys': ['TNG-4347', 'tng-4347']}, 409),
+])
+def test_split_errors(client, entry_id, body, status):
+    created = create(client, TICKET | {'ticket_key': 'TNG-4347'})
+    path = f'/api/entries/{entry_id or created["id"]}/split'
+    assert client.simulate_post(path, json=body).status_code == status

@@ -48,7 +48,9 @@ pipenv run gunicorn 'src.app:create_app()' --reload  # alternative with auto-rel
 
 Open http://127.0.0.1:8000/ for the frontend (build it first with `npm run build`): the current week,
 other weeks via `/?week=2026-W44`; days and entries are edited in place (`&edit=2025-12-06` opens a day's form,
-`&entry=129` an entry's form; each entry shows its change history). `/components` is a
+`&entry=129` an entry's form; each entry shows its change history). `/review` lists what needs attention after
+the import: guessed tickets (confirm, rename or split), entries without duration or ticket, flagged days, and tickets
+without service (assign one to several at once). `/components` is a
 gallery of the UI components, each with its use and the HTML to copy. The database
 (`$WORK_TRACKER_DB` or `work_tracker.db`) is migrated on start. API documentation:
 `/apidoc/swagger`, `/apidoc/redoc` or `/apidoc/scalar`; the OpenAPI spec is at `/apidoc/openapi.json`.
@@ -113,6 +115,7 @@ Reports count worked time, target and overtime up to today (today included); pla
 | `/api/entries/{id}`                                  | PUT              | Change an entry (same kind); a given `service_id` applies to all entries of the ticket                                              |
 | `/api/entries/{id}`                                  | DELETE           | Delete an entry and its flags; the history is kept                                                                                  |
 | `/api/entries/{id}/history`                          | GET              | Change history of an entry (also after deletion)                                                                                    |
+| `/api/entries/{id}/split`                            | POST             | Divide a ticket entry among several tickets (`ticket_keys`), hours split evenly; recorded in the history                            |
 | `/api/tickets`                                       | GET              | All tickets with service and number of entries; `?without_service=true` for review                                                  |
 | `/api/tickets/{key}`                                 | GET              | A known ticket with its remembered service (pre-fill)                                                                               |
 | `/api/tickets/{key}`                                 | PUT              | Set or unassign the service (`service_id`); applies to all entries of the ticket                                                    |

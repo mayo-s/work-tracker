@@ -14,6 +14,7 @@ class HistoryAction(StrEnum):
     UPDATED = 'updated'
     RENAMED = 'renamed'
     MERGED = 'merged'
+    SPLIT = 'split'
     DELETED = 'deleted'
 
 

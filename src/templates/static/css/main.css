@@ -687,3 +687,63 @@ button.button-danger {
 .history-list li + li {
   margin-top: var(--space-1);
 }
+
+/* Review page (/review) */
+
+.review-header {
+  margin-bottom: var(--space-5);
+}
+
+.review-status {
+  font-weight: var(--font-weight-strong);
+}
+
+.review-section {
+  margin-bottom: var(--space-6);
+}
+
+.review-section h2 .badge {
+  vertical-align: middle;
+}
+
+.review-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.review-table td {
+  vertical-align: middle;
+}
+
+.review-table .row-actions {
+  white-space: nowrap;
+}
+
+.review-table .row-actions > * + * {
+  margin-left: var(--space-1);
+}
+
+.select-cell {
+  width: 2.5rem;
+}
+
+.select-cell input {
+  width: auto;
+}
+
+.rename-form {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.rename-input {
+  width: 9rem;
+  padding: 0 var(--space-2);
+}
+
+.split-input {
+  width: 16rem;
+  padding: 0 var(--space-2);
+}

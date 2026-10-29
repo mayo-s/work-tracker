@@ -111,6 +111,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/entries/{entry_id}/split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Divide a ticket entry among several tickets (e.g. an alias like #4347 aka #1482), hours split evenly. */
+        post: operations["post__api_entries_{entry_id}_split"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tickets": {
         parameters: {
             query?: never;
@@ -707,6 +724,18 @@ export interface components {
             /** Flags */
             flags: components["schemas"]["EntryFlagView"][];
         };
+        /** EntrySplitInput */
+        EntrySplitInput: {
+            /**
+             * Ticket Keys
+             * @description The entry keeps the first ticket; the hours are split evenly
+             * @example [
+             *       "TNG-4347",
+             *       "KP-1482"
+             *     ]
+             */
+            ticket_keys: string[];
+        };
         /** ChangeViewList */
         ChangeViewList: components["schemas"]["ChangeView"][];
         /** WeekReport */
@@ -948,7 +977,7 @@ export interface components {
          * HistoryAction
          * @enum {string}
          */
-        HistoryAction: "created" | "imported" | "updated" | "renamed" | "merged" | "deleted";
+        HistoryAction: "created" | "imported" | "updated" | "renamed" | "merged" | "split" | "deleted";
         JsonValue: unknown;
         /** PeriodTotals */
         PeriodTotals: {
@@ -1048,12 +1077,24 @@ export interface components {
             entry: components["schemas"]["EntryView"];
             /** Reasons */
             reasons: components["schemas"]["ReviewReason"][];
+            /**
+             * Split On Import
+             * @description All entries the import made from the same spreadsheet line, if it named several tickets
+             */
+            split_on_import: components["schemas"]["SplitPart"][];
         };
         /**
          * ReviewReason
          * @enum {string}
          */
         ReviewReason: "zero_duration" | "no_ticket" | "uncertain_ticket";
+        /** SplitPart */
+        SplitPart: {
+            /** Ticket Key */
+            ticket_key: string | null;
+            /** Duration */
+            duration: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -1454,6 +1495,56 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ChangeViewList"];
                 };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_entries_{entry_id}_split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the entry */
+                entry_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntrySplitInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryViewList"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Unprocessable Content */
             422: {

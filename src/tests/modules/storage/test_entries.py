@@ -193,3 +193,51 @@ def test_entries_for_review(entries, ticket_entry, activity_entry):
     flagged = entries.create(activity_entry)
     entries.add_flag(flagged.id, FlagReason.UNCERTAIN_TICKET)
     assert [entry.id for entry in entries.for_review()] == [no_ticket.id, flagged.id, zero.id]
+
+
+def test_split_entry_evenly_with_history(entries, conn):
+    entry = entries.create(
+        TicketEntry(date=MONDAY, ticket_key='TNG-4347', duration=360, description='adapt tests', coding=True)
+    )
+    first, second = entries.split(entry.id, ['tng-4347', 'KP-1482'])
+    assert (first.id, first.ticket_key, first.duration) == (entry.id, 'TNG-4347', 180)
+    assert (second.ticket_key, second.duration, second.description, second.coding) == ('KP-1482', 180, 'adapt tests', True)
+    assert TicketRepository(conn).get('KP-1482') is not None
+    original = entries.history(entry.id)[-1]
+    assert (original.action, original.changes, original.detail) == (
+        HistoryAction.SPLIT, {'duration': (360, 180)}, 'Split into TNG-4347, KP-1482')
+    [created] = entries.history(second.id)
+    assert (created.action, created.detail) == (HistoryAction.SPLIT, f'Split from entry {entry.id}')
+
+
+def test_split_into_quarter_hours(entries):
+    entry = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-2035', duration=90))
+    split = entries.split(entry.id, ['KP-2035', 'KP-2044', 'KP-2045', 'KP-2053'])
+    expected = [('KP-2035', 30), ('KP-2044', 30), ('KP-2045', 15), ('KP-2053', 15)]
+    assert [(item.ticket_key, item.duration) for item in split] == expected
+
+
+@pytest.mark.parametrize('keys', [['TNG-4347'], ['TNG-4347', 'tng-4347']])
+def test_split_needs_two_different_tickets(entries, keys):
+    entry = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4347', duration=60))
+    with pytest.raises(ConflictError):
+        entries.split(entry.id, keys)
+
+
+def test_split_activity_entry_is_refused(entries, activity_entry):
+    entry = entries.create(activity_entry)
+    with pytest.raises(ConflictError):
+        entries.split(entry.id, ['TNG-1', 'TNG-2'])
+
+
+def test_entries_imported_together(entries):
+    line = '6,0 #4138, #4139 create meeting service'
+    first = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4138', duration=180), HistoryAction.IMPORTED, line)
+    second = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4139', duration=180), HistoryAction.IMPORTED, line)
+    next_day = TicketEntry(date=MONDAY + dt.timedelta(days=1), ticket_key='TNG-4138', duration=60)
+    entries.create(next_day, HistoryAction.IMPORTED, line)
+    alone = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4145', duration=60), HistoryAction.IMPORTED, '1,0 #4145')
+    created = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-5882', duration=60))
+    assert [entry.id for entry in entries.imported_together(first.id)] == [first.id, second.id]
+    assert [entry.id for entry in entries.imported_together(alone.id)] == [alone.id]
+    assert entries.imported_together(created.id) == []

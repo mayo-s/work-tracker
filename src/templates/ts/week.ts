@@ -105,7 +105,8 @@ function button(label: string, onClick: () => void, attributes: Record<string, s
   return element;
 }
 
-function entryContent(entry: EntryView): (HTMLElement | null)[] {
+/** Duration, ticket or activity, service, text and badges of an entry (also used by the review page). */
+export function entryContent(entry: EntryView, showFlags = true): (HTMLElement | null)[] {
   const label = entry.kind === 'ticket'
     ? el('strong', { class: entry.ticket_key ? '' : 'value-negative' }, entry.ticket_key ?? 'No ticket')
     : el('strong', {}, entry.activity_type ?? 'Activity');
@@ -117,7 +118,7 @@ function entryContent(entry: EntryView): (HTMLElement | null)[] {
     entry.service ? el('span', { class: 'badge' }, entry.service) : null,
     text ? el('span', { class: 'entry-text' }, text) : null,
     entry.coding ? el('span', { class: 'badge positive' }, 'coding') : null,
-    entry.flags.length ? el('span', { class: 'badge warning', title: entry.flags.map((flag) => flag.detail).join('\n') },
+    showFlags && entry.flags.length ? el('span', { class: 'badge warning', title: entry.flags.map((flag) => flag.detail).join('\n') },
       `${entry.flags.length} to review`) : null,
     entry.changed ? el('span', { class: 'badge', title: 'Changed after it was created or imported' }, 'changed') : null,
   ];

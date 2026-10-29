@@ -35,3 +35,9 @@ test('created, imported and deleted show only the value', () => {
 test('timestamps', () => {
   assert.equal(formatTimestamp('2026-10-28T16:47:11'), '28.10.2026 16:47');
 });
+
+test('a split shows old and new on the original, only values on new entries', () => {
+  assert.deepEqual(describeChanges(change('split', { duration: [360, 180] }), ACTIVITIES), ['duration: 6:00 → 3:00']);
+  assert.deepEqual(describeChanges(change('split', { ticket_key: [null, 'KP-1482'], duration: [null, 180] }), ACTIVITIES),
+    ['ticket: KP-1482', 'duration: 3:00']);
+});

@@ -18,11 +18,27 @@ export function markCurrentPage(nav: ParentNode, path: string): void {
 const PAGES: Record<string, () => Promise<void>> = {
   components: async () => (await import('./gallery.ts')).renderGallery(document),
   week: async () => (await import('./week.ts')).renderWeekPage(document),
+  review: async () => (await import('./review.ts')).renderReviewPage(document),
 };
+
+/** Shows the number of open review items next to the Review link, as a warning badge. */
+async function showReviewCount(nav: Element): Promise<void> {
+  const link = nav.querySelector('a[href="/review"]');
+  if (!link) {
+    return;
+  }
+  const { api } = await import('./api.ts');
+  const { reviewTotal } = await import('./review.ts');
+  const total = reviewTotal((await api.review()).counts);
+  if (total) {
+    link.append(' ', Object.assign(document.createElement('span'), { className: 'badge warning', textContent: String(total) }));
+  }
+}
 
 const nav = document.querySelector('.app-nav');
 if (nav) {
   markCurrentPage(nav, window.location.pathname);
+  showReviewCount(nav).catch(() => undefined);  // the count is a hint; pages work without it
 }
 
 const page = document.querySelector<HTMLElement>('#app')?.dataset.page;

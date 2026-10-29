@@ -4,6 +4,7 @@ import falcon
 import pytest
 
 from src.models.entries import TicketEntry
+from src.models.history import HistoryAction
 from src.models.review import FlagReason
 from src.modules.storage.catalog import ServiceRepository
 from src.modules.storage.days import DayRepository
@@ -100,3 +101,25 @@ def test_flagged_day_without_record(client, database):
 
 def test_clear_unknown_flag(client):
     assert client.simulate_delete('/api/review/flags/404').status == falcon.HTTP_404
+
+
+def test_entry_split_on_import_is_shown(client, database):
+    line = '6,0 #4138, #4139 create meeting service'
+    with database.transaction() as conn:
+        repository = EntryRepository(conn)
+        for key in ('TNG-4138', 'TNG-4139'):
+            created = repository.create(TicketEntry(date=dt.date(2024, 6, 10), ticket_key=key, duration=180),
+                                        HistoryAction.IMPORTED, line)
+            repository.add_flag(created.id, FlagReason.UNCERTAIN_TICKET, line)
+    items = get_review(client)['entries']
+    assert [item['split_on_import'] for item in items] == [
+        [{'ticket_key': 'TNG-4138', 'duration': '3:00'}, {'ticket_key': 'TNG-4139', 'duration': '3:00'}]] * 2
+
+
+def test_entry_imported_alone_has_no_split(client, database):
+    with database.transaction() as conn:
+        repository = EntryRepository(conn)
+        created = repository.create(TicketEntry(date=dt.date(2024, 6, 19), ticket_key='TNG-4156', duration=60),
+                                    HistoryAction.IMPORTED, '1,0 #4156')
+        repository.add_flag(created.id, FlagReason.UNCERTAIN_TICKET, '1,0 #4156')
+    assert get_review(client)['entries'][0]['split_on_import'] == []

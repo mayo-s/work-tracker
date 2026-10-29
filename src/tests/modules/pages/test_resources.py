@@ -89,3 +89,16 @@ def test_gallery_is_not_in_the_main_navigation(client):
 def test_static_files_are_revalidated(client):
     assert client.simulate_get('/static/css/main.css').headers['cache-control'] == 'no-cache'
     assert 'cache-control' not in client.simulate_get('/api/review').headers
+
+
+def test_review_page(client):
+    result = client.simulate_get('/review')
+    assert result.status == falcon.HTTP_200
+    assert '<title>Review · Work Tracker</title>' in result.text
+    assert 'id="review-status"' in result.text
+
+
+def test_main_navigation_links_week_and_review(client):
+    html = client.simulate_get('/').text
+    assert '<a href="/">Week</a>' in html
+    assert '<a href="/review">Review</a>' in html
