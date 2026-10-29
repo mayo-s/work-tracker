@@ -15,14 +15,22 @@ Weekday = Literal['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 State = Literal[STATES]
 
 
-class ScheduleInput(BaseModel):
+class ScheduleTerms(BaseModel):
+    """A work schedule without its start date."""
+
     model_config = ConfigDict(extra='forbid')
 
-    valid_from: dt.date = Field(description='First day the schedule applies to; earlier days keep their schedule')
     weekly_hours: DurationText = Field(description='Hours per week, h:mm', examples=['40:00'])
     work_days: list[Weekday] = Field(min_length=1, examples=[['Mon', 'Tue', 'Wed', 'Thu', 'Fri']])
     state: State = Field(default='BE', description='German federal state whose public holidays apply')
     company_half_days: bool = Field(default=True, description='24.12. and 31.12. are half PTO, half free')
+
+    def starting(self, start: dt.date) -> 'ScheduleInput':
+        return ScheduleInput(valid_from=start, **self.model_dump())
+
+
+class ScheduleInput(ScheduleTerms):
+    valid_from: dt.date = Field(description='First day the schedule applies to; earlier days keep their schedule')
 
     @model_validator(mode='after')
     def check_schedule(self) -> Self:

@@ -10,11 +10,10 @@ from src.modules.storage.errors import NotFoundError
 from src.modules.storage.pto_years import PtoYearRepository
 
 
-def test_migrated_years(conn):
-    years = PtoYearRepository(conn).all()
-    assert [(year.year, year.allowance, year.extra_days, year.carried_over) for year in years] == [
-        (2024, Decimal('17.5'), 0, None), (2025, 31, 0, None), (2026, 31, 0, None), (2027, 30, 0, None),
-    ]
+def test_replace_all(conn):
+    years = PtoYearRepository(conn)
+    years.replace_all([PtoYear(year=2027, allowance=Decimal(25)), PtoYear(year=2028, allowance=Decimal(30))])
+    assert [(year.year, year.allowance) for year in years.all()] == [(2027, 25), (2028, 30)]
 
 
 def test_migration_takes_over_the_allowances(tmp_path, monkeypatch):
@@ -23,6 +22,7 @@ def test_migration_takes_over_the_allowances(tmp_path, monkeypatch):
     db.migrate()
     with db.transaction() as conn:
         conn.execute("INSERT INTO pto_allowances (year, days) VALUES (2028, '28')")
+        conn.execute("INSERT INTO days (date, day_type) VALUES ('2026-10-28', 'pto')")  # in use: migration 6 keeps it
     monkeypatch.undo()
     db.migrate()
     with db.transaction() as conn:

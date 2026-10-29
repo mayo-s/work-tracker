@@ -9,11 +9,12 @@ from src.defaultresources.default import Default
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
 from src.modules.days.resources import DayCollection, DayItem, DayRange
 from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem, EntrySplit
-from src.modules.pages.resources import STATIC_DIR, Page, Redirect, RevalidateStaticFiles
+from src.modules.pages.resources import STATIC_DIR, Page, Redirect, RevalidateStaticFiles, SetupGate
 from src.modules.pto.resources import PtoYearCollection, PtoYearItem
 from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
 from src.modules.review.resources import Review, ReviewFlagItem
 from src.modules.schedules.resources import ScheduleCollection, ScheduleItem
+from src.modules.setup.resources import SetupResource
 from src.modules.settings.resources import SettingsResource
 from src.modules.storage.database import Database, database_path
 from src.modules.storage.errors import ConflictError, NotFoundError
@@ -28,7 +29,7 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     """
     database = database or Database(database_path())
     database.migrate()
-    app = falcon.App(middleware=[RevalidateStaticFiles()])
+    app = falcon.App(middleware=[RevalidateStaticFiles(), SetupGate(database)])
     app.add_error_handler(NotFoundError, _not_found)
     app.add_error_handler(ConflictError, _conflict)
     app.add_route('/', Page('week', 'Week'))
@@ -37,6 +38,7 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_route('/review', Page('review', 'Review'))
     app.add_route('/lists', Redirect('/settings#services'))
     app.add_route('/settings', Page('settings', 'Settings'))
+    app.add_route('/setup', Page('setup', 'Setup'))
     app.add_route('/components', Page('components', 'Component gallery'))
     app.add_static_route('/static', STATIC_DIR)
     app.add_route('/health', Default())
@@ -55,6 +57,7 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_route('/api/reports/months/{month:dt("%Y-%m")}', MonthReportResource(database, today))
     app.add_route('/api/reports/years/{year:int(4)}', YearReportResource(database, today))
     app.add_route('/api/settings', SettingsResource(database))
+    app.add_route('/api/setup', SetupResource(database))
     app.add_route('/api/work-schedules', ScheduleCollection(database))
     app.add_route('/api/work-schedules/{schedule_id:int}', ScheduleItem(database))
     app.add_route('/api/pto-years', PtoYearCollection(database))

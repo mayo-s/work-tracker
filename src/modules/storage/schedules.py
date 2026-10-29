@@ -44,6 +44,11 @@ class ScheduleRepository:
             raise ConflictError('The only work schedule cannot be deleted')
         self._conn.execute('DELETE FROM work_schedules WHERE id = ?', (schedule_id,))
 
+    def replace_all(self, schedule: Schedule) -> Schedule:
+        """The given schedule as the only one, e.g. on the initial setup."""
+        self._conn.execute('DELETE FROM work_schedules')
+        return self.add(schedule)
+
     def schedules(self) -> Schedules:
         """All schedules for the calculations: each day follows the latest one starting on or before it."""
         return Schedules(schedule.to_work_schedule() for schedule in self.all())

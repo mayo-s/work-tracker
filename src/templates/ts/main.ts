@@ -22,6 +22,7 @@ const PAGES: Record<string, () => Promise<void>> = {
   year: async () => (await import('./year.ts')).renderYearPage(document),
   review: async () => (await import('./review.ts')).renderReviewPage(document),
   settings: async () => (await import('./settings.ts')).renderSettingsPage(document),
+  setup: async () => (await import('./setup.ts')).renderSetupPage(document),
 };
 
 /** Shows the number of open review items next to the Review link, as a warning badge. */

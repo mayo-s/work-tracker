@@ -327,3 +327,4 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 - Export (CSV / spreadsheet format).
 - Deployment as AWS Lambda (zappa) with a persistent storage backend and authentication.
 - Settings page with overtime balance, PTO years, work schedules and holiday rules is done (TASKS.md, L.1a–L.1c).
+- Initial setup of a new database on `/setup` is done (TASKS.md, L.3).
