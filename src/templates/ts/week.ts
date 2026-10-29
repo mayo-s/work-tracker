@@ -10,6 +10,7 @@ import { el } from './dom.ts';
 import { entryEditor, type EntryEditorOptions } from './entry-editor.ts';
 import { historyPanel } from './history.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
+import { viewedMember } from './team-view.ts';
 
 /** Overtime with a sign: `0:15` → `+0:15`; negative values and zero stay as they are. */
 export function signed(duration: string): string {
@@ -37,9 +38,9 @@ export function visibleDays(days: DayView[], entries: Map<IsoDate, EntryView[]>)
   return days.filter((day) => day.work_day || day.recorded || entries.has(day.date));
 }
 
-/** A past work day of the schedule, of type work, without any entry. */
+/** A past work day of the schedule, of type work, without any entry (in the team view only days in the team). */
 export function needsWarning(day: DayView, entries: EntryView[], today: IsoDate): boolean {
-  return day.date < today && day.day_type === 'work' && day.work_day && entries.length === 0;
+  return day.date < today && day.day_type === 'work' && day.work_day && entries.length === 0 && day.in_team !== false;
 }
 
 /** The week from `?week=2026-W44`, otherwise the current week. */
@@ -96,7 +97,10 @@ type WeekData = {
 };
 /** What is open: the form of a day, of an entry (id) or of a new entry (null) on a date, or nothing. */
 export type Editing = { kind: 'day'; date: IsoDate } | { kind: 'entry'; date: IsoDate; id: number | null } | null;
-type View = { data: WeekData; today: IsoDate; editing: Editing; history: number | null; actions: Actions };
+/** `readOnly`: the team view of a member's week (no editing, no history). */
+type View = {
+  data: WeekData; today: IsoDate; editing: Editing; history: number | null; actions: Actions; readOnly: boolean;
+};
 type Actions = {
   edit: (editing: Editing) => void; cancel: () => void; changed: () => void; toggleHistory: (entryId: number) => void;
 };
@@ -148,6 +152,9 @@ function entryItem(entry: EntryView, view: View): HTMLElement {
   if (editing?.kind === 'entry' && editing.id === entry.id) {
     return el('li', { class: 'entry-editing' }, entryEditor(editorOptions(view, entry.date, entry)));
   }
+  if (view.readOnly) {
+    return el('li', {}, el('div', { class: 'entry' }, ...entryContent(entry)));
+  }
   const activityNames = new Map(view.data.activityTypes.map((activity) => [activity.id ?? 0, activity.name]));
   const historyOpen = view.history === entry.id;
   return el('li', {},
@@ -175,9 +182,19 @@ function rowClass(day: DayView, warning: boolean, today: IsoDate): string | null
   return classes.filter(Boolean).join(' ') || null;
 }
 
+/** A day before the member joined the team (team view): no data. */
+function outsideTeamRow(day: DayView, view: View): HTMLElement {
+  return el('tr', { class: rowClass(day, false, view.today) },
+    dayCell(day, false, view.today),
+    el('td', { colspan: COLUMNS - 1 }, el('span', { class: 'muted' }, 'Not in this team')));
+}
+
 function dayRow(day: DayView, warning: boolean, view: View): HTMLElement {
+  if (day.in_team === false) {
+    return outsideTeamRow(day, view);
+  }
   const editingDay = view.editing?.kind === 'day' && view.editing.date === day.date;
-  const edit = editingDay ? null : button('Edit', () => view.actions.edit({ kind: 'day', date: day.date }),
+  const edit = editingDay || view.readOnly ? null : button('Edit', () => view.actions.edit({ kind: 'day', date: day.date }),
     { 'aria-label': `Edit ${formatDay(day.date, day.weekday)}`, 'data-opens': `day-${day.date}` });
   return el('tr', { class: rowClass(day, warning, view.today) },
     dayCell(day, warning, view.today),
@@ -205,7 +222,7 @@ function detailsRow(day: DayView, entries: EntryView[], className: string | null
     el('td', { colspan: COLUMNS },
       day.note ? el('p', { class: 'day-note muted' }, day.note) : null,
       entries.length ? el('ul', { class: 'entries' }, ...entries.map((entry) => entryItem(entry, view))) : null,
-      newEntry(day, view)));
+      view.readOnly ? null : newEntry(day, view)));
 }
 
 function dayRows(day: DayView, view: View): HTMLElement[] {
@@ -216,7 +233,9 @@ function dayRows(day: DayView, view: View): HTMLElement[] {
     rows.push(el('tr', { class: 'day-editor-row' },
       el('td', { colspan: COLUMNS }, dayEditor(day, view.actions.changed, view.actions.cancel))));
   }
-  rows.push(detailsRow(day, entries, rowClass(day, warning, view.today), view));
+  if (!view.readOnly || entries.length) {
+    rows.push(detailsRow(day, entries, rowClass(day, warning, view.today), view));
+  }
   return rows;
 }
 
@@ -237,7 +256,7 @@ function dayTable(view: View): HTMLElement {
 
 function weekendLinks(view: View): HTMLElement | null {
   const hidden = view.data.days.filter((day) => !shownDays([day], view.data.entries, view.editing).length);
-  if (!hidden.length) {
+  if (!hidden.length || view.readOnly) {
     return null;
   }
   return el('p', { class: 'muted week-weekend' }, 'Worked on a day off? ',
@@ -250,9 +269,11 @@ function errorCard(error: unknown): HTMLElement {
   return el('div', { class: 'card is-warning', role: 'alert' }, message);
 }
 
-async function loadWeek(week: string): Promise<WeekData> {
+/** The week of the user, or in the team view of the member (without the lists to choose from, as nothing is edited). */
+async function loadWeek(week: string, member: string | null): Promise<WeekData> {
   const [days, entries, report, services, activityTypes] = await Promise.all([
-    api.days({ week }), api.entries({ week }), api.weekReport(week), api.serviceChoices(), api.activityTypes(),
+    api.days({ week }, member), api.entries({ week }, member), api.weekReport(week, member),
+    member ? [] : api.serviceChoices(), member ? [] : api.activityTypes(),
   ]);
   return { days, entries: entriesByDate(entries), report, services, activityTypes };
 }
@@ -264,9 +285,10 @@ export async function renderWeekPage(doc: Document): Promise<void> {
   }
   const today = isoDate(new Date());
   const week = weekFromSearch(doc.location.search, today);
+  const member = viewedMember(doc.location.search);
   renderHeader(doc, week, today);
   let data: WeekData | null = null;
-  const initialDay = editFromSearch(doc.location.search, week);
+  const initialDay = member ? null : editFromSearch(doc.location.search, week);
   let editing: Editing = initialDay ? { kind: 'day', date: initialDay } : null;
   let history: number | null = null;
   let returnFocus: { key: string | null; date: IsoDate } | null = null;  // the opener of the form that just closed
@@ -275,7 +297,7 @@ export async function renderWeekPage(doc: Document): Promise<void> {
     if (!data) {
       return;
     }
-    const view: View = { data, today, editing, history, actions };
+    const view: View = { data, today, editing, history, actions, readOnly: member !== null };
     root.replaceChildren(periodSummary(data.report.totals), dayTable(view), weekendLinks(view) ?? '');
     const form = root.querySelector<HTMLElement>('form input:not([type="radio"]):not(:disabled), form select');
     const opener = returnFocus && (root.querySelector<HTMLElement>(`[data-opens="${returnFocus.key}"]`)
@@ -290,8 +312,8 @@ export async function renderWeekPage(doc: Document): Promise<void> {
   let firstLoad = true;
   const load = async (): Promise<void> => {
     try {
-      data = await loadWeek(week);
-      editing = firstLoad ? entryFromSearch(doc.location.search, data.entries) ?? editing : editing;
+      data = await loadWeek(week, member);
+      editing = firstLoad && !member ? entryFromSearch(doc.location.search, data.entries) ?? editing : editing;
       firstLoad = false;
       draw();
     } catch (error) {
@@ -317,7 +339,11 @@ export async function renderWeekPage(doc: Document): Promise<void> {
     },
   };
 
-  wireDaysOff(doc, mondayOf(week));
+  if (member) {
+    doc.querySelector('#week-book-days-off')?.remove();  // nothing is booked in the team view
+  } else {
+    wireDaysOff(doc, mondayOf(week));
+  }
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   await load();
 }

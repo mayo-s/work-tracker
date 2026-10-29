@@ -85,7 +85,7 @@
     },
     "/api/days": {
       "get": {
-        "summary": "Every calendar day of a week or date range, recorded or not.",
+        "summary": "Every calendar day of a week or date range, recorded or not; `member` shows a member of the team admin's team (team view: no notes or review flags; days before they joined the team without data).",
         "operationId": "get__api_days",
         "description": "",
         "tags": [
@@ -151,9 +151,31 @@
             },
             "required": false,
             "description": ""
+          },
+          {
+            "name": "member",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Team view: id (UUID) of a member of the team admin's team",
+              "title": "Member"
+            },
+            "required": false,
+            "description": "Team view: id (UUID) of a member of the team admin's team"
           }
         ],
         "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -359,7 +381,7 @@
     },
     "/api/entries": {
       "get": {
-        "summary": "Entries of a week or date range, by date and in the order they were created.",
+        "summary": "Entries of a week or date range, by date and in the order they were created; `member` shows a member of the team admin's team (team view: from the day they joined the team).",
         "operationId": "get__api_entries",
         "description": "",
         "tags": [
@@ -425,9 +447,31 @@
             },
             "required": false,
             "description": ""
+          },
+          {
+            "name": "member",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Team view: id (UUID) of a member of the team admin's team",
+              "title": "Member"
+            },
+            "required": false,
+            "description": "Team view: id (UUID) of a member of the team admin's team"
           }
         ],
         "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -1001,14 +1045,37 @@
     },
     "/api/dashboard": {
       "get": {
-        "summary": "Key figures, the overtime balance over time, days off coming up and this year's figures, up to today.",
+        "summary": "Key figures, the overtime balance over time, days off coming up and this year's figures, up to today; `member` shows a member of the team admin's team (team view, logged for the member).",
         "operationId": "get__api_dashboard",
         "description": "",
         "tags": [
           "Reports"
         ],
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "member",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Team view: id (UUID) of a member of the team admin's team",
+              "title": "Member"
+            },
+            "required": false,
+            "description": "Team view: id (UUID) of a member of the team admin's team"
+          }
+        ],
         "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -1049,9 +1116,31 @@
               "type": "string"
             },
             "description": "ISO week, e.g. 2026-W44"
+          },
+          {
+            "name": "member",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Team view: id (UUID) of a member of the team admin's team",
+              "title": "Member"
+            },
+            "required": false,
+            "description": "Team view: id (UUID) of a member of the team admin's team"
           }
         ],
         "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
           "404": {
             "description": "Not Found"
           },
@@ -1096,9 +1185,31 @@
               "format": "date-time"
             },
             "description": "Month, e.g. 2026-10"
+          },
+          {
+            "name": "member",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Team view: id (UUID) of a member of the team admin's team",
+              "title": "Member"
+            },
+            "required": false,
+            "description": "Team view: id (UUID) of a member of the team admin's team"
           }
         ],
         "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -1140,9 +1251,31 @@
               "format": "int4"
             },
             "description": "Year, e.g. 2026"
+          },
+          {
+            "name": "member",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Team view: id (UUID) of a member of the team admin's team",
+              "title": "Member"
+            },
+            "required": false,
+            "description": "Team view: id (UUID) of a member of the team admin's team"
           }
         ],
         "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
           "200": {
             "description": "OK",
             "content": {
@@ -4275,6 +4408,25 @@
         "title": "ActivityType",
         "type": "object"
       },
+      "MemberQuery": {
+        "properties": {
+          "member": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Team view: id (UUID) of a member of the team admin's team",
+            "title": "Member"
+          }
+        },
+        "title": "MemberQuery",
+        "type": "object"
+      },
       "DashboardView": {
         "properties": {
           "today": {
@@ -4337,6 +4489,20 @@
           },
           "this_year": {
             "$ref": "#/components/schemas/YearFigures"
+          },
+          "visible_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Team view: the first day shown (the member joined the team)",
+            "title": "Visible From"
           }
         },
         "required": [
@@ -4355,8 +4521,7 @@
         "title": "DashboardView",
         "type": "object"
       },
-      "PeriodQuery": {
-        "description": "Either a week (`2026-W44`) or a start and end date (inclusive, at most 366 days).",
+      "MemberPeriodQuery": {
         "properties": {
           "week": {
             "anyOf": [
@@ -4399,9 +4564,22 @@
             ],
             "default": null,
             "title": "End"
+          },
+          "member": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Team view: id (UUID) of a member of the team admin's team",
+            "title": "Member"
           }
         },
-        "title": "PeriodQuery",
+        "title": "MemberPeriodQuery",
         "type": "object"
       },
       "DayViewList": {
@@ -4521,6 +4699,12 @@
             },
             "title": "Flags",
             "type": "array"
+          },
+          "in_team": {
+            "default": true,
+            "description": "Team view: false for days before the member joined the team, shown without data",
+            "title": "In Team",
+            "type": "boolean"
           }
         },
         "required": [
@@ -5135,6 +5319,20 @@
             },
             "title": "Days Off",
             "type": "object"
+          },
+          "visible_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Team view: the first day shown (the member joined the team)",
+            "title": "Visible From"
           }
         },
         "required": [
@@ -5183,6 +5381,20 @@
           "coding_total": {
             "title": "Coding Total",
             "type": "string"
+          },
+          "visible_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Team view: the first day shown (the member joined the team)",
+            "title": "Visible From"
           }
         },
         "required": [
@@ -5241,6 +5453,20 @@
               }
             ],
             "description": "Null for years before the balance start, in the future or without PTO days entered"
+          },
+          "visible_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Team view: the first day shown (the member joined the team)",
+            "title": "Visible From"
           }
         },
         "required": [
@@ -5689,7 +5915,7 @@
         "type": "object"
       },
       "MyTeamView": {
-        "description": "The user's team (null without one) and their open invitations.",
+        "description": "The user's team (null without one), their open invitations, who can see their reports and who looked.",
         "properties": {
           "team": {
             "anyOf": [
@@ -5707,11 +5933,29 @@
             },
             "title": "Invitations",
             "type": "array"
+          },
+          "team_admins": {
+            "description": "Names of the team admins who can see your reports",
+            "items": {
+              "type": "string"
+            },
+            "title": "Team Admins",
+            "type": "array"
+          },
+          "viewed_by": {
+            "description": "The latest views of your reports, newest first",
+            "items": {
+              "$ref": "#/components/schemas/ReportViewEntry"
+            },
+            "title": "Viewed By",
+            "type": "array"
           }
         },
         "required": [
           "team",
-          "invitations"
+          "invitations",
+          "team_admins",
+          "viewed_by"
         ],
         "title": "MyTeamView",
         "type": "object"
@@ -6839,6 +7083,38 @@
           "invited_by"
         ],
         "title": "MyInvitationView",
+        "type": "object"
+      },
+      "ReportViewEntry": {
+        "properties": {
+          "viewer": {
+            "description": "Name of the team admin who looked",
+            "title": "Viewer",
+            "type": "string"
+          },
+          "report": {
+            "description": "dashboard, week, month or year",
+            "title": "Report",
+            "type": "string"
+          },
+          "period": {
+            "description": "e.g. 2026-W44, 2026-10, 2026; empty for the dashboard",
+            "title": "Period",
+            "type": "string"
+          },
+          "viewed_at": {
+            "format": "date-time",
+            "title": "Viewed At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "viewer",
+          "report",
+          "period",
+          "viewed_at"
+        ],
+        "title": "ReportViewEntry",
         "type": "object"
       },
       "ServiceChoice": {

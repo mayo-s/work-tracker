@@ -9,15 +9,17 @@ import falcon
 from spectree import Response
 
 from src.models.catalog import Service, ServiceChoice
+from src.models.teams import Member
 from src.modules.auth.sessions import current_user
 from src.modules.catalog.resources import ServiceInput
 from src.modules.storage.catalog import ServiceRepository, TeamServiceRepository
 from src.modules.storage.database import Database
 from src.modules.storage.errors import NotFoundError
-from src.modules.storage.teams import InvitationRepository, TeamRepository
+from src.modules.storage.teams import InvitationRepository, ReportViewLog, TeamRepository
 from src.modules.storage.users import UserRepository
 from src.modules.teams.schemas import (
-    InvitationInput, InvitationSent, InvitationView, MemberView, MyInvitationView, MyTeamView, TeamPageView, TeamRef,
+    InvitationInput, InvitationSent, InvitationView, MemberView, MyInvitationView, MyTeamView, ReportViewEntry, TeamPageView,
+    TeamRef,
 )
 from src.utils.spec import spec
 
@@ -184,8 +186,19 @@ class ServiceChoices:
 
 
 def my_team(conn: sqlite3.Connection, user_id: str) -> MyTeamView:
-    membership = TeamRepository(conn).membership(user_id)
-    users = UserRepository(conn)
-    return MyTeamView(team=TeamRef.of(membership) if membership else None,
-                      invitations=[MyInvitationView.of(invitation, users.get(invitation.invited_by))
-                                   for invitation in InvitationRepository(conn).of_user(user_id)])
+    teams, users = TeamRepository(conn), UserRepository(conn)
+    membership = teams.membership(user_id)
+    members = teams.members(membership.team_id) if membership else []
+    return MyTeamView(
+        team=TeamRef.of(membership) if membership else None,
+        invitations=[MyInvitationView.of(invitation, users.get(invitation.invited_by))
+                     for invitation in InvitationRepository(conn).of_user(user_id)],
+        team_admins=_team_admin_names(members, user_id),
+        viewed_by=[ReportViewEntry.of(view) for view in ReportViewLog(conn).of_member(user_id)],
+    )
+
+
+def _team_admin_names(members: list[Member], user_id: str) -> list[str]:
+    """The team admins who can see the user's reports (not the user themselves)."""
+    return [' '.join(filter(None, (member.first_name, member.last_name))) for member in members
+            if member.role == 'team_admin' and member.user_id != user_id]

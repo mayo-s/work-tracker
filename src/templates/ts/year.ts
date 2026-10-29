@@ -5,6 +5,7 @@ import { isoDate, isoMonth, type IsoDate } from './dates.ts';
 import { el } from './dom.ts';
 import { fromMinutes, toMinutes } from './durations.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
+import { viewedMember } from './team-view.ts';
 import { periodSummary, value } from './week.ts';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -97,7 +98,7 @@ export async function renderYearPage(doc: Document): Promise<void> {
   renderHeader(doc, year, today);
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
-    const report = await api.yearReport(year);
+    const report = await api.yearReport(year, viewedMember(doc.location.search));
     const worked = el('div', {}, el('span', { class: 'muted' }, 'Days worked '), el('span', { class: 'num' }, String(report.days_worked)),
       el('span', { class: 'muted' }, ' · average '), el('span', { class: 'num' }, report.average_per_day_worked));
     root.replaceChildren(periodSummary(report.totals, worked),

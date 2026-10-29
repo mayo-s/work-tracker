@@ -42,6 +42,7 @@ export type InvitationView = Schemas['InvitationView'];
 export type InvitationSent = Schemas['InvitationSent'];
 export type MyTeamView = Schemas['MyTeamView'];
 export type MyInvitationView = Schemas['MyInvitationView'];
+export type ReportViewEntry = Schemas['ReportViewEntry'];
 export type SettingsView = Schemas['SettingsView'];
 export type ThemeView = Schemas['ThemeView'];
 export type Theme = ThemeView['theme'];
@@ -113,8 +114,14 @@ export function loginLink(next: string): string {
   return `/login?next=${encodeURIComponent(next)}`;
 }
 
-function periodQuery(period: Period): string {
-  return new URLSearchParams(period).toString();
+/** The query of a period, with the member of the team view if any. */
+function periodQuery(period: Period, member: string | null = null): string {
+  return new URLSearchParams({ ...period, ...(member ? { member } : {}) }).toString();
+}
+
+/** `?member=…` for the team view, or nothing for the user's own data. */
+function memberQuery(member: string | null): string {
+  return member ? `?member=${encodeURIComponent(member)}` : '';
 }
 
 function segment(value: string | number): string {
@@ -122,13 +129,15 @@ function segment(value: string | number): string {
 }
 
 export const api = {
-  days: (period: Period) => request<DayView[]>('GET', `/api/days?${periodQuery(period)}`),
+  days: (period: Period, member: string | null = null) =>
+    request<DayView[]>('GET', `/api/days?${periodQuery(period, member)}`),
   day: (date: string) => request<DayView>('GET', `/api/days/${segment(date)}`),
   saveDay: (date: string, input: DayInput) => request<DayView>('PUT', `/api/days/${segment(date)}`, input),
   deleteDay: (date: string) => request<void>('DELETE', `/api/days/${segment(date)}`),
   bookRange: (input: DayRangeInput) => request<DayRangeResult>('POST', '/api/days/range', input),
 
-  entries: (period: Period) => request<EntryView[]>('GET', `/api/entries?${periodQuery(period)}`),
+  entries: (period: Period, member: string | null = null) =>
+    request<EntryView[]>('GET', `/api/entries?${periodQuery(period, member)}`),
   entry: (id: number) => request<EntryView>('GET', `/api/entries/${segment(id)}`),
   createEntry: (input: EntryInput) => request<EntryView>('POST', '/api/entries', input),
   updateEntry: (id: number, input: EntryInput) => request<EntryView>('PUT', `/api/entries/${segment(id)}`, input),
@@ -162,10 +171,13 @@ export const api = {
   review: () => request<ReviewView>('GET', '/api/review'),
   clearFlag: (id: number) => request<void>('DELETE', `/api/review/flags/${segment(id)}`),
 
-  weekReport: (week: string) => request<WeekReport>('GET', `/api/reports/weeks/${segment(week)}`),
-  monthReport: (month: string) => request<MonthReport>('GET', `/api/reports/months/${segment(month)}`),
-  yearReport: (year: number) => request<YearReport>('GET', `/api/reports/years/${segment(year)}`),
-  dashboard: () => request<DashboardView>('GET', '/api/dashboard'),
+  weekReport: (week: string, member: string | null = null) =>
+    request<WeekReport>('GET', `/api/reports/weeks/${segment(week)}${memberQuery(member)}`),
+  monthReport: (month: string, member: string | null = null) =>
+    request<MonthReport>('GET', `/api/reports/months/${segment(month)}${memberQuery(member)}`),
+  yearReport: (year: number, member: string | null = null) =>
+    request<YearReport>('GET', `/api/reports/years/${segment(year)}${memberQuery(member)}`),
+  dashboard: (member: string | null = null) => request<DashboardView>('GET', `/api/dashboard${memberQuery(member)}`),
 
   authStatus: () => request<AuthStatus>('GET', '/api/auth/status'),
   login: (login: string, password: string) => request<UserView>('POST', '/api/auth/login', { login, password }),

@@ -2,10 +2,10 @@
 // account.
 
 import {
-  api, ApiError, type MyInvitationView, type MyTeamView, type PtoYear, type PtoYearInput, type ScheduleInput,
-  type ScheduleView, type SettingsView, type Theme,
+  api, ApiError, type MyInvitationView, type MyTeamView, type PtoYear, type PtoYearInput, type ReportViewEntry,
+  type ScheduleInput, type ScheduleView, type SettingsView, type Theme,
 } from './api.ts';
-import { formatDate, formatTimestamp } from './dates.ts';
+import { formatDate, formatMonth, formatTimestamp } from './dates.ts';
 import { el } from './dom.ts';
 import { button, renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 import { accountSection } from './account.ts';
@@ -208,6 +208,34 @@ function invitationItem(invitation: MyInvitationView, current: string | null, pa
     }));
 }
 
+/** `Week 2026-W45`, `Month October 2026`, `Year 2026`, `Dashboard`. */
+export function reportLabel(view: ReportViewEntry): string {
+  const labels: Record<string, string> = {
+    dashboard: 'Dashboard', week: `Week ${view.period}`, month: `Month ${view.period && formatMonth(view.period)}`,
+    year: `Year ${view.period}`,
+  };
+  return labels[view.report] ?? view.report;
+}
+
+/** Who can see the user's reports, and who looked (team view). */
+function teamViewInfo(mine: MyTeamView): HTMLElement[] {
+  if (!mine.team || !mine.team_admins.length) {
+    return [];
+  }
+  const views = mine.viewed_by.map((view) => el('tr', {},
+    el('td', {}, formatTimestamp(view.viewed_at)), el('td', {}, view.viewer), el('td', {}, reportLabel(view))));
+  return [
+    el('p', { class: 'muted' }, `The team admins of ${mine.team.name} (${mine.team_admins.join(', ')}) can see your `
+      + `dashboard, week, month and year from ${formatDate(mine.team.joined_on)} on, read-only; not your day notes.`),
+    el('h3', { class: 'account-heading' }, 'Who looked at your reports'),
+    views.length
+      ? el('table', { class: 'review-table list-table' },
+        el('thead', {}, el('tr', {}, el('th', {}, 'When'), el('th', {}, 'Who'), el('th', {}, 'Report'))),
+        el('tbody', {}, ...views))
+      : el('p', {}, 'Nobody yet.'),
+  ];
+}
+
 function teamSection(mine: MyTeamView, page: Page): HTMLElement {
   const current = mine.team;
   const invitations = mine.invitations.map((invitation) => invitationItem(invitation, current?.name ?? null, page));
@@ -223,6 +251,7 @@ function teamSection(mine: MyTeamView, page: Page): HTMLElement {
       : 'You are not in a team. A team admin invites you by your e-mail address; you then choose the team\'s services '
         + 'in your entries.'),
     leave,
+    ...teamViewInfo(mine),
     invitations.length ? el('h3', { class: 'account-heading' }, 'Invitations') : null,
     invitations.length ? el('ul', { class: 'invitation-list' }, ...invitations) : null);
 }

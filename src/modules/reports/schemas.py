@@ -1,13 +1,15 @@
 """Reports for a week, a month (with the coding work by service) and a year (with the PTO account).
 
 Worked time, target and overtime count up to today; future days do not count yet. Days off count for
-the whole period, so planned PTO shows up.
+the whole period, so planned PTO shows up. In the team view, the period figures start on the day the member joined the
+team; the balance and the PTO account are running figures and cover the whole time.
 """
 
 import calendar
 import datetime as dt
 import sqlite3
 from collections import Counter, defaultdict
+from typing import Annotated
 
 from pydantic import BaseModel, Field
 
@@ -24,6 +26,7 @@ from src.modules.storage.settings import load_settings
 from src.modules.storage.tickets import TicketRepository
 
 Records = dict[dt.date, DayRecord]
+VisibleFrom = Annotated[dt.date | None, Field(description='Team view: the first day shown (the member joined the team)')]
 
 
 class PeriodTotals(BaseModel):
@@ -41,6 +44,7 @@ class WeekReport(BaseModel):
     week: str = Field(examples=['2026-W44'])
     totals: PeriodTotals
     days_off: dict[DayType, int] = Field(description='Weekdays by day type other than work, including planned ones')
+    visible_from: VisibleFrom = None
 
 
 class TicketWork(BaseModel):
@@ -63,6 +67,7 @@ class MonthReport(BaseModel):
     pto_days: float = Field(description='PTO used and planned in the month')
     coding: list[ServiceWork] = Field(description='Coding work by service and ticket; tickets without service last')
     coding_total: str
+    visible_from: VisibleFrom = None
 
 
 class MonthTotals(BaseModel):
@@ -92,16 +97,20 @@ class YearReport(BaseModel):
     pto: PtoView | None = Field(
         description='Null for years before the balance start, in the future or without PTO days entered',
     )
+    visible_from: VisibleFrom = None
 
 
 class Reports:
-    """Builds a user's reports within the transaction of the given connection."""
+    """Builds a user's reports within the transaction of the given connection; with `visible_from` (team view), period
+    figures start on that day."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: str, today: dt.date) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: str, today: dt.date, visible_from: dt.date | None = None) -> None:
         self._conn = conn
         self._user = user_id
         self._today = today
+        self._visible_from = visible_from
         self._settings = load_settings(conn, user_id)
+        self._first = max(self._settings.balance_start, visible_from or dt.date.min)
         self._pto_terms = PtoYearRepository(conn, user_id).terms()
         self._schedules = ScheduleRepository(conn, user_id).schedules()
 
@@ -109,12 +118,12 @@ class Reports:
         sunday = monday + dt.timedelta(days=6)
         records = self._records(sunday)
         totals, days_off = self._totals(records, monday, sunday), self._days_off(records, monday, sunday)
-        return WeekReport(week=week, totals=totals, days_off=days_off)
+        return WeekReport(week=week, totals=totals, days_off=days_off, visible_from=self._visible_from)
 
     def month(self, year: int, month: int) -> MonthReport:
         start, end = _month_bounds(year, month)
         records = self._records(end)
-        coding = CodingWork(self._conn, self._user).by_service(start, end)
+        coding = CodingWork(self._conn, self._user).by_service(max(start, self._visible_from or start), end)
         return MonthReport(
             month=f'{year}-{month:02d}',
             totals=self._totals(records, start, end),
@@ -122,6 +131,7 @@ class Reports:
             pto_days=float(sum(day.pto_days for day in self._period_days(records, start, end))),
             coding=coding,
             coding_total=format_duration(sum(parse_duration(service.duration) for service in coding)),
+            visible_from=self._visible_from,
         )
 
     def year(self, year: int) -> YearReport:
@@ -137,14 +147,16 @@ class Reports:
             average_per_day_worked=format_duration(sum(day.worked for day in worked_days) // max(len(worked_days), 1)),
             days_off=self._days_off(records, start, end),
             pto=self._pto(records, year),
+            visible_from=self._visible_from,
         )
 
     def _records(self, end: dt.date) -> Records:
         return DayRepository(self._conn, self._user).records(self._settings.balance_start, end)
 
     def _period_days(self, records: Records, start: dt.date, end: dt.date) -> list[DaySummary]:
-        """Days of the period from the balance start on (days before it are ignored)."""
-        first = max(start, self._settings.balance_start)
+        """Days of the period from the balance start on (days before it are ignored; in the team view also those before
+        the member joined the team)."""
+        first = max(start, self._first)
         return summarize_period(records, first, end, self._schedules) if first <= end else []
 
     def _counted_days(self, records: Records, start: dt.date, end: dt.date) -> list[DaySummary]:
@@ -172,7 +184,7 @@ class Reports:
             target=format_duration(target),
             overtime=format_duration(worked - target),
             balance_in=format_duration(balance_in),
-            balance_out=format_duration(balance_in + worked - target),
+            balance_out=format_duration(self._balance(records, days[-1].date) if days else balance_in),
         )
 
     def _month_totals(self, records: Records, year: int, month: int) -> MonthTotals:

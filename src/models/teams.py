@@ -1,6 +1,7 @@
 """Teams, their members (kept as history: which team a user was in on each day) and invitations."""
 
 import datetime as dt
+from typing import Literal
 
 from pydantic import Field
 
@@ -44,3 +45,14 @@ class Invitation(DomainModel):
     email: str
     invited_by: str
     invited_at: dt.datetime
+
+
+class ReportView(DomainModel):
+    """A team admin looked at a report of a member (team view)."""
+
+    member_id: str
+    viewer_id: str
+    viewer_name: str = ''
+    report: Literal['dashboard', 'week', 'month', 'year']
+    period: str = Field(default='', description='e.g. 2026-W44, 2026-10, 2026; empty for the dashboard')
+    viewed_at: dt.datetime

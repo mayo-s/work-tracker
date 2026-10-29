@@ -4,7 +4,7 @@ import datetime as dt
 import sqlite3
 from collections.abc import Callable
 
-from src.models.teams import Invitation, Member, Membership, Team
+from src.models.teams import Invitation, Member, Membership, ReportView, Team
 from src.modules.storage.errors import ConflictError, NotFoundError
 
 _CURRENT = 'left_on IS NULL'
@@ -160,3 +160,22 @@ class InvitationRepository:
             if invitation.id == invitation_id:
                 return invitation
         raise NotFoundError(f'No open invitation with id {invitation_id}')
+
+
+class ReportViewLog:
+    """Which team admin looked at which report of a member, and when; the member sees it in their settings."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def add(self, view: ReportView) -> None:
+        self._conn.execute('INSERT INTO report_views (member_id, viewer_id, report, period, viewed_at) VALUES (?, ?, ?, ?, ?)',
+                           (view.member_id, view.viewer_id, view.report, view.period, view.viewed_at.isoformat()))
+
+    def of_member(self, member_id: str, limit: int = 50) -> list[ReportView]:
+        """The latest views of the member's reports, newest first."""
+        rows = self._conn.execute(
+            "SELECT member_id, viewer_id, trim(first_name || ' ' || last_name) AS viewer_name, report, period, viewed_at"
+            ' FROM report_views JOIN users ON users.id = viewer_id WHERE member_id = ?'
+            ' ORDER BY viewed_at DESC, report_views.id DESC LIMIT ?', (member_id, limit))
+        return [ReportView(**dict(row)) for row in rows]

@@ -5,7 +5,7 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.models.teams import Invitation, Member, Membership, Team
+from src.models.teams import Invitation, Member, Membership, ReportView, Team
 from src.models.users import EMAIL_PATTERN, Role, User
 
 
@@ -83,8 +83,21 @@ class MyInvitationView(BaseModel):
                    invited_by=' '.join(filter(None, (inviter.first_name, inviter.last_name))))
 
 
+class ReportViewEntry(BaseModel):
+    viewer: str = Field(description='Name of the team admin who looked')
+    report: str = Field(description='dashboard, week, month or year')
+    period: str = Field(description='e.g. 2026-W44, 2026-10, 2026; empty for the dashboard')
+    viewed_at: dt.datetime
+
+    @classmethod
+    def of(cls, view: ReportView) -> Self:
+        return cls(viewer=view.viewer_name, report=view.report, period=view.period, viewed_at=view.viewed_at)
+
+
 class MyTeamView(BaseModel):
-    """The user's team (null without one) and their open invitations."""
+    """The user's team (null without one), their open invitations, who can see their reports and who looked."""
 
     team: TeamRef | None
     invitations: list[MyInvitationView]
+    team_admins: list[str] = Field(description='Names of the team admins who can see your reports')
+    viewed_by: list[ReportViewEntry] = Field(description='The latest views of your reports, newest first')

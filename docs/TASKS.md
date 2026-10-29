@@ -171,9 +171,16 @@ and ends with passing tests and the flake8 check.
   Existing passwords keep working
 - [ ] **L.9** Narrow screens and zoom (WCAG 1.4.10 Reflow, 320 CSS px / 200 % zoom): wide tables scroll in their own
   container, the navigation wraps, form grids fall back to one column
-- [ ] **L.10** Team view for team admins (after L.8a.3, to be discussed): on the dashboard, a team admin switches to a
-  member of their team and sees that member's summary and reports, read-only, only for the days the member was in their
-  team (membership history from L.8a.3). To decide: which reports (dashboard, week, month with the coding work and its
-  descriptions, year), whether members see who looked at their data, and whether admins get the same view
+- [x] **L.10** Team view for team admins (after L.8a.3):
+  - On the dashboard, a team admin chooses a current member of their team ("Viewing: Rainer Zufall"); dashboard, week,
+    month and year then show that member's data read-only (no editing, no review), e.g. `/month?member=<id>`, with a
+    banner "Read-only: Rainer Zufall's data · back to yours" on every page
+  - Shown: times, tickets, hours and entry descriptions and notes; day notes (e.g. a reason for sick leave) stay hidden.
+    Days outside the member's time in this team show as "not in this team", without times or entries. Running figures
+    (overtime balance, PTO left) are as of now, with a note that they cover the whole time
+  - Only the team admins of the member's current team, the admin neither (unless team admin of that team); former
+    members drop out of the view
+  - Members see in their settings that their team admins can see their reports, and a log of who looked at which
+    report and when
 - [ ] **L.11** AWS Lambda deployment (to be discussed); with it, the admin sets a one-time password for a user who
   forgot theirs (changed at the next login), since nobody has a shell on the computer running the app

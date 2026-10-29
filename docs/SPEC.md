@@ -298,6 +298,11 @@ corners, one accent color. Warnings are the only loud element.
   ones; only the admin and the team's admins change team services. On leaving (or being removed), the team services
   the user's tickets use are copied into their personal services, or a personal service with the same short name is
   used, so the tickets keep their service.
+- Team view: a team admin chooses a current member of their team on the dashboard and sees their dashboard, week,
+  month and year read-only, from the day the member joined the team (earlier days show as "not in this team"). Entry
+  descriptions and notes are shown, day notes and the review are not; the overtime balance and PTO left are running
+  figures over the whole time. Admins get no such view unless they are team admin of that team; former members drop
+  out. Members see in their settings which team admins can look, and a log of who looked at which report and when.
 
 ## 6. Import (spreadsheet CSV)
 
