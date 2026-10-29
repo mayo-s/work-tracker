@@ -25,13 +25,18 @@ export function fieldErrors(details: unknown, fields: readonly string[]): FieldE
   return result;
 }
 
-/** A labelled field; its control has the id `${prefix}-${name}`, its error `${prefix}-${name}-error`. */
+/**
+ * A labelled field; its control has the id `${prefix}-${name}`, its error `${prefix}-${name}-error`.
+ * Hint and error describe the control (`aria-describedby`), so screen readers read them with the field.
+ */
 export function field(prefix: string, name: string, label: string, control: HTMLElement, hint?: string): HTMLElement {
+  const id = `${prefix}-${name}`;
+  control.setAttribute('aria-describedby', [hint ? `${id}-hint` : '', `${id}-error`].filter(Boolean).join(' '));
   return el('div', { class: `field field-${name.replaceAll('_', '-')}` },
-    el('label', { for: `${prefix}-${name}` }, label),
+    el('label', { for: id }, label),
     control,
-    hint ? el('p', { class: 'field-hint muted' }, hint) : null,
-    el('p', { class: 'field-error', id: `${prefix}-${name}-error`, hidden: true }),
+    hint ? el('p', { class: 'field-hint muted', id: `${id}-hint` }, hint) : null,
+    el('p', { class: 'field-error', id: `${id}-error`, hidden: true }),
   );
 }
 

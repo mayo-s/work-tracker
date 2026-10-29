@@ -25,12 +25,12 @@
   --color-background: #ffffff;
   --color-surface: #f4f7fb;
   --color-border: #dce4ee;
-  --color-accent: #2f6fd6;
+  --color-accent: #2c69cb;
   --color-accent-light: #e8f0fc;
   --color-warning: #e62e6b;
   --color-warning-text: #c81e57;
   --color-warning-light: #fdecf2;
-  --color-positive: #1b7f61;
+  --color-positive: #1a7b5e;
   --color-positive-light: #e6f6f0;
   --color-on-accent: #ffffff;
 
@@ -155,11 +155,42 @@ b {
 
 a {
   color: var(--color-accent);
+  text-decoration: underline;  /* links in text are recognizable without color (WCAG 1.4.1) */
+  text-underline-offset: 0.15em;
+}
+
+/* Navigation, buttons and tables of contents are recognizable by their place and shape */
+.app-name,
+.app-nav a,
+.gallery-nav a,
+.settings-contents a,
+a.button {
   text-decoration: none;
 }
 
-a:hover {
+.app-name:hover,
+.settings-contents a:hover {
   text-decoration: underline;
+}
+
+.skip-link {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 10;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+main:focus {
+  outline: none;
 }
 
 :focus-visible {
@@ -184,10 +215,6 @@ a:hover {
   color: var(--color-accent);
   font-weight: var(--font-weight-strong);
   font-size: var(--font-size-large);
-}
-
-.app-name:hover {
-  text-decoration: none;
 }
 
 .app-nav {
@@ -384,6 +411,11 @@ th.num {
 .is-warning {
   border-left: 3px solid var(--color-warning);
   background: var(--color-warning-light);
+}
+
+/* Muted text on the warning background would fall below 4.5:1 contrast */
+.is-warning .muted {
+  color: var(--color-text);
 }
 
 .is-today {
@@ -648,12 +680,16 @@ button.button-danger {
   display: flex;
   gap: var(--space-1);
   margin-left: auto;
-  opacity: 0.55;
 }
 
-.entry:hover .entry-actions,
-.entry-actions:focus-within {
-  opacity: 1;
+/* Muted until the entry is hovered or an action has focus; muted text still has 4.5:1 contrast */
+.entry-actions .button-small {
+  color: var(--color-muted);
+}
+
+.entry:hover .entry-actions .button-small,
+.entry-actions .button-small:focus-visible {
+  color: var(--color-text);
 }
 
 .entry-editing {
@@ -865,6 +901,28 @@ button.button-danger {
 .list-form input {
   flex: 1 1 10rem;
   width: auto;
+}
+
+/* A labelled control of the form for a new record */
+.list-field {
+  display: flex;
+  flex: 1 1 10rem;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.list-form .list-field > input,
+.list-form .list-field > select {
+  flex: none;  /* not the row's flex basis, which would make them tall in this column */
+  width: 100%;
+}
+
+.list-field:has(.weekday-picker) {
+  flex: 2 1 20rem;
+}
+
+.list-form:has(.list-field) {
+  align-items: flex-end;
 }
 
 .list-table + .list-form {

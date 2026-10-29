@@ -102,7 +102,7 @@ function schedulesTable(schedules: ScheduleView[]): EditableTable {
     fields: [
       { name: 'valid_from', label: 'Valid from', required: true, type: 'date', format: formatDate },
       { name: 'weekly_hours', label: 'Hours per week', required: true, numeric: true,
-        placeholder: 'Hours per week, e.g. 40:00' },
+        placeholder: 'e.g. 40:00' },
       { name: 'work_days', label: 'Work days', required: true, type: 'weekdays', defaultValue: 'Mon,Tue,Wed,Thu,Fri',
         format: formatWorkDays },
       { name: 'state', label: 'Holidays', required: true, type: 'select', defaultValue: 'BE',
@@ -144,7 +144,7 @@ function ptoYearsTable(years: PtoYear[]): EditableTable {
       { name: 'allowance', label: 'Allowance', required: true, type: 'number', min: 0, step: 0.5, numeric: true },
       { name: 'extra_days', label: 'Extra days', required: false, type: 'number', min: 0, step: 0.5, numeric: true },
       { name: 'carried_over', label: 'Carried over', required: false, type: 'number', step: 0.5, numeric: true,
-        placeholder: 'Carried over (calculated)' },
+        placeholder: 'calculated' },
       { name: 'note', label: 'Note', required: false, maxLength: 200 },
     ],
     items: years.map((year) => ({

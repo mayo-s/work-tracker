@@ -4,7 +4,7 @@ import {
   api, ApiError, type DayView, type ReviewEntry, type ReviewReason, type ReviewView, type Service, type TicketView,
 } from './api.ts';
 import { formatDay, isoWeek, type IsoDate } from './dates.ts';
-import { el } from './dom.ts';
+import { el, onEscape } from './dom.ts';
 import { entryContent } from './week.ts';
 
 export const REASON_LABELS: Record<ReviewReason, string> = {
@@ -112,6 +112,7 @@ function renameForm(key: string, page: Page, onCancel: () => void, flagIds: numb
   const input = el('input', { value: key, 'aria-label': `New key for ${key}`, autocomplete: 'off', class: 'rename-input' });
   const form = el('form', { class: 'rename-form' }, input,
     el('button', { type: 'submit', class: 'button-small primary' }, 'Rename'), button('Cancel', onCancel));
+  onEscape(form, onCancel);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const newKey = input.value.trim().toUpperCase();
@@ -128,11 +129,19 @@ function renameForm(key: string, page: Page, onCancel: () => void, flagIds: numb
   return form;
 }
 
+/** Shows `form` in place of the cell's content; canceling restores the content and focuses `opener` again. */
+function openInCell(cell: HTMLElement, opener: HTMLElement, form: (cancel: () => void) => HTMLElement): void {
+  const original = [...cell.childNodes];
+  cell.replaceChildren(form(() => {
+    cell.replaceChildren(...original);
+    opener.focus();
+  }));
+}
+
 function renameAction(key: string, page: Page, cell: HTMLElement, flagIds: number[] = []): HTMLButtonElement {
-  return button('Rename', () => {
-    const original = [...cell.childNodes];
-    cell.replaceChildren(renameForm(key, page, () => cell.replaceChildren(...original), flagIds));
-  });
+  const rename: HTMLButtonElement = button('Rename',
+    () => openInCell(cell, rename, (cancel) => renameForm(key, page, cancel, flagIds)));
+  return rename;
 }
 
 function ticketRow(ticket: TicketView, page: Page, selected: Set<string>, onSelect: () => void): HTMLElement {
@@ -215,6 +224,7 @@ function splitForm(group: GuessedTicket, suggestion: string[], page: Page, onCan
     class: 'split-input' });
   const form = el('form', { class: 'rename-form' }, input,
     el('button', { type: 'submit', class: 'button-small primary' }, 'Split'), button('Cancel', onCancel));
+  onEscape(form, onCancel);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const keys = input.value.split(/[\s,;/]+/).map((key) => key.trim().toUpperCase()).filter(Boolean);
@@ -250,10 +260,9 @@ function guessedRow(group: GuessedTicket, page: Page): HTMLElement {
   actions.append(renameAction(group.key, page, actions, group.flagIds));
   const suggestion = splitSuggestion(group);
   if (suggestion) {
-    actions.append(button('Split', () => {
-      const original = [...actions.childNodes];
-      actions.replaceChildren(splitForm(group, suggestion, page, () => actions.replaceChildren(...original)));
-    }));
+    const split: HTMLButtonElement = button('Split',
+      () => openInCell(actions, split, (cancel) => splitForm(group, suggestion, page, cancel)));
+    actions.append(split);
   }
   const shown = group.originals.slice(0, 3);
   return el('tr', {},

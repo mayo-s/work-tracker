@@ -73,7 +73,8 @@ the import: guessed tickets (confirm, rename or split), entries without duration
 without service (assign one to several at once). `/setup` sets up a new database (see "Start from zero"). `/settings` holds the overtime balance (start date, opening
 balance), the work schedules, the PTO days per year, and
 the services and activity types (add, edit, delete; an activity type used by entries cannot be deleted; `/lists`
-forwards there), and the color theme (System, Light, Dark). `/components` is a
+forwards there), and the color theme (System, Light, Dark). All pages meet WCAG 2.2 AA in both
+themes (checked with axe-core); Escape closes inline forms. `/components` is a
 gallery of the UI components, each with its use and the HTML to copy. The database (`$WORK_TRACKER_DB` or
 `work_tracker.db`) is migrated on start. API documentation:
 `/apidoc/swagger`, `/apidoc/redoc` or `/apidoc/scalar`; the OpenAPI spec is at `/apidoc/openapi.json`.

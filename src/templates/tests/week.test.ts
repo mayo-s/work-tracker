@@ -5,7 +5,8 @@ import { test } from 'node:test';
 
 import type { DayView, EntryView } from '../ts/api.ts';
 import {
-  editFromSearch, entriesByDate, entryFromSearch, needsWarning, shownDays, signed, valueClass, visibleDays, weekFromSearch,
+  editFromSearch, entriesByDate, entryFromSearch, needsWarning, openerKey, shownDays, signed, valueClass, visibleDays,
+  weekFromSearch,
 } from '../ts/week.ts';
 
 function day(date: string, weekday: string, changes: Partial<DayView> = {}): DayView {
@@ -87,4 +88,11 @@ test('a work day of the schedule may be any weekday', () => {
   assert.deepEqual(visibleDays(days, new Map()).map((item) => item.weekday), ['Sat']);
   assert.ok(!needsWarning(days[0]!, [], '2026-11-02'));
   assert.ok(needsWarning(days[1]!, [], '2026-11-02'));
+});
+
+test('the key of the button that opened a form', () => {
+  assert.equal(openerKey({ kind: 'day', date: '2026-10-28' }), 'day-2026-10-28');
+  assert.equal(openerKey({ kind: 'entry', date: '2026-10-28', id: 129 }), 'entry-129');
+  assert.equal(openerKey({ kind: 'entry', date: '2026-10-28', id: null }), 'add-2026-10-28');
+  assert.equal(openerKey(null), null);
 });

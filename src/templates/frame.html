@@ -9,6 +9,7 @@
   <script type="module" src="/static/js/main.js"></script>
 </head>
 <body>
+  <a class="skip-link" href="#app">Skip to content</a>
   <header class="app-header">
     <a class="app-name" href="/">Work Tracker</a>
     <nav class="app-nav" aria-label="Main">
@@ -19,7 +20,7 @@
       <a href="/settings">Settings</a>
     </nav>
   </header>
-  <main id="app" data-page="{{page}}">
+  <main id="app" data-page="{{page}}" tabindex="-1">
 {{content}}
   </main>
   <noscript>This page needs JavaScript (build it with <code>npm run build</code>).</noscript>

@@ -8,7 +8,7 @@ def test_render_page_fills_the_frame():
     html = render_page('week', 'Week')
     assert html.startswith('<!doctype html>')
     assert '<title>Week · Work Tracker</title>' in html
-    assert '<main id="app" data-page="week">' in html
+    assert '<main id="app" data-page="week" tabindex="-1">' in html
     assert '<section id="week"' in html
     assert '{{' not in html
 
@@ -41,7 +41,7 @@ def test_stylesheet(client):
     result = client.simulate_get('/static/css/main.css')
     assert result.status == falcon.HTTP_200
     assert result.headers['content-type'] == 'text/css'
-    for color in ('#36454f', '#e62e6b', '#c81e57', '#1b7f61', '#2f6fd6', '#f4f7fb'):
+    for color in ('#36454f', '#e62e6b', '#c81e57', '#1a7b5e', '#2c69cb', '#f4f7fb'):
         assert color in result.text
 
 
@@ -109,3 +109,10 @@ def test_lists_forward_to_the_settings_page(client):
     result = client.simulate_get('/lists')
     assert result.status == falcon.HTTP_301
     assert result.headers['location'] == '/settings#services'
+
+
+def test_skip_link_comes_first(client):
+    html = client.simulate_get('/').text
+    body = html[html.index('<body>'):]
+    assert body.index('<a class="skip-link" href="#app">Skip to content</a>') < body.index('<header')
+    assert '<main id="app" data-page="week" tabindex="-1">' in html

@@ -96,9 +96,12 @@ and ends with passing tests and the flake8 check.
 - [x] **L.4** Dark mode: a second set of the color variables (WCAG AA contrast, checked by a test), previewed on
   the component gallery; the theme (System, Light, Dark) is chosen on the settings page and stored in the database
   (`GET/PUT /api/theme`); pages are rendered with the theme, so nothing flashes
-- [ ] **L.5** Accessibility: the ui should be accessible for everyone and follow modern accessibility standards
-  (includes three light-mode color pairs just below 4.5:1: accent on surface, mint on mint light, accent on accent
-  light)
+- [x] **L.5** Accessibility, WCAG 2.2 AA (found with axe-core on all pages, both themes): light accent `#2C69CB` and
+  mint `#1A7B5E` (all text pairs at least 4.5:1, the contrast test checks light mode fully too); entry actions always
+  visible in muted text instead of dimmed; links in body text underlined; error messages connected to their field
+  (`aria-describedby`); visible labels for the "add" forms of the settings tables; Escape closes inline forms and the
+  booking form, and focus returns to the button that opened them; a "Skip to content" link first on each page; the
+  gallery's code blocks focusable. No separate axe script and no screen-reader checklist
 - [ ] **L.6** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g.
   `2,0 PTO Dentist`,
   today only a day note) as a value, and show them in the year report next to the days off.
@@ -106,3 +109,5 @@ and ends with passing tests and the flake8 check.
   interesting stats.
 - [ ] **L.8** User Login: i would like to secure the app behind a login page. Valid login expires after 24 hours.
 - [ ] **L.8a** Multi User App: What if not just one person wants to use the app but multiple? same db or one db by user?
+- [ ] **L.9** Narrow screens and zoom (WCAG 1.4.10 Reflow, 320 CSS px / 200 % zoom): wide tables scroll in their own
+  container, the navigation wraps, form grids fall back to one column

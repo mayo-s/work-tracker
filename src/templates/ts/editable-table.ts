@@ -1,7 +1,7 @@
 // An editable table of records (add, edit inline, delete) and the page frame around such tables, with a status line.
 
 import { ApiError } from './api.ts';
-import { el } from './dom.ts';
+import { el, onEscape } from './dom.ts';
 import { WEEKDAY_NAMES } from './labels.ts';
 
 /**
@@ -54,17 +54,28 @@ export function button(label: string, onClick: () => void, className = 'button-s
 /** The element to enter a field's value, and how to read the value back as text. */
 type Control = { name: string; element: HTMLElement; read: () => string };
 
-function controlLabel(table: EditableTable, item: Item | null, field: Field): string {
-  return item ? `${field.label} of ${item.label}` : `New ${table.noun}: ${field.label.toLowerCase()}`;
+function controlLabel(item: Item, field: Field): string {
+  return `${field.label} of ${item.label}`;
 }
 
-function inputControl(table: EditableTable, item: Item | null, field: Field): Control {
+/**
+ * Edit rows sit under the column headers, so their controls are named by `aria-label`;
+ * the form for a new record shows a label above each control.
+ */
+function named(item: Item | null, field: Field, control: HTMLElement): HTMLElement {
+  if (item) {
+    control.setAttribute('aria-label', controlLabel(item, field));
+    return control;
+  }
+  return el('label', { class: 'list-field' }, el('span', { class: 'field-label' }, field.label), control);
+}
+
+function inputControl(item: Item | null, field: Field): Control {
   const input = el('input', {
     name: field.name,
     type: field.type ?? 'text',
     value: item?.values[field.name] ?? field.defaultValue ?? '',
-    placeholder: field.placeholder ?? field.label,
-    'aria-label': controlLabel(table, item, field),
+    placeholder: field.placeholder ?? (item ? field.label : null),
     maxlength: field.maxLength,
     min: field.min,
     max: field.max,
@@ -72,28 +83,30 @@ function inputControl(table: EditableTable, item: Item | null, field: Field): Co
     required: field.required,
     autocomplete: 'off',
   });
-  return { name: field.name, element: input, read: () => input.value.trim() };
+  return { name: field.name, element: named(item, field, input), read: () => input.value.trim() };
 }
 
-function weekdaysControl(table: EditableTable, item: Item | null, field: Field): Control {
+function weekdaysControl(item: Item | null, field: Field): Control {
   const selected = new Set((item?.values[field.name] ?? field.defaultValue ?? '').split(','));
   const boxes = WEEKDAY_NAMES.map((day) => el('input', { type: 'checkbox', value: day, checked: selected.has(day) }));
-  const element = el('fieldset', { class: 'weekday-picker' },
-    el('legend', { class: 'visually-hidden' }, controlLabel(table, item, field)),
+  const picker = el('fieldset', { class: 'weekday-picker' },
+    el('legend', { class: 'visually-hidden' }, item ? controlLabel(item, field) : field.label),
     ...boxes.map((box, index) => el('label', {}, box, WEEKDAY_NAMES[index])));
+  const label = el('span', { class: 'field-label', 'aria-hidden': 'true' }, field.label);  // the legend names it
+  const element = item ? picker : el('div', { class: 'list-field' }, label, picker);
   return { name: field.name, element, read: () => boxes.filter((box) => box.checked).map((box) => box.value).join(',') };
 }
 
-function selectControl(table: EditableTable, item: Item | null, field: Field): Control {
+function selectControl(item: Item | null, field: Field): Control {
   const value = item?.values[field.name] ?? field.defaultValue ?? '';
-  const select = el('select', { name: field.name, 'aria-label': controlLabel(table, item, field) },
+  const select = el('select', { name: field.name },
     ...(field.options ?? []).map(([option, label]) => el('option', { value: option, selected: option === value }, label)));
-  return { name: field.name, element: select, read: () => select.value };
+  return { name: field.name, element: named(item, field, select), read: () => select.value };
 }
 
-function checkboxControl(table: EditableTable, item: Item | null, field: Field): Control {
+function checkboxControl(item: Item | null, field: Field): Control {
   const box = el('input', { type: 'checkbox', checked: (item?.values[field.name] ?? field.defaultValue) === 'true',
-    'aria-label': controlLabel(table, item, field) });
+    'aria-label': item ? controlLabel(item, field) : null });
   const element = el('label', { class: 'checkbox-field' }, box, field.label);
   return { name: field.name, element, read: () => String(box.checked) };
 }
@@ -102,7 +115,7 @@ const CONTROLS = { weekdays: weekdaysControl, select: selectControl, checkbox: c
 
 function controls(table: EditableTable, item: Item | null): Control[] {
   return table.fields.filter((field) => !(item && field.fixed))
-    .map((field) => (CONTROLS[field.type as keyof typeof CONTROLS] ?? inputControl)(table, item, field));
+    .map((field) => (CONTROLS[field.type as keyof typeof CONTROLS] ?? inputControl)(item, field));
 }
 
 function values(fields: Control[]): Record<string, string> {
@@ -112,25 +125,31 @@ function values(fields: Control[]): Record<string, string> {
 /** Saves the form's values (a new record if `item` is null), then reloads the page with a message. */
 function itemForm(table: EditableTable, item: Item | null, page: Page, ...buttons: HTMLElement[]): HTMLFormElement {
   const fields = controls(table, item);
-  const fixed = item ? table.fields.filter((field) => field.fixed).map((field) => el('strong', {}, item.values[field.name])) : [];
+  const fixed = item
+    ? table.fields.filter((field) => field.fixed).map((field) => el('strong', {}, item.values[field.name])) : [];
   const form = el('form', { class: 'list-form' }, ...fixed, ...fields.map((control) => control.element), ...buttons);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const entered = values(fields);
     const name = item?.label ?? entered[table.fields[0]!.name];
-    table.save(item?.id ?? null, entered).then(() => page.reload(`${item ? 'Saved' : 'Added'} ${table.noun} ${name}`), page.fail);
+    const message = `${item ? 'Saved' : 'Added'} ${table.noun} ${name}`;
+    table.save(item?.id ?? null, entered).then(() => page.reload(message), page.fail);
   });
   return form;
 }
 
-function editRow(table: EditableTable, item: Item, page: Page, row: HTMLTableRowElement): void {
+function editRow(table: EditableTable, item: Item, page: Page, row: HTMLTableRowElement, opener: HTMLElement): void {
   const original = [...row.childNodes];
   const columns = table.fields.length + (table.usageLabel ? 2 : 1);
+  const cancel = (): void => {
+    row.replaceChildren(...original);
+    opener.focus();
+  };
   const form = itemForm(table, item, page,
-    el('button', { type: 'submit', class: 'button-small primary' }, 'Save'),
-    button('Cancel', () => row.replaceChildren(...original)));
+    el('button', { type: 'submit', class: 'button-small primary' }, 'Save'), button('Cancel', cancel));
+  onEscape(form, cancel);
   row.replaceChildren(el('td', { colspan: columns }, form));
-  queueMicrotask(() => form.querySelector('input')?.select());
+  queueMicrotask(() => form.querySelector<HTMLElement>('input, select')?.focus());
 }
 
 function cell(field: Field, value: string | undefined, first: boolean): HTMLElement {
@@ -141,11 +160,12 @@ function cell(field: Field, value: string | undefined, first: boolean): HTMLElem
 
 function itemRow(table: EditableTable, item: Item, page: Page): HTMLTableRowElement {
   const row = el('tr', {});
+  const edit: HTMLButtonElement = button('Edit', () => editRow(table, item, page, row, edit));
   row.append(
     ...table.fields.map((field, index) => cell(field, item.values[field.name], index === 0)),
     table.usageLabel ? el('td', { class: 'num' }, item.usage ?? '') : '',
     el('td', { class: 'row-actions' },
-      button('Edit', () => editRow(table, item, page, row)),
+      edit,
       button('Delete', () => {
         if (window.confirm(table.deleteQuestion(item))) {
           table.remove(item.id).then(() => page.reload(`Deleted ${table.noun} ${item.label}`), page.fail);

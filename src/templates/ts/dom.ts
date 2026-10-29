@@ -23,3 +23,13 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   }
   return element;
 }
+
+/** Calls `handler` when Escape is pressed within `element`, e.g. to cancel an inline form. */
+export function onEscape(element: HTMLElement, handler: () => void): void {
+  element.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      handler();
+    }
+  });
+}
