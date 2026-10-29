@@ -106,7 +106,9 @@ whether such a user exists), removes members and manages the team services. The 
 the settings (a badge on Settings shows open invitations); a user is in one team at most, so accepting leaves the
 current one. Members choose the team services in entries next to their personal ones. On leaving, the team services
 their tickets use become personal services. The membership history keeps which team a user was in on each day.
-A forgotten password is reset on the computer running the app:
+New passwords (registration, first user, password change, the command below) need at least 12 characters with
+letters, digits and a special character; existing passwords keep working. A forgotten password is reset on the
+computer running the app:
 
 ```shell
 pipenv run python -m src.modules.auth set-password klara  # username or e-mail address; asks for the new password

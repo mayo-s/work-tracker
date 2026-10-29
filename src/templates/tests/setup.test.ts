@@ -7,8 +7,8 @@ import { countedMonths, initialState, proRata, setupInput, stepError, steps, sum
 
 const PASCAL = {
   username: ' pascal ', email: 'turbo.pascal@example.com', first_name: 'Pascal', last_name: '',
-  password: 'correct horse battery',
-  repeat: 'correct horse battery',
+  password: 'correct horse battery 9!',
+  repeat: 'correct horse battery 9!',
 };
 
 test('the start month counts if starting by the 15th', () => {
@@ -60,7 +60,7 @@ test('setup input leaves out empty services and trims', () => {
     pto_per_year: 30, pto_first_year: 25, services: [{ short_name: 'AUTH', name: 'auth-service' }],
     user: {
       username: 'pascal', email: 'turbo.pascal@example.com', first_name: 'Pascal', last_name: '',
-      password: 'correct horse battery',
+      password: 'correct horse battery 9!',
     },
   });
   assert.equal(setupInput({ ...state, account: null }).user, null);

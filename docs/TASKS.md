@@ -166,6 +166,9 @@ and ends with passing tests and the flake8 check.
     - Leaving: a member leaves in the settings or is removed by the admin or a team admin. The team services their
       tickets use are copied into their personal services (a personal service with the same short name is used
       instead of a copy), so their tickets keep their service
+- [x] **L.8b** Password rules: a new password (registration, first user, password change, `set-password`) has at least
+  12 characters with letters, digits and at least one special character (anything but letters, digits and spaces).
+  Existing passwords keep working
 - [ ] **L.9** Narrow screens and zoom (WCAG 1.4.10 Reflow, 320 CSS px / 200 % zoom): wide tables scroll in their own
   container, the navigation wraps, form grids fall back to one column
 - [ ] **L.10** Team view for team admins (after L.8a.3, to be discussed): on the dashboard, a team admin switches to a

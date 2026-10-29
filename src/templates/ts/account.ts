@@ -5,6 +5,8 @@ import { el } from './dom.ts';
 import { field, submit } from './forms.ts';
 
 export const PASSWORD_MIN_LENGTH = 12;
+const PASSWORD_HINT = `At least ${PASSWORD_MIN_LENGTH} characters with letters, digits and a special character, `
+  + 'e.g. ! ? # or %.';
 const USERNAME = /^[A-Za-z0-9][A-Za-z0-9._-]{2,29}$/;
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -30,9 +32,14 @@ export function accountError(values: AccountValues, withPassword: boolean): stri
   return withPassword ? passwordError(values.password, values.repeat) : null;
 }
 
+/** Why a new password is not allowed (the rules of the API), or null: at least 12 characters with letters, digits and a
+ * special character (anything but letters, digits and spaces), entered twice the same. */
 export function passwordError(password: string, repeat: string): string | null {
   if (password.length < PASSWORD_MIN_LENGTH) {
     return `The password needs at least ${PASSWORD_MIN_LENGTH} characters.`;
+  }
+  if (!/\p{L}/u.test(password) || !/\p{Nd}/u.test(password) || !/[^\p{L}\p{N}\s]/u.test(password)) {
+    return 'The password needs letters, digits and a special character, e.g. ! ? # or %.';
   }
   return password === repeat ? null : 'The two passwords differ.';
 }
@@ -63,7 +70,7 @@ export function accountFields(prefix: string, values: AccountValues, withPasswor
     fields.push(
       field(prefix, 'password', 'Password',
         input(prefix, 'password', values, { type: 'password', autocomplete: 'new-password' }),
-        `At least ${PASSWORD_MIN_LENGTH} characters.`),
+        PASSWORD_HINT),
       field(prefix, 'repeat', 'Repeat the password', input(prefix, 'repeat', values,
         { type: 'password', autocomplete: 'new-password' })));
   }
@@ -211,7 +218,7 @@ function passwordForm(reload: (message: string) => void): HTMLFormElement {
   const form = el('form', { class: 'balance-form', novalidate: true },
     field('password', 'current', 'Current password', current),
     field('password', 'password', 'New password', fresh,
-      `At least ${PASSWORD_MIN_LENGTH} characters; logs out everywhere else.`),
+      `${PASSWORD_HINT} Logs out everywhere else.`),
     field('password', 'repeat', 'Repeat the new password', repeat),
     el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
     el('div', { class: 'form-actions' }, el('button', { type: 'submit' }, 'Change password')));

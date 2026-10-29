@@ -259,7 +259,9 @@ corners, one accent color. Warnings are the only loud element.
 ### 5.6 Login
 
 - A user has a username and an e-mail address (both unique, ignoring case), a first name, an optional last name and a
-  password (at least 12 characters, stored as a salted scrypt hash). Log in with the username or the e-mail address.
+  password (stored as a salted scrypt hash). A new password needs at least 12 characters with letters, digits and a
+  special character (anything but letters, digits and spaces); existing ones keep working. Log in with the username
+  or the e-mail address.
 - A login is a session: a random token in an `HttpOnly`, `SameSite=Strict` cookie (`Secure` over HTTPS), stored only as
   a hash. It stays valid for 24 hours since the last activity (renewed at most every 30 minutes); "Log out" ends it,
   a new password ends all other sessions. After 5 failed logins or registrations within a minute, both pause for a

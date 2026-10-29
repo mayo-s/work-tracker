@@ -4067,7 +4067,7 @@
             "type": "string"
           },
           "password": {
-            "description": "At least 12 characters",
+            "description": "At least 12 characters with letters, digits and a special character",
             "maxLength": 200,
             "minLength": 12,
             "title": "Password",
@@ -4135,7 +4135,7 @@
             "type": "string"
           },
           "new_password": {
-            "description": "At least 12 characters",
+            "description": "At least 12 characters with letters, digits and a special character",
             "maxLength": 200,
             "minLength": 12,
             "title": "New Password",
