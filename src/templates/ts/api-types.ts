@@ -248,6 +248,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Start date and opening balance of the overtime balance. */
+        get: operations["get__api_settings"];
+        /** Change the start date and opening balance; reports count from the new start day on. */
+        put: operations["put__api_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/pto-years": {
         parameters: {
             query?: never;
@@ -277,7 +295,8 @@ export interface paths {
         /** Enter the PTO days of a year (insert or replace). */
         put: operations["put__api_pto-years_{year}"];
         post?: never;
-        delete?: never;
+        /** Delete the PTO days of a year; the year then has no PTO account. */
+        delete: operations["delete__api_pto-years_{year}"];
         options?: never;
         head?: never;
         patch?: never;
@@ -911,6 +930,23 @@ export interface components {
              * @description Days with import flags (e.g. weekend hours), by date
              */
             days: components["schemas"]["DayView"][];
+        };
+        /** SettingsView */
+        SettingsView: {
+            /**
+             * Balance Start
+             * Format: date
+             * @description First day counted in the overtime balance
+             * @example 2024-06-01
+             */
+            balance_start: string;
+            /**
+             * Opening Balance
+             * @description Overtime before the start day, h:mm (negative with a minus)
+             * @example 12:30
+             * @example -1:45
+             */
+            opening_balance: string;
         };
         /** TicketQuery */
         TicketQuery: {
@@ -1981,6 +2017,68 @@ export interface operations {
             };
         };
     };
+    get__api_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsView"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    put__api_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsView"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsView"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
     "get__api_pto-years": {
         parameters: {
             query?: never;
@@ -2073,6 +2171,43 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PtoYear"];
                 };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "delete__api_pto-years_{year}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Year, e.g. 2026 */
+                year: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Unprocessable Content */
             422: {

@@ -30,6 +30,12 @@ def test_put_rejects_invalid_days(client, body):
     assert client.simulate_put('/api/pto-years/2026', json=body).status_code == 422
 
 
+def test_delete_year(client):
+    assert client.simulate_delete('/api/pto-years/2027').status == falcon.HTTP_204
+    assert client.simulate_get('/api/pto-years/2027').status == falcon.HTTP_404
+    assert client.simulate_delete('/api/pto-years/2027').status == falcon.HTTP_404
+
+
 def test_pto_years_are_documented(client):
     paths = client.simulate_get('/apidoc/openapi.json').json['paths']
     assert {'/api/pto-years', '/api/pto-years/{year}'} <= set(paths)

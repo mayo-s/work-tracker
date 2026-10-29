@@ -22,6 +22,9 @@
       "name": "Reports"
     },
     {
+      "name": "Settings"
+    },
+    {
       "name": "PTO years"
     },
     {
@@ -1069,6 +1072,80 @@
         }
       }
     },
+    "/api/settings": {
+      "get": {
+        "summary": "Start date and opening balance of the overtime balance.",
+        "operationId": "get__api_settings",
+        "description": "",
+        "tags": [
+          "Settings"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Change the start date and opening balance; reports count from the new start day on.",
+        "operationId": "put__api_settings",
+        "description": "",
+        "tags": [
+          "Settings"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsView"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/pto-years": {
       "get": {
         "summary": "Every year with PTO days entered, oldest first.",
@@ -1103,6 +1180,44 @@
       }
     },
     "/api/pto-years/{year}": {
+      "delete": {
+        "summary": "Delete the PTO days of a year; the year then has no PTO account.",
+        "operationId": "delete__api_pto-years_{year}",
+        "description": "",
+        "tags": [
+          "PTO years"
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int4"
+            },
+            "description": "Year, e.g. 2026"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "get": {
         "summary": "The PTO days of one year.",
         "operationId": "get__api_pto-years_{year}",
@@ -2752,6 +2867,35 @@
           "days"
         ],
         "title": "ReviewView",
+        "type": "object"
+      },
+      "SettingsView": {
+        "additionalProperties": false,
+        "properties": {
+          "balance_start": {
+            "description": "First day counted in the overtime balance",
+            "examples": [
+              "2024-06-01"
+            ],
+            "format": "date",
+            "title": "Balance Start",
+            "type": "string"
+          },
+          "opening_balance": {
+            "description": "Overtime before the start day, h:mm (negative with a minus)",
+            "examples": [
+              "12:30",
+              "-1:45"
+            ],
+            "title": "Opening Balance",
+            "type": "string"
+          }
+        },
+        "required": [
+          "balance_start",
+          "opening_balance"
+        ],
+        "title": "SettingsView",
         "type": "object"
       },
       "TicketQuery": {

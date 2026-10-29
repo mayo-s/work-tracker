@@ -95,6 +95,16 @@ describe('requests', () => {
     ]);
   });
 
+  test('settings and PTO years', async () => {
+    respond(200, {});
+    await api.saveSettings({ balance_start: '2027-03-01', opening_balance: '-1:45' });
+    await api.savePtoYear(2027, { allowance: 25 });
+    assert.deepEqual(calls.map((call) => [call.method, call.url, call.body]), [
+      ['PUT', '/api/settings', { balance_start: '2027-03-01', opening_balance: '-1:45' }],
+      ['PUT', '/api/pto-years/2027', { allowance: 25 }],
+    ]);
+  });
+
   test('204 No Content resolves to undefined', async () => {
     respond(204);
     assert.equal(await api.deleteEntry(7), undefined);

@@ -1,29 +1,7 @@
-// Lists page (/lists): the services and activity types to choose from in entries (add, change, delete).
+// The services and activity types to choose from in entries, as editable tables of the settings page.
 
-import { api, ApiError, type ActivityType, type Service, type TicketView } from './api.ts';
-import { el } from './dom.ts';
-
-/** A field of a list item, e.g. the short name of a service. */
-type Field = { name: string; label: string; maxLength: number; required: boolean };
-
-/** A list item as text values by field name; `label` names it in messages, `usage` fills the optional usage column. */
-type Item = { id: number; label: string; values: Record<string, string>; usage?: string };
-
-/** One managed list: its items and how to save and delete them. */
-type List = {
-  id: string;
-  title: string;
-  hint: string;
-  noun: string;
-  fields: Field[];
-  usageLabel?: string;
-  items: Item[];
-  save: (id: number | null, values: Record<string, string>) => Promise<unknown>;
-  remove: (id: number) => Promise<unknown>;
-  deleteQuestion: (item: Item) => string;
-};
-
-type Page = { reload: (message: string) => void; fail: (error: unknown) => void };
+import { api, type ActivityType, type Service, type TicketView } from './api.ts';
+import type { EditableTable } from './editable-table.ts';
 
 /** Number of tickets per service id. */
 export function ticketCounts(tickets: TicketView[]): Map<number, number> {
@@ -46,87 +24,7 @@ export function deleteServiceQuestion(shortName: string, tickets: number): strin
     : `Delete ${shortName}? ${tickets} tickets lose their service and show up in the review.`;
 }
 
-function button(label: string, onClick: () => void, className = 'button-small'): HTMLButtonElement {
-  const element = el('button', { type: 'button', class: className }, label);
-  element.addEventListener('click', onClick);
-  return element;
-}
-
-function inputs(list: List, item: Item | null): HTMLInputElement[] {
-  return list.fields.map((field) => el('input', {
-    name: field.name,
-    value: item?.values[field.name] ?? '',
-    placeholder: field.label,
-    'aria-label': item ? `${field.label} of ${item.label}` : `New ${list.noun}: ${field.label.toLowerCase()}`,
-    maxlength: field.maxLength,
-    required: field.required,
-    autocomplete: 'off',
-  }));
-}
-
-function values(fields: HTMLInputElement[]): Record<string, string> {
-  return Object.fromEntries(fields.map((input) => [input.name, input.value.trim()]));
-}
-
-/** Saves the form's values (a new item if `item` is null), then reloads the page with a message. */
-function itemForm(list: List, item: Item | null, page: Page, ...buttons: HTMLElement[]): HTMLFormElement {
-  const fields = inputs(list, item);
-  const form = el('form', { class: 'list-form' }, ...fields, ...buttons);
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const entered = values(fields);
-    const name = entered[list.fields[0]!.name];
-    list.save(item?.id ?? null, entered).then(() => page.reload(`${item ? 'Saved' : 'Added'} ${list.noun} ${name}`), page.fail);
-  });
-  return form;
-}
-
-function editRow(list: List, item: Item, page: Page, row: HTMLTableRowElement): void {
-  const original = [...row.childNodes];
-  const columns = list.fields.length + (list.usageLabel ? 2 : 1);
-  const form = itemForm(list, item, page,
-    el('button', { type: 'submit', class: 'button-small primary' }, 'Save'),
-    button('Cancel', () => row.replaceChildren(...original)));
-  row.replaceChildren(el('td', { colspan: columns }, form));
-  queueMicrotask(() => form.querySelector('input')?.select());
-}
-
-function itemRow(list: List, item: Item, page: Page): HTMLTableRowElement {
-  const row = el('tr', {});
-  row.append(
-    ...list.fields.map((field, index) => {
-      const value = item.values[field.name];
-      return el('td', {}, !value ? el('span', { class: 'muted' }, '—') : index === 0 ? el('strong', {}, value) : value);
-    }),
-    list.usageLabel ? el('td', { class: 'num' }, item.usage ?? '') : '',
-    el('td', { class: 'row-actions' },
-      button('Edit', () => editRow(list, item, page, row)),
-      button('Delete', () => {
-        if (window.confirm(list.deleteQuestion(item))) {
-          list.remove(item.id).then(() => page.reload(`Deleted ${list.noun} ${item.label}`), page.fail);
-        }
-      })),
-  );
-  return row;
-}
-
-function listSection(list: List, page: Page): HTMLElement {
-  const header = el('tr', {},
-    ...list.fields.map((field) => el('th', {}, field.label)),
-    list.usageLabel ? el('th', { class: 'num' }, list.usageLabel) : '',
-    el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')));
-  return el('section', { class: 'review-section', id: list.id },
-    el('h2', {}, list.title),
-    el('p', { class: 'muted' }, list.hint),
-    list.items.length
-      ? el('table', { class: 'review-table list-table' }, el('thead', {}, header),
-        el('tbody', {}, ...list.items.map((item) => itemRow(list, item, page))))
-      : el('p', {}, `No ${list.noun}s yet.`),
-    itemForm(list, null, page, el('button', { type: 'submit', class: 'primary' }, `Add ${list.noun}`)),
-  );
-}
-
-function servicesList(services: Service[], tickets: TicketView[]): List {
+export function servicesTable(services: Service[], tickets: TicketView[]): EditableTable {
   const counts = ticketCounts(tickets);
   return {
     id: 'services',
@@ -151,7 +49,7 @@ function servicesList(services: Service[], tickets: TicketView[]): List {
   };
 }
 
-function activityTypesList(activityTypes: ActivityType[]): List {
+export function activityTypesTable(activityTypes: ActivityType[]): EditableTable {
   return {
     id: 'activity-types',
     title: 'Activity types',
@@ -166,33 +64,4 @@ function activityTypesList(activityTypes: ActivityType[]): List {
     remove: (id) => api.deleteActivityType(id),
     deleteQuestion: (item) => `Delete ${item.label}?`,
   };
-}
-
-function errorText(error: unknown): string {
-  return error instanceof ApiError ? error.message : 'The action failed.';
-}
-
-export async function renderListsPage(doc: Document): Promise<void> {
-  const root = doc.querySelector<HTMLElement>('#lists');
-  const status = doc.querySelector<HTMLElement>('#lists-status');
-  if (!root || !status) {
-    return;
-  }
-  const show = (message: string, warning = false): void => {
-    status.textContent = message;
-    status.className = warning ? 'review-status field-error' : 'review-status value-positive';
-    status.hidden = !message;
-  };
-  const load = async (message = ''): Promise<void> => {
-    try {
-      const [services, activityTypes, tickets] = await Promise.all([api.services(), api.activityTypes(), api.tickets()]);
-      const page: Page = { reload: (text) => void load(text), fail: (error) => show(errorText(error), true) };
-      root.replaceChildren(listSection(servicesList(services, tickets), page), listSection(activityTypesList(activityTypes), page));
-      show(message);
-    } catch (error) {
-      root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' }, errorText(error)));
-    }
-  };
-  root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
-  await load();
 }

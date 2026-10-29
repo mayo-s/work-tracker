@@ -85,7 +85,7 @@ def test_main_navigation_links_all_pages(client):
     assert '<a href="/month">Month</a>' in html
     assert '<a href="/year">Year</a>' in html
     assert '<a href="/review">Review</a>' in html
-    assert '<a href="/lists">Lists</a>' in html
+    assert '<a href="/settings">Settings</a>' in html
 
 
 @pytest.mark.parametrize('path, page, title, element', [
@@ -93,7 +93,7 @@ def test_main_navigation_links_all_pages(client):
     ('/month', 'month', 'Month', 'id="month"'),
     ('/year', 'year', 'Year', 'id="year"'),
     ('/review', 'review', 'Review', 'id="review-status"'),
-    ('/lists', 'lists', 'Lists', 'id="lists-status"'),
+    ('/settings', 'settings', 'Settings', 'id="settings-status"'),
     ('/components', 'components', 'Component gallery', 'class="story"'),
 ])
 def test_pages(client, path, page, title, element):
@@ -103,3 +103,9 @@ def test_pages(client, path, page, title, element):
     assert f'<title>{title} · Work Tracker</title>' in result.text
     assert f'data-page="{page}"' in result.text
     assert element in result.text
+
+
+def test_lists_forward_to_the_settings_page(client):
+    result = client.simulate_get('/lists')
+    assert result.status == falcon.HTTP_301
+    assert result.headers['location'] == '/settings#services'

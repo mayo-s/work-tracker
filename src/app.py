@@ -9,10 +9,11 @@ from src.defaultresources.default import Default
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
 from src.modules.days.resources import DayCollection, DayItem
 from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem, EntrySplit
-from src.modules.pages.resources import STATIC_DIR, Page, RevalidateStaticFiles
+from src.modules.pages.resources import STATIC_DIR, Page, Redirect, RevalidateStaticFiles
 from src.modules.pto.resources import PtoYearCollection, PtoYearItem
 from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
 from src.modules.review.resources import Review, ReviewFlagItem
+from src.modules.settings.resources import SettingsResource
 from src.modules.storage.database import Database, database_path
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.tickets.resources import TicketCollection, TicketItem, TicketRenaming, TicketServiceAssignment
@@ -33,7 +34,8 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_route('/month', Page('month', 'Month'))
     app.add_route('/year', Page('year', 'Year'))
     app.add_route('/review', Page('review', 'Review'))
-    app.add_route('/lists', Page('lists', 'Lists'))
+    app.add_route('/lists', Redirect('/settings#services'))
+    app.add_route('/settings', Page('settings', 'Settings'))
     app.add_route('/components', Page('components', 'Component gallery'))
     app.add_static_route('/static', STATIC_DIR)
     app.add_route('/health', Default())
@@ -50,6 +52,7 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_route('/api/reports/weeks/{week}', WeekReportResource(database, today))
     app.add_route('/api/reports/months/{month:dt("%Y-%m")}', MonthReportResource(database, today))
     app.add_route('/api/reports/years/{year:int(4)}', YearReportResource(database, today))
+    app.add_route('/api/settings', SettingsResource(database))
     app.add_route('/api/pto-years', PtoYearCollection(database))
     app.add_route('/api/pto-years/{year:int(4)}', PtoYearItem(database))
     app.add_route('/api/review', Review(database))

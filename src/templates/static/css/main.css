@@ -812,7 +812,7 @@ button.button-danger {
   color: var(--color-muted);
 }
 
-/* Lists (/lists) */
+/* Editable tables (settings page) */
 
 .list-form {
   display: flex;
@@ -831,4 +831,30 @@ button.button-danger {
 
 .list-table .list-form input {
   padding: 0 var(--space-2);
+}
+
+/* Settings (/settings) */
+
+.balance-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  column-gap: var(--space-4);
+  max-width: 40rem;
+}
+
+.balance-form .form-error,
+.balance-form .form-actions {
+  grid-column: 1 / -1;
+}
+
+.list-table .list-form strong {
+  align-self: center;
+  min-width: 3rem;
+}
+
+.settings-contents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
 }

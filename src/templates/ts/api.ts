@@ -24,6 +24,9 @@ export type PeriodTotals = Schemas['PeriodTotals'];
 export type WeekReport = Schemas['WeekReport'];
 export type MonthReport = Schemas['MonthReport'];
 export type YearReport = Schemas['YearReport'];
+export type SettingsView = Schemas['SettingsView'];
+export type PtoYear = Schemas['PtoYear'];
+export type PtoYearInput = Schemas['PtoYearInput'];
 
 /** A week like `2026-W44`, or an inclusive date range in ISO format. */
 export type Period = { week: string } | { start: string; end: string };
@@ -128,4 +131,11 @@ export const api = {
   weekReport: (week: string) => request<WeekReport>('GET', `/api/reports/weeks/${segment(week)}`),
   monthReport: (month: string) => request<MonthReport>('GET', `/api/reports/months/${segment(month)}`),
   yearReport: (year: number) => request<YearReport>('GET', `/api/reports/years/${segment(year)}`),
+
+  settings: () => request<SettingsView>('GET', '/api/settings'),
+  saveSettings: (input: SettingsView) => request<SettingsView>('PUT', '/api/settings', input),
+
+  ptoYears: () => request<PtoYear[]>('GET', '/api/pto-years'),
+  savePtoYear: (year: number, input: PtoYearInput) => request<PtoYear>('PUT', `/api/pto-years/${segment(year)}`, input),
+  deletePtoYear: (year: number) => request<void>('DELETE', `/api/pto-years/${segment(year)}`),
 };

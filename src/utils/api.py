@@ -6,12 +6,15 @@ from typing import Annotated, Self
 
 from pydantic import AfterValidator, BaseModel, Field, ValidationError, model_validator
 
-from src.lib.durations import format_clock, format_duration, parse_clock, parse_duration
+from src.lib.durations import format_clock, format_duration, parse_clock, parse_duration, parse_signed_duration
 
 MAX_DAYS = 366
 
 ClockText = Annotated[str, AfterValidator(lambda text: format_clock(parse_clock(text))), Field(examples=['08:15'])]
 DurationText = Annotated[str, AfterValidator(lambda text: format_duration(parse_duration(text))), Field(examples=['1:30'])]
+SignedDurationText = Annotated[
+    str, AfterValidator(lambda text: format_duration(parse_signed_duration(text))), Field(examples=['12:30', '-1:45']),
+]
 
 
 class PeriodQuery(BaseModel):

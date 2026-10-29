@@ -1,4 +1,4 @@
-"""PTO years endpoints: /api/pto-years and /api/pto-years/{year}."""
+"""PTO years endpoints: /api/pto-years and /api/pto-years/{year} (read, enter, delete)."""
 
 import falcon
 from spectree import Response
@@ -38,3 +38,10 @@ class PtoYearItem:
         """Enter the PTO days of a year (insert or replace)."""
         with self._database.transaction() as conn:
             resp.media = PtoYearRepository(conn).save(PtoYear(year=year, **json.model_dump()))
+
+    @spec.validate(resp=Response('HTTP_204', 'HTTP_404'), tags=TAGS, path_parameter_descriptions=YEAR_PARAMETER)
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, year: int) -> None:
+        """Delete the PTO days of a year; the year then has no PTO account."""
+        with self._database.transaction() as conn:
+            PtoYearRepository(conn).delete(year)
+        resp.status = falcon.HTTP_204

@@ -33,6 +33,10 @@ class PtoYearRepository:
         )
         return pto_year
 
+    def delete(self, year: int) -> None:
+        if not self._conn.execute('DELETE FROM pto_years WHERE year = ?', (year,)).rowcount:
+            raise NotFoundError(f'No PTO days entered for {year}')
+
     def terms(self) -> dict[int, PtoTerms]:
         return {pto_year.year: pto_year.terms() for pto_year in self.all()}
 

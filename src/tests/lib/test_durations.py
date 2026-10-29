@@ -8,6 +8,7 @@ from src.lib.durations import (
     parse_clock,
     parse_decimal_hours,
     parse_duration,
+    parse_signed_duration,
     split_evenly,
 )
 
@@ -56,6 +57,17 @@ def test_parse_duration(text, minutes):
 def test_parse_duration_rejects_invalid(text):
     with pytest.raises(TimeFormatError):
         parse_duration(text)
+
+
+@pytest.mark.parametrize('text, minutes', [('12:30', 750), ('+12:30', 750), (' -1:45 ', -105), ('-0:00', 0)])
+def test_parse_signed_duration(text, minutes):
+    assert parse_signed_duration(text) == minutes
+
+
+@pytest.mark.parametrize('text', ['', '-', '+-1:00', '--1:00', '1,5'])
+def test_parse_signed_duration_rejects_invalid(text):
+    with pytest.raises(TimeFormatError):
+        parse_signed_duration(text)
 
 
 @pytest.mark.parametrize('minutes, text', [

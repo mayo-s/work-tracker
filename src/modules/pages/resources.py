@@ -27,6 +27,16 @@ class Page:
         resp.text = render_page(self._name, self._title)
 
 
+class Redirect:
+    """Forwards a former page address, e.g. /lists to /settings#services."""
+
+    def __init__(self, location: str) -> None:
+        self._location = location
+
+    def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+        raise falcon.HTTPMovedPermanently(self._location)
+
+
 class RevalidateStaticFiles:
     """Middleware: browsers re-check static files on each use (cheap thanks to their ETag), so changes show at once."""
 

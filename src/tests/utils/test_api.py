@@ -4,7 +4,7 @@ import pytest
 from pydantic import BaseModel, ValidationError, model_validator
 
 from src.models.days import Day
-from src.utils.api import ClockText, DurationText, PeriodQuery, check_domain
+from src.utils.api import ClockText, DurationText, PeriodQuery, SignedDurationText, check_domain
 
 
 def test_period_query_allows_a_leap_year():
@@ -38,10 +38,12 @@ def test_period_query_rejects_invalid(query):
 class Times(BaseModel):
     clock: ClockText
     duration: DurationText
+    balance: SignedDurationText = '0:00'
 
 
 def test_times_are_normalized():
-    assert Times(clock='7:15', duration='01:30') == Times(clock='07:15', duration='1:30')
+    assert Times(clock='7:15', duration='01:30', balance='+12:30') == Times(clock='07:15', duration='1:30', balance='12:30')
+    assert Times(clock='7:15', duration='01:30', balance='-01:45').balance == '-1:45'
 
 
 @pytest.mark.parametrize('data', [{'clock': '24:00', 'duration': '1:30'}, {'clock': '08:00', 'duration': '1,5'}])
