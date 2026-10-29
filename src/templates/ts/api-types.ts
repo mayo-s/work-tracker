@@ -286,6 +286,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/theme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The color theme of all pages. */
+        get: operations["get__api_theme"];
+        /** Choose the color theme: system, light or dark. */
+        put: operations["put__api_theme"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/setup": {
         parameters: {
             query?: never;
@@ -1225,6 +1243,15 @@ export interface components {
              * @example -1:45
              */
             opening_balance: string;
+        };
+        /** ThemeView */
+        ThemeView: {
+            /**
+             * Theme
+             * @description Color theme: system follows the system setting, or light / dark
+             * @enum {string}
+             */
+            theme: "system" | "light" | "dark";
         };
         /** TicketQuery */
         TicketQuery: {
@@ -2454,6 +2481,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SettingsView"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_theme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeView"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    put__api_theme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThemeView"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeView"];
                 };
             };
             /** @description Unprocessable Content */

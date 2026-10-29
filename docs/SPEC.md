@@ -212,29 +212,33 @@ An item leaves the list once the reason is fixed or the flag is cleared.
 White, blueish and clean: generous whitespace, thin borders instead of heavy shadows, 6 px rounded
 corners, one accent color. Warnings are the only loud element.
 
-| Role           | Color     | Use                                                 |
-|----------------|-----------|-----------------------------------------------------|
-| Text           | `#36454F` | All body text                                       |
-| Muted text     | `#66737D` | Secondary information (weekday, target, notes)      |
-| Background     | `#FFFFFF` | Page                                                |
-| Surface        | `#F4F7FB` | Cards, table headers, weekend columns               |
-| Border         | `#DCE4EE` | Lines between rows and cards                        |
-| Accent         | `#2F6FD6` | Links, primary buttons, active navigation, today    |
-| Accent light   | `#E8F0FC` | Hover, selected row                                 |
-| Warning        | `#E62E6B` | Highlights: borders, badges, bold text, icons       |
-| Warning text   | `#C81E57` | Small warning text (better contrast than `#E62E6B`) |
-| Warning light  | `#FDECF2` | Background of warning rows                          |
-| Positive       | `#1B7F61` | Positive overtime and balance (mint green)          |
-| Positive light | `#E6F6F0` | Background of positive badges                       |
+| Role             | Light     | Dark      | Use                                                 |
+|------------------|-----------|-----------|-----------------------------------------------------|
+| Text             | `#36454F` | `#E3E8EE` | All body text                                       |
+| Muted text       | `#66737D` | `#9AA6B2` | Secondary information (weekday, target, notes)      |
+| Background       | `#FFFFFF` | `#16191D` | Page                                                |
+| Surface          | `#F4F7FB` | `#1F242A` | Cards, table headers, weekend columns               |
+| Border           | `#DCE4EE` | `#333C46` | Lines between rows and cards                        |
+| Accent           | `#2F6FD6` | `#6EA2F0` | Links, primary buttons, active navigation, today    |
+| Accent light     | `#E8F0FC` | `#1E2F48` | Hover, selected row                                 |
+| Text on accent   | `#FFFFFF` | `#10233F` | Text of primary buttons                             |
+| Warning          | `#E62E6B` | `#F06A93` | Highlights: borders, badges, bold text, icons       |
+| Warning text     | `#C81E57` | `#FF8FB0` | Small warning text (better contrast than warning)   |
+| Warning light    | `#FDECF2` | `#3A1F2B` | Background of warning rows                          |
+| Positive         | `#1B7F61` | `#4CC59A` | Positive overtime and balance (mint green)          |
+| Positive light   | `#E6F6F0` | `#173A2F` | Background of positive badges                       |
 
 - **Negative** overtime and balance are shown as a warning (including −8:00 on a work day without
   times yet), **positive** ones in mint green, zero in normal text.
 - Warnings: a past work day without entries, review flags and the review count.
 - Font: **Inter**, stored in the project (woff2 files with their OFL license); no external font or CDN
   requests. Tabular digits for times and durations, so columns line up.
-- All colors, sizes and spacings are CSS variables in one stylesheet (prepares dark mode, TASKS.md L.2).
+- All colors, sizes and spacings are CSS variables in one stylesheet. **Dark mode** is a second set of color
+  values; the theme (System, Light, Dark) is chosen on the settings page and stored in the database. System follows
+  the light or dark setting of the system.
 - Text contrast is at least 4.5:1 on its background, except the warning highlight color, which is
-  only used for large or bold text, borders and icons.
+  only used for large or bold text, borders and icons (checked by a test; in light mode three pairs on surfaces and
+  tints are still just below, see TASKS.md L.5).
 
 ## 6. Import (spreadsheet CSV)
 

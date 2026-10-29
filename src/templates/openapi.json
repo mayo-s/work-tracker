@@ -1198,6 +1198,80 @@
         }
       }
     },
+    "/api/theme": {
+      "get": {
+        "summary": "The color theme of all pages.",
+        "operationId": "get__api_theme",
+        "description": "",
+        "tags": [
+          "Settings"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Choose the color theme: system, light or dark.",
+        "operationId": "put__api_theme",
+        "description": "",
+        "tags": [
+          "Settings"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThemeView"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/setup": {
       "get": {
         "summary": "Whether the database is set up; until then, pages forward to /setup.",
@@ -3625,6 +3699,26 @@
           "opening_balance"
         ],
         "title": "SettingsView",
+        "type": "object"
+      },
+      "ThemeView": {
+        "additionalProperties": false,
+        "properties": {
+          "theme": {
+            "description": "Color theme: system follows the system setting, or light / dark",
+            "enum": [
+              "system",
+              "light",
+              "dark"
+            ],
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme"
+        ],
+        "title": "ThemeView",
         "type": "object"
       },
       "TicketQuery": {

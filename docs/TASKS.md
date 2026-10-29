@@ -93,8 +93,12 @@ and ends with passing tests and the flake8 check.
   starting by the 15th, rounded up to half days) that can be changed; 4. services (optional); 5. summary and "Start",
   saving everything at once and opening the week view. A side note points to the spreadsheet import instead. The
   README's "start from zero" shrinks to starting on a new database file
-- [ ] **L.4** Dark mode: a second set of the color variables from the UI style (e.g. following the system setting)
+- [x] **L.4** Dark mode: a second set of the color variables (WCAG AA contrast, checked by a test), previewed on
+  the component gallery; the theme (System, Light, Dark) is chosen on the settings page and stored in the database
+  (`GET/PUT /api/theme`); pages are rendered with the theme, so nothing flashes
 - [ ] **L.5** Accessibility: the ui should be accessible for everyone and follow modern accessibility standards
+  (includes three light-mode color pairs just below 4.5:1: accent on surface, mint on mint light, accent on accent
+  light)
 - [ ] **L.6** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g.
   `2,0 PTO Dentist`,
   today only a day note) as a value, and show them in the year report next to the days off.

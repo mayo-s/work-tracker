@@ -1,7 +1,7 @@
 import datetime as dt
 
 from src.models.settings import Settings
-from src.modules.storage.settings import finish_setup, load_settings, save_settings, setup_done
+from src.modules.storage.settings import finish_setup, load_settings, load_theme, save_settings, save_theme, setup_done
 
 
 def test_seeded_settings(database):
@@ -25,3 +25,14 @@ def test_setup_done(database, fresh_database):
         assert not setup_done(conn)
         finish_setup(conn)
         assert setup_done(conn)
+
+
+def test_theme(conn):
+    assert load_theme(conn) == 'system'
+    save_theme(conn, 'dark')
+    assert load_theme(conn) == 'dark'
+
+
+def test_unknown_stored_theme_follows_the_system(conn):
+    conn.execute("INSERT INTO settings (key, value) VALUES ('theme', 'blue')")
+    assert load_theme(conn) == 'system'

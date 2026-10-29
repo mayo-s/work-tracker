@@ -1,8 +1,11 @@
 """Reading and saving user settings."""
 
 import sqlite3
+from typing import Literal, get_args
 
 from src.models.settings import Settings
+
+Theme = Literal['system', 'light', 'dark']
 
 
 def load_settings(conn: sqlite3.Connection) -> Settings:
@@ -18,6 +21,19 @@ def setup_done(conn: sqlite3.Connection) -> bool:
 
 def finish_setup(conn: sqlite3.Connection) -> None:
     conn.execute("INSERT INTO settings (key, value) VALUES ('setup_done', '1') ON CONFLICT (key) DO UPDATE SET value = '1'")
+
+
+def load_theme(conn: sqlite3.Connection) -> Theme:
+    """The chosen color theme; `system` follows the system setting."""
+    row = conn.execute("SELECT value FROM settings WHERE key = 'theme'").fetchone()
+    return row[0] if row and row[0] in get_args(Theme) else 'system'
+
+
+def save_theme(conn: sqlite3.Connection, theme: Theme) -> None:
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('theme', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+        (theme,),
+    )
 
 
 def save_settings(conn: sqlite3.Connection, settings: Settings) -> None:
