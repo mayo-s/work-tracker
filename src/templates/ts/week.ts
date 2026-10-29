@@ -5,6 +5,7 @@ import {
 } from './api.ts';
 import { addDays, formatDate, formatDay, isoDate, isoWeek, isValidWeek, mondayOf, shiftWeek, type IsoDate } from './dates.ts';
 import { dayEditor } from './day-editor.ts';
+import { daysOffForm } from './days-off.ts';
 import { el } from './dom.ts';
 import { entryEditor, type EntryEditorOptions } from './entry-editor.ts';
 import { historyPanel } from './history.ts';
@@ -296,6 +297,29 @@ export async function renderWeekPage(doc: Document): Promise<void> {
     },
   };
 
+  wireDaysOff(doc, mondayOf(week));
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   await load();
+}
+
+/** The "Book days off" button opens and closes the form above the week, starting on the week's Monday. */
+function wireDaysOff(doc: Document, monday: IsoDate): void {
+  const button = doc.querySelector<HTMLButtonElement>('#week-book-days-off');
+  const container = doc.querySelector<HTMLElement>('#days-off');
+  if (!button || !container) {
+    return;
+  }
+  const close = (): void => {
+    container.replaceChildren();
+    button.setAttribute('aria-expanded', 'false');
+    button.focus();
+  };
+  button.addEventListener('click', () => {
+    if (container.childElementCount) {
+      close();
+    } else {
+      container.replaceChildren(daysOffForm(monday, close));
+      button.setAttribute('aria-expanded', 'true');
+    }
+  });
 }

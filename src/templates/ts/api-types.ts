@@ -38,6 +38,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/days/range": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Book a full-day type (e.g. PTO) on the work days of a range, or preview it.
+         * @description Days off of the schedule, public holidays and company half days are left out. Work days holding times or entries are refused (409), skipped or booked too, as `conflicts` says; all days are saved or none.
+         */
+        post: operations["post__api_days_range"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/days/{date}": {
         parameters: {
             query?: never;
@@ -699,6 +719,69 @@ export interface components {
              */
             note?: string;
         };
+        /** DayRangeInput */
+        DayRangeInput: {
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /**
+             * Day Type
+             * @description A full-day type: pto, sick, unpaid_leave or overtime_off
+             * @enum {string}
+             */
+            day_type: "pto" | "sick" | "unpaid_leave" | "overtime_off";
+            /**
+             * Note
+             * @description Note for days without a note of their own
+             * @default
+             */
+            note?: string;
+            /**
+             * Conflicts
+             * @description Work days holding times or entries: refuse the range (409), skip them, or book them too
+             * @default refuse
+             * @enum {string}
+             */
+            conflicts?: "refuse" | "skip" | "include";
+            /**
+             * Preview
+             * @description Only show what would be booked, save nothing
+             * @default false
+             */
+            preview?: boolean;
+        };
+        /** DayRangeResult */
+        DayRangeResult: {
+            /** Saved */
+            saved: boolean;
+            /**
+             * Days
+             * @description Work days that get (or got) the day type
+             */
+            days: string[];
+            /**
+             * Conflicts
+             * @description Work days holding times or entries; booked only with conflicts=include
+             */
+            conflicts: components["schemas"]["RecordedDay"][];
+            /**
+             * Left Out
+             * @description Days off of the schedule, public holidays and company half days
+             */
+            left_out: components["schemas"]["LeftOutDay"][];
+            /**
+             * Pto Days
+             * @description PTO the booked days use
+             */
+            pto_days: number;
+        };
         /** EntryViewList */
         EntryViewList: components["schemas"]["EntryView"][];
         /**
@@ -1201,6 +1284,40 @@ export interface components {
          * @enum {string}
          */
         FlagReason: "uncertain_ticket" | "weekend_hours";
+        /** LeftOutDay */
+        LeftOutDay: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Weekday */
+            weekday: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "day_off" | "public_holiday" | "company_half_day";
+            /**
+             * Holiday
+             * @description Name of the public holiday or company half day
+             */
+            holiday: string | null;
+        };
+        /** RecordedDay */
+        RecordedDay: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Weekday */
+            weekday: string;
+            /** Worked */
+            worked: string;
+            /** Entries */
+            entries: number;
+        };
         /** EntryFlagView */
         EntryFlagView: {
             /** Id */
@@ -1428,6 +1545,46 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DayViewList"];
                 };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    post__api_days_range: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DayRangeInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayRangeResult"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Unprocessable Content */
             422: {

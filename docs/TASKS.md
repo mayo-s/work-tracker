@@ -76,10 +76,15 @@ and ends with passing tests and the flake8 check.
   it); replaces the fixed 8:00 in `src/lib/daytypes.py`; API `/api/work-schedules` (GET, POST, PUT, DELETE) and a
   section on the settings page; the first schedule is 40 h Mon–Fri from the balance start. The importer keeps the
   spreadsheet's own 8:00 rule
-- [ ] **L.1c** Holidays in the work schedule: federal state (`holidays` subdivision, e.g. `BE`) and whether 24.12. and
+- [x] **L.1c** Holidays in the work schedule: federal state (`holidays` subdivision, e.g. `BE`) and whether 24.12. and
   31.12. are company half days (0.5 PTO each); replaces the fixed Berlin calendar in `src/lib/public_holidays.py`
-- [ ] **L.2** Vacation day range: Instead of booking every vacation day one after another, there should be an option to
-  enter a time range vor vacations. Same for sick days in case one is sick for more than just a few days.
+- [x] **L.2** Days off as a range: "Book days off" button on the week page opens a form (from, to, full-day type: PTO,
+  sick, unpaid leave or overtime off; optional note). Only the work days of the schedule get the type; weekends, days off
+  of the schedule, public holidays and company half days stay automatic. A preview shows the days and the PTO used before
+  saving; future days are allowed (planned PTO). If days in the range hold times or entries, a popup lists them: skip
+  these days, book them too (times and entries are kept), or cancel. Saved in one transaction via
+  `POST /api/days/range`; afterwards the week of the first day is shown. Clearing a range is not part of it (single
+  days can be deleted)
 - [ ] **L.3** Initial setup: the "start from zero" section explains how to start from scratch, but many steps should be
   part of an initial start-setup page. Guiding the user through the process, when there is no database yet.
 - [ ] **L.4** Dark mode: a second set of the color variables from the UI style (e.g. following the system setting)

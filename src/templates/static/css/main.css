@@ -897,3 +897,35 @@ button.button-danger {
   flex: 1 1 10rem;
   width: auto;
 }
+
+/* Booking days off (week page) */
+
+.days-off-form {
+  margin-bottom: var(--space-5);
+}
+
+.days-off-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  column-gap: var(--space-4);
+}
+
+.days-off-preview {
+  margin: 0 0 var(--space-3);
+}
+
+.dialog {
+  max-width: 34rem;
+  padding: var(--space-5);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+}
+
+.dialog::backdrop {
+  background: rgb(54 69 79 / 30%);
+}
+
+.dialog h2 {
+  margin-top: 0;
+}

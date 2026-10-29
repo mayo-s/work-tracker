@@ -165,6 +165,52 @@
         }
       }
     },
+    "/api/days/range": {
+      "post": {
+        "summary": "Book a full-day type (e.g. PTO) on the work days of a range, or preview it.",
+        "operationId": "post__api_days_range",
+        "description": "Days off of the schedule, public holidays and company half days are left out. Work days holding times or entries are refused (409), skipped or booked too, as `conflicts` says; all days are saved or none.",
+        "tags": [
+          "Days"
+        ],
+        "parameters": [],
+        "responses": {
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayRangeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DayRangeInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/days/{date}": {
       "delete": {
         "summary": "Delete a recorded day and its review flags.",
@@ -2528,6 +2574,110 @@
         "title": "DayInput",
         "type": "object"
       },
+      "DayRangeInput": {
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "day_type": {
+            "description": "A full-day type: pto, sick, unpaid_leave or overtime_off",
+            "enum": [
+              "pto",
+              "sick",
+              "unpaid_leave",
+              "overtime_off"
+            ],
+            "title": "Day Type",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "description": "Note for days without a note of their own",
+            "maxLength": 500,
+            "title": "Note",
+            "type": "string"
+          },
+          "conflicts": {
+            "default": "refuse",
+            "description": "Work days holding times or entries: refuse the range (409), skip them, or book them too",
+            "enum": [
+              "refuse",
+              "skip",
+              "include"
+            ],
+            "title": "Conflicts",
+            "type": "string"
+          },
+          "preview": {
+            "default": false,
+            "description": "Only show what would be booked, save nothing",
+            "title": "Preview",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "day_type"
+        ],
+        "title": "DayRangeInput",
+        "type": "object"
+      },
+      "DayRangeResult": {
+        "properties": {
+          "saved": {
+            "title": "Saved",
+            "type": "boolean"
+          },
+          "days": {
+            "description": "Work days that get (or got) the day type",
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "conflicts": {
+            "description": "Work days holding times or entries; booked only with conflicts=include",
+            "items": {
+              "$ref": "#/components/schemas/RecordedDay"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "left_out": {
+            "description": "Days off of the schedule, public holidays and company half days",
+            "items": {
+              "$ref": "#/components/schemas/LeftOutDay"
+            },
+            "title": "Left Out",
+            "type": "array"
+          },
+          "pto_days": {
+            "description": "PTO the booked days use",
+            "title": "Pto Days",
+            "type": "number"
+          }
+        },
+        "required": [
+          "saved",
+          "days",
+          "conflicts",
+          "left_out",
+          "pto_days"
+        ],
+        "title": "DayRangeResult",
+        "type": "object"
+      },
       "EntryViewList": {
         "items": {
           "$ref": "#/components/schemas/EntryView"
@@ -3586,6 +3736,77 @@
         ],
         "title": "FlagReason",
         "type": "string"
+      },
+      "LeftOutDay": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "weekday": {
+            "title": "Weekday",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "day_off",
+              "public_holiday",
+              "company_half_day"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "holiday": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the public holiday or company half day",
+            "title": "Holiday"
+          }
+        },
+        "required": [
+          "date",
+          "weekday",
+          "reason",
+          "holiday"
+        ],
+        "title": "LeftOutDay",
+        "type": "object"
+      },
+      "RecordedDay": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "weekday": {
+            "title": "Weekday",
+            "type": "string"
+          },
+          "worked": {
+            "title": "Worked",
+            "type": "string"
+          },
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "weekday",
+          "worked",
+          "entries"
+        ],
+        "title": "RecordedDay",
+        "type": "object"
       },
       "EntryFlagView": {
         "properties": {

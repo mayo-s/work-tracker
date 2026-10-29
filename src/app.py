@@ -7,7 +7,7 @@ import falcon
 
 from src.defaultresources.default import Default
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
-from src.modules.days.resources import DayCollection, DayItem
+from src.modules.days.resources import DayCollection, DayItem, DayRange
 from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem, EntrySplit
 from src.modules.pages.resources import STATIC_DIR, Page, Redirect, RevalidateStaticFiles
 from src.modules.pto.resources import PtoYearCollection, PtoYearItem
@@ -41,6 +41,7 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_static_route('/static', STATIC_DIR)
     app.add_route('/health', Default())
     app.add_route('/api/days', DayCollection(database))
+    app.add_route('/api/days/range', DayRange(database))
     app.add_route('/api/days/{date:dt("%Y-%m-%d")}', DayItem(database))
     app.add_route('/api/entries', EntryCollection(database))
     app.add_route('/api/entries/{entry_id:int}', EntryItem(database))

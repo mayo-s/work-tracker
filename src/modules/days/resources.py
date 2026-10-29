@@ -1,4 +1,4 @@
-"""Days endpoints: /api/days and /api/days/{date}."""
+"""Days endpoints: /api/days, /api/days/{date} and /api/days/range."""
 
 import datetime as dt
 import sqlite3
@@ -9,6 +9,7 @@ from spectree import Response
 
 from src.lib.dates import each_day
 from src.models.review import ReviewFlag
+from src.modules.days.ranges import DayRangeInput, DayRangeResult, book_range
 from src.modules.days.schemas import DayInput, DayView, day_view
 from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
@@ -59,6 +60,21 @@ class DayItem:
         with self._database.transaction() as conn:
             DayRepository(conn).delete(date.date())
         resp.status = falcon.HTTP_204
+
+
+class DayRange:
+    def __init__(self, database: Database) -> None:
+        self._database = database
+
+    @spec.validate(json=DayRangeInput, resp=Response('HTTP_409', HTTP_200=DayRangeResult), tags=TAGS)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, json: DayRangeInput) -> None:
+        """Book a full-day type (e.g. PTO) on the work days of a range, or preview it.
+
+        Days off of the schedule, public holidays and company half days are left out. Work days holding times or
+        entries are refused (409), skipped or booked too, as `conflicts` says; all days are saved or none.
+        """
+        with self._database.transaction() as conn:
+            resp.media = book_range(conn, json)
 
 
 def _view(conn: sqlite3.Connection, date: dt.date) -> DayView:
