@@ -27,6 +27,8 @@ export type WeekReport = Schemas['WeekReport'];
 export type MonthReport = Schemas['MonthReport'];
 export type YearReport = Schemas['YearReport'];
 export type SettingsView = Schemas['SettingsView'];
+export type ThemeView = Schemas['ThemeView'];
+export type Theme = ThemeView['theme'];
 export type SetupInput = Schemas['SetupInput'];
 export type SetupStatus = Schemas['SetupStatus'];
 export type PtoYear = Schemas['PtoYear'];
@@ -144,6 +146,8 @@ export const api = {
 
   settings: () => request<SettingsView>('GET', '/api/settings'),
   saveSettings: (input: SettingsView) => request<SettingsView>('PUT', '/api/settings', input),
+  theme: () => request<ThemeView>('GET', '/api/theme'),
+  saveTheme: (theme: Theme) => request<ThemeView>('PUT', '/api/theme', { theme }),
 
   schedules: () => request<ScheduleView[]>('GET', '/api/work-schedules'),
   addSchedule: (input: ScheduleInput) => request<ScheduleView>('POST', '/api/work-schedules', input),

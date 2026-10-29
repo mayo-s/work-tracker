@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from src.lib.durations import format_duration, parse_signed_duration
 from src.models.settings import Settings
+from src.modules.storage.settings import Theme
 from src.utils.api import SignedDurationText
 
 
@@ -22,3 +23,9 @@ class SettingsView(BaseModel):
 
     def to_settings(self) -> Settings:
         return Settings(balance_start=self.balance_start, opening_balance=parse_signed_duration(self.opening_balance))
+
+
+class ThemeView(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    theme: Theme = Field(description='Color theme: system follows the system setting, or light / dark')

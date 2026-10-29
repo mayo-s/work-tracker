@@ -31,3 +31,32 @@ def test_put_rejects_invalid_settings(client, body):
 
 def test_settings_are_documented(client):
     assert set(client.simulate_get('/apidoc/openapi.json').json['paths']['/api/settings']) == {'get', 'put'}
+
+
+def test_theme_follows_the_system_by_default(client):
+    assert client.simulate_get('/api/theme').json == {'theme': 'system'}
+
+
+@pytest.mark.parametrize('theme', ['dark', 'light', 'system'])
+def test_choose_the_theme(client, theme):
+    assert client.simulate_put('/api/theme', json={'theme': theme}).json == {'theme': theme}
+    assert client.simulate_get('/api/theme').json == {'theme': theme}
+
+
+@pytest.mark.parametrize('body', [{'theme': 'blue'}, {}, {'theme': 'dark', 'unknown': 1}])
+def test_choose_rejects_invalid_themes(client, body):
+    assert client.simulate_put('/api/theme', json=body).status_code == 422
+
+
+def test_saving_the_balance_keeps_the_theme(client):
+    client.simulate_put('/api/theme', json={'theme': 'dark'})
+    client.simulate_put('/api/settings', json={'balance_start': '2027-03-01', 'opening_balance': '0:00'})
+    assert client.simulate_get('/api/theme').json == {'theme': 'dark'}
+
+
+@pytest.mark.parametrize('theme, html', [('dark', '<html lang="en" data-theme="dark">'),
+                                         ('light', '<html lang="en" data-theme="light">'),
+                                         ('system', '<html lang="en">')])
+def test_pages_carry_the_theme(client, theme, html):
+    client.simulate_put('/api/theme', json={'theme': theme})
+    assert html in client.simulate_get('/settings').text

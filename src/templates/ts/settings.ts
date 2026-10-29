@@ -1,6 +1,8 @@
 // Settings page (/settings): overtime balance, PTO days per year, services and activity types.
 
-import { api, ApiError, type PtoYear, type PtoYearInput, type ScheduleInput, type ScheduleView, type SettingsView } from './api.ts';
+import {
+  api, ApiError, type PtoYear, type PtoYearInput, type ScheduleInput, type ScheduleView, type SettingsView, type Theme,
+} from './api.ts';
 import { formatDate } from './dates.ts';
 import { el } from './dom.ts';
 import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
@@ -11,8 +13,18 @@ import { activityTypesTable, servicesTable } from './lists.ts';
 const BALANCE_FIELDS = ['balance_start', 'opening_balance'] as const;
 const SECTIONS = [
   ['balance', 'Overtime balance'], ['schedules', 'Work schedules'], ['pto-years', 'PTO years'], ['services', 'Services'],
-  ['activity-types', 'Activity types'],
+  ['activity-types', 'Activity types'], ['appearance', 'Appearance'],
 ];
+const THEMES: [Theme, string][] = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
+
+/** Shows a theme at once: `data-theme` on <html>, none for `system` (then the system setting decides). */
+export function applyTheme(root: HTMLElement, theme: Theme): void {
+  if (theme === 'system') {
+    delete root.dataset.theme;
+  } else {
+    root.dataset.theme = theme;
+  }
+}
 
 type Weekday = (typeof WEEKDAY_NAMES)[number];
 
@@ -55,7 +67,9 @@ export function ptoYearInput(values: Record<string, string>): PtoYearInput {
 }
 
 function balanceSection(settings: SettingsView, page: Page): HTMLElement {
-  const start = el('input', { id: 'balance-balance_start', name: 'balance_start', type: 'date', value: settings.balance_start });
+  const start = el('input', {
+    id: 'balance-balance_start', name: 'balance_start', type: 'date', value: settings.balance_start,
+  });
   const opening = el('input', { id: 'balance-opening_balance', name: 'opening_balance', value: settings.opening_balance,
     autocomplete: 'off' });
   const form = el('form', { class: 'balance-form', novalidate: true },
@@ -87,7 +101,8 @@ function schedulesTable(schedules: ScheduleView[]): EditableTable {
     noun: 'work schedule',
     fields: [
       { name: 'valid_from', label: 'Valid from', required: true, type: 'date', format: formatDate },
-      { name: 'weekly_hours', label: 'Hours per week', required: true, numeric: true, placeholder: 'Hours per week, e.g. 40:00' },
+      { name: 'weekly_hours', label: 'Hours per week', required: true, numeric: true,
+        placeholder: 'Hours per week, e.g. 40:00' },
       { name: 'work_days', label: 'Work days', required: true, type: 'weekdays', defaultValue: 'Mon,Tue,Wed,Thu,Fri',
         format: formatWorkDays },
       { name: 'state', label: 'Holidays', required: true, type: 'select', defaultValue: 'BE',
@@ -105,7 +120,8 @@ function schedulesTable(schedules: ScheduleView[]): EditableTable {
       },
       usage: schedule.daily_target,
     })),
-    save: (id, values) => (id === null ? api.addSchedule(scheduleInput(values)) : api.updateSchedule(id, scheduleInput(values))),
+    save: (id, values) => (id === null
+      ? api.addSchedule(scheduleInput(values)) : api.updateSchedule(id, scheduleInput(values))),
     remove: (id) => api.deleteSchedule(id),
     deleteQuestion: (item) => `Delete the work schedule ${item.label}? Its days then follow the schedule before it.`,
   };
@@ -151,6 +167,21 @@ function ptoYearsTable(years: PtoYear[]): EditableTable {
   };
 }
 
+function appearanceSection(theme: Theme, page: Page): HTMLElement {
+  const choices = THEMES.map(([value, label]) => {
+    const radio = el('input', { type: 'radio', name: 'theme', value, checked: value === theme });
+    radio.addEventListener('change', () => {
+      applyTheme(document.documentElement, value);
+      api.saveTheme(value).then(() => page.reload(`Saved the theme: ${label}`), page.fail);
+    });
+    return el('label', {}, radio, label);
+  });
+  return el('section', { class: 'review-section', id: 'appearance' },
+    el('h2', {}, 'Appearance'),
+    el('p', { class: 'muted' }, 'The color theme of all pages: System follows the light or dark setting of the system.'),
+    el('fieldset', { class: 'theme-preview' }, el('legend', {}, 'Theme'), ...choices));
+}
+
 function contents(): HTMLElement {
   return el('nav', { class: 'settings-contents', 'aria-label': 'Sections' },
     ...SECTIONS.map(([id, title]) => el('a', { href: `#${id}` }, title)));
@@ -158,8 +189,8 @@ function contents(): HTMLElement {
 
 export async function renderSettingsPage(doc: Document): Promise<void> {
   await renderEditablePage(doc, 'settings', 'settings-status', async (page) => {
-    const [settings, schedules, years, services, activityTypes, tickets] = await Promise.all([
-      api.settings(), api.schedules(), api.ptoYears(), api.services(), api.activityTypes(), api.tickets(),
+    const [settings, schedules, years, services, activityTypes, tickets, theme] = await Promise.all([
+      api.settings(), api.schedules(), api.ptoYears(), api.services(), api.activityTypes(), api.tickets(), api.theme(),
     ]);
     return [
       contents(),
@@ -168,6 +199,7 @@ export async function renderSettingsPage(doc: Document): Promise<void> {
       tableSection(ptoYearsTable(years), page),
       tableSection(servicesTable(services, tickets), page),
       tableSection(activityTypesTable(activityTypes), page),
+      appearanceSection(theme.theme, page),
     ];
   });
   doc.getElementById(doc.location.hash.slice(1))?.scrollIntoView();  // a link like /settings#services

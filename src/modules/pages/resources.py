@@ -5,17 +5,19 @@ from pathlib import Path
 import falcon
 
 from src.modules.storage.database import Database
-from src.modules.storage.settings import setup_done
+from src.modules.storage.settings import load_theme, setup_done
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / 'templates'
 STATIC_DIR = TEMPLATES_DIR / 'static'
 
 
-def render_page(name: str, title: str) -> str:
-    """The frame with the page's title, name and content filled in."""
+def render_page(name: str, title: str, theme: str = 'system') -> str:
+    """The frame with the page's title, name, content and color theme filled in (`system` sets no theme)."""
     frame = (TEMPLATES_DIR / 'frame.html').read_text(encoding='utf-8')
     content = (TEMPLATES_DIR / 'pages' / f'{name}.html').read_text(encoding='utf-8').rstrip('\n')
-    return frame.replace('{{title}}', title).replace('{{page}}', name).replace('{{content}}', content)
+    theme_attribute = '' if theme == 'system' else f' data-theme="{theme}"'
+    return (frame.replace('{{title}}', title).replace('{{page}}', name).replace('{{theme}}', theme_attribute)
+            .replace('{{content}}', content))
 
 
 class Page:
@@ -27,11 +29,12 @@ class Page:
 
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         resp.content_type = falcon.MEDIA_HTML
-        resp.text = render_page(self.name, self._title)
+        resp.text = render_page(self.name, self._title, req.context.get('theme', 'system'))
 
 
-class SetupGate:
-    """Middleware: pages forward to /setup until the database is set up, and /setup to the week once it is."""
+class PageSettings:
+    """Middleware for pages: the color theme for the frame; until the database is set up, pages forward to /setup,
+    and /setup forwards to the week once it is."""
 
     def __init__(self, database: Database) -> None:
         self._database = database
@@ -41,6 +44,7 @@ class SetupGate:
             return
         with self._database.transaction() as conn:
             done = setup_done(conn)
+            req.context.theme = load_theme(conn)
         if done == (resource.name == 'setup'):
             raise falcon.HTTPSeeOther('/' if done else '/setup')
 

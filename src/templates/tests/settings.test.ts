@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { formatWorkDays, ptoYearInput, scheduleInput } from '../ts/settings.ts';
+import { applyTheme, formatWorkDays, ptoYearInput, scheduleInput } from '../ts/settings.ts';
 
 test('PTO year input: empty extra days are 0, an empty carry-over is calculated', () => {
   assert.deepEqual(ptoYearInput({ year: '2027', allowance: '25', extra_days: '', carried_over: '', note: 'pro rata' }),
@@ -29,4 +29,12 @@ test('schedule input with work days as a list and the holiday rules', () => {
   assert.deepEqual(scheduleInput(values), { valid_from: '2027-03-01', weekly_hours: '32:00',
     work_days: ['Mon', 'Tue', 'Wed', 'Thu'], state: 'BY', company_half_days: false });
   assert.deepEqual(scheduleInput({ valid_from: '2027-03-01', weekly_hours: '32:00', work_days: '' }).work_days, []);
+});
+
+test('a chosen theme is set on the root element, system removes it', () => {
+  const root = { dataset: {} } as HTMLElement;
+  applyTheme(root, 'dark');
+  assert.equal(root.dataset.theme, 'dark');
+  applyTheme(root, 'system');
+  assert.equal(root.dataset.theme, undefined);
 });
