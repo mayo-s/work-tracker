@@ -9,13 +9,13 @@ PERSONAL_TABLES = ('user_settings', 'services', 'activity_types', 'tickets', 'da
 DEFAULT_ACTIVITY_TYPES = ('Tool Management', 'Meeting', 'Travel', 'Other')
 
 
-def take_over_unowned(conn: sqlite3.Connection, user_id: int) -> None:
+def take_over_unowned(conn: sqlite3.Connection, user_id: str) -> None:
     """All records without an owner become the user's (only for the first user)."""
     for table in PERSONAL_TABLES:
         conn.execute(f'UPDATE {table} SET user_id = ? WHERE user_id = ?', (user_id, NO_OWNER))
 
 
-def start_with_defaults(conn: sqlite3.Connection, user_id: int) -> None:
+def start_with_defaults(conn: sqlite3.Connection, user_id: str) -> None:
     """A user without activity types gets the defaults; without settings, the setup is still to do."""
     if not conn.execute('SELECT 1 FROM activity_types WHERE user_id = ?', (user_id,)).fetchone():
         conn.executemany('INSERT INTO activity_types (user_id, name) VALUES (?, ?)',

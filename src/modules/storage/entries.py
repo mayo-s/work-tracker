@@ -62,7 +62,7 @@ class EntryRepository:
     Works within the transaction of the given connection. `clock` provides the history timestamps.
     """
 
-    def __init__(self, conn: sqlite3.Connection, user_id: int, clock: Callable[[], dt.datetime] | None = None) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: str, clock: Callable[[], dt.datetime] | None = None) -> None:
         self._conn = conn
         self._user = user_id
         self._clock = clock or _now

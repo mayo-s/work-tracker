@@ -7,7 +7,7 @@ import falcon
 
 from src.modules.storage.database import Database
 from src.modules.storage.owners import NO_OWNER
-from src.modules.storage.settings import load_theme, setup_done
+from src.modules.storage.settings import load_theme, registration_open, setup_done
 from src.modules.storage.users import UserRepository
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / 'templates'
@@ -47,6 +47,21 @@ class StartPage(Page):
         super().on_get(req, resp)
 
 
+class RegisterPage(Page):
+    """`/register`, only while registration is on (and the login, since only then are there users to register)."""
+
+    def __init__(self, database: Database, enabled: bool) -> None:
+        super().__init__('register', 'Register')
+        self._database = database
+        self._enabled = enabled
+
+    def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+        with self._database.transaction() as conn:
+            if not (self._enabled and registration_open(conn)):
+                raise falcon.HTTPNotFound(description='Registration is switched off')
+        super().on_get(req, resp)
+
+
 class PageSettings:
     """Middleware for pages: the color theme for the frame; until the database is set up, pages forward to /setup,
     and /setup forwards to the week once it is."""
@@ -65,7 +80,7 @@ class PageSettings:
             raise falcon.HTTPSeeOther('/' if done else '/setup')
 
 
-def _set_up(conn: sqlite3.Connection, user_id: int | None) -> bool:
+def _set_up(conn: sqlite3.Connection, user_id: str | None) -> bool:
     """The user's setup state; not logged in, only a database without users is set up first (the login handles the
     rest)."""
     if user_id is not None:

@@ -130,18 +130,31 @@ and ends with passing tests and the flake8 check.
   users, teams and memberships are app-wide. Nobody sees someone else's days and entries, the admin neither (technical
   support works on the database directly; team admins get a read-only view in L.10). Roles: admin, team admin, user. In
   three steps:
-  - [x] **L.8a.1** Data per user: `user_id` (a random UUID) on every personal table; a migration gives all existing records to the only
-    user and makes that user admin (a database with data but no user: the first user created takes over everything
-    without an owner). Repositories, reports, review, dashboard, setup and the importer work per user (`--user` for the
-    importer); a new user starts with the four default activity types and goes through the setup for their own data
-  - [ ] **L.8a.2** Registration and roles: `/register` (the fields of the login), switched on or off by the admin in the
-    settings (off by default); an admin page lists the users (change role, deactivate)
-  - [ ] **L.8a.3** Teams: the admin creates teams and names team admins; a team is chosen at registration or later in
-    the settings, and stays pending until an admin or that team's admin approves it; then the team's services are
-    shared. Leaving a team removes them; tickets with such a service become "without service" (review)
+  - [x] **L.8a.1** Data per user: `user_id` (a random UUID) on every personal table; a migration gives all existing
+    records to the only user and makes that user admin (a database with data but no user: the first user created takes
+    over everything without an owner). Repositories, reports, review, dashboard, setup and the importer work per user
+    (`--user` for the importer); a new user starts with the four default activity types and goes through the setup for
+    their own data
+  - [x] **L.8a.2** Registration and roles:
+    - `/register` with the fields of the login: the new user is logged in at once and goes through the setup (no
+      e-mail confirmation). Registrations share the pause of the failed logins (5 per minute). The login page links to
+      it only while registration is on; otherwise `/register` answers 404, and it does not exist with the login off
+    - Admin page `/admin` (an "Admin" link in the navigation for admins only; the admin API answers 403 to others):
+      registration on or off (off by default), and the users with username, name, e-mail address, role, active,
+      registered on and last login (new columns), but nothing of their time data
+    - Change the role (admin or user; team admin comes with L.8a.3), deactivate and reactivate: a deactivated user
+      cannot log in, their sessions end at once, their data is kept. Nobody deactivates or demotes themselves, so an
+      active admin always remains. Users are not deleted
+    - Forgotten passwords stay with the command on the computer running the app
+  - [ ] **L.8a.3** Teams: the admin creates teams and names team admins (the team admin role is offered from here on); a
+    team is chosen at registration or later in the settings, and stays pending until an admin or that team's admin
+    approves it; then the team's services are shared. Leaving a team removes them; tickets with such a service become
+    "without service" (review)
 - [ ] **L.9** Narrow screens and zoom (WCAG 1.4.10 Reflow, 320 CSS px / 200 % zoom): wide tables scroll in their own
   container, the navigation wraps, form grids fall back to one column
 - [ ] **L.10** Team view for team admins (after L.8a.3, to be discussed): on the dashboard, a team admin switches to a
   member of their team and sees that member's summary and reports, read-only. To decide: which reports (dashboard, week,
   month with the coding work and its descriptions, year), whether members see who looked at their data, and whether
   admins get the same view
+- [ ] **L.11** AWS Lambda deployment (to be discussed); with it, the admin sets a one-time password for a user who
+  forgot theirs (changed at the next login), since nobody has a shell on the computer running the app

@@ -29,7 +29,7 @@ class ProfileInput(BaseModel):
     first_name: str = Field(min_length=1, max_length=50)
     last_name: str = Field(default='', max_length=50)
 
-    def to_user(self, user_id: int | None = None) -> User:
+    def to_user(self, user_id: str | None = None) -> User:
         return User(id=user_id, **self.model_dump(include={'username', 'email', 'first_name', 'last_name'}))
 
 
@@ -57,3 +57,4 @@ class AuthStatus(BaseModel):
     enabled: bool = Field(description='False when the login is switched off (WORK_TRACKER_AUTH=off)')
     has_users: bool = Field(description='False until the first user is created')
     user: UserView | None = Field(description='The logged-in user')
+    registration: bool = Field(description='True while new users can register on /register')

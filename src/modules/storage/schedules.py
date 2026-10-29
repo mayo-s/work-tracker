@@ -12,7 +12,7 @@ _COLUMNS = 'id, valid_from, weekly_minutes, work_days, state, company_half_days'
 class ScheduleRepository:
     """The work schedules of one user; works within the transaction of the given connection."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: int) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: str) -> None:
         self._conn = conn
         self._user = user_id
 

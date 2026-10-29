@@ -1,5 +1,6 @@
 """Users who log in: username and e-mail address (both unique, ignoring case), name, and a password."""
 
+import datetime as dt
 from typing import Literal
 
 from pydantic import Field
@@ -20,3 +21,6 @@ class User(DomainModel):
     first_name: str = Field(min_length=1, max_length=50)
     last_name: str = Field(default='', max_length=50)
     role: Role = 'user'
+    active: bool = True  # a deactivated user cannot log in
+    registered_at: dt.datetime | None = None  # None: registered before it was recorded
+    last_login_at: dt.datetime | None = None

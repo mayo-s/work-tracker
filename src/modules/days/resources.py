@@ -79,7 +79,7 @@ class DayRange:
             resp.media = book_range(conn, current_user(req), json)
 
 
-def _view(conn: sqlite3.Connection, user_id: int, date: dt.date) -> DayView:
+def _view(conn: sqlite3.Connection, user_id: str, date: dt.date) -> DayView:
     days = DayRepository(conn, user_id)
     return day_view(date, days.get(date), days.flags_on(date), ScheduleRepository(conn, user_id).schedules().on(date))
 

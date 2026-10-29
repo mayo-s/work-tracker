@@ -17,7 +17,7 @@ class _CatalogRepository[M: DomainModel]:
     fields: tuple[str, ...]
     order: str
 
-    def __init__(self, conn: sqlite3.Connection, user_id: int) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: str) -> None:
         self._conn = conn
         self._user = user_id
 

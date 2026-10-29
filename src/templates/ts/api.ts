@@ -31,6 +31,9 @@ export type AuthStatus = Schemas['AuthStatus'];
 export type UserView = Schemas['UserView'];
 export type ProfileInput = Schemas['ProfileInput'];
 export type NewUserInput = Schemas['NewUserInput'];
+export type AdminUserView = Schemas['AdminUserView'];
+export type AdminUserInput = Schemas['AdminUserInput'];
+export type AdminSettings = Schemas['AdminSettings'];
 export type SettingsView = Schemas['SettingsView'];
 export type ThemeView = Schemas['ThemeView'];
 export type Theme = ThemeView['theme'];
@@ -159,9 +162,16 @@ export const api = {
   login: (login: string, password: string) => request<UserView>('POST', '/api/auth/login', { login, password }),
   logout: () => request<void>('POST', '/api/auth/logout'),
   firstUser: (input: NewUserInput) => request<UserView>('POST', '/api/auth/first-user', input),
+  register: (input: NewUserInput) => request<UserView>('POST', '/api/auth/register', input),
   saveProfile: (input: ProfileInput) => request<UserView>('PUT', '/api/auth/me', input),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<void>('PUT', '/api/auth/me/password', { current_password: currentPassword, new_password: newPassword }),
+
+  adminUsers: () => request<AdminUserView[]>('GET', '/api/admin/users'),
+  updateAdminUser: (id: string, input: AdminUserInput) =>
+    request<AdminUserView>('PUT', `/api/admin/users/${segment(id)}`, input),
+  adminSettings: () => request<AdminSettings>('GET', '/api/admin/settings'),
+  saveAdminSettings: (input: AdminSettings) => request<AdminSettings>('PUT', '/api/admin/settings', input),
 
   setupStatus: () => request<SetupStatus>('GET', '/api/setup'),
   setup: (input: SetupInput) => request<SetupStatus>('POST', '/api/setup', input),

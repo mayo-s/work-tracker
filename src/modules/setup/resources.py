@@ -58,7 +58,7 @@ class SetupResource:
 
     def _user(self, req: falcon.Request, resp: falcon.Response, conn: sqlite3.Connection, json: SetupInput) -> str:
         """The user to set up: the current one, or on a database without users the first user, created and logged in."""
-        users = UserRepository(conn)
+        users = UserRepository(conn, self._clock)
         if users.count():
             if json.user:
                 raise ConflictError('A user exists already; leave out the user')

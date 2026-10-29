@@ -72,7 +72,7 @@ class DayRangeResult(BaseModel):
 class _Plan:
     """The days of the range sorted into free work days, conflicts and days left out."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: int, data: DayRangeInput) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: str, data: DayRangeInput) -> None:
         self.schedules: Schedules = ScheduleRepository(conn, user_id).schedules()
         self.recorded = {day.date: day for day in DayRepository(conn, user_id).between(data.start, data.end)}
         self.entries = Counter(entry.date for entry in EntryRepository(conn, user_id).between(data.start, data.end))
@@ -125,7 +125,7 @@ def _weekday(date: dt.date) -> str:
     return WEEKDAYS[date.weekday()]
 
 
-def book_range(conn: sqlite3.Connection, user_id: int, data: DayRangeInput) -> DayRangeResult:
+def book_range(conn: sqlite3.Connection, user_id: str, data: DayRangeInput) -> DayRangeResult:
     """Book the day type on the work days of the range, or only preview it; refused conflicts raise a ConflictError."""
     plan = _Plan(conn, user_id, data)
     plan.check(data)

@@ -6,15 +6,18 @@ from collections.abc import Callable
 import falcon
 
 from src.defaultresources.default import Default
+from src.modules.admin.resources import AdminSettingsResource, AdminUserCollection, AdminUserItem
 from src.modules.auth.resources import (
-    AuthStatusResource, FirstUserResource, LoginResource, LogoutResource, MeResource, PasswordResource,
+    AuthStatusResource, FirstUserResource, LoginResource, LogoutResource, MeResource, PasswordResource, RegisterResource,
 )
 from src.modules.auth.sessions import Authentication, LocalUser, auth_enabled
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
 from src.modules.dashboard.resources import DashboardResource
 from src.modules.days.resources import DayCollection, DayItem, DayRange
 from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem, EntrySplit
-from src.modules.pages.resources import STATIC_DIR, Page, PageSettings, Redirect, RevalidateStaticFiles, StartPage
+from src.modules.pages.resources import (
+    STATIC_DIR, Page, PageSettings, Redirect, RegisterPage, RevalidateStaticFiles, StartPage,
+)
 from src.modules.pto.resources import PtoYearCollection, PtoYearItem
 from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
 from src.modules.review.resources import Review, ReviewFlagItem
@@ -52,6 +55,8 @@ def create_app(
     app.add_route('/settings', Page('settings', 'Settings'))
     app.add_route('/setup', Page('setup', 'Setup'))
     app.add_route('/login', Page('login', 'Log in'))
+    app.add_route('/register', RegisterPage(database, enabled))
+    app.add_route('/admin', Page('admin', 'Admin'))
     app.add_route('/components', Page('components', 'Component gallery'))
     app.add_static_route('/static', STATIC_DIR)
     app.add_route('/health', Default())
@@ -77,8 +82,12 @@ def create_app(
     app.add_route('/api/auth/login', LoginResource(database, clock))
     app.add_route('/api/auth/logout', LogoutResource(database, clock))
     app.add_route('/api/auth/first-user', FirstUserResource(database, clock))
+    app.add_route('/api/auth/register', RegisterResource(database, clock, enabled))
     app.add_route('/api/auth/me', MeResource(database, clock))
     app.add_route('/api/auth/me/password', PasswordResource(database, clock))
+    app.add_route('/api/admin/users', AdminUserCollection(database))
+    app.add_route('/api/admin/users/{user_id}', AdminUserItem(database))
+    app.add_route('/api/admin/settings', AdminSettingsResource(database))
     app.add_route('/api/work-schedules', ScheduleCollection(database))
     app.add_route('/api/work-schedules/{schedule_id:int}', ScheduleItem(database))
     app.add_route('/api/pto-years', PtoYearCollection(database))

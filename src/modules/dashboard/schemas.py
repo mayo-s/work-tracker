@@ -80,7 +80,7 @@ class DashboardView(BaseModel):
 class Dashboard:
     """Builds the dashboard within the transaction of the given connection."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: int, today: dt.date) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: str, today: dt.date) -> None:
         self._conn = conn
         self._user = user_id
         self._today = today

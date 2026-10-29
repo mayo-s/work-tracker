@@ -89,7 +89,7 @@ class EntryHistory:
             resp.media = [ChangeView(**change.model_dump()) for change in changes]
 
 
-def _save(conn: sqlite3.Connection, user_id: int, json: EntryInput, entry_id: int | None = None) -> EntryView:
+def _save(conn: sqlite3.Connection, user_id: str, json: EntryInput, entry_id: int | None = None) -> EntryView:
     entries = EntryRepository(conn, user_id)
     entry = entries.create(json.to_entry()) if entry_id is None else entries.update(json.to_entry(entry_id))
     if json.sets_service:

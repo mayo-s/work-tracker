@@ -109,7 +109,7 @@ class ChangeView(BaseModel):
 class EntryViewer:
     """Builds entry views with service, activity type, flags and the changed marker (one lookup per list)."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: int) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: str) -> None:
         self._entries = EntryRepository(conn, user_id)
         self._ticket_services = {ticket.key: ticket.service_id for ticket in TicketRepository(conn, user_id).all()}
         self._services = {service.id: service.short_name for service in ServiceRepository(conn, user_id).all()}

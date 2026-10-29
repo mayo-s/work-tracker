@@ -51,7 +51,7 @@ class RenameView(BaseModel):
     moved: int = Field(description='Number of entries moved to the new key')
 
 
-def ticket_views(conn: sqlite3.Connection, user_id: int, tickets: Iterable[Ticket]) -> list[TicketView]:
+def ticket_views(conn: sqlite3.Connection, user_id: str, tickets: Iterable[Ticket]) -> list[TicketView]:
     services = {service.id: service.short_name for service in ServiceRepository(conn, user_id).all()}
     counts = TicketRepository(conn, user_id).entry_counts()
     return [

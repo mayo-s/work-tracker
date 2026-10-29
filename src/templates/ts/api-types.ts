@@ -349,7 +349,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Whether the login is on, whether a user exists, and who is logged in. */
+        /** Whether the login is on, whether a user exists, who is logged in, and whether new users can register. */
         get: operations["get__api_auth_status"];
         put?: never;
         post?: never;
@@ -370,7 +370,7 @@ export interface paths {
         put?: never;
         /**
          * Log in with username or e-mail address; sets the session cookie (valid 24 h since the last activity).
-         * @description After 5 failed logins within a minute, logins pause (429).
+         * @description After 5 failed logins or registrations within a minute, logins pause (429). A deactivated user is refused (403).
          */
         post: operations["post__api_auth_login"];
         delete?: never;
@@ -413,6 +413,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register a new user and log in; the user then goes through the setup. Only while an admin has switched registration on (404 otherwise, and with the login off).
+         * @description Registrations count towards the pause after failed logins: after 5 within a minute, both pause (429).
+         */
+        post: operations["post__api_auth_register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me": {
         parameters: {
             query?: never;
@@ -441,6 +461,61 @@ export interface paths {
         get?: never;
         /** Change the password: ends all sessions of the user and starts a new one for this browser. */
         put: operations["put__api_auth_me_password"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** All users in the order they registered, with role, status, registration and last login. */
+        get: operations["get__api_admin_users"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change a user's role, or deactivate (their sessions end, their data is kept) or reactivate them.
+         * @description Nobody demotes or deactivates themselves (409), so an active admin always remains.
+         */
+        put: operations["put__api_admin_users_{user_id}"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** App-wide settings: whether new users can register. */
+        get: operations["get__api_admin_settings"];
+        /** Switch registration on or off; the login page links to /register only while it is on. */
+        put: operations["put__api_admin_settings"];
         post?: never;
         delete?: never;
         options?: never;
@@ -706,6 +781,63 @@ export interface components {
          * @description Model of a validation error response.
          */
         ValidationError: components["schemas"]["ValidationErrorElement"][];
+        /** AdminUserViewList */
+        AdminUserViewList: components["schemas"]["AdminUserView"][];
+        /** AdminUserInput */
+        AdminUserInput: {
+            /**
+             * Role
+             * @description Team admins follow with teams (TASKS.md L.8a.3)
+             * @enum {string}
+             */
+            role: "admin" | "user";
+            /**
+             * Active
+             * @description False deactivates the user: they cannot log in, their sessions end
+             */
+            active: boolean;
+        };
+        /** AdminUserView */
+        AdminUserView: {
+            /**
+             * Id
+             * @description Random UUID
+             */
+            id: string;
+            /** Username */
+            username: string;
+            /** Email */
+            email: string;
+            /** First Name */
+            first_name: string;
+            /** Last Name */
+            last_name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "team_admin" | "user";
+            /**
+             * Active
+             * @description False: deactivated, cannot log in
+             */
+            active: boolean;
+            /**
+             * Registered At
+             * @description Null for users registered before it was recorded
+             */
+            registered_at: string | null;
+            /** Last Login At */
+            last_login_at: string | null;
+        };
+        /** AdminSettings */
+        AdminSettings: {
+            /**
+             * Registration
+             * @description Whether new users can register on /register (off by default)
+             */
+            registration: boolean;
+        };
         /** AuthStatus */
         AuthStatus: {
             /**
@@ -720,6 +852,11 @@ export interface components {
             has_users: boolean;
             /** @description The logged-in user */
             user: components["schemas"]["UserView"] | null;
+            /**
+             * Registration
+             * @description True while new users can register on /register
+             */
+            registration: boolean;
         };
         /** LoginInput */
         LoginInput: {
@@ -3092,6 +3229,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Unprocessable Content */
             422: {
                 headers: {
@@ -3174,6 +3318,60 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ValidationError"];
                 };
+            };
+        };
+    };
+    post__api_auth_register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewUserInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserView"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -3286,6 +3484,175 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_admin_users: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserViewList"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "put__api_admin_users_{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id (UUID) of the user */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminUserInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserView"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_admin_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSettings"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    put__api_admin_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminSettings"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSettings"];
+                };
             };
             /** @description Forbidden */
             403: {

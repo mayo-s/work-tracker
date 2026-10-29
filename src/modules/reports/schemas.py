@@ -97,7 +97,7 @@ class YearReport(BaseModel):
 class Reports:
     """Builds a user's reports within the transaction of the given connection."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: int, today: dt.date) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: str, today: dt.date) -> None:
         self._conn = conn
         self._user = user_id
         self._today = today
@@ -197,7 +197,7 @@ class Reports:
 class CodingWork:
     """A user's coding entries of a period, grouped by the service of their ticket and by ticket."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: int) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: str) -> None:
         self._entries = EntryRepository(conn, user_id)
         self._ticket_services = {ticket.key: ticket.service_id for ticket in TicketRepository(conn, user_id).all()}
         self._services = {service.id: service.short_name for service in ServiceRepository(conn, user_id).all()}

@@ -19,7 +19,7 @@ class RenameResult(NamedTuple):
 
 
 def rename_ticket(
-    conn: sqlite3.Connection, user_id: int, old_key: str, new_key: str, clock: Callable[[], dt.datetime] | None = None
+    conn: sqlite3.Connection, user_id: str, old_key: str, new_key: str, clock: Callable[[], dt.datetime] | None = None
 ) -> RenameResult:
     """Move all entries of a user's ticket to a new key and delete the old ticket; each moved entry's history records it.
 
@@ -57,7 +57,7 @@ def _kept_service(source: Ticket, target: Ticket | None) -> int | None:
     return source.service_id
 
 
-def _move_entries(conn: sqlite3.Connection, user_id: int, old_key: str, new_key: str) -> list[int]:
+def _move_entries(conn: sqlite3.Connection, user_id: str, old_key: str, new_key: str) -> list[int]:
     """Move all of the user's entries from the old to the new key; returns the ids of the moved entries."""
     moved = [row['id'] for row in conn.execute('SELECT id FROM entries WHERE user_id = ? AND ticket_key = ? ORDER BY id',
                                                (user_id, old_key))]

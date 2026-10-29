@@ -13,7 +13,10 @@ from src.modules.storage.owners import NO_OWNER
 from src.modules.storage.users import SESSION_LIFETIME, SessionRepository, UserRepository
 
 COOKIE = 'wt_session'
-OPEN_PATHS = {'/login', '/health', '/api/auth/status', '/api/auth/login', '/api/auth/logout', '/api/auth/first-user'}
+OPEN_PATHS = {
+    '/login', '/register', '/health', '/api/auth/status', '/api/auth/login', '/api/auth/logout', '/api/auth/first-user',
+    '/api/auth/register',
+}
 OPEN_PREFIXES = ('/static/', '/apidoc')
 
 

@@ -53,7 +53,7 @@ class Reconciliation:
         return result
 
 
-def reconcile(conn: sqlite3.Connection, user_id: int, rows: Sequence[SheetRow], today: dt.date) -> Reconciliation:
+def reconcile(conn: sqlite3.Connection, user_id: str, rows: Sequence[SheetRow], today: dt.date) -> Reconciliation:
     """Compare the user's imported days of the rows' year with the sheet, up to today (future days do not count yet)."""
     settings = load_settings(conn, user_id)
     year = rows[0].date.year
