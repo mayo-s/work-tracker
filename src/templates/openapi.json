@@ -22,6 +22,9 @@
       "name": "Reports"
     },
     {
+      "name": "PTO years"
+    },
+    {
       "name": "Review"
     },
     {
@@ -1063,6 +1066,138 @@
               }
             }
           }
+        }
+      }
+    },
+    "/api/pto-years": {
+      "get": {
+        "summary": "Every year with PTO days entered, oldest first.",
+        "operationId": "get__api_pto-years",
+        "description": "",
+        "tags": [
+          "PTO years"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PtoYearList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pto-years/{year}": {
+      "get": {
+        "summary": "The PTO days of one year.",
+        "operationId": "get__api_pto-years_{year}",
+        "description": "",
+        "tags": [
+          "PTO years"
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int4"
+            },
+            "description": "Year, e.g. 2026"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PtoYear"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Enter the PTO days of a year (insert or replace).",
+        "operationId": "put__api_pto-years_{year}",
+        "description": "",
+        "tags": [
+          "PTO years"
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int4"
+            },
+            "description": "Year, e.g. 2026"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PtoYear"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PtoYearInput"
+              }
+            }
+          },
+          "required": true
         }
       }
     },
@@ -2313,6 +2448,131 @@
         "title": "ChangeViewList",
         "type": "array"
       },
+      "PtoYearList": {
+        "items": {
+          "$ref": "#/components/schemas/PtoYear"
+        },
+        "title": "PtoYearList",
+        "type": "array"
+      },
+      "PtoYear": {
+        "additionalProperties": false,
+        "properties": {
+          "allowance": {
+            "description": "Regular PTO days of the year",
+            "examples": [
+              30
+            ],
+            "title": "Allowance",
+            "type": "number"
+          },
+          "extra_days": {
+            "default": 0.0,
+            "description": "Days granted on top",
+            "title": "Extra Days",
+            "type": "number"
+          },
+          "carried_over": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Fixed carry-over, e.g. as stated by HR; null: the remainder of the year before",
+            "title": "Carried Over"
+          },
+          "note": {
+            "default": "",
+            "examples": [
+              "one extra day granted"
+            ],
+            "maxLength": 200,
+            "title": "Note",
+            "type": "string"
+          },
+          "year": {
+            "maximum": 2100,
+            "minimum": 2000,
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "allowance",
+          "year"
+        ],
+        "title": "PtoYear",
+        "type": "object"
+      },
+      "PtoYearInput": {
+        "additionalProperties": false,
+        "properties": {
+          "allowance": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "description": "Regular PTO days of the year",
+            "examples": [
+              30
+            ],
+            "title": "Allowance"
+          },
+          "extra_days": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "description": "Days granted on top",
+            "title": "Extra Days"
+          },
+          "carried_over": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Fixed carry-over, e.g. as stated by HR; null: the remainder of the year before",
+            "title": "Carried Over"
+          },
+          "note": {
+            "default": "",
+            "examples": [
+              "one extra day granted"
+            ],
+            "maxLength": 200,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "allowance"
+        ],
+        "title": "PtoYearInput",
+        "type": "object"
+      },
       "WeekReport": {
         "properties": {
           "week": {
@@ -2440,7 +2700,7 @@
                 "type": "null"
               }
             ],
-            "description": "Null for years before the balance start or in the future"
+            "description": "Null for years before the balance start, in the future or without PTO days entered"
           }
         },
         "required": [
@@ -3024,8 +3284,18 @@
             "title": "Carried Over",
             "type": "number"
           },
+          "carried_over_fixed": {
+            "description": "Entered for the year instead of the remainder of the year before",
+            "title": "Carried Over Fixed",
+            "type": "boolean"
+          },
           "allowance": {
             "title": "Allowance",
+            "type": "number"
+          },
+          "extra_days": {
+            "description": "Days granted on top of the allowance",
+            "title": "Extra Days",
             "type": "number"
           },
           "used": {
@@ -3043,7 +3313,9 @@
         },
         "required": [
           "carried_over",
+          "carried_over_fixed",
           "allowance",
+          "extra_days",
           "used",
           "planned",
           "remaining"

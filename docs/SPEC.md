@@ -77,9 +77,11 @@ The break can always be overridden (e.g. 3:00 on a long day).
 
 ### 3.4 PTO allowance
 
-- Configurable per year: **30 days**; **2024: 17.5 days** (pro rata for June–December);
-  **2025 and 2026: 31 days** (one extra day granted each year, not permanent).
-- Unused days are **carried over** into the next year.
+- Entered per year as data (`pto_years`, API `/api/pto-years`): **allowance**, **extra days** granted on top and
+  an optional **fixed carry-over**, e.g. as stated by HR; a year without entry has no PTO account.
+- Current values: **30 days**; **2024: 17.5 days** (pro rata for June–December); **2025 and 2026: 30 + 1 extra day**
+  (not permanent).
+- Unused days are **carried over** into the next year, unless a fixed carry-over is entered (later years build on it).
 - The year report shows carried-over days, allowance, days used and days remaining.
 
 ## 4. Task entries
