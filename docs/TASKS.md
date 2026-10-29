@@ -67,9 +67,17 @@ and ends with passing tests and the flake8 check.
 
 ## Later (to be discussed)
 
-- [ ] **L.1** User settings page: PTO allowance per year, work hours per day and per week, and other settings (e.g.
-  balance start date, opening balance). Needs the 8:00 daily target in `src/lib/daytypes.py` to become
-  configurable; builds on the stored settings from 2.2.
+- [ ] **L.1a** Settings page `/settings`, data only (no change to the calculations): overtime balance start date and
+  opening balance (h:mm, signed) via `GET/PUT /api/settings`; PTO years (allowance, extra days, fixed carry-over,
+  note) as an editable table on the existing `/api/pto-years`; services and activity types moved here from `/lists`
+  (which forwards to `/settings#services`)
+- [ ] **L.1b** Work schedules valid from a date (a change counts from that day on, never rewrites the past): hours per
+  week and work days (e.g. Mon–Fri), split evenly into the daily target (40 h / 5 days = 8:00; half days: half of
+  it); replaces the fixed 8:00 in `src/lib/daytypes.py`; API `/api/work-schedules` (GET, POST, PUT, DELETE) and a
+  section on the settings page; the first schedule is 40 h Mon–Fri from the balance start. The importer keeps the
+  spreadsheet's own 8:00 rule
+- [ ] **L.1c** Holidays in the work schedule: federal state (`holidays` subdivision, e.g. `BE`) and whether 24.12. and
+  31.12. are company half days (0.5 PTO each); replaces the fixed Berlin calendar in `src/lib/public_holidays.py`
 - [ ] **L.2** Vacation day range: Instead of booking every vacation day one after another, there should be an option to
   enter a time range vor vacations. Same for sick days in case one is sick for more than just a few days.
 - [ ] **L.3** Initial setup: the "start from zero" section explains how to start from scratch, but many steps should be
@@ -77,5 +85,7 @@ and ends with passing tests and the flake8 check.
 - [ ] **L.4** Dark mode: a second set of the color variables from the UI style (e.g. following the system setting)
 - [ ] **L.5** Accessibility: the ui should be accessible for everyone and follow modern accessibility standards
 - [ ] **L.6** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g.
-  `2,0 PTO Zahnarzt`,
+  `2,0 PTO Dentist`,
   today only a day note) as a value, and show them in the year report next to the days off.
+- [ ] **L.6** Dashboard: A dashboard page with a clean overview and summary of vacation days, overtime balance and other
+  interesting stats.

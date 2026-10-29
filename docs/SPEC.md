@@ -16,13 +16,13 @@ Out of scope for now: export, multiple users, authentication, hosting.
 
 ## 2. Conventions
 
-| Topic | Rule |
-|---|---|
-| UI language | English |
-| Dates (UI) | `DD.MM.YYYY`; weeks start on Monday |
-| Dates (API) | ISO 8601 `YYYY-MM-DD` |
-| Times | 24 h format `HH:MM` |
-| Durations | `h:mm` (e.g. `1:30`); task entries in quarter-hour steps (`:00`, `:15`, `:30`, `:45`) |
+| Topic       | Rule                                                                                  |
+|-------------|---------------------------------------------------------------------------------------|
+| UI language | English                                                                               |
+| Dates (UI)  | `DD.MM.YYYY`; weeks start on Monday                                                   |
+| Dates (API) | ISO 8601 `YYYY-MM-DD`                                                                 |
+| Times       | 24 h format `HH:MM`                                                                   |
+| Durations   | `h:mm` (e.g. `1:30`); task entries in quarter-hour steps (`:00`, `:15`, `:30`, `:45`) |
 
 ## 3. Days
 
@@ -31,17 +31,17 @@ A day has a **date**, **day type**, **start**, **end**, **break** and an optiona
 
 ### 3.1 Day types
 
-| Type | Set by | Target | PTO used |
-|---|---|---|---|
-| Work | default (never set explicitly) | 8:00 Mon–Fri, 0:00 Sat/Sun | 0 |
-| PTO (full day) | user | 0:00 | 1 |
-| PTO (half day) | user | 4:00 | 0.5 |
-| Sick (full day) | user | 0:00 | 0 |
-| Sick (half day) | user | 4:00 | 0 |
-| Overtime off | user | 8:00 (nothing worked → −8:00) | 0 |
-| Unpaid leave | user | 0:00 | 0 |
-| Public holiday | automatic (Berlin) | 0:00 | 0 |
-| Heiligabend / Silvester | automatic | 0:00 | 0.5 (half PTO + half free by company policy) |
+| Type                    | Set by                         | Target                        | PTO used                                     |
+|-------------------------|--------------------------------|-------------------------------|----------------------------------------------|
+| Work                    | default (never set explicitly) | 8:00 Mon–Fri, 0:00 Sat/Sun    | 0                                            |
+| PTO (full day)          | user                           | 0:00                          | 1                                            |
+| PTO (half day)          | user                           | 4:00                          | 0.5                                          |
+| Sick (full day)         | user                           | 0:00                          | 0                                            |
+| Sick (half day)         | user                           | 4:00                          | 0                                            |
+| Overtime off            | user                           | 8:00 (nothing worked → −8:00) | 0                                            |
+| Unpaid leave            | user                           | 0:00                          | 0                                            |
+| Public holiday          | automatic (Berlin)             | 0:00                          | 0                                            |
+| Heiligabend / Silvester | automatic                      | 0:00                          | 0.5 (half PTO + half free by company policy) |
 
 - Travel and training days are normal work days; details go into the day note.
 - Taking a few hours off against overtime needs no day type: fewer hours are worked, and
@@ -49,7 +49,7 @@ A day has a **date**, **day type**, **start**, **end**, **break** and an optiona
 - Weekends are optional: a weekend day only exists if something was recorded.
 - Public holidays (Berlin): Neujahr, Internationaler Frauentag, Karfreitag, Ostermontag,
   Tag der Arbeit, Christi Himmelfahrt, Pfingstmontag, Tag der Deutschen Einheit,
-  1. and 2. Weihnachtstag, plus one-off holidays (e.g. 08.05.2025).
+    1. and 2. Weihnachtstag, plus one-off holidays (e.g. 08.05.2025).
 - An automatic day type can be overridden by the user.
 
 ### 3.2 Break
@@ -57,13 +57,13 @@ A day has a **date**, **day type**, **start**, **end**, **break** and an optiona
 If no break is entered, it defaults to the legal minimum (German ArbZG §4), based on
 presence time = end − start:
 
-| Presence | Default break |
-|---|---|
-| ≤ 6:00 | 0:00 |
+| Presence    | Default break   |
+|-------------|-----------------|
+| ≤ 6:00      | 0:00            |
 | 6:00 – 6:30 | presence − 6:00 |
-| 6:30 – 9:30 | 0:30 |
+| 6:30 – 9:30 | 0:30            |
 | 9:30 – 9:45 | presence − 9:00 |
-| > 9:45 | 0:45 |
+| > 9:45      | 0:45            |
 
 The break can always be overridden (e.g. 3:00 on a long day).
 
@@ -91,13 +91,13 @@ time (meetings, breaks etc. are not logged). Two kinds:
 
 ### 4.1 Ticket entry
 
-| Field | Notes |
-|---|---|
-| Ticket | One ticket per entry, format `PREFIX-NUMBER` (e.g. `ENGINE-461`); required when entered in the UI |
-| Service | From the managed service list; may be unassigned |
-| Duration | `h:mm`, quarter-hour steps |
-| Description | Free text |
-| Coding | Checkbox, **unchecked by default** |
+| Field       | Notes                                                                                             |
+|-------------|---------------------------------------------------------------------------------------------------|
+| Ticket      | One ticket per entry, format `PREFIX-NUMBER` (e.g. `ENGINE-461`); required when entered in the UI |
+| Service     | From the managed service list; may be unassigned                                                  |
+| Duration    | `h:mm`, quarter-hour steps                                                                        |
+| Description | Free text                                                                                         |
+| Coding      | Checkbox, **unchecked by default**                                                                |
 
 - Known prefixes: **KP** (Kundenportal), **TNG**, **ENGINE**, **AGA**, **MSI**.
 - PR reviews are ticket entries (marked as coding).
@@ -109,23 +109,23 @@ time (meetings, breaks etc. are not logged). Two kinds:
 
 ### 4.2 Activity entry
 
-| Field | Notes |
-|---|---|
+| Field         | Notes                                                                           |
+|---------------|---------------------------------------------------------------------------------|
 | Activity type | Managed list, initially **Tool Management**, **Meeting**, **Travel**, **Other** |
-| Duration | `h:mm`, quarter-hour steps |
-| Note | Free text (e.g. "new computer setup", "Hackathon Picard") |
+| Duration      | `h:mm`, quarter-hour steps                                                      |
+| Note          | Free text (e.g. "new computer setup", "Hackathon Picard")                       |
 
 ### 4.3 Services (managed list)
 
 Editable in the UI; initially:
 
-| Short name | Full name |
-|---|---|
-| O365 | office-integration-service |
-| MSB | microsoft-bookings-service |
-| ImmoDrop | — |
-| HiS | history-service |
-| TTS | text-transformation-service |
+| Short name | Full name                   |
+|------------|-----------------------------|
+| O365       | office-integration-service  |
+| MSB        | microsoft-bookings-service  |
+| ImmoDrop   | —                           |
+| HiS        | history-service             |
+| TTS        | text-transformation-service |
 
 ### 4.4 Warnings
 
@@ -135,12 +135,12 @@ A warning is shown only for a **past work day (Mon–Fri, day type Work) without
 
 Every change to a task entry is recorded, so it can be checked later what changed and why.
 
-| Field | Example |
-|---|---|
-| When | 27.10.2026 14:05 |
-| Action | `created`, `imported`, `updated`, `renamed`, `merged`, `split`, `deleted` |
+| Field   | Example                                                                                   |
+|---------|-------------------------------------------------------------------------------------------|
+| When    | 27.10.2026 14:05                                                                          |
+| Action  | `created`, `imported`, `updated`, `renamed`, `merged`, `split`, `deleted`                 |
 | Changes | only the changed fields, old → new: `ticket: TNG-4321 → KP-1234`, `duration: 1:00 → 1:30` |
-| Detail | optional, e.g. the original spreadsheet line on import (`3,0 TNG-5213, TNG-5214`) |
+| Detail  | optional, e.g. the original spreadsheet line on import (`3,0 TNG-5213, TNG-5214`)         |
 
 - Written by the app (not by database triggers), so each line states the reason of the change.
 - The history of a deleted entry is kept; entry ids are never reused.
@@ -192,20 +192,20 @@ An item leaves the list once the reason is fixed or the flag is cleared.
 White, blueish and clean: generous whitespace, thin borders instead of heavy shadows, 6 px rounded
 corners, one accent color. Warnings are the only loud element.
 
-| Role | Color | Use |
-|---|---|---|
-| Text | `#36454F` | All body text |
-| Muted text | `#66737D` | Secondary information (weekday, target, notes) |
-| Background | `#FFFFFF` | Page |
-| Surface | `#F4F7FB` | Cards, table headers, weekend columns |
-| Border | `#DCE4EE` | Lines between rows and cards |
-| Accent | `#2F6FD6` | Links, primary buttons, active navigation, today |
-| Accent light | `#E8F0FC` | Hover, selected row |
-| Warning | `#E62E6B` | Highlights: borders, badges, bold text, icons |
-| Warning text | `#C81E57` | Small warning text (better contrast than `#E62E6B`) |
-| Warning light | `#FDECF2` | Background of warning rows |
-| Positive | `#1B7F61` | Positive overtime and balance (mint green) |
-| Positive light | `#E6F6F0` | Background of positive badges |
+| Role           | Color     | Use                                                 |
+|----------------|-----------|-----------------------------------------------------|
+| Text           | `#36454F` | All body text                                       |
+| Muted text     | `#66737D` | Secondary information (weekday, target, notes)      |
+| Background     | `#FFFFFF` | Page                                                |
+| Surface        | `#F4F7FB` | Cards, table headers, weekend columns               |
+| Border         | `#DCE4EE` | Lines between rows and cards                        |
+| Accent         | `#2F6FD6` | Links, primary buttons, active navigation, today    |
+| Accent light   | `#E8F0FC` | Hover, selected row                                 |
+| Warning        | `#E62E6B` | Highlights: borders, badges, bold text, icons       |
+| Warning text   | `#C81E57` | Small warning text (better contrast than `#E62E6B`) |
+| Warning light  | `#FDECF2` | Background of warning rows                          |
+| Positive       | `#1B7F61` | Positive overtime and balance (mint green)          |
+| Positive light | `#E6F6F0` | Background of positive badges                       |
 
 - **Negative** overtime and balance are shown as a warning (including −8:00 on a work day without
   times yet), **positive** ones in mint green, zero in normal text.
@@ -228,7 +228,7 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 - Day comment → day type:
 
   | Comment | Day type |
-  |---|---|
+    |---|---|
   | `PTO`, `<8> PTO` | PTO (full day) |
   | `PTO` with `Sum` 0:00 (e.g. 30.05.2025) | Overtime off |
   | `Off sick`, `PTO (off sick)` | Sick (full day) |
@@ -237,8 +237,8 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 
 - **Half days**: a line `4,0 PTO …` or `0,5 PTO` (→ PTO half day), or `4,0 PTO (off sick)` /
   `4,0 off sick …` (→ sick half day), on a day whose `Sum` is at least 8:00. The sheet
-  extended the end time by the absence, so the import moves the end back by 4:00
-  (20.06.2024: 07:15–16:00 → 07:15–12:00).
+  extended the end time by the absence, so the import moves the end back by 4:00 (20.06.2024: 07:15–16:00 → 07:15–12:
+  00).
 - **Overtime used**: any other `<hours> PTO …` line (e.g. `2,0 PTO Zahnarzt`, `3,0 PTO TTU`,
   `4,0 PTO (Wohnungsbesichtigung)` with `Sum` 4:00) is a reminder only → day note; times unchanged.
 - **Weekends**: the sheet stores weekend work as `Sum` − 8:00 (06.12.2025: 08:00–19:30 = 3:30
@@ -249,41 +249,41 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 
 ### 6.2 Comment lines (one line = one entry)
 
-| Line | Result |
-|---|---|
-| `<hours> … <ticket> …` | Ticket entry, no service; tickets may appear anywhere in the line; coding checked for known prefixes (4.1) |
-| several tickets (`<t1>, <t2>`, `<t1>/<t2>`, `<t1> and <t2>`) | One ticket entry per ticket, hours split evenly in quarter hours, remainder on the first entries (1:30 / 4 → 0:30, 0:30, 0:15, 0:15) |
-| `<hours> PR review …` or `<hours> PR …` without a ticket | Ticket entry **without ticket**, coding checked → review |
-| `<hours> Meeting: <text>` | Activity "Meeting", note = text (tickets stay in the note) |
-| `<hours> Meeting(s) …`, `Tactical Meeting`, `Teamstufe Meeting`, `Standup`, `Retro`, `Retrospective`, `Planning` | Activity "Meeting", note = whole text |
-| `<hours> TM`, `Tool Management (TM)`, `GCC (Tool Management)` | Activity "Tool Management" |
-| `<hours> Anreise / Abreise / Anfahrt / Abfahrt …` | Activity "Travel", note = text |
-| `<hours> <other text>` | Activity "Other", note = text |
-| `<ticket> <text>` (no hours) | Ticket entry with 0:00 → review |
-| text without hours or ticket | Appended to the day note |
+| Line                                                                                                             | Result                                                                                                                               |
+|------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| `<hours> … <ticket> …`                                                                                           | Ticket entry, no service; tickets may appear anywhere in the line; coding checked for known prefixes (4.1)                           |
+| several tickets (`<t1>, <t2>`, `<t1>/<t2>`, `<t1> and <t2>`)                                                     | One ticket entry per ticket, hours split evenly in quarter hours, remainder on the first entries (1:30 / 4 → 0:30, 0:30, 0:15, 0:15) |
+| `<hours> PR review …` or `<hours> PR …` without a ticket                                                         | Ticket entry **without ticket**, coding checked → review                                                                             |
+| `<hours> Meeting: <text>`                                                                                        | Activity "Meeting", note = text (tickets stay in the note)                                                                           |
+| `<hours> Meeting(s) …`, `Tactical Meeting`, `Teamstufe Meeting`, `Standup`, `Retro`, `Retrospective`, `Planning` | Activity "Meeting", note = whole text                                                                                                |
+| `<hours> TM`, `Tool Management (TM)`, `GCC (Tool Management)`                                                    | Activity "Tool Management"                                                                                                           |
+| `<hours> Anreise / Abreise / Anfahrt / Abfahrt …`                                                                | Activity "Travel", note = text                                                                                                       |
+| `<hours> <other text>`                                                                                           | Activity "Other", note = text                                                                                                        |
+| `<ticket> <text>` (no hours)                                                                                     | Ticket entry with 0:00 → review                                                                                                      |
+| text without hours or ticket                                                                                     | Appended to the day note                                                                                                             |
 
 - Hours use a decimal comma (`1,5` → `1:30`, `0,75` → `0:45`).
 
 ### 6.3 Ticket clean-up
 
-| Found | Stored | Flagged |
-|---|---|---|
-| `EINGINE-461` | `ENGINE-461` | no |
-| `TNG 5212`, `TNG4840`, `KP1895` | `TNG-5212`, `TNG-4840`, `KP-1895` | no |
-| `TNG TNG-4828` | `TNG-4828` | no |
-| `MSI-02` | `MSI-2` | no |
-| `#KP-1494` | `KP-1494` | no |
-| `#4138`, `# 4251` (number only) | `TNG-4138`, `TNG-4251` (≥ 4000 → TNG, lower → KP) | yes |
-| `#4347 aka #1482`, `#4347/#1482` | one entry `TNG-4347`, description gets "aka KP-1482" | yes |
-| `TNG-2035ff` ("fortfolgend") | `TNG-2035`; the flag keeps the original text | yes |
+| Found                            | Stored                                               | Flagged |
+|----------------------------------|------------------------------------------------------|---------|
+| `EINGINE-461`                    | `ENGINE-461`                                         | no      |
+| `TNG 5212`, `TNG4840`, `KP1895`  | `TNG-5212`, `TNG-4840`, `KP-1895`                    | no      |
+| `TNG TNG-4828`                   | `TNG-4828`                                           | no      |
+| `MSI-02`                         | `MSI-2`                                              | no      |
+| `#KP-1494`                       | `KP-1494`                                            | no      |
+| `#4138`, `# 4251` (number only)  | `TNG-4138`, `TNG-4251` (≥ 4000 → TNG, lower → KP)    | yes     |
+| `#4347 aka #1482`, `#4347/#1482` | one entry `TNG-4347`, description gets "aka KP-1482" | yes     |
+| `TNG-2035ff` ("fortfolgend")     | `TNG-2035`; the flag keeps the original text         | yes     |
 
 ### 6.4 Safety and reconciliation
 
 - Re-importing a year that already holds data is refused unless replacing is requested explicitly.
 - The import prints a summary: days, entries, corrections, flagged items.
 - Every imported entry gets an `imported` history line with its original spreadsheet line.
-- **Reconciliation**: per year, the app's overtime is compared with the sheet's
-  (`Sum` − 8:00 per calendar day); days that differ are listed. Expected differences are only
+- **Reconciliation**: per year, the app's overtime is compared with the sheet's (`Sum` − 8:00 per calendar day); days
+  that differ are listed. Expected differences are only
   the known corrections below.
 
 ### 6.5 Known data corrections
@@ -298,7 +298,7 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 - Python 3.15, Falcon (WSGI), spectree + pydantic for validation and OpenAPI docs.
 - SQLite file database; storage behind a repository interface so it can be replaced for a
   later AWS Lambda deployment via zappa (SQLite does not persist there).
-- Frontend: static HTML / CSS / JavaScript served by the app, no build step.
+- Frontend: static HTML / CSS served by the app, TypeScript compiled locally to JavaScript (`npm run build`).
 - Runs locally with a single command.
 - Tests with pytest; code quality checked with flake8 (radon max CC 6, max line length 127).
 
@@ -306,4 +306,5 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 
 - Export (CSV / spreadsheet format).
 - Deployment as AWS Lambda (zappa) with a persistent storage backend and authentication.
-- User settings page: PTO allowance per year, work hours per day / week and other settings (see TASKS.md, L.1).
+- Settings page: overtime balance and PTO years are done (L.1a); work schedules valid from a date and the holiday
+  rules follow (see TASKS.md, L.1b and L.1c).

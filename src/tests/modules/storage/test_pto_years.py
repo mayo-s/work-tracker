@@ -44,6 +44,18 @@ def test_get_missing_year(conn):
         years.get(2023)
 
 
+def test_delete(conn):
+    years = PtoYearRepository(conn)
+    years.delete(2027)
+    assert 2027 not in years.terms()
+
+
+def test_delete_missing_year(conn):
+    years = PtoYearRepository(conn)
+    with pytest.raises(NotFoundError):
+        years.delete(2023)
+
+
 def test_terms(conn):
     years = PtoYearRepository(conn)
     years.save(PtoYear(year=2026, allowance=Decimal(30), extra_days=Decimal(1), carried_over=Decimal(3)))

@@ -1,4 +1,4 @@
-// Tests of the lists page helpers; run with `npm test`.
+// Tests of the services and activity types helpers; run with `npm test`.
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';

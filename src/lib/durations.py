@@ -46,6 +46,15 @@ def parse_duration(text: str) -> int:
     return hours * MINUTES_PER_HOUR + minutes
 
 
+def parse_signed_duration(text: str) -> int:
+    """Parse a duration that may be negative (`-1:45`, `+12:30`, `0:15`), e.g. an overtime balance."""
+    cleaned = text.strip()
+    if cleaned[:1] in ('-', '+'):
+        minutes = parse_duration(cleaned[1:])
+        return -minutes if cleaned[0] == '-' else minutes
+    return parse_duration(cleaned)
+
+
 def format_duration(minutes: int) -> str:
     """Format minutes as `h:mm`; negative values (overtime) get a leading minus."""
     sign = '-' if minutes < 0 else ''
