@@ -4,7 +4,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import type { DayView, EntryView } from '../ts/api.ts';
-import { DAY_TYPE_LABELS, entriesByDate, needsWarning, signed, valueClass, visibleDays, weekFromSearch } from '../ts/week.ts';
+import { DAY_TYPE_LABELS } from '../ts/labels.ts';
+import {
+  editFromSearch, entriesByDate, needsWarning, signed, valueClass, visibleDays, weekFromSearch,
+} from '../ts/week.ts';
 
 function day(date: string, weekday: string, changes: Partial<DayView> = {}): DayView {
   return {
@@ -61,4 +64,11 @@ test('week from the address, otherwise the current week', () => {
 test('every day type has a label', () => {
   assert.equal(DAY_TYPE_LABELS.pto_half, 'PTO ½');
   assert.equal(Object.keys(DAY_TYPE_LABELS).length, 9);
+});
+
+test('day to edit from the address, only within the shown week', () => {
+  assert.equal(editFromSearch('?week=2025-W49&edit=2025-12-06', '2025-W49'), '2025-12-06');
+  assert.equal(editFromSearch('?edit=2025-12-06', '2026-W44'), null);
+  assert.equal(editFromSearch('?edit=06.12.2025', '2025-W49'), null);
+  assert.equal(editFromSearch('', '2026-W44'), null);
 });

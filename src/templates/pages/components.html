@@ -49,18 +49,23 @@
 
         <section class="story" id="buttons">
           <h2>Buttons</h2>
-          <p>One primary button per area (e.g. Save); everything else normal. Links that act like buttons use <code>button</code> class.</p>
+          <p>One primary button per area (e.g. Save); everything else normal. Links that act like buttons use <code>button</code> class.
+            <code>button-small</code> for row actions such as Edit, <code>button-danger</code> for deleting.</p>
           <div class="story-example inline">
             <button class="primary" type="button">Save</button>
             <button type="button">Cancel</button>
             <button type="button" disabled>Disabled</button>
             <a class="button" href="/components">Link as button</a>
+            <button class="button-small" type="button">Edit</button>
+            <button class="button-danger" type="button">Delete day</button>
           </div>
         </section>
 
         <section class="story" id="forms">
           <h2>Form fields</h2>
-          <p>Label above the field. Invalid fields get <code>aria-invalid="true"</code> and a warning message below.</p>
+          <p>Label above the field, an optional hint below it. Invalid fields get <code>aria-invalid="true"</code> and a
+            warning message below. Clock times are text fields (<code>HH:MM</code>), not <code>type="time"</code>, which
+            some systems show in 12-hour format.</p>
           <div class="story-example">
             <div class="field">
               <label for="example-start">Start</label>
@@ -70,6 +75,11 @@
               <label for="example-end">End</label>
               <input id="example-end" value="07:00" aria-invalid="true" aria-describedby="example-end-error">
               <p class="field-error" id="example-end-error">End is before start</p>
+            </div>
+            <div class="field">
+              <label for="example-break">Break</label>
+              <input id="example-break" placeholder="legal">
+              <p class="field-hint muted">empty: legal minimum</p>
             </div>
             <div class="field">
               <label for="example-type">Day type</label>

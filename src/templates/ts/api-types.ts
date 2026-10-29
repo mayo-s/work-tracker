@@ -430,7 +430,7 @@ export interface components {
              * @default
              * @example microsoft-bookings-service
              */
-            name: string;
+            name?: string;
         };
         /** Service */
         Service: {
@@ -438,7 +438,7 @@ export interface components {
              * Id
              * @default null
              */
-            id: number | null;
+            id?: number | null;
             /**
              * Short Name
              * @description e.g. MSB
@@ -449,7 +449,7 @@ export interface components {
              * @description e.g. microsoft-bookings-service
              * @default
              */
-            name: string;
+            name?: string;
         };
         /** ActivityTypeList */
         ActivityTypeList: components["schemas"]["ActivityType"][];
@@ -467,7 +467,7 @@ export interface components {
              * Id
              * @default null
              */
-            id: number | null;
+            id?: number | null;
             /**
              * Name
              * @description e.g. Tool Management
@@ -484,17 +484,17 @@ export interface components {
              * @default null
              * @example 2026-W44
              */
-            week: string | null;
+            week?: string | null;
             /**
              * Start
              * @default null
              */
-            start: string | null;
+            start?: string | null;
             /**
              * End
              * @default null
              */
-            end: string | null;
+            end?: string | null;
         };
         /** DayViewList */
         DayViewList: components["schemas"]["DayView"][];
@@ -563,28 +563,28 @@ export interface components {
              * @description Empty: automatic (work day or holiday)
              * @default null
              */
-            day_type: components["schemas"]["DayType"] | null;
+            day_type?: components["schemas"]["DayType"] | null;
             /**
              * Start
              * @default null
              */
-            start: string | null;
+            start?: string | null;
             /**
              * End
              * @default null
              */
-            end: string | null;
+            end?: string | null;
             /**
              * Break Time
              * @description Empty: legal minimum break
              * @default null
              */
-            break_time: string | null;
+            break_time?: string | null;
             /**
              * Note
              * @default
              */
-            note: string;
+            note?: string;
         };
         /** EntryViewList */
         EntryViewList: components["schemas"]["EntryView"][];
@@ -614,33 +614,33 @@ export interface components {
              * @default null
              * @example ENGINE-461
              */
-            ticket_key: string | null;
+            ticket_key?: string | null;
             /**
              * Service Id
              * @description Ticket entries: set the ticket's service (applies to all its entries); omit to keep it
              * @default null
              */
-            service_id: number | null;
+            service_id?: number | null;
             /**
              * Description
              * @default
              */
-            description: string;
+            description?: string;
             /**
              * Coding
              * @default false
              */
-            coding: boolean;
+            coding?: boolean;
             /**
              * Activity Type Id
              * @default null
              */
-            activity_type_id: number | null;
+            activity_type_id?: number | null;
             /**
              * Note
              * @default
              */
-            note: string;
+            note?: string;
         };
         /** EntryView */
         EntryView: {
@@ -662,43 +662,43 @@ export interface components {
              * Ticket Key
              * @default null
              */
-            ticket_key: string | null;
+            ticket_key?: string | null;
             /**
              * Service Id
              * @default null
              */
-            service_id: number | null;
+            service_id?: number | null;
             /**
              * Service
              * @description Short name of the ticket's service
              * @default null
              */
-            service: string | null;
+            service?: string | null;
             /**
              * Description
              * @default null
              */
-            description: string | null;
+            description?: string | null;
             /**
              * Coding
              * @default false
              */
-            coding: boolean;
+            coding?: boolean;
             /**
              * Activity Type Id
              * @default null
              */
-            activity_type_id: number | null;
+            activity_type_id?: number | null;
             /**
              * Activity Type
              * @default null
              */
-            activity_type: string | null;
+            activity_type?: string | null;
             /**
              * Note
              * @default null
              */
-            note: string | null;
+            note?: string | null;
             /**
              * Changed
              * @description Changed after it was created or imported (see its history)
@@ -797,7 +797,7 @@ export interface components {
              * @description Only tickets without a service (for review)
              * @default false
              */
-            without_service: boolean;
+            without_service?: boolean;
         };
         /** TicketViewList */
         TicketViewList: components["schemas"]["TicketView"][];
@@ -891,7 +891,7 @@ export interface components {
              * Error context
              * @default null
              */
-            ctx: {
+            ctx?: {
                 [key: string]: unknown;
             } | null;
         };

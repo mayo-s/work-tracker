@@ -10,7 +10,7 @@
     "build": "tsc --project src/templates",
     "watch": "tsc --project src/templates --watch",
     "test": "node --test src/templates/tests/",
-    "api-types": "pipenv run python -m src.utils.openapi && npx --yes -p openapi-typescript@7.13.0 -p typescript@5.9 openapi-typescript src/templates/openapi.json -o src/templates/ts/api-types.ts"
+    "api-types": "pipenv run python -m src.utils.openapi && npx --yes -p openapi-typescript@7.13.0 -p typescript@5.9 openapi-typescript src/templates/openapi.json -o src/templates/ts/api-types.ts --default-non-nullable false"
   },
   "devDependencies": {
     "typescript": "^7.0.2"
