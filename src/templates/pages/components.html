@@ -118,16 +118,28 @@
 
         <section class="story" id="entries">
           <h2>Entry list</h2>
-          <p>Task entries of a day: duration (plain; 0:00 as warning), ticket or activity type, service, text, then badges
-            for coding, review flags and changes.</p>
+          <p>Task entries of a day: duration (plain; 0:00 as warning), ticket or activity type, service, text, badges
+            for coding, review flags and changes; History and Edit on the right (dimmed until hover). The history lists
+            each change, oldest first.</p>
           <div class="story-example">
             <ul class="entries">
-              <li class="entry"><span class="num">4:00</span><strong>ENGINE-573</strong><span class="badge">MSB</span>
-                <span class="entry-text">HUB support</span><span class="badge positive">coding</span></li>
-              <li class="entry"><span class="num">2:00</span><strong>Meeting</strong>
-                <span class="entry-text">Stages for AWS Lambdas</span><span class="badge">changed</span></li>
-              <li class="entry"><span class="num value-negative">0:00</span><strong>TNG-4347</strong>
-                <span class="entry-text">adapt tests (aka KP-1482)</span><span class="badge warning">1 to review</span></li>
+              <li><div class="entry"><span class="num">4:00</span><strong>ENGINE-573</strong><span class="badge">MSB</span>
+                <span class="entry-text">HUB support</span><span class="badge positive">coding</span>
+                <span class="entry-actions"><button class="button-small" type="button">History</button>
+                  <button class="button-small" type="button">Edit</button></span></div></li>
+              <li><div class="entry"><span class="num">2:00</span><strong>Meeting</strong>
+                <span class="entry-text">Stages for AWS Lambdas</span><span class="badge">changed</span>
+                <span class="entry-actions"><button class="button-small" type="button" aria-expanded="true">Hide history</button>
+                  <button class="button-small" type="button">Edit</button></span></div>
+                <div class="history"><ol class="history-list">
+                  <li><span class="num muted">03.03.2026 16:47</span> <strong>Imported</strong> duration: 2:00 · note: Stages
+                    <div class="muted">Original: 2,0 Meeting: Stages for AWS Lambdas</div></li>
+                  <li><span class="num muted">28.10.2026 09:12</span> <strong>Changed</strong> note: Stages → Stages for AWS Lambdas</li>
+                </ol></div></li>
+              <li><div class="entry"><span class="num value-negative">0:00</span><strong>TNG-4347</strong>
+                <span class="entry-text">adapt tests (aka KP-1482)</span><span class="badge warning">1 to review</span>
+                <span class="entry-actions"><button class="button-small" type="button">History</button>
+                  <button class="button-small" type="button">Edit</button></span></div></li>
             </ul>
           </div>
         </section>

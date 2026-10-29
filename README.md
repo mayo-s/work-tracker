@@ -47,7 +47,8 @@ pipenv run gunicorn 'src.app:create_app()' --reload  # alternative with auto-rel
 ```
 
 Open http://127.0.0.1:8000/ for the frontend (build it first with `npm run build`): the current week,
-other weeks via `/?week=2026-W44`; days are edited in place (`/?week=2025-W49&edit=2025-12-06` opens a day's form). `/components` is a
+other weeks via `/?week=2026-W44`; days and entries are edited in place (`&edit=2025-12-06` opens a day's form,
+`&entry=129` an entry's form; each entry shows its change history). `/components` is a
 gallery of the UI components, each with its use and the HTML to copy. The database
 (`$WORK_TRACKER_DB` or `work_tracker.db`) is migrated on start. API documentation:
 `/apidoc/swagger`, `/apidoc/redoc` or `/apidoc/scalar`; the OpenAPI spec is at `/apidoc/openapi.json`.

@@ -25,3 +25,11 @@ class Page:
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         resp.content_type = falcon.MEDIA_HTML
         resp.text = render_page(self._name, self._title)
+
+
+class RevalidateStaticFiles:
+    """Middleware: browsers re-check static files on each use (cheap thanks to their ETag), so changes show at once."""
+
+    def process_response(self, req: falcon.Request, resp: falcon.Response, resource: object, req_succeeded: bool) -> None:
+        if req.path.startswith('/static/'):
+            resp.set_header('Cache-Control', 'no-cache')
