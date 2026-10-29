@@ -3150,6 +3150,36 @@
             "minItems": 1,
             "title": "Work Days",
             "type": "array"
+          },
+          "state": {
+            "default": "BE",
+            "description": "German federal state whose public holidays apply",
+            "enum": [
+              "BB",
+              "BE",
+              "BW",
+              "BY",
+              "HB",
+              "HE",
+              "HH",
+              "MV",
+              "NI",
+              "NW",
+              "RP",
+              "SH",
+              "SL",
+              "SN",
+              "ST",
+              "TH"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "company_half_days": {
+            "default": true,
+            "description": "24.12. and 31.12. are half PTO, half free",
+            "title": "Company Half Days",
+            "type": "boolean"
           }
         },
         "required": [
@@ -3202,6 +3232,36 @@
             "minItems": 1,
             "title": "Work Days",
             "type": "array"
+          },
+          "state": {
+            "default": "BE",
+            "description": "German federal state whose public holidays apply",
+            "enum": [
+              "BB",
+              "BE",
+              "BW",
+              "BY",
+              "HB",
+              "HE",
+              "HH",
+              "MV",
+              "NI",
+              "NW",
+              "RP",
+              "SH",
+              "SL",
+              "SN",
+              "ST",
+              "TH"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "company_half_days": {
+            "default": true,
+            "description": "24.12. and 31.12. are half PTO, half free",
+            "title": "Company Half Days",
+            "type": "boolean"
           },
           "id": {
             "title": "Id",

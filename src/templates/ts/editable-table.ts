@@ -6,14 +6,16 @@ import { WEEKDAY_NAMES } from './labels.ts';
 
 /**
  * A field of a record, e.g. the short name of a service; `fixed` fields can only be entered for a new record.
- * `weekdays` fields hold weekday names separated by commas (`Mon,Tue`), entered with one checkbox per day.
+ * `weekdays` fields hold weekday names separated by commas (`Mon,Tue`), entered with one checkbox per day;
+ * `select` fields offer `options` (value and label); `checkbox` fields hold `true` or `false`.
  */
 export type Field = {
   name: string;
   label: string;
   required: boolean;
   maxLength?: number;
-  type?: 'text' | 'number' | 'date' | 'weekdays';
+  type?: 'text' | 'number' | 'date' | 'weekdays' | 'select' | 'checkbox';
+  options?: [string, string][];
   defaultValue?: string;
   format?: (value: string) => string;
   min?: number;
@@ -82,9 +84,25 @@ function weekdaysControl(table: EditableTable, item: Item | null, field: Field):
   return { name: field.name, element, read: () => boxes.filter((box) => box.checked).map((box) => box.value).join(',') };
 }
 
+function selectControl(table: EditableTable, item: Item | null, field: Field): Control {
+  const value = item?.values[field.name] ?? field.defaultValue ?? '';
+  const select = el('select', { name: field.name, 'aria-label': controlLabel(table, item, field) },
+    ...(field.options ?? []).map(([option, label]) => el('option', { value: option, selected: option === value }, label)));
+  return { name: field.name, element: select, read: () => select.value };
+}
+
+function checkboxControl(table: EditableTable, item: Item | null, field: Field): Control {
+  const box = el('input', { type: 'checkbox', checked: (item?.values[field.name] ?? field.defaultValue) === 'true',
+    'aria-label': controlLabel(table, item, field) });
+  const element = el('label', { class: 'checkbox-field' }, box, field.label);
+  return { name: field.name, element, read: () => String(box.checked) };
+}
+
+const CONTROLS = { weekdays: weekdaysControl, select: selectControl, checkbox: checkboxControl };
+
 function controls(table: EditableTable, item: Item | null): Control[] {
   return table.fields.filter((field) => !(item && field.fixed))
-    .map((field) => (field.type === 'weekdays' ? weekdaysControl : inputControl)(table, item, field));
+    .map((field) => (CONTROLS[field.type as keyof typeof CONTROLS] ?? inputControl)(table, item, field));
 }
 
 function values(fields: Control[]): Record<string, string> {

@@ -40,8 +40,8 @@ A day has a **date**, **day type**, **start**, **end**, **break** and an optiona
 | Sick (half day)         | user                           | half the daily target                     | 0                                            |
 | Overtime off            | user                           | daily target (nothing worked → −8:00)     | 0                                            |
 | Unpaid leave            | user                           | 0:00                                      | 0                                            |
-| Public holiday          | automatic (Berlin)             | 0:00                                      | 0                                            |
-| Heiligabend / Silvester | automatic                      | 0:00                                      | 0.5 (half PTO + half free by company policy) |
+| Public holiday          | automatic (state, 3.5)         | 0:00                                      | 0                                            |
+| Heiligabend / Silvester | automatic (if set, 3.5)        | 0:00                                      | 0.5 (half PTO + half free by company policy) |
 
 On days that are no work days of the work schedule (3.5), e.g. weekends, every type has target 0:00 and uses no PTO.
 
@@ -49,7 +49,7 @@ On days that are no work days of the work schedule (3.5), e.g. weekends, every t
 - Taking a few hours off against overtime needs no day type: fewer hours are worked, and
   the reason can go into the day note (e.g. "2:00 overtime used: Zahnarzt").
 - Days off of the schedule (e.g. weekends) are optional: such a day only exists if something was recorded.
-- Public holidays (Berlin): Neujahr, Internationaler Frauentag, Karfreitag, Ostermontag,
+- Public holidays of the federal state of the work schedule (3.5), e.g. Berlin: Neujahr, Internationaler Frauentag, Karfreitag, Ostermontag,
   Tag der Arbeit, Christi Himmelfahrt, Pfingstmontag, Tag der Deutschen Einheit,
     1. and 2. Weihnachtstag, plus one-off holidays (e.g. 08.05.2025).
 - An automatic day type can be overridden by the user.
@@ -92,7 +92,11 @@ The break can always be overridden (e.g. 3:00 on a long day).
   (40 h / 5 days = 8:00; 32 h / 4 days = 8:00; rounded down to whole minutes). Half days get half of it.
 - Each schedule is **valid from a date** until the next one starts: a change counts from that day on and never
   rewrites earlier days. Days before the first schedule follow the first one; at least one schedule always exists.
-- Initially one schedule: 40 h, Monday to Friday, from the balance start (the former fixed rule).
+- **Holidays**: each schedule names the German **federal state** whose public holidays apply (via `holidays`, e.g.
+  `BE`, `BY`, `HH`) and whether 24.12. and 31.12. are **company half days** (half PTO, half free). A new employer or
+  a move starts a new schedule.
+- Initially one schedule: 40 h, Monday to Friday, Berlin, with company half days, from the balance start (the former
+  fixed rules).
 - The spreadsheet import keeps the sheet's own rule (`Sum` − 8:00 per day), independent of the schedules.
 
 ## 4. Task entries
@@ -318,5 +322,4 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 
 - Export (CSV / spreadsheet format).
 - Deployment as AWS Lambda (zappa) with a persistent storage backend and authentication.
-- Settings page: overtime balance, PTO years (L.1a) and work schedules (L.1b) are done; the holiday rules follow
-  (see TASKS.md, L.1c).
+- Settings page with overtime balance, PTO years, work schedules and holiday rules is done (TASKS.md, L.1a–L.1c).

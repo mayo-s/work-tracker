@@ -67,7 +67,7 @@ and ends with passing tests and the flake8 check.
 
 ## Later (to be discussed)
 
-- [ ] **L.1a** Settings page `/settings`, data only (no change to the calculations): overtime balance start date and
+- [x] **L.1a** Settings page `/settings`, data only (no change to the calculations): overtime balance start date and
   opening balance (h:mm, signed) via `GET/PUT /api/settings`; PTO years (allowance, extra days, fixed carry-over,
   note) as an editable table on the existing `/api/pto-years`; services and activity types moved here from `/lists`
   (which forwards to `/settings#services`)
@@ -87,5 +87,7 @@ and ends with passing tests and the flake8 check.
 - [ ] **L.6** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g.
   `2,0 PTO Dentist`,
   today only a day note) as a value, and show them in the year report next to the days off.
-- [ ] **L.6** Dashboard: A dashboard page with a clean overview and summary of vacation days, overtime balance and other
+- [ ] **L.7** Dashboard: A dashboard page with a clean overview and summary of vacation days, overtime balance and other
   interesting stats.
+- [ ] **L.8** User Login: i would like to secure the app behind a login page. Valid login expires after 24 hours.
+- [ ] **L.8a** Multi User App: What if not just one person wants to use the app but multiple? same db or one db by user?

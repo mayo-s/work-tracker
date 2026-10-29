@@ -5,7 +5,7 @@ import { formatDate } from './dates.ts';
 import { el } from './dom.ts';
 import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 import { field, submit } from './forms.ts';
-import { WEEKDAY_NAMES } from './labels.ts';
+import { STATE_NAMES, WEEKDAY_NAMES } from './labels.ts';
 import { activityTypesTable, servicesTable } from './lists.ts';
 
 const BALANCE_FIELDS = ['balance_start', 'opening_balance'] as const;
@@ -33,12 +33,14 @@ export function formatWorkDays(days: string): string {
     : run.map((index) => WEEKDAY_NAMES[index]!))).join(', ');
 }
 
-/** Form values of a work schedule as API input: work days from `Mon,Tue`. */
+/** Form values of a work schedule as API input: work days from `Mon,Tue`, company half days from `true` / `false`. */
 export function scheduleInput(values: Record<string, string>): ScheduleInput {
   return {
     valid_from: values['valid_from'] ?? '',
     weekly_hours: values['weekly_hours'] ?? '',
     work_days: (values['work_days'] ?? '').split(',').filter(Boolean) as Weekday[],
+    state: (values['state'] || 'BE') as ScheduleInput['state'],
+    company_half_days: values['company_half_days'] === 'true',
   };
 }
 
@@ -79,20 +81,28 @@ function schedulesTable(schedules: ScheduleView[]): EditableTable {
     id: 'schedules',
     title: 'Work schedules',
     hint: 'The hours per week, split evenly over the work days, give the daily target (40 h / 5 days = 8:00; half days '
-      + 'get half of it). Each schedule applies from its start date until the next one starts, so earlier days keep '
-      + 'their target. Other days count like weekends.',
+      + 'get half of it). Public holidays follow the federal state; 24.12. and 31.12. can be company half days (half PTO, '
+      + 'half free). Each schedule applies from its start date until the next one starts, so earlier days keep their '
+      + 'target and holidays. Other days count like weekends.',
     noun: 'work schedule',
     fields: [
       { name: 'valid_from', label: 'Valid from', required: true, type: 'date', format: formatDate },
       { name: 'weekly_hours', label: 'Hours per week', required: true, numeric: true, placeholder: 'Hours per week, e.g. 40:00' },
       { name: 'work_days', label: 'Work days', required: true, type: 'weekdays', defaultValue: 'Mon,Tue,Wed,Thu,Fri',
         format: formatWorkDays },
+      { name: 'state', label: 'Holidays', required: true, type: 'select', defaultValue: 'BE',
+        options: Object.entries(STATE_NAMES), format: (state) => STATE_NAMES[state] ?? state },
+      { name: 'company_half_days', label: '24.12. / 31.12. half days', required: false, type: 'checkbox', defaultValue: 'true',
+        format: (value) => (value === 'true' ? 'yes' : 'no') },
     ],
     usageLabel: 'Daily target',
     items: schedules.map((schedule) => ({
       id: schedule.id,
       label: `from ${formatDate(schedule.valid_from)}`,
-      values: { valid_from: schedule.valid_from, weekly_hours: schedule.weekly_hours, work_days: schedule.work_days.join(',') },
+      values: {
+        valid_from: schedule.valid_from, weekly_hours: schedule.weekly_hours, work_days: schedule.work_days.join(','),
+        state: schedule.state ?? 'BE', company_half_days: String(schedule.company_half_days ?? true),
+      },
       usage: schedule.daily_target,
     })),
     save: (id, values) => (id === null ? api.addSchedule(scheduleInput(values)) : api.updateSchedule(id, scheduleInput(values))),

@@ -17,7 +17,14 @@ def test_work_days_are_sorted_and_distinct():
     {'weekly_minutes': 2400, 'work_days': []},
     {'weekly_minutes': 2400, 'work_days': [0, 1]},
     {'weekly_minutes': 2400, 'work_days': [8]},
+    {'weekly_minutes': 2400, 'work_days': [1], 'state': 'Bayern'},
 ])
 def test_schedule_rejects_invalid_values(values):
     with pytest.raises(ValidationError):
         Schedule(valid_from=dt.date(2027, 3, 1), **values)
+
+
+def test_holiday_rules_default_to_berlin_with_company_half_days():
+    schedule = Schedule(valid_from=dt.date(2027, 3, 1), weekly_minutes=2400, work_days=[1, 2, 3, 4, 5])
+    rules = schedule.to_work_schedule().holidays
+    assert (rules.state, rules.company_half_days) == ('BE', True)

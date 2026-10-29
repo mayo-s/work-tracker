@@ -8,7 +8,7 @@ def test_list_schedules(client):
     [schedule] = client.simulate_get('/api/work-schedules').json
     assert schedule == {
         'id': schedule['id'], 'valid_from': '2024-06-01', 'weekly_hours': '40:00',
-        'work_days': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], 'daily_target': '8:00',
+        'work_days': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], 'state': 'BE', 'company_half_days': True, 'daily_target': '8:00',
     }
 
 
@@ -16,7 +16,8 @@ def test_add_read_change_delete(client):
     created = client.simulate_post('/api/work-schedules', json=PART_TIME)
     assert created.status == falcon.HTTP_201
     path = created.headers['location']
-    assert created.json == PART_TIME | {'id': created.json['id'], 'daily_target': '7:30'}
+    defaults = {'state': 'BE', 'company_half_days': True}
+    assert created.json == PART_TIME | defaults | {'id': created.json['id'], 'daily_target': '7:30'}
     assert client.simulate_get(path).json == created.json
     changed = client.simulate_put(path, json=PART_TIME | {'work_days': ['Thu', 'Mon', 'Tue']}).json
     assert (changed['work_days'], changed['daily_target']) == (['Mon', 'Tue', 'Thu'], '10:00')
@@ -44,9 +45,23 @@ def test_report_counts_days_off_on_work_days_only(client):
     (PART_TIME | {'work_days': ['Monday']}, 422),
     (PART_TIME | {'weekly_hours': '169:00'}, 422),
     (PART_TIME | {'weekly_hours': '30'}, 422),
+    (PART_TIME | {'state': 'Berlin'}, 422),
+    (PART_TIME | {'state': 'Augsburg'}, 422),
 ])
 def test_add_rejects_invalid_schedules(client, body, status):
     assert client.simulate_post('/api/work-schedules', json=body).status_code == status
+
+
+def test_holidays_follow_the_state_and_company_rule_of_the_schedule(client):
+    body = {'valid_from': '2027-01-01', 'weekly_hours': '40:00', 'work_days': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+            'state': 'BY', 'company_half_days': False}
+    client.simulate_post('/api/work-schedules', json=body)
+    epiphany = client.simulate_get('/api/days/2027-01-06').json  # Heilige Drei Könige: Bavaria, not Berlin
+    assert (epiphany['day_type'], epiphany['holiday'], epiphany['target']) == ('public_holiday', 'Epiphany', '0:00')
+    christmas_eve = client.simulate_get('/api/days/2027-12-24').json
+    assert (christmas_eve['day_type'], christmas_eve['holiday'], christmas_eve['target']) == ('work', None, '8:00')
+    women = client.simulate_get('/api/days/2026-03-09').json  # still Berlin before 2027: no holiday on a Monday
+    assert women['day_type'] == 'work'
 
 
 def test_only_schedule_cannot_be_deleted(client):
