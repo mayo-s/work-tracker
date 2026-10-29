@@ -12,13 +12,14 @@ from collections import Counter, defaultdict
 from pydantic import BaseModel, Field
 
 from src.lib.balances import DayRecord, overtime_balance, pto_accounts, summarize_period
-from src.lib.daytypes import DaySummary, DayType, is_weekend
+from src.lib.daytypes import DaySummary, DayType
 from src.lib.durations import format_duration, parse_duration
 from src.models.entries import TicketEntry
 from src.modules.storage.catalog import ServiceRepository
 from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.pto_years import PtoYearRepository
+from src.modules.storage.schedules import ScheduleRepository
 from src.modules.storage.settings import load_settings
 from src.modules.storage.tickets import TicketRepository
 
@@ -101,6 +102,7 @@ class Reports:
         self._today = today
         self._settings = load_settings(conn)
         self._pto_terms = PtoYearRepository(conn).terms()
+        self._schedules = ScheduleRepository(conn).schedules()
 
     def week(self, week: str, monday: dt.date) -> WeekReport:
         sunday = monday + dt.timedelta(days=6)
@@ -142,7 +144,7 @@ class Reports:
     def _period_days(self, records: Records, start: dt.date, end: dt.date) -> list[DaySummary]:
         """Days of the period from the balance start on (days before it are ignored)."""
         first = max(start, self._settings.balance_start)
-        return summarize_period(records, first, end) if first <= end else []
+        return summarize_period(records, first, end, self._schedules) if first <= end else []
 
     def _counted_days(self, records: Records, start: dt.date, end: dt.date) -> list[DaySummary]:
         """Days of the period from the balance start up to today."""
@@ -151,11 +153,11 @@ class Reports:
     def _days_off(self, records: Records, start: dt.date, end: dt.date) -> dict[DayType, int]:
         """Weekdays by day type other than work, including planned ones."""
         days = self._period_days(records, start, end)
-        counts = Counter(day.day_type for day in days if not is_weekend(day.date) and day.day_type is not DayType.WORK)
+        counts = Counter(day.day_type for day in days if day.work_day and day.day_type is not DayType.WORK)
         return dict(sorted(counts.items()))
 
     def _balance(self, records: Records, until: dt.date) -> int:
-        return overtime_balance(records, self._settings.balance_start, until, self._settings.opening_balance)
+        return overtime_balance(records, self._settings.balance_start, until, self._settings.opening_balance, self._schedules)
 
     def _totals(self, records: Records, start: dt.date, end: dt.date) -> PeriodTotals:
         days = self._counted_days(records, start, end)
@@ -180,7 +182,7 @@ class Reports:
         if not self._settings.balance_start.year <= year <= self._today.year:
             return None
         until = min(dt.date(year, 12, 31), self._today)
-        accounts = pto_accounts(records, self._pto_terms, self._settings.balance_start, until)
+        accounts = pto_accounts(records, self._pto_terms, self._settings.balance_start, until, self._schedules)
         account = next((account for account in accounts if account.year == year), None)
         if account is None:
             return None

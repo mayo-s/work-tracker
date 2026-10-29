@@ -266,6 +266,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/work-schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** All work schedules, oldest first; each applies until the next one starts. */
+        get: operations["get__api_work-schedules"];
+        put?: never;
+        /** Add a work schedule; it applies from its start date until the next one starts. */
+        post: operations["post__api_work-schedules"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/work-schedules/{schedule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One work schedule. */
+        get: operations["get__api_work-schedules_{schedule_id}"];
+        /** Change a work schedule; the days it applies to are counted again. */
+        put: operations["put__api_work-schedules_{schedule_id}"];
+        post?: never;
+        /** Delete a work schedule (not the only one); its days then follow the schedule before it. */
+        delete: operations["delete__api_work-schedules_{schedule_id}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/pto-years": {
         parameters: {
             query?: never;
@@ -620,6 +657,11 @@ export interface components {
             overtime: string;
             /** Pto Days */
             pto_days: number;
+            /**
+             * Work Day
+             * @description A work day of the work schedule, e.g. Monday to Friday
+             */
+            work_day: boolean;
             /** Note */
             note: string;
             /** Flags */
@@ -930,6 +972,68 @@ export interface components {
              * @description Days with import flags (e.g. weekend hours), by date
              */
             days: components["schemas"]["DayView"][];
+        };
+        /** ScheduleViewList */
+        ScheduleViewList: components["schemas"]["ScheduleView"][];
+        /** ScheduleInput */
+        ScheduleInput: {
+            /**
+             * Valid From
+             * Format: date
+             * @description First day the schedule applies to; earlier days keep their schedule
+             */
+            valid_from: string;
+            /**
+             * Weekly Hours
+             * @description Hours per week, h:mm
+             * @example 40:00
+             */
+            weekly_hours: string;
+            /**
+             * Work Days
+             * @example [
+             *       "Mon",
+             *       "Tue",
+             *       "Wed",
+             *       "Thu",
+             *       "Fri"
+             *     ]
+             */
+            work_days: ("Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun")[];
+        };
+        /** ScheduleView */
+        ScheduleView: {
+            /**
+             * Valid From
+             * Format: date
+             * @description First day the schedule applies to; earlier days keep their schedule
+             */
+            valid_from: string;
+            /**
+             * Weekly Hours
+             * @description Hours per week, h:mm
+             * @example 40:00
+             */
+            weekly_hours: string;
+            /**
+             * Work Days
+             * @example [
+             *       "Mon",
+             *       "Tue",
+             *       "Wed",
+             *       "Thu",
+             *       "Fri"
+             *     ]
+             */
+            work_days: ("Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun")[];
+            /** Id */
+            id: number;
+            /**
+             * Daily Target
+             * @description Hours per week split evenly over the work days, h:mm
+             * @example 8:00
+             */
+            daily_target: string;
         };
         /** SettingsView */
         SettingsView: {
@@ -2067,6 +2171,208 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SettingsView"];
                 };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "get__api_work-schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleViewList"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_work-schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleView"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "get__api_work-schedules_{schedule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the work schedule */
+                schedule_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleView"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "put__api_work-schedules_{schedule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the work schedule */
+                schedule_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleView"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "delete__api_work-schedules_{schedule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the work schedule */
+                schedule_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Unprocessable Content */
             422: {

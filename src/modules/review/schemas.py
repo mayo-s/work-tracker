@@ -12,6 +12,7 @@ from src.models.review import FlagReason
 from src.modules.days.schemas import DayView, day_view
 from src.modules.entries.schemas import EntryView, EntryViewer
 from src.modules.storage.days import DayRepository
+from src.modules.storage.schedules import ScheduleRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.tickets import TicketRepository
 from src.modules.tickets.schemas import TicketView, ticket_views
@@ -81,8 +82,8 @@ def _reasons(entry: EntryView) -> list[ReviewReason]:
 
 
 def _flagged_days(conn: sqlite3.Connection) -> list[DayView]:
-    days = DayRepository(conn)
+    days, schedules = DayRepository(conn), ScheduleRepository(conn).schedules()
     flags = defaultdict(list)
     for flag in days.day_flags():
         flags[flag.date].append(flag)
-    return [day_view(date, days.get(date), date_flags) for date, date_flags in flags.items()]
+    return [day_view(date, days.get(date), date_flags, schedules.on(date)) for date, date_flags in flags.items()]

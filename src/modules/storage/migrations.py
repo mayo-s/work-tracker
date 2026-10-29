@@ -103,4 +103,15 @@ MIGRATIONS = (
     INSERT INTO pto_years (year, allowance) SELECT year, days FROM pto_allowances;
     DROP TABLE pto_allowances;
     """,
+    # 4: work schedules valid from a date; the first one keeps the former fixed rule (40 h, Monday to Friday)
+    """
+    CREATE TABLE work_schedules (
+        id             INTEGER PRIMARY KEY,
+        valid_from     TEXT    NOT NULL UNIQUE,
+        weekly_minutes INTEGER NOT NULL CHECK (weekly_minutes BETWEEN 0 AND 10080),
+        work_days      TEXT    NOT NULL  -- ISO weekdays, e.g. '1,2,3,4,5' for Monday to Friday
+    );
+    INSERT INTO work_schedules (valid_from, weekly_minutes, work_days)
+        SELECT value, 2400, '1,2,3,4,5' FROM settings WHERE key = 'balance_start';
+    """,
 )

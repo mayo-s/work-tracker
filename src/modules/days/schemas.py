@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from src.lib.daytypes import DayType, summarize_day
 from src.lib.durations import format_clock, format_duration, parse_clock, parse_duration
 from src.lib.public_holidays import holiday_on
+from src.lib.schedules import STANDARD, WorkSchedule
 from src.lib.worktime import legal_break
 from src.models.days import Day
 from src.models.review import FlagReason, ReviewFlag
@@ -68,13 +69,14 @@ class DayView(BaseModel):
     target: str
     overtime: str
     pto_days: float
+    work_day: bool = Field(description='A work day of the work schedule, e.g. Monday to Friday')
     note: str
     flags: list[DayFlagView]
 
 
-def day_view(date: dt.date, day: Day | None, flags: list[ReviewFlag]) -> DayView:
+def day_view(date: dt.date, day: Day | None, flags: list[ReviewFlag], schedule: WorkSchedule = STANDARD) -> DayView:
     record = day or Day(date=date)
-    summary = summarize_day(date, record.worked, record.day_type)
+    summary = summarize_day(date, record.worked, record.day_type, schedule)
     holiday = holiday_on(date)
     return DayView(
         date=date,
@@ -91,6 +93,7 @@ def day_view(date: dt.date, day: Day | None, flags: list[ReviewFlag]) -> DayView
         target=format_duration(summary.target),
         overtime=format_duration(summary.overtime),
         pto_days=float(summary.pto_days),
+        work_day=summary.work_day,
         note=record.note,
         flags=[DayFlagView(id=flag.id, reason=flag.reason, detail=flag.detail) for flag in flags],
     )

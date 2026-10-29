@@ -5,12 +5,15 @@ import sqlite3
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from src.lib.balances import DayRecord, PtoAccount, overtime_balance, pto_accounts
-from src.lib.daytypes import FULL_DAY, summarize_day
+from src.lib.balances import DayRecord, PtoAccount, Records, overtime_balance, pto_accounts
+from src.lib.daytypes import summarize_day
 from src.lib.durations import format_duration
+from src.lib.schedules import Schedules
+from src.modules.importer.days import SHEET_DAY
 from src.modules.importer.sheet import SheetRow
 from src.modules.storage.days import DayRepository
 from src.modules.storage.pto_years import PtoYearRepository
+from src.modules.storage.schedules import ScheduleRepository
 from src.modules.storage.settings import load_settings
 
 
@@ -56,15 +59,16 @@ def reconcile(conn: sqlite3.Connection, rows: Sequence[SheetRow], today: dt.date
     year = rows[0].date.year
     until = min(today, dt.date(year, 12, 31))
     records = DayRepository(conn).records(settings.balance_start, dt.date(year, 12, 31))
+    schedules = ScheduleRepository(conn).schedules()
     compared = [row for row in rows if settings.balance_start <= row.date <= until]
-    accounts = pto_accounts(records, PtoYearRepository(conn).terms(), settings.balance_start, until)
+    accounts = pto_accounts(records, PtoYearRepository(conn).terms(), settings.balance_start, until, schedules)
     return Reconciliation(
         year=year,
         until=until,
-        sheet_overtime=sum(row.total - FULL_DAY for row in compared),
-        app_overtime=sum(_app_overtime(row.date, records) for row in compared),
-        differences=_differences(compared, records),
-        balance=overtime_balance(records, settings.balance_start, until, settings.opening_balance),
+        sheet_overtime=sum(row.total - SHEET_DAY for row in compared),
+        app_overtime=sum(_app_overtime(row.date, records, schedules) for row in compared),
+        differences=_differences(compared, records, schedules),
+        balance=overtime_balance(records, settings.balance_start, until, settings.opening_balance, schedules),
         pto=_account_of(accounts, year),
     )
 
@@ -73,14 +77,14 @@ def _account_of(accounts: list[PtoAccount], year: int) -> PtoAccount | None:
     return next((account for account in accounts if account.year == year), None)
 
 
-def _differences(rows: Sequence[SheetRow], records: dict[dt.date, DayRecord]) -> tuple[DayDifference, ...]:
-    return tuple(diff for row in rows if (diff := _difference(row, records)))
+def _differences(rows: Sequence[SheetRow], records: Records, schedules: Schedules) -> tuple[DayDifference, ...]:
+    return tuple(diff for row in rows if (diff := _difference(row, records, schedules)))
 
 
-def _app_overtime(date: dt.date, records: dict[dt.date, DayRecord]) -> int:
-    return summarize_day(date, *records.get(date, DayRecord())).overtime
+def _app_overtime(date: dt.date, records: Records, schedules: Schedules) -> int:
+    return summarize_day(date, *records.get(date, DayRecord()), schedules.on(date)).overtime
 
 
-def _difference(row: SheetRow, records: dict[dt.date, DayRecord]) -> DayDifference | None:
-    sheet, app = row.total - FULL_DAY, _app_overtime(row.date, records)
+def _difference(row: SheetRow, records: Records, schedules: Schedules) -> DayDifference | None:
+    sheet, app = row.total - SHEET_DAY, _app_overtime(row.date, records, schedules)
     return None if sheet == app else DayDifference(row.date, sheet, app, ' | '.join(row.comment))

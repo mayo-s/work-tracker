@@ -5,6 +5,7 @@ from src.lib.balances import DayRecord, PtoTerms, overtime_balance, pto_accounts
 from src.lib.dates import each_day
 from src.lib.daytypes import DayType
 from src.lib.durations import parse_duration
+from src.lib.schedules import STANDARD, Schedules, WorkSchedule
 
 BALANCE_START = dt.date(2024, 6, 1)
 TERMS = {2024: PtoTerms(Decimal(18)), 2025: PtoTerms(Decimal(30)), 2026: PtoTerms(Decimal(30))}
@@ -126,3 +127,18 @@ def test_fixed_carry_over_starts_an_account_after_a_year_without_terms():
     terms = {2026: PtoTerms(Decimal(30), carried_over=Decimal(3))}
     accounts = pto_accounts({}, terms, dt.date(2025, 1, 1), dt.date(2026, 1, 31))
     assert [(account.year, account.carried_over) for account in accounts] == [(2026, Decimal(3))]
+
+
+def test_a_new_schedule_counts_from_its_start_day_only():
+    part_time = WorkSchedule(dt.date(2026, 10, 28), 20 * 60, frozenset(range(1, 6)))  # 4:00 per day from Wednesday on
+    schedules = Schedules([STANDARD, part_time])
+    records = {day: worked('6:00') for day in each_day(dt.date(2026, 10, 26), dt.date(2026, 10, 30))}
+    # Monday and Tuesday −2:00 each (8:00 target), Wednesday to Friday +2:00 each (4:00 target)
+    assert overtime_balance(records, dt.date(2026, 10, 26), dt.date(2026, 10, 30), schedules=schedules) == 120
+
+
+def test_pto_counts_only_on_work_days_of_the_schedule():
+    four_days = Schedules([WorkSchedule(dt.date(2026, 1, 1), 32 * 60, frozenset(range(1, 5)))])
+    account = pto_accounts(full_pto(dt.date(2026, 7, 13), dt.date(2026, 7, 17)), TERMS, dt.date(2026, 1, 1),
+                           dt.date(2026, 10, 27), four_days)[0]
+    assert account.used == Decimal(4)  # Friday is no work day

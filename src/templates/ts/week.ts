@@ -10,8 +10,6 @@ import { entryEditor, type EntryEditorOptions } from './entry-editor.ts';
 import { historyPanel } from './history.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 
-const WEEKEND = new Set(['Sat', 'Sun']);
-
 /** Overtime with a sign: `0:15` → `+0:15`; negative values and zero stay as they are. */
 export function signed(duration: string): string {
   return duration.startsWith('-') || duration === '0:00' ? duration : `+${duration}`;
@@ -33,14 +31,14 @@ export function entriesByDate(entries: EntryView[]): Map<IsoDate, EntryView[]> {
   return byDate;
 }
 
-/** Monday to Friday always; Saturday and Sunday only if something was recorded. */
+/** Work days of the schedule always; other days (e.g. weekends) only if something was recorded. */
 export function visibleDays(days: DayView[], entries: Map<IsoDate, EntryView[]>): DayView[] {
-  return days.filter((day) => !WEEKEND.has(day.weekday) || day.recorded || entries.has(day.date));
+  return days.filter((day) => day.work_day || day.recorded || entries.has(day.date));
 }
 
-/** A past work day (Monday to Friday) without any entry. */
+/** A past work day of the schedule, of type work, without any entry. */
 export function needsWarning(day: DayView, entries: EntryView[], today: IsoDate): boolean {
-  return day.date < today && day.day_type === 'work' && !WEEKEND.has(day.weekday) && entries.length === 0;
+  return day.date < today && day.day_type === 'work' && day.work_day && entries.length === 0;
 }
 
 /** The week from `?week=2026-W44`, otherwise the current week. */
@@ -162,7 +160,7 @@ function dayCell(day: DayView, warning: boolean, today: IsoDate): HTMLElement {
 }
 
 function rowClass(day: DayView, warning: boolean, today: IsoDate): string | null {
-  const classes = [warning ? 'is-warning' : '', day.date === today ? 'is-today' : '', WEEKEND.has(day.weekday) ? 'is-weekend' : ''];
+  const classes = [warning ? 'is-warning' : '', day.date === today ? 'is-today' : '', day.work_day ? '' : 'is-weekend'];
   return classes.filter(Boolean).join(' ') || null;
 }
 
@@ -210,7 +208,7 @@ function dayRows(day: DayView, view: View): HTMLElement[] {
   return rows;
 }
 
-/** Days shown: Monday to Friday, weekend days with data, and a weekend day being edited. */
+/** Days shown: work days, other days with data, and another day being edited. */
 export function shownDays(days: DayView[], entries: Map<IsoDate, EntryView[]>, editing: Editing): DayView[] {
   return days.filter((day) => visibleDays([day], entries).length || day.date === editing?.date);
 }
@@ -230,7 +228,7 @@ function weekendLinks(view: View): HTMLElement | null {
   if (!hidden.length) {
     return null;
   }
-  return el('p', { class: 'muted week-weekend' }, 'Worked on the weekend? ',
+  return el('p', { class: 'muted week-weekend' }, 'Worked on a day off? ',
     ...hidden.map((day) => button(`Record ${formatDay(day.date, day.weekday)}`,
       () => view.actions.edit({ kind: 'day', date: day.date }))));
 }

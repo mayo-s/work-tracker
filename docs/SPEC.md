@@ -31,22 +31,24 @@ A day has a **date**, **day type**, **start**, **end**, **break** and an optiona
 
 ### 3.1 Day types
 
-| Type                    | Set by                         | Target                        | PTO used                                     |
-|-------------------------|--------------------------------|-------------------------------|----------------------------------------------|
-| Work                    | default (never set explicitly) | 8:00 Mon–Fri, 0:00 Sat/Sun    | 0                                            |
-| PTO (full day)          | user                           | 0:00                          | 1                                            |
-| PTO (half day)          | user                           | 4:00                          | 0.5                                          |
-| Sick (full day)         | user                           | 0:00                          | 0                                            |
-| Sick (half day)         | user                           | 4:00                          | 0                                            |
-| Overtime off            | user                           | 8:00 (nothing worked → −8:00) | 0                                            |
-| Unpaid leave            | user                           | 0:00                          | 0                                            |
-| Public holiday          | automatic (Berlin)             | 0:00                          | 0                                            |
-| Heiligabend / Silvester | automatic                      | 0:00                          | 0.5 (half PTO + half free by company policy) |
+| Type                    | Set by                         | Target (on a work day)                    | PTO used                                     |
+|-------------------------|--------------------------------|-------------------------------------------|----------------------------------------------|
+| Work                    | default (never set explicitly) | daily target, e.g. 8:00                   | 0                                            |
+| PTO (full day)          | user                           | 0:00                                      | 1                                            |
+| PTO (half day)          | user                           | half the daily target, e.g. 4:00          | 0.5                                          |
+| Sick (full day)         | user                           | 0:00                                      | 0                                            |
+| Sick (half day)         | user                           | half the daily target                     | 0                                            |
+| Overtime off            | user                           | daily target (nothing worked → −8:00)     | 0                                            |
+| Unpaid leave            | user                           | 0:00                                      | 0                                            |
+| Public holiday          | automatic (Berlin)             | 0:00                                      | 0                                            |
+| Heiligabend / Silvester | automatic                      | 0:00                                      | 0.5 (half PTO + half free by company policy) |
+
+On days that are no work days of the work schedule (3.5), e.g. weekends, every type has target 0:00 and uses no PTO.
 
 - Travel and training days are normal work days; details go into the day note.
 - Taking a few hours off against overtime needs no day type: fewer hours are worked, and
   the reason can go into the day note (e.g. "2:00 overtime used: Zahnarzt").
-- Weekends are optional: a weekend day only exists if something was recorded.
+- Days off of the schedule (e.g. weekends) are optional: such a day only exists if something was recorded.
 - Public holidays (Berlin): Neujahr, Internationaler Frauentag, Karfreitag, Ostermontag,
   Tag der Arbeit, Christi Himmelfahrt, Pfingstmontag, Tag der Deutschen Einheit,
     1. and 2. Weihnachtstag, plus one-off holidays (e.g. 08.05.2025).
@@ -70,7 +72,7 @@ The break can always be overridden (e.g. 3:00 on a long day).
 ### 3.3 Time calculation
 
 - **Worked** = end − start − break
-- **Overtime (day)** = worked − target; all hours on weekends count as overtime.
+- **Overtime (day)** = worked − target; all hours on days off of the schedule (e.g. weekends) count as overtime.
 - **Overtime balance** starts at **0:00 on 01.06.2024** and is carried over across years.
   Days before that date are ignored; future days are not counted. Today counts, even before times
   are entered (a work day without times is −8:00 until then, as in the spreadsheet).
@@ -83,6 +85,15 @@ The break can always be overridden (e.g. 3:00 on a long day).
   (not permanent).
 - Unused days are **carried over** into the next year, unless a fixed carry-over is entered (later years build on it).
 - The year report shows carried-over days, allowance, days used and days remaining.
+
+### 3.5 Work schedules
+
+- **Hours per week** and **work days** (e.g. 40 h, Monday to Friday), split evenly into the **daily target**
+  (40 h / 5 days = 8:00; 32 h / 4 days = 8:00; rounded down to whole minutes). Half days get half of it.
+- Each schedule is **valid from a date** until the next one starts: a change counts from that day on and never
+  rewrites earlier days. Days before the first schedule follow the first one; at least one schedule always exists.
+- Initially one schedule: 40 h, Monday to Friday, from the balance start (the former fixed rule).
+- The spreadsheet import keeps the sheet's own rule (`Sum` − 8:00 per day), independent of the schedules.
 
 ## 4. Task entries
 
@@ -129,7 +140,7 @@ Editable in the UI; initially:
 
 ### 4.4 Warnings
 
-A warning is shown only for a **past work day (Mon–Fri, day type Work) without any entry**.
+A warning is shown only for a **past work day of the schedule (e.g. Mon–Fri, day type Work) without any entry**.
 
 ### 4.5 Entry history
 
@@ -151,7 +162,8 @@ Every change to a task entry is recorded, so it can be checked later what change
 
 ### 5.1 Week (default)
 
-- Shows the current week Mon–Fri; Sat/Sun only if they hold data. Prev / next / today navigation.
+- Shows the work days of the current week (e.g. Mon–Fri); other days only if they hold data. Prev / next / today
+  navigation.
 - Per day: day type, start / end / break, worked vs. target, overtime, the task entries and the warning.
 - Add, edit and delete days and entries inline; open an entry's history (4.5).
 - Week totals and the overtime balance at the end of the week.
@@ -306,5 +318,5 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 
 - Export (CSV / spreadsheet format).
 - Deployment as AWS Lambda (zappa) with a persistent storage backend and authentication.
-- Settings page: overtime balance and PTO years are done (L.1a); work schedules valid from a date and the holiday
-  rules follow (see TASKS.md, L.1b and L.1c).
+- Settings page: overtime balance, PTO years (L.1a) and work schedules (L.1b) are done; the holiday rules follow
+  (see TASKS.md, L.1c).

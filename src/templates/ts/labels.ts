@@ -13,3 +13,5 @@ export const DAY_TYPE_LABELS: Record<DayType, string> = {
   public_holiday: 'Holiday',
   company_half_day: 'Company half day',
 };
+
+export const WEEKDAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;

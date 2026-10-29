@@ -13,6 +13,7 @@ from src.modules.pages.resources import STATIC_DIR, Page, Redirect, RevalidateSt
 from src.modules.pto.resources import PtoYearCollection, PtoYearItem
 from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
 from src.modules.review.resources import Review, ReviewFlagItem
+from src.modules.schedules.resources import ScheduleCollection, ScheduleItem
 from src.modules.settings.resources import SettingsResource
 from src.modules.storage.database import Database, database_path
 from src.modules.storage.errors import ConflictError, NotFoundError
@@ -53,6 +54,8 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_route('/api/reports/months/{month:dt("%Y-%m")}', MonthReportResource(database, today))
     app.add_route('/api/reports/years/{year:int(4)}', YearReportResource(database, today))
     app.add_route('/api/settings', SettingsResource(database))
+    app.add_route('/api/work-schedules', ScheduleCollection(database))
+    app.add_route('/api/work-schedules/{schedule_id:int}', ScheduleItem(database))
     app.add_route('/api/pto-years', PtoYearCollection(database))
     app.add_route('/api/pto-years/{year:int(4)}', PtoYearItem(database))
     app.add_route('/api/review', Review(database))

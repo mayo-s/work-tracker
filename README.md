@@ -41,6 +41,9 @@ start; it comes with the settings, PTO years and services of the original setup,
 2. On `/settings`, set the start date of the overtime balance, and an opening balance (e.g. `12:30` or `-1:45`) if
    overtime is taken over; otherwise `0:00`.
 
+   Below it, check the work schedule: hours per week and work days (initially 40 h, Monday to Friday); add a new
+   one from the day the hours change.
+
 3. On the same page, enter the PTO days per year, pro rata in the first one (March–December of 30 days: 25), and
    delete the years of the original setup that do not apply. A year without entry has no PTO account; the
    carry-over is calculated unless a fixed value is entered.
@@ -48,8 +51,8 @@ start; it comes with the settings, PTO years and services of the original setup,
 4. Also on `/settings`, replace the services with those of the new job; adjust the activity types if needed.
 
 5. Record every day in the week view (`/`): times, day type (PTO, sick, …) and entries. From the start day on,
-   each weekday counts −8:00 until its times are entered (today included); weekends and Berlin public holidays
-   need nothing. The 8:00 target and the Berlin holidays are fixed for now (tasks L.1b, L.1c).
+   each work day counts its full target as missing until its times are entered (today included); days off of the
+   schedule and Berlin public holidays need nothing. The Berlin holidays are fixed for now (task L.1c).
 
 ## Import the spreadsheet
 
@@ -78,7 +81,7 @@ other weeks via `/?week=2026-W44`; days and entries are edited in place (`&edit=
 (coding hours by service and ticket), `/year` the year report (totals, PTO account, balance month by month); `/review`
 lists what needs attention after
 the import: guessed tickets (confirm, rename or split), entries without duration or ticket, flagged days, and tickets
-without service (assign one to several at once). `/settings` holds the overtime balance (start date, opening balance), the PTO days per year, and
+without service (assign one to several at once). `/settings` holds the overtime balance (start date, opening balance), the work schedules, the PTO days per year, and
 the services and activity types (add, edit, delete; an activity type used by entries cannot be deleted; `/lists`
 forwards there). `/components` is a
 gallery of the UI components, each with its use and the HTML to copy. The database (`$WORK_TRACKER_DB` or
@@ -118,7 +121,7 @@ runs through `npx` with its own TypeScript 5, as it does not support the project
 | `src/__main__.py`      | Development server (`python -m src`)                                                                                                                                                                                                                                                                                                                                                                         |
 | `src/lib`              | Calculation rules: durations, breaks, holidays, targets, overtime, PTO                                                                                                                                                                                                                                                                                                                                       |
 | `src/models`           | Pydantic models                                                                                                                                                                                                                                                                                                                                                                                              |
-| `src/modules`          | Features: storage, import, days, entries, tickets, catalog, settings, PTO years, reports, review, pages                                                                                                                                                                                                                                                                                                      |
+| `src/modules`          | Features: storage, import, days, entries, tickets, catalog, settings, work schedules, PTO years, reports, review, pages                                                                                                                                                                                                                                                                                      |
 | `src/utils`            | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types; `openapi`: spec file for the frontend types                                                                                                                                                                                                                                                                         |
 | `src/defaultresources` | Default resource at `/health` (plain-text status)                                                                                                                                                                                                                                                                                                                                                            |
 | `src/templates`        | Frontend: `frame.html` (shared page frame), `pages/` (page content), `static/` (served at `/static`: `css/main.css` with the UI style variables, Inter font with its OFL license in `fonts/`), TypeScript in `ts/` (`main.ts` loads the page code, e.g. `week.ts`; `api.ts`: typed API client, `api-types.ts`: generated) compiled to `static/js/` (git-ignored), `openapi.json`, frontend tests in `tests/` |
@@ -155,6 +158,8 @@ Reports count worked time, target and overtime up to today (today included); pla
 | `/api/reports/months/{month}`                        | GET              | Month (`2026-10`): totals, days off, PTO days and the work report: coding hours by service and ticket                               |
 | `/api/reports/years/{year}`                          | GET              | Year: totals, per month, days worked and average, days off, PTO account                                                             |
 | `/api/settings`                                      | GET, PUT         | Start date and opening balance (`balance_start`, `opening_balance` as signed h:mm, e.g. `-1:45`)                                    |
+| `/api/work-schedules`                                | GET, POST        | Work schedules (`valid_from`, `weekly_hours` as h:mm, `work_days` as `Mon`…`Sun`) with their `daily_target`                         |
+| `/api/work-schedules/{id}`                           | GET, PUT, DELETE | Read, change or delete a work schedule (the only one cannot be deleted)                                                             |
 | `/api/pto-years`                                     | GET              | PTO days per year: `allowance`, `extra_days`, `carried_over` (empty: remainder of the year before), `note`                          |
 | `/api/pto-years/{year}`                              | GET, PUT, DELETE | Read, enter (insert or replace) or delete the PTO days of a year; a year without entry has no PTO account                           |
 | `/api/review`                                        | GET              | What needs attention: tickets without service, entries with 0:00 / without ticket / import flag, flagged days                       |
@@ -171,22 +176,24 @@ All times and durations are whole minutes.
 | `durations`       | Parse and format clock times (`HH:MM`), durations (`h:mm`, signed `-1:45` for balances) and decimal-comma hours (`1,5`); split durations evenly in quarter hours                                                                               |
 | `worktime`        | Worked time = end − start − break; without a break, the legal minimum applies (German ArbZG §4: 0:30 beyond 6 h, 0:45 beyond 9 h)                                                                                                              |
 | `public_holidays` | Berlin public holidays (via `holidays`), plus Heiligabend and Silvester as company half days                                                                                                                                                   |
-| `daytypes`        | Day types (see below) with target time and PTO used; weekends have no target. Overtime = worked − target                                                                                                                                       |
+| `daytypes`        | Day types (see below) with their share of the daily target and PTO used; days off of the schedule have no target. Overtime = worked − target                                                                                                   |
 | `balances`        | Overtime balance over every calendar day up to a cut-off date (a weekday without record counts as −8:00); PTO per year from its terms (allowance + extra days; carry-over fixed or the remainder of the year before): used, planned, remaining |
+| `schedules`       | Work schedules: hours per week split evenly over the work days into the daily target; each valid from a date until the next one starts                                                                                                         |
 | `dates`           | Date range helper                                                                                                                                                                                                                              |
 
 ### Day types
 
-Targets and PTO apply Mon–Fri; on weekends every type has target 0:00 and uses no PTO.
+Targets and PTO apply on the work days of the work schedule (e.g. Mon–Fri) and follow its daily target (e.g. 8:00);
+on other days every type has target 0:00 and uses no PTO.
 
 | Type               | Description                                              | Target | PTO |
 |--------------------|----------------------------------------------------------|--------|-----|
-| `work`             | Regular work day (default)                               | 8:00   | 0   |
+| `work`             | Regular work day (default)                               | full   | 0   |
 | `pto`              | Paid time off, full day                                  | 0:00   | 1   |
-| `pto_half`         | Paid time off, half day                                  | 4:00   | 0.5 |
+| `pto_half`         | Paid time off, half day                                  | half   | 0.5 |
 | `sick`             | Off sick, full day                                       | 0:00   | 0   |
-| `sick_half`        | Off sick, half day                                       | 4:00   | 0   |
-| `overtime_off`     | Day off taken from the overtime balance                  | 8:00   | 0   |
+| `sick_half`        | Off sick, half day                                       | half   | 0   |
+| `overtime_off`     | Day off taken from the overtime balance                  | full   | 0   |
 | `unpaid_leave`     | Unpaid day off                                           | 0:00   | 0   |
 | `public_holiday`   | Berlin public holiday (automatic)                        | 0:00   | 0   |
 | `company_half_day` | Heiligabend / Silvester: half PTO, half free (automatic) | 0:00   | 0.5 |
@@ -195,33 +202,35 @@ Targets and PTO apply Mon–Fri; on weekends every type has target 0:00 and uses
 
 Pydantic models; times in minutes, validated on creation and assignment.
 
-| Module     | Models                                                                                                                                         |
-|------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| `days`     | `Day`: date, day type (empty = automatic), start / end, break (empty = legal minimum), note; provides worked time                              |
-| `entries`  | `TicketEntry` (ticket, duration, description, coding) and `ActivityEntry` (activity type, duration, note); durations in quarter hours          |
-| `catalog`  | `Service`, `ActivityType` and `Ticket` (key like `ENGINE-461`, remembers its service)                                                          |
-| `history`  | `EntryChange`: one line of an entry's history (created, imported, updated, renamed, merged, split, deleted) with the changed fields, old → new |
-| `review`   | `ReviewFlag`: import flag on an entry or a day (uncertain ticket, weekend hours)                                                               |
-| `pto`      | `PtoYear`: allowance, extra days, fixed carry-over (empty = remainder of the year before), note                                                |
-| `settings` | `Settings`: balance start date, opening balance                                                                                                |
+| Module      | Models                                                                                                                                         |
+|-------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| `days`      | `Day`: date, day type (empty = automatic), start / end, break (empty = legal minimum), note; provides worked time                              |
+| `entries`   | `TicketEntry` (ticket, duration, description, coding) and `ActivityEntry` (activity type, duration, note); durations in quarter hours          |
+| `catalog`   | `Service`, `ActivityType` and `Ticket` (key like `ENGINE-461`, remembers its service)                                                          |
+| `history`   | `EntryChange`: one line of an entry's history (created, imported, updated, renamed, merged, split, deleted) with the changed fields, old → new |
+| `review`    | `ReviewFlag`: import flag on an entry or a day (uncertain ticket, weekend hours)                                                               |
+| `schedules` | `Schedule`: valid from, minutes per week, work days (ISO weekdays)                                                                             |
+| `pto`       | `PtoYear`: allowance, extra days, fixed carry-over (empty = remainder of the year before), note                                                |
+| `settings`  | `Settings`: balance start date, opening balance                                                                                                |
 
 ## Storage (`src/modules/storage`)
 
 SQLite, one connection per transaction (commit on success, rollback on error), foreign keys enforced.
 Repositories work within the transaction of the connection they are given.
 
-| Module       | Contents                                                                                                                                                                                                                                                        |
-|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `database`   | `Database(path)`: transactions and schema migration (`migrate()`, tracked in `PRAGMA user_version`)                                                                                                                                                             |
-| `migrations` | Schema scripts, applied once in order; the first one seeds settings, services and activity types, the second the PTO allowances 2024–2027, the third moves them into `pto_years`. Entries keep a change history that outlives them (entry ids are never reused) |
-| `settings`   | Load and save user settings                                                                                                                                                                                                                                     |
-| `pto_years`  | `PtoYearRepository`: list, get, save (insert or replace) and delete the PTO days of a year; terms for the PTO accounts                                                                                                                                          |
-| `days`       | `DayRepository`: get, list, save (insert or replace) and delete days; records for balances; review flags on days                                                                                                                                                |
-| `catalog`    | `ServiceRepository`, `ActivityTypeRepository`: list, get, add, update, delete (deleting a service unassigns its tickets; an activity type in use cannot be deleted)                                                                                             |
-| `tickets`    | `TicketRepository`: get, list (sorted by prefix and number), create on first use; set a service on one or several tickets; tickets without service                                                                                                              |
-| `entries`    | `EntryRepository`: get, list, create, update and delete entries, each change written to the entry's history (kept after deletion); review flags on entries                                                                                                      |
-| `renames`    | `rename_ticket`: move all entries to a new key (history line per entry); renaming to an existing ticket merges both, the existing ticket keeps its service                                                                                                      |
-| `errors`     | `NotFoundError` for records that do not exist, `ConflictError` for duplicates and records still in use                                                                                                                                                          |
+| Module       | Contents                                                                                                                                                                                                                                                                                                                                 |
+|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `database`   | `Database(path)`: transactions and schema migration (`migrate()`, tracked in `PRAGMA user_version`)                                                                                                                                                                                                                                      |
+| `migrations` | Schema scripts, applied once in order; the first one seeds settings, services and activity types, the second the PTO allowances 2024–2027, the third moves them into `pto_years`, the fourth adds `work_schedules` (40 h, Mon–Fri from the balance start). Entries keep a change history that outlives them (entry ids are never reused) |
+| `settings`   | Load and save user settings                                                                                                                                                                                                                                                                                                              |
+| `schedules`  | `ScheduleRepository`: list, get, add, update and delete work schedules (the only one cannot be deleted); all schedules for the calculations                                                                                                                                                                                              |
+| `pto_years`  | `PtoYearRepository`: list, get, save (insert or replace) and delete the PTO days of a year; terms for the PTO accounts                                                                                                                                                                                                                   |
+| `days`       | `DayRepository`: get, list, save (insert or replace) and delete days; records for balances; review flags on days                                                                                                                                                                                                                         |
+| `catalog`    | `ServiceRepository`, `ActivityTypeRepository`: list, get, add, update, delete (deleting a service unassigns its tickets; an activity type in use cannot be deleted)                                                                                                                                                                      |
+| `tickets`    | `TicketRepository`: get, list (sorted by prefix and number), create on first use; set a service on one or several tickets; tickets without service                                                                                                                                                                                       |
+| `entries`    | `EntryRepository`: get, list, create, update and delete entries, each change written to the entry's history (kept after deletion); review flags on entries                                                                                                                                                                               |
+| `renames`    | `rename_ticket`: move all entries to a new key (history line per entry); renaming to an existing ticket merges both, the existing ticket keeps its service                                                                                                                                                                               |
+| `errors`     | `NotFoundError` for records that do not exist, `ConflictError` for duplicates and records still in use                                                                                                                                                                                                                                   |
 
 ### Database schema
 
@@ -241,6 +250,12 @@ erDiagram
     settings {
         TEXT key PK "balance_start, opening_balance"
         TEXT value
+    }
+    work_schedules {
+        INTEGER id PK
+        TEXT valid_from UK
+        INTEGER weekly_minutes
+        TEXT work_days "ISO weekdays, e.g. 1,2,3,4,5"
     }
     pto_years {
         INTEGER year PK

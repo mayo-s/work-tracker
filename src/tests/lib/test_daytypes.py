@@ -5,6 +5,7 @@ import pytest
 
 from src.lib.daytypes import DayType, automatic_day_type, is_weekend, summarize_day
 from src.lib.durations import parse_duration
+from src.lib.schedules import WorkSchedule
 
 MONDAY = dt.date(2026, 10, 26)
 SATURDAY = dt.date(2026, 10, 24)
@@ -99,3 +100,17 @@ def test_overtime(date, day_type, worked, overtime):
 def test_summarize_day_rejects_negative_worked():
     with pytest.raises(ValueError):
         summarize_day(MONDAY, -1)
+
+
+FOUR_DAYS = WorkSchedule(dt.date(2027, 1, 1), 30 * 60, frozenset(range(1, 5)))  # 30 h, Monday to Thursday: 7:30 per day
+
+
+@pytest.mark.parametrize('day_type, target', [(None, '7:30'), (DayType.PTO_HALF, '3:45'), (DayType.OVERTIME_OFF, '7:30')])
+def test_target_follows_the_schedule(day_type, target):
+    summary = summarize_day(dt.date(2027, 1, 7), day_type=day_type, schedule=FOUR_DAYS)
+    assert (summary.target, summary.work_day) == (parse_duration(target), True)
+
+
+def test_day_off_of_the_schedule_is_like_a_weekend():
+    summary = summarize_day(dt.date(2027, 1, 8), parse_duration('2:00'), DayType.PTO, schedule=FOUR_DAYS)  # a Friday
+    assert (summary.target, summary.pto_days, summary.overtime, summary.work_day) == (0, 0, 120, False)

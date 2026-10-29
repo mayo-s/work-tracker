@@ -27,6 +27,8 @@ export type YearReport = Schemas['YearReport'];
 export type SettingsView = Schemas['SettingsView'];
 export type PtoYear = Schemas['PtoYear'];
 export type PtoYearInput = Schemas['PtoYearInput'];
+export type ScheduleView = Schemas['ScheduleView'];
+export type ScheduleInput = Schemas['ScheduleInput'];
 
 /** A week like `2026-W44`, or an inclusive date range in ISO format. */
 export type Period = { week: string } | { start: string; end: string };
@@ -134,6 +136,11 @@ export const api = {
 
   settings: () => request<SettingsView>('GET', '/api/settings'),
   saveSettings: (input: SettingsView) => request<SettingsView>('PUT', '/api/settings', input),
+
+  schedules: () => request<ScheduleView[]>('GET', '/api/work-schedules'),
+  addSchedule: (input: ScheduleInput) => request<ScheduleView>('POST', '/api/work-schedules', input),
+  updateSchedule: (id: number, input: ScheduleInput) => request<ScheduleView>('PUT', `/api/work-schedules/${segment(id)}`, input),
+  deleteSchedule: (id: number) => request<void>('DELETE', `/api/work-schedules/${segment(id)}`),
 
   ptoYears: () => request<PtoYear[]>('GET', '/api/pto-years'),
   savePtoYear: (year: number, input: PtoYearInput) => request<PtoYear>('PUT', `/api/pto-years/${segment(year)}`, input),
