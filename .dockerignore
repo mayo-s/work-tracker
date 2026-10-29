@@ -1,0 +1,13 @@
+.git
+.idea
+.venv
+.pytest_cache
+**/__pycache__
+node_modules
+*.db
+data
+docs
+examples
+src/tests
+src/templates/tests
+src/templates/static/js
