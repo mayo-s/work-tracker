@@ -1,6 +1,7 @@
 """Days endpoints: /api/days and /api/days/{date}."""
 
 import datetime as dt
+import sqlite3
 from collections import defaultdict
 
 import falcon
@@ -11,6 +12,7 @@ from src.models.review import ReviewFlag
 from src.modules.days.schemas import DayInput, DayView, day_view
 from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
+from src.modules.storage.schedules import ScheduleRepository
 from src.utils.api import PeriodQuery
 from src.utils.spec import spec
 
@@ -30,7 +32,8 @@ class DayCollection:
             days = DayRepository(conn)
             recorded = {day.date: day for day in days.between(start, end)}
             flags = _flags_by_date(days.day_flags(), start, end)
-        resp.media = [day_view(date, recorded.get(date), flags[date]) for date in each_day(start, end)]
+            schedules = ScheduleRepository(conn).schedules()
+        resp.media = [day_view(date, recorded.get(date), flags[date], schedules.on(date)) for date in each_day(start, end)]
 
 
 class DayItem:
@@ -41,15 +44,14 @@ class DayItem:
     def on_get(self, req: falcon.Request, resp: falcon.Response, date: dt.datetime) -> None:
         """One calendar day, recorded or not."""
         with self._database.transaction() as conn:
-            resp.media = _view(DayRepository(conn), date.date())
+            resp.media = _view(conn, date.date())
 
     @spec.validate(json=DayInput, resp=Response(HTTP_200=DayView), tags=TAGS, path_parameter_descriptions=DATE_PARAMETER)
     def on_put(self, req: falcon.Request, resp: falcon.Response, date: dt.datetime, json: DayInput) -> None:
         """Record a day (insert or replace)."""
         with self._database.transaction() as conn:
-            days = DayRepository(conn)
-            days.save(json.to_day(date.date()))
-            resp.media = _view(days, date.date())
+            DayRepository(conn).save(json.to_day(date.date()))
+            resp.media = _view(conn, date.date())
 
     @spec.validate(resp=Response('HTTP_204', 'HTTP_404'), tags=TAGS, path_parameter_descriptions=DATE_PARAMETER)
     def on_delete(self, req: falcon.Request, resp: falcon.Response, date: dt.datetime) -> None:
@@ -59,8 +61,9 @@ class DayItem:
         resp.status = falcon.HTTP_204
 
 
-def _view(days: DayRepository, date: dt.date) -> DayView:
-    return day_view(date, days.get(date), days.flags_on(date))
+def _view(conn: sqlite3.Connection, date: dt.date) -> DayView:
+    days = DayRepository(conn)
+    return day_view(date, days.get(date), days.flags_on(date), ScheduleRepository(conn).schedules().on(date))
 
 
 def _flags_by_date(flags: list[ReviewFlag], start: dt.date, end: dt.date) -> defaultdict[dt.date, list[ReviewFlag]]:

@@ -25,6 +25,9 @@
       "name": "Settings"
     },
     {
+      "name": "Work schedules"
+    },
+    {
       "name": "PTO years"
     },
     {
@@ -1146,6 +1149,229 @@
         }
       }
     },
+    "/api/work-schedules": {
+      "get": {
+        "summary": "All work schedules, oldest first; each applies until the next one starts.",
+        "operationId": "get__api_work-schedules",
+        "description": "",
+        "tags": [
+          "Work schedules"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleViewList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a work schedule; it applies from its start date until the next one starts.",
+        "operationId": "post__api_work-schedules",
+        "description": "",
+        "tags": [
+          "Work schedules"
+        ],
+        "parameters": [],
+        "responses": {
+          "409": {
+            "description": "Conflict"
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/work-schedules/{schedule_id}": {
+      "delete": {
+        "summary": "Delete a work schedule (not the only one); its days then follow the schedule before it.",
+        "operationId": "delete__api_work-schedules_{schedule_id}",
+        "description": "",
+        "tags": [
+          "Work schedules"
+        ],
+        "parameters": [
+          {
+            "name": "schedule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the work schedule"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "One work schedule.",
+        "operationId": "get__api_work-schedules_{schedule_id}",
+        "description": "",
+        "tags": [
+          "Work schedules"
+        ],
+        "parameters": [
+          {
+            "name": "schedule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the work schedule"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Change a work schedule; the days it applies to are counted again.",
+        "operationId": "put__api_work-schedules_{schedule_id}",
+        "description": "",
+        "tags": [
+          "Work schedules"
+        ],
+        "parameters": [
+          {
+            "name": "schedule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the work schedule"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/pto-years": {
       "get": {
         "summary": "Every year with PTO days entered, oldest first.",
@@ -2191,6 +2417,11 @@
             "title": "Pto Days",
             "type": "number"
           },
+          "work_day": {
+            "description": "A work day of the work schedule, e.g. Monday to Friday",
+            "title": "Work Day",
+            "type": "boolean"
+          },
           "note": {
             "title": "Note",
             "type": "string"
@@ -2218,6 +2449,7 @@
           "target",
           "overtime",
           "pto_days",
+          "work_day",
           "note",
           "flags"
         ],
@@ -2867,6 +3099,131 @@
           "days"
         ],
         "title": "ReviewView",
+        "type": "object"
+      },
+      "ScheduleViewList": {
+        "items": {
+          "$ref": "#/components/schemas/ScheduleView"
+        },
+        "title": "ScheduleViewList",
+        "type": "array"
+      },
+      "ScheduleInput": {
+        "additionalProperties": false,
+        "properties": {
+          "valid_from": {
+            "description": "First day the schedule applies to; earlier days keep their schedule",
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "weekly_hours": {
+            "description": "Hours per week, h:mm",
+            "examples": [
+              "40:00"
+            ],
+            "title": "Weekly Hours",
+            "type": "string"
+          },
+          "work_days": {
+            "examples": [
+              [
+                "Mon",
+                "Tue",
+                "Wed",
+                "Thu",
+                "Fri"
+              ]
+            ],
+            "items": {
+              "enum": [
+                "Mon",
+                "Tue",
+                "Wed",
+                "Thu",
+                "Fri",
+                "Sat",
+                "Sun"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Work Days",
+            "type": "array"
+          }
+        },
+        "required": [
+          "valid_from",
+          "weekly_hours",
+          "work_days"
+        ],
+        "title": "ScheduleInput",
+        "type": "object"
+      },
+      "ScheduleView": {
+        "additionalProperties": false,
+        "properties": {
+          "valid_from": {
+            "description": "First day the schedule applies to; earlier days keep their schedule",
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "weekly_hours": {
+            "description": "Hours per week, h:mm",
+            "examples": [
+              "40:00"
+            ],
+            "title": "Weekly Hours",
+            "type": "string"
+          },
+          "work_days": {
+            "examples": [
+              [
+                "Mon",
+                "Tue",
+                "Wed",
+                "Thu",
+                "Fri"
+              ]
+            ],
+            "items": {
+              "enum": [
+                "Mon",
+                "Tue",
+                "Wed",
+                "Thu",
+                "Fri",
+                "Sat",
+                "Sun"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Work Days",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "daily_target": {
+            "description": "Hours per week split evenly over the work days, h:mm",
+            "examples": [
+              "8:00"
+            ],
+            "title": "Daily Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "valid_from",
+          "weekly_hours",
+          "work_days",
+          "id",
+          "daily_target"
+        ],
+        "title": "ScheduleView",
         "type": "object"
       },
       "SettingsView": {

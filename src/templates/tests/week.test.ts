@@ -11,7 +11,7 @@ import {
 function day(date: string, weekday: string, changes: Partial<DayView> = {}): DayView {
   return {
     date, weekday, day_type: 'work', automatic: true, holiday: null, recorded: false, start: null, end: null,
-    break_time: null, break_default: false, worked: '0:00', target: '8:00', overtime: '-8:00', pto_days: 0, note: '',
+    break_time: null, break_default: false, worked: '0:00', target: '8:00', overtime: '-8:00', pto_days: 0, work_day: true, note: '',
     flags: [], ...changes,
   };
 }
@@ -38,8 +38,8 @@ test('entries grouped by date', () => {
   assert.equal(grouped.get('2026-10-27')?.length, 2);
 });
 
-test('weekend days only when something was recorded', () => {
-  const days = [day('2026-10-30', 'Fri'), day('2026-10-31', 'Sat'), day('2026-11-01', 'Sun', { recorded: true })];
+test('days off of the schedule only when something was recorded', () => {
+  const days = [day('2026-10-30', 'Fri'), day('2026-10-31', 'Sat', { work_day: false }), day('2026-11-01', 'Sun', { recorded: true, work_day: false })];
   assert.deepEqual(visibleDays(days, new Map()).map((item) => item.weekday), ['Fri', 'Sun']);
   assert.deepEqual(visibleDays(days, entriesByDate([entry('2026-10-31')])).map((item) => item.weekday), ['Fri', 'Sat', 'Sun']);
 });
@@ -51,7 +51,7 @@ test('warning for past work days without entries', () => {
   assert.ok(!needsWarning(day('2026-10-28', 'Wed'), [], today), 'not today');
   assert.ok(!needsWarning(day('2026-10-29', 'Thu'), [], today), 'not in the future');
   assert.ok(!needsWarning(day('2026-10-27', 'Tue', { day_type: 'pto' }), [], today), 'not on days off');
-  assert.ok(!needsWarning(day('2026-10-25', 'Sun'), [], today), 'not on weekends');
+  assert.ok(!needsWarning(day('2026-10-25', 'Sun', { work_day: false }), [], today), 'not on days off of the schedule');
 });
 
 test('week from the address, otherwise the current week', () => {
@@ -67,8 +67,8 @@ test('day to edit from the address, only within the shown week', () => {
   assert.equal(editFromSearch('', '2026-W44'), null);
 });
 
-test('shown days include a weekend day being edited', () => {
-  const days = [day('2026-10-30', 'Fri'), day('2026-10-31', 'Sat')];
+test('shown days include a day off being edited', () => {
+  const days = [day('2026-10-30', 'Fri'), day('2026-10-31', 'Sat', { work_day: false })];
   assert.deepEqual(shownDays(days, new Map(), null).map((item) => item.weekday), ['Fri']);
   assert.deepEqual(shownDays(days, new Map(), { kind: 'day', date: '2026-10-31' }).map((item) => item.weekday), ['Fri', 'Sat']);
   assert.deepEqual(shownDays(days, new Map(), { kind: 'entry', date: '2026-10-31', id: null }).map((item) => item.weekday),
@@ -80,4 +80,11 @@ test('entry to edit from the address, only within the shown week', () => {
   assert.deepEqual(entryFromSearch('?week=2026-W44&entry=129', entries), { kind: 'entry', date: '2026-10-27', id: 129 });
   assert.equal(entryFromSearch('?entry=7', entries), null);
   assert.equal(entryFromSearch('', entries), null);
+});
+
+test('a work day of the schedule may be any weekday', () => {
+  const days = [day('2026-10-30', 'Fri', { work_day: false, target: '0:00' }), day('2026-10-31', 'Sat')];
+  assert.deepEqual(visibleDays(days, new Map()).map((item) => item.weekday), ['Sat']);
+  assert.ok(!needsWarning(days[0]!, [], '2026-11-02'));
+  assert.ok(needsWarning(days[1]!, [], '2026-11-02'));
 });

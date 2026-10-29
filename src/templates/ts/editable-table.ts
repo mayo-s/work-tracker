@@ -2,14 +2,20 @@
 
 import { ApiError } from './api.ts';
 import { el } from './dom.ts';
+import { WEEKDAY_NAMES } from './labels.ts';
 
-/** A field of a record, e.g. the short name of a service; `fixed` fields can only be entered for a new record. */
+/**
+ * A field of a record, e.g. the short name of a service; `fixed` fields can only be entered for a new record.
+ * `weekdays` fields hold weekday names separated by commas (`Mon,Tue`), entered with one checkbox per day.
+ */
 export type Field = {
   name: string;
   label: string;
   required: boolean;
   maxLength?: number;
-  type?: 'text' | 'number';
+  type?: 'text' | 'number' | 'date' | 'weekdays';
+  defaultValue?: string;
+  format?: (value: string) => string;
   min?: number;
   max?: number;
   step?: number;
@@ -43,31 +49,53 @@ export function button(label: string, onClick: () => void, className = 'button-s
   return element;
 }
 
-function inputs(table: EditableTable, item: Item | null): HTMLInputElement[] {
-  return table.fields.filter((field) => !(item && field.fixed)).map((field) => el('input', {
+/** The element to enter a field's value, and how to read the value back as text. */
+type Control = { name: string; element: HTMLElement; read: () => string };
+
+function controlLabel(table: EditableTable, item: Item | null, field: Field): string {
+  return item ? `${field.label} of ${item.label}` : `New ${table.noun}: ${field.label.toLowerCase()}`;
+}
+
+function inputControl(table: EditableTable, item: Item | null, field: Field): Control {
+  const input = el('input', {
     name: field.name,
     type: field.type ?? 'text',
-    value: item?.values[field.name] ?? '',
+    value: item?.values[field.name] ?? field.defaultValue ?? '',
     placeholder: field.placeholder ?? field.label,
-    'aria-label': item ? `${field.label} of ${item.label}` : `New ${table.noun}: ${field.label.toLowerCase()}`,
+    'aria-label': controlLabel(table, item, field),
     maxlength: field.maxLength,
     min: field.min,
     max: field.max,
     step: field.step,
     required: field.required,
     autocomplete: 'off',
-  }));
+  });
+  return { name: field.name, element: input, read: () => input.value.trim() };
 }
 
-function values(fields: HTMLInputElement[]): Record<string, string> {
-  return Object.fromEntries(fields.map((input) => [input.name, input.value.trim()]));
+function weekdaysControl(table: EditableTable, item: Item | null, field: Field): Control {
+  const selected = new Set((item?.values[field.name] ?? field.defaultValue ?? '').split(','));
+  const boxes = WEEKDAY_NAMES.map((day) => el('input', { type: 'checkbox', value: day, checked: selected.has(day) }));
+  const element = el('fieldset', { class: 'weekday-picker' },
+    el('legend', { class: 'visually-hidden' }, controlLabel(table, item, field)),
+    ...boxes.map((box, index) => el('label', {}, box, WEEKDAY_NAMES[index])));
+  return { name: field.name, element, read: () => boxes.filter((box) => box.checked).map((box) => box.value).join(',') };
+}
+
+function controls(table: EditableTable, item: Item | null): Control[] {
+  return table.fields.filter((field) => !(item && field.fixed))
+    .map((field) => (field.type === 'weekdays' ? weekdaysControl : inputControl)(table, item, field));
+}
+
+function values(fields: Control[]): Record<string, string> {
+  return Object.fromEntries(fields.map((control) => [control.name, control.read()]));
 }
 
 /** Saves the form's values (a new record if `item` is null), then reloads the page with a message. */
 function itemForm(table: EditableTable, item: Item | null, page: Page, ...buttons: HTMLElement[]): HTMLFormElement {
-  const fields = inputs(table, item);
+  const fields = controls(table, item);
   const fixed = item ? table.fields.filter((field) => field.fixed).map((field) => el('strong', {}, item.values[field.name])) : [];
-  const form = el('form', { class: 'list-form' }, ...fixed, ...fields, ...buttons);
+  const form = el('form', { class: 'list-form' }, ...fixed, ...fields.map((control) => control.element), ...buttons);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const entered = values(fields);
@@ -88,7 +116,8 @@ function editRow(table: EditableTable, item: Item, page: Page, row: HTMLTableRow
 }
 
 function cell(field: Field, value: string | undefined, first: boolean): HTMLElement {
-  const content = !value ? el('span', { class: 'muted' }, '—') : first ? el('strong', {}, value) : value;
+  const text = value && field.format ? field.format(value) : value;
+  const content = !text ? el('span', { class: 'muted' }, '—') : first ? el('strong', {}, text) : text;
   return el('td', { class: field.numeric ? 'num' : null }, content);
 }
 

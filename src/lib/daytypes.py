@@ -7,9 +7,7 @@ from enum import StrEnum
 from typing import NamedTuple
 
 from src.lib.public_holidays import HolidayKind, holiday_on
-
-FULL_DAY = 8 * 60
-HALF_DAY = FULL_DAY // 2
+from src.lib.schedules import STANDARD, WorkSchedule
 
 
 class DayType(StrEnum):
@@ -25,22 +23,23 @@ class DayType(StrEnum):
 
 
 class _Rule(NamedTuple):
-    target: int
+    target_halves: int  # share of the daily target in half days: 2 = full, 1 = half, 0 = none
     pto_days: Decimal
 
 
-# Target and PTO used on a weekday; on weekends every type has target 0 and uses no PTO.
+# Target and PTO used on a work day; on other days (e.g. weekends) every type has target 0 and uses no PTO.
 _RULES = {
-    DayType.WORK: _Rule(FULL_DAY, Decimal(0)),
+    DayType.WORK: _Rule(2, Decimal(0)),
     DayType.PTO: _Rule(0, Decimal(1)),
-    DayType.PTO_HALF: _Rule(HALF_DAY, Decimal('0.5')),
+    DayType.PTO_HALF: _Rule(1, Decimal('0.5')),
     DayType.SICK: _Rule(0, Decimal(0)),
-    DayType.SICK_HALF: _Rule(HALF_DAY, Decimal(0)),
-    DayType.OVERTIME_OFF: _Rule(FULL_DAY, Decimal(0)),
+    DayType.SICK_HALF: _Rule(1, Decimal(0)),
+    DayType.OVERTIME_OFF: _Rule(2, Decimal(0)),
     DayType.UNPAID_LEAVE: _Rule(0, Decimal(0)),
     DayType.PUBLIC_HOLIDAY: _Rule(0, Decimal(0)),
     DayType.COMPANY_HALF_DAY: _Rule(0, Decimal('0.5')),
 }
+_DAY_OFF = _Rule(0, Decimal(0))
 _HOLIDAY_TYPES = {HolidayKind.PUBLIC: DayType.PUBLIC_HOLIDAY, HolidayKind.COMPANY_HALF_DAY: DayType.COMPANY_HALF_DAY}
 
 
@@ -51,6 +50,7 @@ class DaySummary:
     target: int
     worked: int
     pto_days: Decimal
+    work_day: bool = True  # a work day of the schedule, e.g. Monday to Friday
 
     @property
     def overtime(self) -> int:
@@ -67,10 +67,14 @@ def automatic_day_type(date: dt.date) -> DayType:
     return _HOLIDAY_TYPES[found.kind] if found else DayType.WORK
 
 
-def summarize_day(date: dt.date, worked: int = 0, day_type: DayType | None = None) -> DaySummary:
-    """Target, PTO used and overtime of a day; a chosen day type overrides the automatic one."""
+def summarize_day(
+    date: dt.date, worked: int = 0, day_type: DayType | None = None, schedule: WorkSchedule = STANDARD,
+) -> DaySummary:
+    """Target, PTO used and overtime of a day under its work schedule; a chosen day type overrides the automatic one."""
     if worked < 0:
         raise ValueError('worked must not be negative')
     resolved = day_type or automatic_day_type(date)
-    rule = _Rule(0, Decimal(0)) if is_weekend(date) else _RULES[resolved]
-    return DaySummary(date, resolved, rule.target, worked, rule.pto_days)
+    work_day = schedule.is_work_day(date)
+    rule = _RULES[resolved] if work_day else _DAY_OFF
+    target = schedule.daily_target * rule.target_halves // 2
+    return DaySummary(date, resolved, target, worked, rule.pto_days, work_day)

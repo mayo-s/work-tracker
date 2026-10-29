@@ -9,7 +9,7 @@ import { dayInput, formValues } from '../ts/day-editor.ts';
 function day(changes: Partial<DayView> = {}): DayView {
   return {
     date: '2026-10-28', weekday: 'Wed', day_type: 'work', automatic: true, holiday: null, recorded: true, start: '07:15',
-    end: '16:00', break_time: '0:30', break_default: true, worked: '8:15', target: '8:00', overtime: '0:15', pto_days: 0,
+    end: '16:00', break_time: '0:30', break_default: true, worked: '8:15', target: '8:00', overtime: '0:15', pto_days: 0, work_day: true,
     note: 'OFFICE DAY', flags: [], ...changes,
   };
 }

@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from typing import NamedTuple
 
-from src.lib.daytypes import FULL_DAY, HALF_DAY, DayType, automatic_day_type, is_weekend
+from src.lib.daytypes import DayType, automatic_day_type, is_weekend
 from src.lib.durations import format_clock, format_duration
 from src.models.days import Day
 from src.models.review import FlagReason, ReviewFlag
@@ -17,7 +17,9 @@ from src.modules.importer.sheet import SheetRow
 
 _SICK = re.compile(r'(?:PTO \()?off sick\b', re.IGNORECASE)
 _PTO = re.compile(r'PTO\b', re.IGNORECASE)
-_HALF_DAY_MARKERS = {HALF_DAY, 30}  # '4,0 PTO' (hours) or '0,5 PTO' (days)
+SHEET_DAY = 8 * 60  # the spreadsheet's daily target: overtime is `Sum` − 8:00 on every day
+_SHEET_HALF_DAY = SHEET_DAY // 2
+_HALF_DAY_MARKERS = {_SHEET_HALF_DAY, 30}  # '4,0 PTO' (hours) or '0,5 PTO' (days)
 _FULL_DAY_TYPES = {DayType.PTO, DayType.SICK, DayType.OVERTIME_OFF}
 
 
@@ -71,7 +73,7 @@ def _day_off_lines(row: SheetRow) -> tuple[str, ...]:
 
 
 def _day_off_times(row: SheetRow) -> Day:
-    worked = max(row.total - FULL_DAY, 0) if row.start is not None else 0
+    worked = max(row.total - SHEET_DAY, 0) if row.start is not None else 0
     if not worked:
         return Day(date=row.date)
     return Day(date=row.date, start=row.start, end=row.start + worked, break_minutes=0)
@@ -100,9 +102,9 @@ def _weekday(row: SheetRow) -> ImportedDay:
 
 def _absence_type(absence: _Absence, row: SheetRow) -> DayType | None:
     """Full or half day of PTO or sickness; None for other hours (overtime used, not a day type)."""
-    if absence.minutes in (None, FULL_DAY):
+    if absence.minutes in (None, SHEET_DAY):
         return _full_day_type(absence, row)
-    if absence.minutes in _HALF_DAY_MARKERS and row.total >= FULL_DAY:
+    if absence.minutes in _HALF_DAY_MARKERS and row.total >= SHEET_DAY:
         return DayType.SICK_HALF if absence.sick else DayType.PTO_HALF
     return None
 
@@ -118,7 +120,7 @@ def _weekday_times(row: SheetRow, day_type: DayType | None, half_day: bool) -> D
     """Times of a weekday: none on full days off; on half days the sheet extended the end by 4:00."""
     if day_type in _FULL_DAY_TYPES or row.start is None:
         return Day(date=row.date, day_type=day_type)
-    end = row.end - HALF_DAY if half_day else row.end
+    end = row.end - _SHEET_HALF_DAY if half_day else row.end
     return Day(date=row.date, day_type=day_type, start=row.start, end=end, break_minutes=row.pause or 0)
 
 

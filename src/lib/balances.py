@@ -8,6 +8,7 @@ from typing import NamedTuple
 
 from src.lib.dates import each_day
 from src.lib.daytypes import DaySummary, DayType, summarize_day
+from src.lib.schedules import STANDARD_SCHEDULES, Schedules
 
 
 class DayRecord(NamedTuple):
@@ -42,22 +43,29 @@ class PtoAccount:
         return self.carried_over + self.allowance + self.extra_days - self.used - self.planned
 
 
-def summarize_period(records: Records, start: dt.date, end: dt.date) -> list[DaySummary]:
-    """A summary for every calendar day from start to end (inclusive)."""
-    return [summarize_day(day, *records.get(day, DayRecord())) for day in each_day(start, end)]
+def summarize_period(
+    records: Records, start: dt.date, end: dt.date, schedules: Schedules = STANDARD_SCHEDULES,
+) -> list[DaySummary]:
+    """A summary for every calendar day from start to end (inclusive), each under its work schedule."""
+    return [summarize_day(day, *records.get(day, DayRecord()), schedules.on(day)) for day in each_day(start, end)]
 
 
-def overtime_balance(records: Records, start: dt.date, until: dt.date, opening: int = 0) -> int:
+def overtime_balance(
+    records: Records, start: dt.date, until: dt.date, opening: int = 0, schedules: Schedules = STANDARD_SCHEDULES,
+) -> int:
     """Opening balance plus the overtime of every day from start to until (inclusive).
 
     Pass today (or an earlier date) as `until`: future days must not count.
     """
     if until < start:
         return opening
-    return opening + sum(day.overtime for day in summarize_period(records, start, until))
+    return opening + sum(day.overtime for day in summarize_period(records, start, until, schedules))
 
 
-def pto_accounts(records: Records, terms: Mapping[int, PtoTerms], start: dt.date, until: dt.date) -> list[PtoAccount]:
+def pto_accounts(
+    records: Records, terms: Mapping[int, PtoTerms], start: dt.date, until: dt.date,
+    schedules: Schedules = STANDARD_SCHEDULES,
+) -> list[PtoAccount]:
     """PTO per year from start's year to until's year, for the years with terms.
 
     The carry-over is the fixed one of the terms, otherwise the remainder of the year before (nothing in start's
@@ -67,7 +75,8 @@ def pto_accounts(records: Records, terms: Mapping[int, PtoTerms], start: dt.date
     accounts: list[PtoAccount] = []
     remainder: Decimal | None = Decimal(0)
     for year in range(start.year, until.year + 1):
-        account = _pto_account(records, year, terms.get(year), remainder, max(start, dt.date(year, 1, 1)), until)
+        days = summarize_period(records, max(start, dt.date(year, 1, 1)), dt.date(year, 12, 31), schedules)
+        account = _pto_account(days, terms.get(year), remainder, until)
         if account:
             accounts.append(account)
         remainder = account.remaining if account else None
@@ -75,13 +84,14 @@ def pto_accounts(records: Records, terms: Mapping[int, PtoTerms], start: dt.date
 
 
 def _pto_account(
-    records: Records, year: int, terms: PtoTerms | None, remainder: Decimal | None, start: dt.date, until: dt.date,
+    days: list[DaySummary], terms: PtoTerms | None, remainder: Decimal | None, until: dt.date,
 ) -> PtoAccount | None:
+    """The account of the year of `days`; None without terms or without a known carry-over."""
     carried_over = _carried_over(terms, remainder)
     if terms is None or carried_over is None:
         return None
-    used, planned = _used_and_planned(summarize_period(records, start, dt.date(year, 12, 31)), until)
-    return PtoAccount(year, carried_over, terms.allowance, terms.extra_days, used, planned)
+    used, planned = _used_and_planned(days, until)
+    return PtoAccount(days[-1].date.year, carried_over, terms.allowance, terms.extra_days, used, planned)
 
 
 def _carried_over(terms: PtoTerms | None, remainder: Decimal | None) -> Decimal | None:

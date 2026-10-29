@@ -71,7 +71,7 @@ and ends with passing tests and the flake8 check.
   opening balance (h:mm, signed) via `GET/PUT /api/settings`; PTO years (allowance, extra days, fixed carry-over,
   note) as an editable table on the existing `/api/pto-years`; services and activity types moved here from `/lists`
   (which forwards to `/settings#services`)
-- [ ] **L.1b** Work schedules valid from a date (a change counts from that day on, never rewrites the past): hours per
+- [x] **L.1b** Work schedules valid from a date (a change counts from that day on, never rewrites the past): hours per
   week and work days (e.g. Mon–Fri), split evenly into the daily target (40 h / 5 days = 8:00; half days: half of
   it); replaces the fixed 8:00 in `src/lib/daytypes.py`; API `/api/work-schedules` (GET, POST, PUT, DELETE) and a
   section on the settings page; the first schedule is 40 h Mon–Fri from the balance start. The importer keeps the
