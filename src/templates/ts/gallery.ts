@@ -44,6 +44,7 @@ function renderSnippets(stories: HTMLElement[]): void {
 }
 
 function renderSwatches(container: HTMLElement): void {
+  container.replaceChildren();
   for (const [name, value] of colorVariables(Array.from(document.styleSheets), getComputedStyle(document.documentElement))) {
     const swatch = document.createElement('div');
     swatch.className = 'swatch';
@@ -55,15 +56,34 @@ function renderSwatches(container: HTMLElement): void {
   }
 }
 
+/** The theme radios preview light or dark on this page only (`data-theme` on <html>; empty follows the system). */
+function wireThemePreview(preview: HTMLElement, swatches: HTMLElement | null): void {
+  preview.addEventListener('change', (event) => {
+    const theme = (event.target as HTMLInputElement).value;
+    if (theme) {
+      document.documentElement.dataset.theme = theme;
+    } else {
+      delete document.documentElement.dataset.theme;
+    }
+    if (swatches) {
+      renderSwatches(swatches);
+    }
+  });
+}
+
 export function renderGallery(root: ParentNode): void {
   const stories = Array.from(root.querySelectorAll<HTMLElement>('.story'));
   const index = root.querySelector<HTMLElement>('#gallery-index');
   const swatches = root.querySelector<HTMLElement>('#swatches');
+  const preview = root.querySelector<HTMLElement>('#theme-preview');
   if (index) {
     renderIndex(index, stories);
   }
   if (swatches) {
     renderSwatches(swatches);
+  }
+  if (preview) {
+    wireThemePreview(preview, swatches);
   }
   renderSnippets(stories);
 }

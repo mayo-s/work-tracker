@@ -1,6 +1,6 @@
 /* Work Tracker — base layout and styles (UI style: docs/SPEC.md 5.5).
-   All colors, sizes and spacings are variables in :root, so a dark mode (TASKS.md L.2) only needs a
-   second set of values. */
+   All colors, sizes and spacings are variables in :root; dark mode (TASKS.md L.4) is a second set of color values,
+   following the system unless a theme is chosen (data-theme="light" or "dark" on <html>). */
 
 @font-face {
   font-family: 'Inter';
@@ -34,6 +34,8 @@
   --color-positive-light: #e6f6f0;
   --color-on-accent: #ffffff;
 
+  color-scheme: light;
+
   /* Typography */
   --font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-size-small: 0.8125rem;
@@ -56,6 +58,46 @@
   --focus-ring: 0 0 0 3px var(--color-accent-light);
   --content-width: 72rem;
   --header-height: 3.5rem;
+}
+
+/* Dark mode: the same roles in dark; both blocks hold the same values (kept equal by a test) */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-text: #e3e8ee;
+    --color-muted: #9aa6b2;
+    --color-background: #16191d;
+    --color-surface: #1f242a;
+    --color-border: #333c46;
+    --color-accent: #6ea2f0;
+    --color-accent-light: #1e2f48;
+    --color-warning: #f06a93;
+    --color-warning-text: #ff8fb0;
+    --color-warning-light: #3a1f2b;
+    --color-positive: #4cc59a;
+    --color-positive-light: #173a2f;
+    --color-on-accent: #10233f;
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-text: #e3e8ee;
+  --color-muted: #9aa6b2;
+  --color-background: #16191d;
+  --color-surface: #1f242a;
+  --color-border: #333c46;
+  --color-accent: #6ea2f0;
+  --color-accent-light: #1e2f48;
+  --color-warning: #f06a93;
+  --color-warning-text: #ff8fb0;
+  --color-warning-light: #3a1f2b;
+  --color-positive: #4cc59a;
+  --color-positive-light: #173a2f;
+  --color-on-accent: #10233f;
+
+  color-scheme: dark;
 }
 
 /* Base */
@@ -1001,4 +1043,28 @@ button.button-danger {
   display: block;
   margin-bottom: var(--space-1);
   font-size: var(--font-size-small);
+}
+
+.theme-preview {
+  display: flex;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+
+.theme-preview legend {
+  padding: 0 var(--space-1);
+  font-size: var(--font-size-small);
+}
+
+.theme-preview label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.theme-preview input {
+  width: auto;
 }
