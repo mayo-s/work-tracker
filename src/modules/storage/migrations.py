@@ -120,4 +120,12 @@ MIGRATIONS = (
     ALTER TABLE work_schedules
         ADD COLUMN company_half_days INTEGER NOT NULL DEFAULT 1 CHECK (company_half_days IN (0, 1));
     """,
+    # 6: initial setup: a database holding days or entries counts as set up and stays as it is; an empty one starts
+    # clean (without the original setup's PTO years and services) and is set up on /setup
+    """
+    INSERT INTO settings (key, value)
+        SELECT 'setup_done', CASE WHEN EXISTS (SELECT 1 FROM days) OR EXISTS (SELECT 1 FROM entries) THEN '1' ELSE '0' END;
+    DELETE FROM pto_years WHERE (SELECT value FROM settings WHERE key = 'setup_done') = '0';
+    DELETE FROM services WHERE (SELECT value FROM settings WHERE key = 'setup_done') = '0';
+    """,
 )

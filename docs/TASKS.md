@@ -85,8 +85,14 @@ and ends with passing tests and the flake8 check.
   these days, book them too (times and entries are kept), or cancel. Saved in one transaction via
   `POST /api/days/range`; afterwards the week of the first day is shown. Clearing a range is not part of it (single
   days can be deleted)
-- [ ] **L.3** Initial setup: the "start from zero" section explains how to start from scratch, but many steps should be
-  part of an initial start-setup page. Guiding the user through the process, when there is no database yet.
+- [x] **L.3** Initial setup: a new database starts clean (a migration marks a database holding days or entries as set
+  up and leaves it unchanged; an empty one loses the original setup's PTO years and services and is marked not set
+  up). Until set up, every page forwards to `/setup` (the API stays reachable), a guided page in five steps with
+  defaults: 1. start day (today) and opening balance (0:00); 2. work schedule (40 h, Mon–Fri, Berlin, company half
+  days); 3. PTO days per year (30) and for the first year, with a proposed pro-rata number (the start month counts if
+  starting by the 15th, rounded up to half days) that can be changed; 4. services (optional); 5. summary and "Start",
+  saving everything at once and opening the week view. A side note points to the spreadsheet import instead. The
+  README's "start from zero" shrinks to starting on a new database file
 - [ ] **L.4** Dark mode: a second set of the color variables from the UI style (e.g. following the system setting)
 - [ ] **L.5** Accessibility: the ui should be accessible for everyone and follow modern accessibility standards
 - [ ] **L.6** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g.

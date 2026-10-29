@@ -286,6 +286,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the database is set up; until then, pages forward to /setup. */
+        get: operations["get__api_setup"];
+        put?: never;
+        /**
+         * Set up a new database at once: start day, opening balance, work schedule, PTO years and services.
+         * @description The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once the database is set up: then the settings page changes everything.
+         */
+        post: operations["post__api_setup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/work-schedules": {
         parameters: {
             query?: never;
@@ -1061,12 +1082,6 @@ export interface components {
         /** ScheduleInput */
         ScheduleInput: {
             /**
-             * Valid From
-             * Format: date
-             * @description First day the schedule applies to; earlier days keep their schedule
-             */
-            valid_from: string;
-            /**
              * Weekly Hours
              * @description Hours per week, h:mm
              * @example 40:00
@@ -1096,16 +1111,16 @@ export interface components {
              * @default true
              */
             company_half_days?: boolean;
+            /**
+             * Valid From
+             * Format: date
+             * @description First day the schedule applies to; earlier days keep their schedule
+             */
+            valid_from: string;
         };
         /** ScheduleView */
         ScheduleView: {
             /**
-             * Valid From
-             * Format: date
-             * @description First day the schedule applies to; earlier days keep their schedule
-             */
-            valid_from: string;
-            /**
              * Weekly Hours
              * @description Hours per week, h:mm
              * @example 40:00
@@ -1135,6 +1150,12 @@ export interface components {
              * @default true
              */
             company_half_days?: boolean;
+            /**
+             * Valid From
+             * Format: date
+             * @description First day the schedule applies to; earlier days keep their schedule
+             */
+            valid_from: string;
             /** Id */
             id: number;
             /**
@@ -1143,6 +1164,50 @@ export interface components {
              * @example 8:00
              */
             daily_target: string;
+        };
+        /** SetupStatus */
+        SetupStatus: {
+            /**
+             * Done
+             * @description False for a new database until the setup is finished
+             */
+            done: boolean;
+        };
+        /** SetupInput */
+        SetupInput: {
+            /**
+             * Balance Start
+             * Format: date
+             * @description First day counted, e.g. the first day at a new job
+             */
+            balance_start: string;
+            /**
+             * Opening Balance
+             * @description Overtime taken over, h:mm
+             * @default 0:00
+             * @example 12:30
+             * @example -1:45
+             */
+            opening_balance?: string;
+            /** @description The work schedule from the first day on */
+            schedule: components["schemas"]["ScheduleTerms"];
+            /**
+             * Pto Per Year
+             * @description PTO days per year, entered for the year after the first
+             * @default 30
+             */
+            pto_per_year?: number | string;
+            /**
+             * Pto First Year
+             * @description PTO days of the first year, e.g. pro rata
+             */
+            pto_first_year: number | string;
+            /**
+             * Services
+             * @description Services of the job; more can be added later
+             * @default []
+             */
+            services?: components["schemas"]["ServiceInput"][];
         };
         /** SettingsView */
         SettingsView: {
@@ -1480,6 +1545,42 @@ export interface components {
             ticket_key: string | null;
             /** Duration */
             duration: string;
+        };
+        /**
+         * ScheduleTerms
+         * @description A work schedule without its start date.
+         */
+        ScheduleTerms: {
+            /**
+             * Weekly Hours
+             * @description Hours per week, h:mm
+             * @example 40:00
+             */
+            weekly_hours: string;
+            /**
+             * Work Days
+             * @example [
+             *       "Mon",
+             *       "Tue",
+             *       "Wed",
+             *       "Thu",
+             *       "Fri"
+             *     ]
+             */
+            work_days: ("Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun")[];
+            /**
+             * State
+             * @description German federal state whose public holidays apply
+             * @default BE
+             * @enum {string}
+             */
+            state?: "BB" | "BE" | "BW" | "BY" | "HB" | "HE" | "HH" | "MV" | "NI" | "NW" | "RP" | "SH" | "SL" | "SN" | "ST" | "TH";
+            /**
+             * Company Half Days
+             * @description 24.12. and 31.12. are half PTO, half free
+             * @default true
+             */
+            company_half_days?: boolean;
         };
     };
     responses: never;
@@ -2354,6 +2455,75 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SettingsView"];
                 };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_setup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupStatus"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    post__api_setup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetupInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupStatus"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Unprocessable Content */
             422: {

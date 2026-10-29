@@ -27,6 +27,8 @@ export type WeekReport = Schemas['WeekReport'];
 export type MonthReport = Schemas['MonthReport'];
 export type YearReport = Schemas['YearReport'];
 export type SettingsView = Schemas['SettingsView'];
+export type SetupInput = Schemas['SetupInput'];
+export type SetupStatus = Schemas['SetupStatus'];
 export type PtoYear = Schemas['PtoYear'];
 export type PtoYearInput = Schemas['PtoYearInput'];
 export type ScheduleView = Schemas['ScheduleView'];
@@ -136,6 +138,9 @@ export const api = {
   weekReport: (week: string) => request<WeekReport>('GET', `/api/reports/weeks/${segment(week)}`),
   monthReport: (month: string) => request<MonthReport>('GET', `/api/reports/months/${segment(month)}`),
   yearReport: (year: number) => request<YearReport>('GET', `/api/reports/years/${segment(year)}`),
+
+  setupStatus: () => request<SetupStatus>('GET', '/api/setup'),
+  setup: (input: SetupInput) => request<SetupStatus>('POST', '/api/setup', input),
 
   settings: () => request<SettingsView>('GET', '/api/settings'),
   saveSettings: (input: SettingsView) => request<SettingsView>('PUT', '/api/settings', input),

@@ -25,28 +25,35 @@ def test_migrate_new_database(tmp_path):
     assert table_names(db) == TABLES
 
 
-def test_migrate_twice_keeps_data_once(database):
-    database.migrate()
-    with database.transaction() as conn:
-        assert conn.execute('SELECT COUNT(*) FROM services').fetchone()[0] == 5
+def count(db, table):
+    with db.transaction() as conn:
+        return conn.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0]
 
 
-def test_seeded_services(database):
-    with database.transaction() as conn:
-        services = [tuple(row) for row in conn.execute('SELECT short_name, name FROM services ORDER BY id')]
-    assert services == [
-        ('O365', 'office-integration-service'),
-        ('MSB', 'microsoft-bookings-service'),
-        ('ImmoDrop', ''),
-        ('HiS', 'history-service'),
-        ('TTS', 'text-transformation-service'),
-    ]
+def test_migrate_twice_keeps_data_once(fresh_database):
+    fresh_database.migrate()
+    assert count(fresh_database, 'activity_types') == 4
 
 
-def test_seeded_activity_types(database):
-    with database.transaction() as conn:
+def test_new_database_starts_clean(fresh_database):
+    with fresh_database.transaction() as conn:
         names = [row['name'] for row in conn.execute('SELECT name FROM activity_types ORDER BY id')]
+        setup_done = conn.execute("SELECT value FROM settings WHERE key = 'setup_done'").fetchone()[0]
     assert names == ['Tool Management', 'Meeting', 'Travel', 'Other']
+    assert (count(fresh_database, 'services'), count(fresh_database, 'pto_years'), setup_done) == (0, 0, '0')
+
+
+def test_database_in_use_keeps_its_data_and_counts_as_set_up(tmp_path, monkeypatch):
+    db = Database(tmp_path / 'in-use.db')
+    monkeypatch.setattr(migrations, 'MIGRATIONS', migrations.MIGRATIONS[:5])
+    db.migrate()
+    with db.transaction() as conn:
+        conn.execute("INSERT INTO days (date, day_type) VALUES ('2026-10-28', 'pto')")
+    monkeypatch.undo()
+    db.migrate()
+    with db.transaction() as conn:
+        setup_done = conn.execute("SELECT value FROM settings WHERE key = 'setup_done'").fetchone()[0]
+    assert (count(db, 'services'), count(db, 'pto_years'), setup_done) == (5, 4, '1')
 
 
 def test_migrate_rejects_newer_schema(database, monkeypatch):

@@ -37,6 +37,12 @@ class PtoYearRepository:
         if not self._conn.execute('DELETE FROM pto_years WHERE year = ?', (year,)).rowcount:
             raise NotFoundError(f'No PTO days entered for {year}')
 
+    def replace_all(self, pto_years: list[PtoYear]) -> None:
+        """The given years as the only ones, e.g. on the initial setup."""
+        self._conn.execute('DELETE FROM pto_years')
+        for pto_year in pto_years:
+            self.save(pto_year)
+
     def terms(self) -> dict[int, PtoTerms]:
         return {pto_year.year: pto_year.terms() for pto_year in self.all()}
 

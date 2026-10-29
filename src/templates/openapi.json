@@ -25,6 +25,9 @@
       "name": "Settings"
     },
     {
+      "name": "Setup"
+    },
+    {
       "name": "Work schedules"
     },
     {
@@ -1188,6 +1191,83 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SettingsView"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/setup": {
+      "get": {
+        "summary": "Whether the database is set up; until then, pages forward to /setup.",
+        "operationId": "get__api_setup",
+        "description": "",
+        "tags": [
+          "Setup"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Set up a new database at once: start day, opening balance, work schedule, PTO years and services.",
+        "operationId": "post__api_setup",
+        "description": "The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once the database is set up: then the settings page changes everything.",
+        "tags": [
+          "Setup"
+        ],
+        "parameters": [],
+        "responses": {
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetupInput"
               }
             }
           },
@@ -3261,12 +3341,6 @@
       "ScheduleInput": {
         "additionalProperties": false,
         "properties": {
-          "valid_from": {
-            "description": "First day the schedule applies to; earlier days keep their schedule",
-            "format": "date",
-            "title": "Valid From",
-            "type": "string"
-          },
           "weekly_hours": {
             "description": "Hours per week, h:mm",
             "examples": [
@@ -3330,12 +3404,18 @@
             "description": "24.12. and 31.12. are half PTO, half free",
             "title": "Company Half Days",
             "type": "boolean"
+          },
+          "valid_from": {
+            "description": "First day the schedule applies to; earlier days keep their schedule",
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
           }
         },
         "required": [
-          "valid_from",
           "weekly_hours",
-          "work_days"
+          "work_days",
+          "valid_from"
         ],
         "title": "ScheduleInput",
         "type": "object"
@@ -3343,12 +3423,6 @@
       "ScheduleView": {
         "additionalProperties": false,
         "properties": {
-          "valid_from": {
-            "description": "First day the schedule applies to; earlier days keep their schedule",
-            "format": "date",
-            "title": "Valid From",
-            "type": "string"
-          },
           "weekly_hours": {
             "description": "Hours per week, h:mm",
             "examples": [
@@ -3412,6 +3486,12 @@
             "description": "24.12. and 31.12. are half PTO, half free",
             "title": "Company Half Days",
             "type": "boolean"
+          },
+          "valid_from": {
+            "description": "First day the schedule applies to; earlier days keep their schedule",
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
           },
           "id": {
             "title": "Id",
@@ -3427,13 +3507,95 @@
           }
         },
         "required": [
-          "valid_from",
           "weekly_hours",
           "work_days",
+          "valid_from",
           "id",
           "daily_target"
         ],
         "title": "ScheduleView",
+        "type": "object"
+      },
+      "SetupStatus": {
+        "properties": {
+          "done": {
+            "description": "False for a new database until the setup is finished",
+            "title": "Done",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "done"
+        ],
+        "title": "SetupStatus",
+        "type": "object"
+      },
+      "SetupInput": {
+        "additionalProperties": false,
+        "properties": {
+          "balance_start": {
+            "description": "First day counted, e.g. the first day at a new job",
+            "format": "date",
+            "title": "Balance Start",
+            "type": "string"
+          },
+          "opening_balance": {
+            "default": "0:00",
+            "description": "Overtime taken over, h:mm",
+            "examples": [
+              "12:30",
+              "-1:45"
+            ],
+            "title": "Opening Balance",
+            "type": "string"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/ScheduleTerms",
+            "description": "The work schedule from the first day on"
+          },
+          "pto_per_year": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "default": "30",
+            "description": "PTO days per year, entered for the year after the first",
+            "title": "Pto Per Year"
+          },
+          "pto_first_year": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "description": "PTO days of the first year, e.g. pro rata",
+            "title": "Pto First Year"
+          },
+          "services": {
+            "default": [],
+            "description": "Services of the job; more can be added later",
+            "items": {
+              "$ref": "#/components/schemas/ServiceInput"
+            },
+            "title": "Services",
+            "type": "array"
+          }
+        },
+        "required": [
+          "balance_start",
+          "schedule",
+          "pto_first_year"
+        ],
+        "title": "SetupInput",
         "type": "object"
       },
       "SettingsView": {
@@ -4189,6 +4351,82 @@
           "duration"
         ],
         "title": "SplitPart",
+        "type": "object"
+      },
+      "ScheduleTerms": {
+        "additionalProperties": false,
+        "description": "A work schedule without its start date.",
+        "properties": {
+          "weekly_hours": {
+            "description": "Hours per week, h:mm",
+            "examples": [
+              "40:00"
+            ],
+            "title": "Weekly Hours",
+            "type": "string"
+          },
+          "work_days": {
+            "examples": [
+              [
+                "Mon",
+                "Tue",
+                "Wed",
+                "Thu",
+                "Fri"
+              ]
+            ],
+            "items": {
+              "enum": [
+                "Mon",
+                "Tue",
+                "Wed",
+                "Thu",
+                "Fri",
+                "Sat",
+                "Sun"
+              ],
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Work Days",
+            "type": "array"
+          },
+          "state": {
+            "default": "BE",
+            "description": "German federal state whose public holidays apply",
+            "enum": [
+              "BB",
+              "BE",
+              "BW",
+              "BY",
+              "HB",
+              "HE",
+              "HH",
+              "MV",
+              "NI",
+              "NW",
+              "RP",
+              "SH",
+              "SL",
+              "SN",
+              "ST",
+              "TH"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "company_half_days": {
+            "default": true,
+            "description": "24.12. and 31.12. are half PTO, half free",
+            "title": "Company Half Days",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "weekly_hours",
+          "work_days"
+        ],
+        "title": "ScheduleTerms",
         "type": "object"
       }
     }

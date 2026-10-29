@@ -60,3 +60,9 @@ def test_only_schedule_cannot_be_deleted(schedules):
 def test_delete_missing_schedule(schedules):
     with pytest.raises(NotFoundError):
         schedules.delete(404)
+
+
+def test_replace_all(schedules):
+    schedules.add(PART_TIME)
+    replaced = schedules.replace_all(PART_TIME.model_copy(update={'valid_from': dt.date(2027, 4, 1)}))
+    assert schedules.all() == [replaced]
