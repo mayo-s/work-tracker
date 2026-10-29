@@ -77,7 +77,8 @@ The break can always be overridden (e.g. 3:00 on a long day).
 
 ### 3.4 PTO allowance
 
-- Configurable per year: **30 days** from 2025 on; **2024: 18 days** (17.5 for June–December, rounded up).
+- Configurable per year: **30 days**; **2024: 17.5 days** (pro rata for June–December);
+  **2025 and 2026: 31 days** (one extra day granted each year, not permanent).
 - Unused days are **carried over** into the next year.
 - The year report shows carried-over days, allowance, days used and days remaining.
 
@@ -286,7 +287,7 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 ### 6.5 Known data corrections
 
 - 2024 unpaid leave (marked "PTO" in the sheet): 08.08., 09.08., 04.10., 27.12. and 30.12.2024.
-- 2024 PTO: 18 days allowance, 17.5 used → 0.5 days carried over into 2025 (check after import).
+- 2024 PTO: 17.5 days allowance, 17.5 used → nothing carried over into 2025; 3 days carried over into 2026.
 - The 2026 sheet dashboard already includes 27.10.2026 (6:30) in its total but not in its target;
   the balance up to 26.10.2026 is 13:45, not 20:15.
 

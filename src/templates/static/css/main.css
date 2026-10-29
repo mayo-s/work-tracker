@@ -795,22 +795,17 @@ button.button-danger {
   margin-top: 0;
 }
 
-.pto-account td {
+.card-table td {
   padding: var(--space-1) 0;
   border-bottom: 0;
 }
 
-.pto-account tr:hover {
+.card-table tr:hover {
   background: none;
 }
 
-.pto-remaining td {
+.card-table-total td {
   border-top: var(--border);
-}
-
-.days-off {
-  margin: 0;
-  padding-left: var(--space-4);
 }
 
 .year-months tr.is-future td {

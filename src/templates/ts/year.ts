@@ -1,10 +1,10 @@
 // Year report (/year): totals, PTO account, days off and the months with their running balance.
 
-import { api, ApiError, type YearReport } from './api.ts';
+import { api, ApiError, type DayType, type YearReport } from './api.ts';
 import { isoDate, isoMonth, type IsoDate } from './dates.ts';
 import { el } from './dom.ts';
 import { fromMinutes, toMinutes } from './durations.ts';
-import { describeDaysOff } from './month.ts';
+import { DAY_TYPE_LABELS } from './labels.ts';
 import { periodSummary, value } from './week.ts';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -21,6 +21,13 @@ export function runningBalances(balanceIn: string, overtimes: string[]): string[
   return overtimes.map((overtime) => fromMinutes((balance += toMinutes(overtime))));
 }
 
+/** Label and count of each day type off, in the order of the day types. */
+export function daysOffRows(daysOff: Partial<Record<DayType, number>>): [string, number][] {
+  return (Object.keys(DAY_TYPE_LABELS) as DayType[])
+    .filter((type) => daysOff[type])
+    .map((type) => [DAY_TYPE_LABELS[type], daysOff[type] ?? 0]);
+}
+
 /** `2.5` → `2.5`, `17` → `17` (PTO days without trailing zeros) */
 export function formatDays(days: number): string {
   return String(Number(days.toFixed(1)));
@@ -33,28 +40,31 @@ function renderHeader(doc: Document, year: number, today: IsoDate): void {
   doc.querySelector<HTMLAnchorElement>('#year-current')!.toggleAttribute('aria-disabled', year === Number(today.slice(0, 4)));
 }
 
+function cardRow(label: string, value: string): HTMLElement {
+  return el('tr', {}, el('td', {}, label), el('td', { class: 'num' }, value));
+}
+
 function ptoCard(report: YearReport): HTMLElement {
   const pto = report.pto;
   if (!pto) {
     return el('div', { class: 'card' }, el('h3', {}, 'PTO'), el('p', { class: 'muted' }, 'No PTO account for this year.'));
   }
-  const row = (label: string, days: string, className = ''): HTMLElement =>
-    el('tr', {}, el('td', {}, label), el('td', { class: `num ${className}`.trim() }, days));
   return el('div', { class: 'card' }, el('h3', {}, 'PTO'),
-    el('table', { class: 'pto-account' }, el('tbody', {},
-      row('Carried over', formatDays(pto.carried_over)),
-      row('+ Allowance', formatDays(pto.allowance)),
-      row('− Used', formatDays(pto.used)),
-      row('− Planned', formatDays(pto.planned)),
-      el('tr', { class: 'pto-remaining' }, el('td', {}, el('strong', {}, 'Remaining')),
+    el('table', { class: 'card-table' }, el('tbody', {},
+      cardRow('Carried over', formatDays(pto.carried_over)),
+      cardRow('+ Allowance', formatDays(pto.allowance)),
+      cardRow('− Used', formatDays(pto.used)),
+      cardRow('− Planned', formatDays(pto.planned)),
+      el('tr', { class: 'card-table-total' }, el('td', {}, el('strong', {}, 'Remaining')),
         el('td', { class: `num ${pto.remaining < 0 ? 'value-negative' : 'value-positive'}` },
           el('strong', {}, formatDays(pto.remaining)))))));
 }
 
 function daysOffCard(report: YearReport): HTMLElement {
-  const text = describeDaysOff(report.days_off);
+  const rows = daysOffRows(report.days_off);
   return el('div', { class: 'card' }, el('h3', {}, 'Days off'),
-    text ? el('ul', { class: 'days-off' }, ...text.split(' · ').map((item) => el('li', {}, item)))
+    rows.length
+      ? el('table', { class: 'card-table' }, el('tbody', {}, ...rows.map(([label, count]) => cardRow(label, String(count)))))
       : el('p', { class: 'muted' }, 'None'));
 }
 
