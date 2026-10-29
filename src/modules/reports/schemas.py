@@ -200,7 +200,7 @@ class CodingWork:
     def __init__(self, conn: sqlite3.Connection, user_id: str) -> None:
         self._entries = EntryRepository(conn, user_id)
         self._ticket_services = {ticket.key: ticket.service_id for ticket in TicketRepository(conn, user_id).all()}
-        self._services = {service.id: service.short_name for service in ServiceRepository(conn, user_id).all()}
+        self._services = {service.id: service.short_name for service in ServiceRepository(conn, user_id).choices()}
 
     def by_service(self, start: dt.date, end: dt.date) -> list[ServiceWork]:
         grouped = defaultdict(lambda: defaultdict(list))

@@ -112,7 +112,7 @@ class EntryViewer:
     def __init__(self, conn: sqlite3.Connection, user_id: str) -> None:
         self._entries = EntryRepository(conn, user_id)
         self._ticket_services = {ticket.key: ticket.service_id for ticket in TicketRepository(conn, user_id).all()}
-        self._services = {service.id: service.short_name for service in ServiceRepository(conn, user_id).all()}
+        self._services = {service.id: service.short_name for service in ServiceRepository(conn, user_id).choices()}
         self._activity_types = {activity.id: activity.name for activity in ActivityTypeRepository(conn, user_id).all()}
 
     def views(self, entries: Iterable[Entry]) -> list[EntryView]:

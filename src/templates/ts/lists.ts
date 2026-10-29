@@ -1,6 +1,7 @@
 // The services and activity types to choose from in entries, as editable tables of the settings page.
 
-import { api, type ActivityType, type Service, type TicketView } from './api.ts';
+import { api, type ActivityType, type Service, type ServiceChoice, type TicketView } from './api.ts';
+import { el } from './dom.ts';
 import type { EditableTable } from './editable-table.ts';
 
 /** Number of tickets per service id. */
@@ -24,12 +25,31 @@ export function deleteServiceQuestion(shortName: string, tickets: number): strin
     : `Delete ${shortName}? ${tickets} tickets lose their service and show up in the review.`;
 }
 
+/** Services to choose grouped as `Team <name>` (first) and `Personal`; one group without a name when there is no team. */
+export function serviceGroups(choices: ServiceChoice[]): [string, ServiceChoice[]][] {
+  const groups = new Map<string, ServiceChoice[]>();
+  for (const choice of choices) {
+    const group = choice.team ? `Team ${choice.team}` : 'Personal';
+    groups.set(group, [...groups.get(group) ?? [], choice]);
+  }
+  return groups.size === 1 && groups.has('Personal') ? [['', choices]] : [...groups];
+}
+
+/** The options of a service select, in groups while the user is in a team; `label` gives each option's text. */
+export function serviceOptions(choices: ServiceChoice[], label: (choice: ServiceChoice) => string): HTMLElement[] {
+  const options = (group: ServiceChoice[]): HTMLOptionElement[] =>
+    group.map((choice) => el('option', { value: choice.id ?? '' }, label(choice)));
+  return serviceGroups(choices).flatMap(([name, group]) => (name ? [el('optgroup', { label: name }, ...options(group))]
+    : options(group)));
+}
+
 export function servicesTable(services: Service[], tickets: TicketView[]): EditableTable {
   const counts = ticketCounts(tickets);
   return {
     id: 'services',
     title: 'Services',
-    hint: 'The service of a ticket applies to all its entries; the month report groups coding work by service.',
+    hint: 'The service of a ticket applies to all its entries; the month report groups coding work by service. These are '
+      + 'your personal services; the services of your team are managed by its team admins.',
     noun: 'service',
     fields: [
       { name: 'short_name', label: 'Short name', maxLength: 30, required: true },

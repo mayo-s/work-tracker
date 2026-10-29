@@ -5,6 +5,7 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.users import EMAIL_PATTERN, PASSWORD_MIN_LENGTH, USERNAME_PATTERN, Role, User
+from src.modules.teams.schemas import TeamRef
 
 
 class UserView(BaseModel):
@@ -58,3 +59,5 @@ class AuthStatus(BaseModel):
     has_users: bool = Field(description='False until the first user is created')
     user: UserView | None = Field(description='The logged-in user')
     registration: bool = Field(description='True while new users can register on /register')
+    team: TeamRef | None = Field(default=None, description='The team of the logged-in user')
+    invitations: int = Field(default=0, description='Open team invitations of the logged-in user')

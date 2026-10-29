@@ -52,7 +52,7 @@ class RenameView(BaseModel):
 
 
 def ticket_views(conn: sqlite3.Connection, user_id: str, tickets: Iterable[Ticket]) -> list[TicketView]:
-    services = {service.id: service.short_name for service in ServiceRepository(conn, user_id).all()}
+    services = {service.id: service.short_name for service in ServiceRepository(conn, user_id).choices()}
     counts = TicketRepository(conn, user_id).entry_counts()
     return [
         TicketView(key=ticket.key, service_id=ticket.service_id, service=services.get(ticket.service_id),

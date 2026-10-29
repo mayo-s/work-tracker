@@ -68,8 +68,11 @@ class TicketRepository:
         return len(unique)
 
     def _own_service(self, service_id: int) -> bool:
-        """Only the user's own services can be assigned (not another user's, though the id exists)."""
-        row = self._conn.execute('SELECT 1 FROM services WHERE id = ? AND user_id = ?', (service_id, self._user)).fetchone()
+        """Only the user's personal services and those of their team can be assigned (not another user's or team's,
+        though the id exists)."""
+        row = self._conn.execute(
+            'SELECT 1 FROM services WHERE id = ? AND (user_id = ? OR team_id = (SELECT team_id FROM team_memberships'
+            ' WHERE user_id = ? AND left_on IS NULL))', (service_id, self._user, self._user)).fetchone()
         return row is not None
 
     def _existing_keys(self, keys: Iterable[str]) -> list[str]:

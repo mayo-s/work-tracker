@@ -21,6 +21,12 @@ class Service(DomainModel):
     name: str = Field(default='', max_length=100, description='e.g. microsoft-bookings-service')
 
 
+class ServiceChoice(Service):
+    """A service to choose in an entry: a personal one, or one of the user's team (`team`: its name)."""
+
+    team: str | None = None
+
+
 class ActivityType(DomainModel):
     id: int | None = None
     name: str = Field(min_length=1, max_length=50, description='e.g. Tool Management')

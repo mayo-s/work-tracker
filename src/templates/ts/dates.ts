@@ -65,6 +65,11 @@ export function formatDate(value: IsoDate): string {
   return `${day}.${month}.${year}`;
 }
 
+/** `2026-10-29T08:05:12` → `29.10.2026 08:05` */
+export function formatTimestamp(value: string): string {
+  return `${formatDate(value.slice(0, 10))} ${value.slice(11, 16)}`;
+}
+
 /** `2026-10-28`, `Wed` → `Wed 28.10.` */
 export function formatDay(value: IsoDate, weekday: string): string {
   const [, month, day] = value.split('-');

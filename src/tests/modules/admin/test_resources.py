@@ -58,7 +58,7 @@ def test_users_with_their_account_only(app, klara, hans):
     accounts = [(user['username'], user['role'], user['active']) for user in users]
     assert accounts == [('klara', 'admin', True), ('hans', 'user', True)]
     assert set(users[1]) == {'id', 'username', 'email', 'first_name', 'last_name', 'role', 'active', 'registered_at',
-                             'last_login_at'}
+                             'last_login_at', 'team'}
     assert users[1]['last_login_at'] == '2026-10-29T08:00:00'
 
 
@@ -87,9 +87,9 @@ def test_unknown_user(app, klara):
     assert app.simulate_put(f'/api/admin/users/{UNKNOWN}', cookies=klara, json=body).status == falcon.HTTP_404
 
 
-def test_team_admin_follows_with_teams(app, klara, hans_id):
+def test_only_members_of_a_team_can_be_team_admins(app, klara, hans_id):
     body = {'role': 'team_admin', 'active': True}
-    assert app.simulate_put(f'/api/admin/users/{hans_id}', cookies=klara, json=body).status_code == 422
+    assert app.simulate_put(f'/api/admin/users/{hans_id}', cookies=klara, json=body).status == falcon.HTTP_409
 
 
 def test_registration_is_off_until_switched_on(app, klara):

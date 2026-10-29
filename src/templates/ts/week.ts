@@ -1,7 +1,7 @@
 // Week view (/): the days of a week with times, balance and task entries (read-only).
 
 import {
-  api, ApiError, type ActivityType, type DayView, type EntryView, type PeriodTotals, type Service, type WeekReport,
+  api, ApiError, type ActivityType, type DayView, type EntryView, type PeriodTotals, type ServiceChoice, type WeekReport,
 } from './api.ts';
 import { addDays, formatDate, formatDay, isoDate, isoWeek, isValidWeek, mondayOf, shiftWeek, type IsoDate } from './dates.ts';
 import { dayEditor } from './day-editor.ts';
@@ -91,7 +91,8 @@ export function periodSummary(totals: PeriodTotals, extra: HTMLElement | null = 
 }
 
 type WeekData = {
-  days: DayView[]; entries: Map<IsoDate, EntryView[]>; report: WeekReport; services: Service[]; activityTypes: ActivityType[];
+  days: DayView[]; entries: Map<IsoDate, EntryView[]>; report: WeekReport; services: ServiceChoice[];
+  activityTypes: ActivityType[];
 };
 /** What is open: the form of a day, of an entry (id) or of a new entry (null) on a date, or nothing. */
 export type Editing = { kind: 'day'; date: IsoDate } | { kind: 'entry'; date: IsoDate; id: number | null } | null;
@@ -251,7 +252,7 @@ function errorCard(error: unknown): HTMLElement {
 
 async function loadWeek(week: string): Promise<WeekData> {
   const [days, entries, report, services, activityTypes] = await Promise.all([
-    api.days({ week }), api.entries({ week }), api.weekReport(week), api.services(), api.activityTypes(),
+    api.days({ week }), api.entries({ week }), api.weekReport(week), api.serviceChoices(), api.activityTypes(),
   ]);
   return { days, entries: entriesByDate(entries), report, services, activityTypes };
 }

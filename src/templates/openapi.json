@@ -34,6 +34,9 @@
       "name": "Admin"
     },
     {
+      "name": "Teams"
+    },
+    {
       "name": "Work schedules"
     },
     {
@@ -1390,7 +1393,7 @@
     },
     "/api/auth/status": {
       "get": {
-        "summary": "Whether the login is on, whether a user exists, who is logged in, and whether new users can register.",
+        "summary": "Whether the login is on, whether a user exists, who is logged in (with their team and number of open invitations), and whether new users can register.",
         "operationId": "get__api_auth_status",
         "description": "",
         "tags": [
@@ -1724,7 +1727,7 @@
     },
     "/api/admin/users": {
       "get": {
-        "summary": "All users in the order they registered, with role, status, registration and last login.",
+        "summary": "All users in the order they registered, with role, status, registration, last login and team.",
         "operationId": "get__api_admin_users",
         "description": "",
         "tags": [
@@ -1762,7 +1765,7 @@
       "put": {
         "summary": "Change a user's role, or deactivate (their sessions end, their data is kept) or reactivate them.",
         "operationId": "put__api_admin_users_{user_id}",
-        "description": "Nobody demotes or deactivates themselves (409), so an active admin always remains.",
+        "description": "Nobody demotes or deactivates themselves (409), so an active admin always remains. Only a member of a team can be a team admin (409); they manage that team.",
         "tags": [
           "Admin"
         ],
@@ -1897,6 +1900,790 @@
             }
           },
           "required": true
+        }
+      }
+    },
+    "/api/admin/teams": {
+      "get": {
+        "summary": "All teams with their number of members and their team admins.",
+        "operationId": "get__api_admin_teams",
+        "description": "",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTeamViewList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a team; names are unique, ignoring case (409).",
+        "operationId": "post__api_admin_teams",
+        "description": "",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTeamView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/admin/teams/{team_id}": {
+      "delete": {
+        "summary": "Delete a team without members (409 otherwise); its invitations and services go with it, the membership history keeps it.",
+        "operationId": "delete__api_admin_teams_{team_id}",
+        "description": "",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the team"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Rename a team.",
+        "operationId": "put__api_admin_teams_{team_id}",
+        "description": "",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the team"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTeamView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/teams/{team_id}": {
+      "get": {
+        "summary": "The team with its members (accounts only) and open invitations.",
+        "operationId": "get__api_teams_{team_id}",
+        "description": "",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the team"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamPageView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/teams/{team_id}/invitations": {
+      "post": {
+        "summary": "Invite the user with this exact e-mail address (ignoring case); the answer does not tell whether they exist.",
+        "operationId": "post__api_teams_{team_id}_invitations",
+        "description": "",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the team"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationSent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/teams/{team_id}/invitations/{invitation_id}": {
+      "delete": {
+        "summary": "Withdraw an open invitation.",
+        "operationId": "delete__api_teams_{team_id}_invitations_{invitation_id}",
+        "description": "",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the team"
+          },
+          {
+            "name": "invitation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the invitation"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/teams/{team_id}/members/{user_id}": {
+      "delete": {
+        "summary": "Remove a member: the team services their tickets use become personal services; a team admin becomes a user.",
+        "operationId": "delete__api_teams_{team_id}_members_{user_id}",
+        "description": "",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the team"
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id (UUID) of the member"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/teams/{team_id}/services": {
+      "get": {
+        "summary": "The team's services, which its members choose in entries.",
+        "operationId": "get__api_teams_{team_id}_services",
+        "description": "",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the team"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a team service.",
+        "operationId": "post__api_teams_{team_id}_services",
+        "description": "",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the team"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/teams/{team_id}/services/{service_id}": {
+      "delete": {
+        "summary": "Delete a team service; the members' tickets with it become \"without service\".",
+        "operationId": "delete__api_teams_{team_id}_services_{service_id}",
+        "description": "",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the team"
+          },
+          {
+            "name": "service_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the service"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Change a team service.",
+        "operationId": "put__api_teams_{team_id}_services_{service_id}",
+        "description": "",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the team"
+          },
+          {
+            "name": "service_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the service"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/team": {
+      "delete": {
+        "summary": "Leave the team: the team services the user's tickets use become personal services.",
+        "operationId": "delete__api_team",
+        "description": "",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "The user's team (null without one) and their open invitations.",
+        "operationId": "get__api_team",
+        "description": "",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyTeamView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/team/invitations/{invitation_id}": {
+      "delete": {
+        "summary": "Decline an invitation.",
+        "operationId": "delete__api_team_invitations_{invitation_id}",
+        "description": "",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "invitation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the invitation"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/team/invitations/{invitation_id}/accept": {
+      "post": {
+        "summary": "Accept an invitation: join the team (leaving the current one); the other invitations are declined.",
+        "operationId": "post__api_team_invitations_{invitation_id}_accept",
+        "description": "",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [
+          {
+            "name": "invitation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Id of the invitation"
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyTeamView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -2589,6 +3376,39 @@
         }
       }
     },
+    "/api/service-choices": {
+      "get": {
+        "summary": "The services to choose in entries: the team's (`team`: its name) first, then the personal ones.",
+        "operationId": "get__api_service-choices",
+        "description": "",
+        "tags": [
+          "Services"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceChoiceList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/activity-types": {
       "get": {
         "summary": "All records of the list.",
@@ -2902,9 +3722,10 @@
         "additionalProperties": false,
         "properties": {
           "role": {
-            "description": "Team admins follow with teams (TASKS.md L.8a.3)",
+            "description": "A team admin manages the team they are in",
             "enum": [
               "admin",
+              "team_admin",
               "user"
             ],
             "title": "Role",
@@ -2984,6 +3805,18 @@
               }
             ],
             "title": "Last Login At"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the team the user is in",
+            "title": "Team"
           }
         },
         "required": [
@@ -2995,9 +3828,69 @@
           "role",
           "active",
           "registered_at",
-          "last_login_at"
+          "last_login_at",
+          "team"
         ],
         "title": "AdminUserView",
+        "type": "object"
+      },
+      "AdminTeamViewList": {
+        "items": {
+          "$ref": "#/components/schemas/AdminTeamView"
+        },
+        "title": "AdminTeamViewList",
+        "type": "array"
+      },
+      "TeamInput": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "examples": [
+              "Platform"
+            ],
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "TeamInput",
+        "type": "object"
+      },
+      "AdminTeamView": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "members": {
+            "description": "Number of current members",
+            "title": "Members",
+            "type": "integer"
+          },
+          "team_admins": {
+            "description": "Usernames of the team admins",
+            "items": {
+              "type": "string"
+            },
+            "title": "Team Admins",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "members",
+          "team_admins"
+        ],
+        "title": "AdminTeamView",
         "type": "object"
       },
       "AdminSettings": {
@@ -3042,6 +3935,24 @@
             "description": "True while new users can register on /register",
             "title": "Registration",
             "type": "boolean"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TeamRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The team of the logged-in user"
+          },
+          "invitations": {
+            "default": 0,
+            "description": "Open team invitations of the logged-in user",
+            "title": "Invitations",
+            "type": "integer"
           }
         },
         "required": [
@@ -4711,6 +5622,107 @@
         "title": "ThemeView",
         "type": "object"
       },
+      "TeamPageView": {
+        "description": "A team as its admins see it: members and open invitations.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/MemberView"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "invitations": {
+            "items": {
+              "$ref": "#/components/schemas/InvitationView"
+            },
+            "title": "Invitations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "members",
+          "invitations"
+        ],
+        "title": "TeamPageView",
+        "type": "object"
+      },
+      "InvitationInput": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "description": "The exact e-mail address (ignoring case)",
+            "maxLength": 200,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "InvitationInput",
+        "type": "object"
+      },
+      "InvitationSent": {
+        "properties": {
+          "message": {
+            "description": "The same whether a user with this e-mail address exists or not",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "InvitationSent",
+        "type": "object"
+      },
+      "MyTeamView": {
+        "description": "The user's team (null without one) and their open invitations.",
+        "properties": {
+          "team": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TeamRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "invitations": {
+            "items": {
+              "$ref": "#/components/schemas/MyInvitationView"
+            },
+            "title": "Invitations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "team",
+          "invitations"
+        ],
+        "title": "MyTeamView",
+        "type": "object"
+      },
+      "ServiceChoiceList": {
+        "items": {
+          "$ref": "#/components/schemas/ServiceChoice"
+        },
+        "title": "ServiceChoiceList",
+        "type": "array"
+      },
       "TicketQuery": {
         "properties": {
           "without_service": {
@@ -4936,6 +5948,30 @@
           "type"
         ],
         "title": "ValidationErrorElement",
+        "type": "object"
+      },
+      "TeamRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "joined_on": {
+            "format": "date",
+            "title": "Joined On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "joined_on"
+        ],
+        "title": "TeamRef",
         "type": "object"
       },
       "BalancePoint": {
@@ -5700,6 +6736,158 @@
           "work_days"
         ],
         "title": "ScheduleTerms",
+        "type": "object"
+      },
+      "InvitationView": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "invited_at": {
+            "format": "date-time",
+            "title": "Invited At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "invited_at"
+        ],
+        "title": "InvitationView",
+        "type": "object"
+      },
+      "MemberView": {
+        "properties": {
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "team_admin",
+              "user"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "joined_on": {
+            "format": "date",
+            "title": "Joined On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "email",
+          "first_name",
+          "last_name",
+          "role",
+          "joined_on"
+        ],
+        "title": "MemberView",
+        "type": "object"
+      },
+      "MyInvitationView": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "team_name": {
+            "title": "Team Name",
+            "type": "string"
+          },
+          "invited_at": {
+            "format": "date-time",
+            "title": "Invited At",
+            "type": "string"
+          },
+          "invited_by": {
+            "description": "Name of the inviting admin",
+            "title": "Invited By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "team_name",
+          "invited_at",
+          "invited_by"
+        ],
+        "title": "MyInvitationView",
+        "type": "object"
+      },
+      "ServiceChoice": {
+        "additionalProperties": false,
+        "description": "A service to choose in an entry: a personal one, or one of the user's team (`team`: its name).",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "short_name": {
+            "description": "e.g. MSB",
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Short Name",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "description": "e.g. microsoft-bookings-service",
+            "maxLength": 100,
+            "title": "Name",
+            "type": "string"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Team"
+          }
+        },
+        "required": [
+          "short_name"
+        ],
+        "title": "ServiceChoice",
         "type": "object"
       }
     }

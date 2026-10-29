@@ -285,7 +285,17 @@ corners, one accent color. Warnings are the only loud element.
   time data. Admins change the role (admin or user), deactivate users (logged out at once, refused at login, data kept)
   and reactivate them. Nobody demotes or deactivates themselves, so an active admin always remains; users are not
   deleted. A forgotten password is reset with the command on the computer running the app.
-- Teams and shared team services follow in TASKS.md L.8a.3.
+- Teams: a user is in at most one team; the membership history (joined on, left on) keeps which team a user was in on
+  each day. The admin creates, renames and deletes teams (only without members; a deleted team stays in the history)
+  and makes members team admins. A team admin manages the team they are in; leaving it makes them a user again.
+- Invitations: the admin, or a team admin for their team, invites by the exact e-mail address (ignoring case); the
+  answer and the list of open invitations never tell whether such a user exists. Users never see which teams exist.
+  The invited user accepts or declines in the settings (a badge on Settings while one is open); accepting one declines
+  the others and leaves the current team. The inviter can withdraw an open invitation.
+- Services: a service is personal or belongs to a team. Members choose their team's services next to their personal
+  ones; only the admin and the team's admins change team services. On leaving (or being removed), the team services
+  the user's tickets use are copied into their personal services, or a personal service with the same short name is
+  used, so the tickets keep their service.
 
 ## 6. Import (spreadsheet CSV)
 
