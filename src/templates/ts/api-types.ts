@@ -1164,7 +1164,7 @@ export interface components {
             last_name?: string;
             /**
              * Password
-             * @description At least 12 characters
+             * @description At least 12 characters with letters, digits and a special character
              */
             password: string;
         };
@@ -1195,7 +1195,7 @@ export interface components {
             current_password: string;
             /**
              * New Password
-             * @description At least 12 characters
+             * @description At least 12 characters with letters, digits and a special character
              */
             new_password: string;
         };

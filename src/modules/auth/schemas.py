@@ -1,11 +1,21 @@
 """Users, login and password as shown and entered in the API."""
 
-from typing import Self
+from typing import Annotated, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
-from src.models.users import EMAIL_PATTERN, PASSWORD_MIN_LENGTH, USERNAME_PATTERN, Role, User
+from src.models.users import EMAIL_PATTERN, PASSWORD_MIN_LENGTH, PASSWORD_RULES, USERNAME_PATTERN, Role, User, password_problem
 from src.modules.teams.schemas import TeamRef
+
+
+def _allowed(password: str) -> str:
+    if problem := password_problem(password):
+        raise ValueError(problem)
+    return password
+
+
+NewPassword = Annotated[str, Field(min_length=PASSWORD_MIN_LENGTH, max_length=200, description=PASSWORD_RULES),
+                        AfterValidator(_allowed)]
 
 
 class UserView(BaseModel):
@@ -35,8 +45,7 @@ class ProfileInput(BaseModel):
 
 
 class NewUserInput(ProfileInput):
-    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=200,
-                          description=f'At least {PASSWORD_MIN_LENGTH} characters')
+    password: NewPassword
 
 
 class LoginInput(BaseModel):
@@ -50,8 +59,7 @@ class PasswordInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     current_password: str = Field(min_length=1, max_length=200)
-    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=200,
-                              description=f'At least {PASSWORD_MIN_LENGTH} characters')
+    new_password: NewPassword
 
 
 class AuthStatus(BaseModel):

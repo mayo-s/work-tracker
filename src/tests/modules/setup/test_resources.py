@@ -14,7 +14,7 @@ SETUP = {
     'pto_first_year': 25,
     'services': [{'short_name': 'AUTH', 'name': 'auth-service'}],
     'user': {'username': 'pascal', 'email': 'turbo.pascal@example.com', 'first_name': 'Pascal', 'last_name': 'Turbo',
-             'password': 'correct horse battery'},
+             'password': 'correct horse battery 9!'},
 }
 
 

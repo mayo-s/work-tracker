@@ -5,7 +5,7 @@ import getpass
 import sys
 from collections.abc import Callable
 
-from src.models.users import PASSWORD_MIN_LENGTH
+from src.models.users import password_problem
 from src.modules.storage.database import Database, database_path
 from src.modules.storage.users import UserRepository
 
@@ -17,9 +17,11 @@ def main(argv: list[str] | None = None, read_password: Callable[[str], str] = ge
     parser.add_argument('--db', default=database_path(), help='database file (default: $WORK_TRACKER_DB or work_tracker.db)')
     args = parser.parse_args(argv)
     password = read_password('New password: ')
-    if len(password) < PASSWORD_MIN_LENGTH or password != read_password('Repeat it: '):
-        print(f'Not changed: the password needs at least {PASSWORD_MIN_LENGTH} characters, entered twice the same.',
-              file=sys.stderr)
+    problem = password_problem(password)
+    if problem is None and password != read_password('Repeat it: '):
+        problem = 'The two passwords differ.'
+    if problem:
+        print(f'Not changed: {problem}', file=sys.stderr)
         return 1
     with Database(args.db).transaction() as conn:
         users = UserRepository(conn)

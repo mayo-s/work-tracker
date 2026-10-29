@@ -9,7 +9,7 @@ from src.modules.storage.settings import set_registration
 
 NOW = dt.datetime(2026, 10, 29, 8, 0)
 PASCAL = {'username': 'pascal', 'email': 'turbo.pascal@example.com', 'first_name': 'Pascal', 'last_name': 'Turbo',
-          'password': 'correct horse battery'}
+          'password': 'correct horse battery 9!'}
 
 
 @pytest.fixture
@@ -61,3 +61,7 @@ def test_registrations_and_failed_logins_pause_together(app, registration):
     assert register(app).status == falcon.HTTP_429
     assert app.simulate_post('/api/auth/login', json={'login': 'klara', 'password': 'wrong password!'}).status \
         == falcon.HTTP_429
+
+
+def test_weak_password(app, registration):
+    assert register(app, password='12345678901234').status_code == 422
