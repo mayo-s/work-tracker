@@ -57,18 +57,20 @@ def _to_flag(row: sqlite3.Row) -> ReviewFlag:
 
 
 class EntryRepository:
-    """Ticket and activity entries; every change is written to the entry's history.
+    """Ticket and activity entries of one user; every change is written to the entry's history.
 
     Works within the transaction of the given connection. `clock` provides the history timestamps.
     """
 
-    def __init__(self, conn: sqlite3.Connection, clock: Callable[[], dt.datetime] | None = None) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: int, clock: Callable[[], dt.datetime] | None = None) -> None:
         self._conn = conn
+        self._user = user_id
         self._clock = clock or _now
-        self._tickets = TicketRepository(conn)
+        self._tickets = TicketRepository(conn, user_id)
 
     def get(self, entry_id: int) -> Entry:
-        row = self._conn.execute(f'SELECT {_ENTRY_COLUMNS} FROM entries WHERE id = ?', (entry_id,)).fetchone()
+        row = self._conn.execute(f'SELECT {_ENTRY_COLUMNS} FROM entries WHERE id = ? AND user_id = ?',
+                                 (entry_id, self._user)).fetchone()
         if row is None:
             raise NotFoundError(f'No entry with id {entry_id}')
         return _to_entry(row)
@@ -76,8 +78,8 @@ class EntryRepository:
     def between(self, start: dt.date, end: dt.date) -> list[Entry]:
         """Entries from start to end (inclusive), by date and in the order they were created."""
         rows = self._conn.execute(
-            f'SELECT {_ENTRY_COLUMNS} FROM entries WHERE date BETWEEN ? AND ? ORDER BY date, id',
-            (start.isoformat(), end.isoformat()),
+            f'SELECT {_ENTRY_COLUMNS} FROM entries WHERE user_id = ? AND date BETWEEN ? AND ? ORDER BY date, id',
+            (self._user, start.isoformat(), end.isoformat()),
         )
         return [_to_entry(row) for row in rows]
 
@@ -90,9 +92,9 @@ class EntryRepository:
             f'SELECT {", ".join(f"e.{column}" for column in _ENTRY_COLUMNS.split(", "))} FROM entries e '
             "JOIN entry_history h ON h.entry_id = e.id AND h.action = 'imported' "
             "JOIN entry_history own ON own.entry_id = ? AND own.action = 'imported' "
-            'JOIN entries mine ON mine.id = own.entry_id '
-            'WHERE h.detail = own.detail AND e.date = mine.date ORDER BY e.id',
-            (entry_id,),
+            'JOIN entries mine ON mine.id = own.entry_id AND mine.user_id = e.user_id '
+            'WHERE h.detail = own.detail AND e.date = mine.date AND e.user_id = ? ORDER BY e.id',
+            (entry_id, self._user),
         )
         return [_to_entry(row) for row in rows]
 
@@ -100,18 +102,19 @@ class EntryRepository:
         """Entries with 0:00, ticket entries without ticket and flagged entries, by date."""
         rows = self._conn.execute(
             f'SELECT {_ENTRY_COLUMNS} FROM entries '
-            "WHERE duration = 0 OR (kind = 'ticket' AND ticket_key IS NULL) "
-            'OR id IN (SELECT entry_id FROM review_flags WHERE entry_id IS NOT NULL) ORDER BY date, id'
+            "WHERE user_id = ? AND (duration = 0 OR (kind = 'ticket' AND ticket_key IS NULL) "
+            'OR id IN (SELECT entry_id FROM review_flags WHERE entry_id IS NOT NULL)) ORDER BY date, id',
+            (self._user,),
         )
         return [_to_entry(row) for row in rows]
 
     def create(self, entry: Entry, action: HistoryAction = HistoryAction.CREATED, detail: str = '') -> Entry:
         """Store a new entry; its ticket is created if needed. `action` is `created` or `imported`."""
-        self._ensure_ticket(entry)
+        self._check_references(entry)
         cursor = self._write(
-            'INSERT INTO entries (date, kind, ticket_key, activity_type_id, duration, text, coding) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?)',
-            _to_values(entry),
+            'INSERT INTO entries (user_id, date, kind, ticket_key, activity_type_id, duration, text, coding) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            (self._user, *_to_values(entry)),
         )
         created = entry.model_copy(update={'id': cursor.lastrowid})
         self.add_history(created.id, action, _diff({}, _fields(created)), detail)
@@ -123,11 +126,11 @@ class EntryRepository:
         if old.kind != entry.kind:
             raise ConflictError(f'Entry {entry.id} is a {old.kind} entry, not a {entry.kind} entry')
         if changes := _diff(_fields(old), _fields(entry)):
-            self._ensure_ticket(entry)
+            self._check_references(entry)
             self._write(
                 'UPDATE entries SET date = ?, kind = ?, ticket_key = ?, activity_type_id = ?, duration = ?, text = ?, '
-                'coding = ? WHERE id = ?',
-                (*_to_values(entry), entry.id),
+                'coding = ? WHERE id = ? AND user_id = ?',
+                (*_to_values(entry), entry.id, self._user),
             )
             self.add_history(entry.id, action, changes, detail)
         return entry
@@ -156,19 +159,20 @@ class EntryRepository:
     def delete(self, entry_id: int) -> None:
         """Delete an entry and its review flags; its history is kept."""
         old = self.get(entry_id)
-        self._conn.execute('DELETE FROM entries WHERE id = ?', (entry_id,))
+        self._conn.execute('DELETE FROM entries WHERE id = ? AND user_id = ?', (entry_id, self._user))
         self.add_history(entry_id, HistoryAction.DELETED, _diff(_fields(old), {}))
 
     def add_history(self, entry_id: int, action: HistoryAction, changes: Changes, detail: str = '') -> EntryChange:
         change = EntryChange(entry_id=entry_id, changed_at=self._clock(), action=action, changes=changes, detail=detail)
         cursor = self._conn.execute(
-            'INSERT INTO entry_history (entry_id, changed_at, action, changes, detail) VALUES (?, ?, ?, ?, ?)',
-            (entry_id, change.changed_at.isoformat(), change.action, json.dumps(change.changes), change.detail),
+            'INSERT INTO entry_history (user_id, entry_id, changed_at, action, changes, detail) VALUES (?, ?, ?, ?, ?, ?)',
+            (self._user, entry_id, change.changed_at.isoformat(), change.action, json.dumps(change.changes), change.detail),
         )
         return change.model_copy(update={'id': cursor.lastrowid})
 
     def history(self, entry_id: int) -> list[EntryChange]:
-        rows = self._conn.execute(f'SELECT {_HISTORY_COLUMNS} FROM entry_history WHERE entry_id = ? ORDER BY id', (entry_id,))
+        sql = f'SELECT {_HISTORY_COLUMNS} FROM entry_history WHERE entry_id = ? AND user_id = ? ORDER BY id'
+        rows = self._conn.execute(sql, (entry_id, self._user))
         return [_to_change(row) for row in rows]
 
     def changed(self, entry_ids: Iterable[int]) -> set[int]:
@@ -176,34 +180,46 @@ class EntryRepository:
         ids = list(entry_ids)
         placeholders = ', '.join('?' for _ in ids)
         rows = self._conn.execute(
-            f'SELECT DISTINCT entry_id FROM entry_history WHERE entry_id IN ({placeholders}) AND action NOT IN (?, ?)',
-            (*ids, HistoryAction.CREATED, HistoryAction.IMPORTED),
+            f'SELECT DISTINCT entry_id FROM entry_history WHERE user_id = ? AND entry_id IN ({placeholders}) '
+            'AND action NOT IN (?, ?)',
+            (self._user, *ids, HistoryAction.CREATED, HistoryAction.IMPORTED),
         )
         return {row['entry_id'] for row in rows}
 
     def add_flag(self, entry_id: int, reason: FlagReason, detail: str = '') -> ReviewFlag:
         flag = ReviewFlag(entry_id=entry_id, reason=reason, detail=detail)
-        cursor = self._write(
-            'INSERT INTO review_flags (entry_id, reason, detail) VALUES (?, ?, ?)', (entry_id, flag.reason, flag.detail)
-        )
+        if not self._owned('entries', entry_id):
+            raise ConflictError(f'Cannot flag entry {entry_id}: no such entry')
+        cursor = self._write('INSERT INTO review_flags (user_id, entry_id, reason, detail) VALUES (?, ?, ?, ?)',
+                             (self._user, entry_id, flag.reason, flag.detail))
         return flag.model_copy(update={'id': cursor.lastrowid})
 
     def flags_of(self, entry_id: int) -> list[ReviewFlag]:
-        rows = self._conn.execute(f'SELECT {_FLAG_COLUMNS} FROM review_flags WHERE entry_id = ? ORDER BY id', (entry_id,))
+        rows = self._conn.execute(f'SELECT {_FLAG_COLUMNS} FROM review_flags WHERE entry_id = ? AND user_id = ? ORDER BY id',
+                                  (entry_id, self._user))
         return [_to_flag(row) for row in rows]
 
     def entry_flags(self) -> list[ReviewFlag]:
         """All flags on entries, in the order they were added."""
-        rows = self._conn.execute(f'SELECT {_FLAG_COLUMNS} FROM review_flags WHERE entry_id IS NOT NULL ORDER BY id')
+        sql = f'SELECT {_FLAG_COLUMNS} FROM review_flags WHERE user_id = ? AND entry_id IS NOT NULL ORDER BY id'
+        rows = self._conn.execute(sql, (self._user,))
         return [_to_flag(row) for row in rows]
 
     def clear_flag(self, flag_id: int) -> None:
-        if not self._conn.execute('DELETE FROM review_flags WHERE id = ? AND entry_id IS NOT NULL', (flag_id,)).rowcount:
+        sql = 'DELETE FROM review_flags WHERE id = ? AND user_id = ? AND entry_id IS NOT NULL'
+        if not self._conn.execute(sql, (flag_id, self._user)).rowcount:
             raise NotFoundError(f'No entry flag with id {flag_id}')
 
-    def _ensure_ticket(self, entry: Entry) -> None:
+    def _check_references(self, entry: Entry) -> None:
+        """A ticket entry's ticket is created if needed; an activity entry needs one of the user's activity types."""
         if isinstance(entry, TicketEntry) and entry.ticket_key:
             self._tickets.ensure(entry.ticket_key)
+        if isinstance(entry, ActivityEntry) and not self._owned('activity_types', entry.activity_type_id):
+            raise ConflictError(f'Cannot save entry: unknown activity type {entry.activity_type_id}')
+
+    def _owned(self, table: str, row_id: int) -> bool:
+        row = self._conn.execute(f'SELECT 1 FROM {table} WHERE id = ? AND user_id = ?', (row_id, self._user)).fetchone()
+        return row is not None
 
     def _write(self, sql: str, params: tuple) -> sqlite3.Cursor:
         try:

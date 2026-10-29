@@ -52,7 +52,8 @@ pipenv run python -m src.modules.importer "examples/Time_tracking_DK - 2024_Data
 ```
 
 A year is imported in one transaction: on any error nothing is written. `--replace` deletes the year's days,
-entries, history and flags first; tickets keep their assigned services.
+entries, history and flags first; tickets keep their assigned services. The data goes to the only user (or, without
+users, to the first one created later); with several users, `--user LOGIN` (username or e-mail address) names one.
 After the import, a reconciliation compares every day up to today with the sheet and shows the overtime
 balance and the year's PTO account.
 
@@ -89,7 +90,9 @@ These documentation routes are listed in the spec as well, under the Maintenance
 Every page and the API need a login; `/login`, `/health`, the API docs and the static files stay open. A new database
 creates the first user in the setup, an existing one asks for it once on the next visit. Log in with the username or
 the e-mail address; a login stays valid for 24 hours since the last activity, "Log out" ends it, and the settings page
-changes the profile and the password. A forgotten password is reset on the computer running the app:
+changes the profile and the password. Each user has their own data (days, entries, tickets, services, activity
+types, schedules, PTO years, settings); nobody sees another user's. The first user is admin and takes over the data
+of a database in use; a new user starts with the four default activity types and goes through the setup. A forgotten password is reset on the computer running the app:
 
 ```shell
 pipenv run python -m src.modules.auth set-password mario  # username or e-mail address; asks for the new password
@@ -228,33 +231,36 @@ Pydantic models; times in minutes, validated on creation and assignment.
 | `history`   | `EntryChange`: one line of an entry's history (created, imported, updated, renamed, merged, split, deleted) with the changed fields, old → new |
 | `review`    | `ReviewFlag`: import flag on an entry or a day (uncertain ticket, weekend hours)                                                               |
 | `schedules` | `Schedule`: valid from, minutes per week, work days (ISO weekdays), federal state, company half days                                           |
-| `users`     | `User`: username and e-mail address (unique), first and last name                                                                              |
+| `users`     | `User`: random UUID, username and e-mail address (unique), first and last name, role (admin, team admin, user)                                 |
 | `pto`       | `PtoYear`: allowance, extra days, fixed carry-over (empty = remainder of the year before), note                                                |
 | `settings`  | `Settings`: balance start date, opening balance                                                                                                |
 
 ## Storage (`src/modules/storage`)
 
 SQLite, one connection per transaction (commit on success, rollback on error), foreign keys enforced.
-Repositories work within the transaction of the connection they are given.
+Repositories work within the transaction of the connection they are given, on the data of the user they are given.
 
-| Module       | Contents                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `database`   | `Database(path)`: transactions and schema migration (`migrate()`, tracked in `PRAGMA user_version`)                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `migrations` | Schema scripts, applied once in order; the first one seeds settings, services and activity types, the second the PTO allowances 2024–2027, the third moves them into `pto_years`, the fourth adds `work_schedules` (40 h, Mon–Fri from the balance start), the fifth their holiday rules (Berlin, company half days); the sixth marks a database in use as set up and lets an empty one start clean, the seventh adds users, sessions and failed logins. Entries keep a change history that outlives them (entry ids are never reused) |
-| `settings`   | Load and save user settings; whether the initial setup is done; the color theme                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `schedules`  | `ScheduleRepository`: list, get, add, update and delete work schedules (the only one cannot be deleted); all schedules for the calculations                                                                                                                                                                                                                                                                                                                                                                                            |
-| `users`      | `UserRepository` (add, find by username or e-mail address, profile, password), `SessionRepository` (24 h since the last activity, renewed at most every 30 minutes; only the token hash stored), `FailedLogins`                                                                                                                                                                                                                                                                                                                        |
-| `pto_years`  | `PtoYearRepository`: list, get, save (insert or replace) and delete the PTO days of a year; terms for the PTO accounts                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `days`       | `DayRepository`: get, list, save (insert or replace) and delete days; records for balances; review flags on days                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `catalog`    | `ServiceRepository`, `ActivityTypeRepository`: list, get, add, update, delete (deleting a service unassigns its tickets; an activity type in use cannot be deleted)                                                                                                                                                                                                                                                                                                                                                                    |
-| `tickets`    | `TicketRepository`: get, list (sorted by prefix and number), create on first use; set a service on one or several tickets; tickets without service                                                                                                                                                                                                                                                                                                                                                                                     |
-| `entries`    | `EntryRepository`: get, list, create, update and delete entries, each change written to the entry's history (kept after deletion); review flags on entries                                                                                                                                                                                                                                                                                                                                                                             |
-| `renames`    | `rename_ticket`: move all entries to a new key (history line per entry); renaming to an existing ticket merges both, the existing ticket keeps its service                                                                                                                                                                                                                                                                                                                                                                             |
-| `errors`     | `NotFoundError` for records that do not exist, `ConflictError` for duplicates and records still in use                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Module       | Contents                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+|--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `database`   | `Database(path)`: transactions and schema migration (`migrate()`, tracked in `PRAGMA user_version`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `migrations` | Schema scripts, applied once in order; the first one seeds settings, services and activity types, the second the PTO allowances 2024–2027, the third moves them into `pto_years`, the fourth adds `work_schedules` (40 h, Mon–Fri from the balance start), the fifth their holiday rules (Berlin, company half days); the sixth marks a database in use as set up and lets an empty one start clean, the seventh adds users, sessions and failed logins, the eighth gives every record an owner (`user_id`) and the users a role, the ninth makes user ids random UUIDs. Entries keep a change history that outlives them (entry ids are never reused) |
+| `owners`     | `NO_OWNER` (nil UUID: records of a database without users), `take_over_unowned` for the first user, `start_with_defaults` for new users                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `settings`   | Load and save a user's settings; whether their initial setup is done; their color theme                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `schedules`  | `ScheduleRepository`: list, get, add, update and delete work schedules (the only one cannot be deleted); all schedules for the calculations                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `users`      | `UserRepository` (add: the first user becomes admin and takes over unowned records; find by username or e-mail address, profile, password), `SessionRepository` (24 h since the last activity, renewed at most every 30 minutes; only the token hash stored), `FailedLogins`                                                                                                                                                                                                                                                                                                                                                                           |
+| `pto_years`  | `PtoYearRepository`: list, get, save (insert or replace) and delete the PTO days of a year; terms for the PTO accounts                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `days`       | `DayRepository`: get, list, save (insert or replace) and delete days; records for balances; review flags on days                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `catalog`    | `ServiceRepository`, `ActivityTypeRepository`: list, get, add, update, delete (deleting a service unassigns its tickets; an activity type in use cannot be deleted)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `tickets`    | `TicketRepository`: get, list (sorted by prefix and number), create on first use; set a service on one or several tickets; tickets without service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `entries`    | `EntryRepository`: get, list, create, update and delete entries, each change written to the entry's history (kept after deletion); review flags on entries                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `renames`    | `rename_ticket`: move all entries to a new key (history line per entry); renaming to an existing ticket merges both, the existing ticket keeps its service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `errors`     | `NotFoundError` for records that do not exist, `ConflictError` for duplicates and records still in use                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 ### Database schema
 
-Solid lines are foreign keys; dotted lines are links without one (by date, or kept after deletion).
+Solid lines are foreign keys; dotted lines are links without one (by date, or kept after deletion). Every table
+below `failed_logins` belongs to a user by `user_id` (nil UUID = no owner yet, so it is no foreign key); keys and unique
+names hold per user. `settings` is app-wide and empty for now.
 Times and durations are minutes, dates ISO text.
 
 ```mermaid
@@ -269,35 +275,43 @@ erDiagram
     entries |o..o{ entry_history: "history (kept after deletion)"
 
     settings {
-        TEXT key PK "balance_start, opening_balance"
+        TEXT key PK
         TEXT value
     }
     users {
-        INTEGER id PK
+        TEXT id PK "random UUID"
         TEXT username UK "case-insensitive"
         TEXT email UK "case-insensitive"
         TEXT first_name
         TEXT last_name
         TEXT password_hash "scrypt"
+        TEXT role "admin, team_admin, user"
     }
     sessions {
         TEXT token_hash PK "SHA-256 of the cookie's token"
-        INTEGER user_id FK
+        TEXT user_id FK
         TEXT expires_at
         TEXT renewed_at
     }
     failed_logins {
         TEXT at
     }
+    user_settings {
+        TEXT user_id PK
+        TEXT key PK "balance_start, opening_balance, theme, setup_done"
+        TEXT value
+    }
     work_schedules {
         INTEGER id PK
-        TEXT valid_from UK
+        TEXT user_id
+        TEXT valid_from UK "per user"
         INTEGER weekly_minutes
         TEXT work_days "ISO weekdays, e.g. 1,2,3,4,5"
         TEXT state "federal state, e.g. BE"
         INTEGER company_half_days "0 or 1"
     }
     pto_years {
+        TEXT user_id PK
         INTEGER year PK
         TEXT allowance "e.g. 17.5"
         TEXT extra_days "days granted on top"
@@ -306,18 +320,22 @@ erDiagram
     }
     services {
         INTEGER id PK
-        TEXT short_name UK "case-insensitive"
+        TEXT user_id
+        TEXT short_name UK "per user, case-insensitive"
         TEXT name
     }
     activity_types {
         INTEGER id PK
-        TEXT name UK "case-insensitive"
+        TEXT user_id
+        TEXT name UK "per user, case-insensitive"
     }
     tickets {
+        TEXT user_id PK
         TEXT key PK "e.g. ENGINE-461"
         INTEGER service_id FK "nullable"
     }
     days {
+        TEXT user_id PK
         TEXT date PK
         TEXT day_type "nullable: automatic"
         INTEGER start_time "nullable"
@@ -327,6 +345,7 @@ erDiagram
     }
     entries {
         INTEGER id PK "never reused"
+        TEXT user_id FK "with ticket_key"
         TEXT date
         TEXT kind "ticket or activity"
         TEXT ticket_key FK "ticket entries"
@@ -337,6 +356,7 @@ erDiagram
     }
     entry_history {
         INTEGER id PK
+        TEXT user_id
         INTEGER entry_id
         TEXT changed_at
         TEXT action "created, imported, updated, renamed, merged, split, deleted"
@@ -345,6 +365,7 @@ erDiagram
     }
     review_flags {
         INTEGER id PK
+        TEXT user_id
         INTEGER entry_id FK "entry flag"
         TEXT date "day flag"
         TEXT reason "uncertain_ticket, weekend_hours"
@@ -364,6 +385,6 @@ Imports the yearly spreadsheet exports (CSV with `Date`, `Start`, `End`, `Pause`
 | `tickets`     | Ticket keys (KP, TNG, ENGINE, AGA, MSI) and their clean-up: typos corrected (`EINGINE-`, `TNG4840`, `MSI-02`, `#KP-1494`); guessed keys flagged (`#4138` → `TNG-4138`, `#4347 aka #1482`, `TNG-2035ff`) |
 | `comments`    | Comment lines → entries: tickets anywhere in a line (several tickets split evenly), PR reviews without ticket, Meeting, Tool Management, Travel, Other; lines without hours or ticket become day notes  |
 | `corrections` | Known corrections the sheet cannot express: 2024 unpaid leave days (marked "PTO")                                                                                                                       |
-| `run`         | Import one year in a single transaction: days, entries (history line with the original comment line), review flags; refuses years with data unless replacing; summary                                   |
+| `run`         | Import one year for a user in a single transaction: days, entries (history line with the original comment line), review flags; refuses years with data unless replacing; summary                        |
 | `reconcile`   | Compare an imported year with the sheet (`Sum` − 8:00 per day, up to today): differing days, overtime balance, PTO account                                                                              |
-| `__main__`    | Command line: `python -m src.modules.importer SHEET.csv [--replace] [--db PATH]`                                                                                                                        |
+| `__main__`    | Command line: `python -m src.modules.importer SHEET.csv [--replace] [--user LOGIN] [--db PATH]`                                                                                                         |

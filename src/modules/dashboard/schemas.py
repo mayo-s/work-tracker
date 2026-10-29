@@ -80,14 +80,15 @@ class DashboardView(BaseModel):
 class Dashboard:
     """Builds the dashboard within the transaction of the given connection."""
 
-    def __init__(self, conn: sqlite3.Connection, today: dt.date) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: int, today: dt.date) -> None:
         self._conn = conn
+        self._user = user_id
         self._today = today
-        self._settings = load_settings(conn)
-        self._schedules = ScheduleRepository(conn).schedules()
+        self._settings = load_settings(conn, user_id)
+        self._schedules = ScheduleRepository(conn, user_id).schedules()
         last = today + dt.timedelta(days=COMING_UP_DAYS)
-        self._records = DayRepository(conn).records(self._settings.balance_start, last)
-        self._reports = Reports(conn, today)
+        self._records = DayRepository(conn, user_id).records(self._settings.balance_start, last)
+        self._reports = Reports(conn, user_id, today)
         self._balances = self._daily_balances()
 
     def view(self) -> DashboardView:
@@ -104,7 +105,7 @@ class Dashboard:
             week=week,
             this_week=self._reports.week(week, monday).totals,
             week_target=format_duration(sum(day.target for day in self._summaries(monday, monday + dt.timedelta(days=6)))),
-            review_open=sum(review(self._conn).counts.model_dump().values()),
+            review_open=sum(review(self._conn, self._user).counts.model_dump().values()),
             balance_series=self._series(),
             coming_up=self._coming_up(),
             this_year=self._year_figures(year.days_worked, year.average_per_day_worked, year.days_off),
@@ -159,7 +160,7 @@ class Dashboard:
 
     def _year_figures(self, days_worked: int, average: str, days_off: dict[DayType, int]) -> YearFigures:
         year = self._today.year
-        coding = CodingWork(self._conn).by_service(dt.date(year, 1, 1), dt.date(year, 12, 31))
+        coding = CodingWork(self._conn, self._user).by_service(dt.date(year, 1, 1), dt.date(year, 12, 31))
         top = sorted(coding, key=lambda work: parse_duration(work.duration), reverse=True)[:3]
         return YearFigures(
             year=year, days_worked=days_worked, average_per_day_worked=average,

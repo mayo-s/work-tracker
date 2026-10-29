@@ -1310,7 +1310,7 @@
     },
     "/api/setup": {
       "get": {
-        "summary": "Whether the database is set up; until then, pages forward to /setup.",
+        "summary": "Whether the user's data is set up (not logged in: a new database's); until then, pages forward to /setup.",
         "operationId": "get__api_setup",
         "description": "",
         "tags": [
@@ -1341,9 +1341,9 @@
         }
       },
       "post": {
-        "summary": "Set up a new database at once: the first user, start day, opening balance, work schedule, PTO years and services; the new user is logged in.",
+        "summary": "Set up the user's data at once: start day, opening balance, work schedule, PTO years and services. On a new database, it first creates the first user (`user`), who takes over its data and is logged in.",
         "operationId": "post__api_setup",
-        "description": "The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once the database is set up: then the settings page changes everything.",
+        "description": "The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything.",
         "tags": [
           "Setup"
         ],
@@ -2714,8 +2714,9 @@
       "UserView": {
         "properties": {
           "id": {
+            "description": "Random UUID",
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "username": {
             "title": "Username",
@@ -2732,6 +2733,16 @@
           "last_name": {
             "title": "Last Name",
             "type": "string"
+          },
+          "role": {
+            "description": "admin, team_admin or user",
+            "enum": [
+              "admin",
+              "team_admin",
+              "user"
+            ],
+            "title": "Role",
+            "type": "string"
           }
         },
         "required": [
@@ -2739,7 +2750,8 @@
           "username",
           "email",
           "first_name",
-          "last_name"
+          "last_name",
+          "role"
         ],
         "title": "UserView",
         "type": "object"

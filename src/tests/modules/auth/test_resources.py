@@ -5,9 +5,12 @@ import pytest
 from falcon import testing
 
 from src.app import create_app
+from src.modules.storage.database import Database
 from src.modules.auth.__main__ import main
+from src.modules.storage.owners import NO_OWNER
 
-MARIO = {'username': 'mario', 'email': 'mario@example.com', 'first_name': 'Mario', 'password': 'correct horse battery'}
+RAINER = {'username': 'rainer', 'email': 'rainer.zufall@example.com', 'first_name': 'Rainer', 'last_name': 'Zufall',
+          'password': 'correct horse battery'}
 
 
 class Clock:
@@ -24,9 +27,19 @@ def clock():
 
 
 @pytest.fixture
-def app(database, clock):
-    """The set-up database with the login on."""
-    return testing.TestClient(create_app(database, auth=True, clock=clock))
+def unclaimed(tmp_path):
+    """A database in use (set up) but without a user yet, like one from before the login."""
+    db = Database(tmp_path / 'unclaimed.db')
+    db.migrate()
+    with db.transaction() as conn:
+        conn.execute("UPDATE user_settings SET value = '1' WHERE user_id = ? AND key = 'setup_done'", (NO_OWNER,))
+    return db
+
+
+@pytest.fixture
+def app(unclaimed, clock):
+    """That database with the login on."""
+    return testing.TestClient(create_app(unclaimed, auth=True, clock=clock))
 
 
 def session(result):
@@ -35,11 +48,11 @@ def session(result):
 
 @pytest.fixture
 def cookies(app):
-    """Mario, logged in."""
-    return session(app.simulate_post('/api/auth/first-user', json=MARIO))
+    """Rainer, logged in."""
+    return session(app.simulate_post('/api/auth/first-user', json=RAINER))
 
 
-def login(app, name='mario', password='correct horse battery'):
+def login(app, name='rainer', password='correct horse battery'):
     return app.simulate_post('/api/auth/login', json={'login': name, 'password': password})
 
 
@@ -50,10 +63,10 @@ def test_without_a_user_pages_forward_to_login_to_create_it(app):
 
 
 def test_first_user_logs_in_and_only_once(app):
-    result = app.simulate_post('/api/auth/first-user', json=MARIO)
-    assert (result.status, result.json['username']) == (falcon.HTTP_201, 'mario')
-    assert app.simulate_get('/api/auth/me', cookies=session(result)).json['email'] == 'mario@example.com'
-    assert app.simulate_post('/api/auth/first-user', json=MARIO | {'username': 'luigi'}).status == falcon.HTTP_409
+    result = app.simulate_post('/api/auth/first-user', json=RAINER)
+    assert (result.status, result.json['username']) == (falcon.HTTP_201, 'rainer')
+    assert app.simulate_get('/api/auth/me', cookies=session(result)).json['email'] == 'rainer.zufall@example.com'
+    assert app.simulate_post('/api/auth/first-user', json=RAINER | {'username': 'pascal'}).status == falcon.HTTP_409
 
 
 @pytest.mark.parametrize('path', ['/', '/week', '/settings'])
@@ -74,10 +87,10 @@ def test_open_paths(app, cookies, path):
     assert app.simulate_get(path).status == falcon.HTTP_200
 
 
-@pytest.mark.parametrize('name', ['mario', 'MARIO', 'mario@example.com', 'Mario@Example.COM'])
+@pytest.mark.parametrize('name', ['rainer', 'RAINER', 'rainer.zufall@example.com', 'Rainer.Zufall@Example.COM'])
 def test_login_with_username_or_email(app, cookies, name):
     result = login(app, name)
-    assert (result.status, result.json['first_name']) == (falcon.HTTP_200, 'Mario')
+    assert (result.status, result.json['first_name']) == (falcon.HTTP_200, 'Rainer')
     assert app.simulate_get('/api/dashboard', cookies=session(result)).status == falcon.HTTP_200
 
 
@@ -86,7 +99,7 @@ def test_session_cookie(app, cookies):
     assert (cookie.http_only, cookie.same_site, cookie.path, cookie.max_age) == (True, 'Strict', '/', 86400)
 
 
-@pytest.mark.parametrize('name, password', [('mario', 'wrong password!'), ('luigi', 'correct horse battery')])
+@pytest.mark.parametrize('name, password', [('rainer', 'wrong password!'), ('pascal', 'correct horse battery')])
 def test_wrong_login(app, cookies, name, password):
     result = login(app, name, password)
     assert (result.status, result.json['description']) == (falcon.HTTP_401, 'Wrong username, e-mail address or password')
@@ -119,16 +132,16 @@ def test_logout(app, cookies):
 
 
 def test_profile(app, cookies):
-    profile = {'username': 'mario.s', 'email': 'mario@example.org', 'first_name': 'Mario', 'last_name': 'S.'}
+    profile = {'username': 'rainer.z', 'email': 'rainer.zufall@example.org', 'first_name': 'Rainer', 'last_name': 'Z.'}
     changed = app.simulate_put('/api/auth/me', cookies=cookies, json=profile)
-    assert (changed.status, changed.json['last_name']) == (falcon.HTTP_200, 'S.')
-    assert login(app, 'mario.s').status == falcon.HTTP_200
+    assert (changed.status, changed.json['last_name']) == (falcon.HTTP_200, 'Z.')
+    assert login(app, 'rainer.z').status == falcon.HTTP_200
 
 
 @pytest.mark.parametrize('body', [
-    {'username': 'm', 'email': 'mario@example.com', 'first_name': 'Mario'},
-    {'username': 'mario', 'email': 'mario', 'first_name': 'Mario'},
-    {'username': 'mario', 'email': 'mario@example.com', 'first_name': ''},
+    {'username': 'm', 'email': 'rainer.zufall@example.com', 'first_name': 'Rainer'},
+    {'username': 'rainer', 'email': 'rainer', 'first_name': 'Rainer'},
+    {'username': 'rainer', 'email': 'rainer.zufall@example.com', 'first_name': ''},
 ])
 def test_profile_rejects_invalid_values(app, cookies, body):
     assert app.simulate_put('/api/auth/me', cookies=cookies, json=body).status_code == 422
@@ -152,15 +165,15 @@ def test_password_change_errors(app, cookies, body, status):
     assert app.simulate_put('/api/auth/me/password', cookies=cookies, json=body).status_code == status
 
 
-def test_login_off_leaves_everything_open(database):
-    app = testing.TestClient(create_app(database, auth=False))
+def test_login_off_leaves_everything_open(unclaimed):
+    app = testing.TestClient(create_app(unclaimed, auth=False))
     assert app.simulate_get('/api/dashboard').status == falcon.HTTP_200
     assert app.simulate_get('/api/auth/status').json == {'enabled': False, 'has_users': False, 'user': None}
 
 
-def test_command_resets_a_forgotten_password(app, cookies, database):
+def test_command_resets_a_forgotten_password(app, cookies, unclaimed):
     answers = iter(['a new long password', 'a new long password'])
-    assert main(['set-password', 'mario@example.com', '--db', str(database.path)], lambda prompt: next(answers)) == 0
+    assert main(['set-password', 'rainer.zufall@example.com', '--db', str(unclaimed.path)], lambda prompt: next(answers)) == 0
     assert login(app, password='a new long password').status == falcon.HTTP_200
     assert app.simulate_get('/api/dashboard', cookies=cookies).status == falcon.HTTP_401
 
@@ -168,4 +181,4 @@ def test_command_resets_a_forgotten_password(app, cookies, database):
 @pytest.mark.parametrize('answers', [['short', 'short'], ['a new long password', 'another long password']])
 def test_command_refuses_short_or_different_passwords(database, answers):
     replies = iter(answers)
-    assert main(['set-password', 'mario', '--db', str(database.path)], lambda prompt: next(replies)) == 1
+    assert main(['set-password', 'rainer', '--db', str(database.path)], lambda prompt: next(replies)) == 1

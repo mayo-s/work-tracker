@@ -53,15 +53,15 @@ class Reconciliation:
         return result
 
 
-def reconcile(conn: sqlite3.Connection, rows: Sequence[SheetRow], today: dt.date) -> Reconciliation:
-    """Compare the imported days of the rows' year with the sheet, up to today (future days do not count yet)."""
-    settings = load_settings(conn)
+def reconcile(conn: sqlite3.Connection, user_id: int, rows: Sequence[SheetRow], today: dt.date) -> Reconciliation:
+    """Compare the user's imported days of the rows' year with the sheet, up to today (future days do not count yet)."""
+    settings = load_settings(conn, user_id)
     year = rows[0].date.year
     until = min(today, dt.date(year, 12, 31))
-    records = DayRepository(conn).records(settings.balance_start, dt.date(year, 12, 31))
-    schedules = ScheduleRepository(conn).schedules()
+    records = DayRepository(conn, user_id).records(settings.balance_start, dt.date(year, 12, 31))
+    schedules = ScheduleRepository(conn, user_id).schedules()
     compared = [row for row in rows if settings.balance_start <= row.date <= until]
-    accounts = pto_accounts(records, PtoYearRepository(conn).terms(), settings.balance_start, until, schedules)
+    accounts = pto_accounts(records, PtoYearRepository(conn, user_id).terms(), settings.balance_start, until, schedules)
     return Reconciliation(
         year=year,
         until=until,

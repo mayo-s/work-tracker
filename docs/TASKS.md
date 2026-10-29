@@ -122,7 +122,26 @@ and ends with passing tests and the flake8 check.
   pause for a minute. Pages forward to `/login?next=…`, the API answers 401; `/login`, static files, `/health` and the
   API docs stay open. The first user is created in the setup (new databases) or once on the next visit (existing ones);
   the settings page changes the profile and password; a command resets a forgotten password. `WORK_TRACKER_AUTH=off`
-  switches the login off for local development. Data stays shared by all users until L.8a is decided
-- [ ] **L.8a** Multi User App: What if not just one person wants to use the app but multiple? same db or one db by user?
+  switches the login off for local development
+- [ ] **L.8a** Multi-user app, run locally (a later AWS Lambda deployment stays possible; it is a task of its own):
+  several users with their own time tracking in one database, data per user. Ownership: days, entries, history, review
+  flags, settings (balance start, opening balance, theme), work schedules, PTO years, tickets with their service and
+  activity types belong to a user; services belong to a team (shared) or to a user without a team (starting empty);
+  users, teams and memberships are app-wide. Nobody sees someone else's days and entries, the admin neither (technical
+  support works on the database directly; team admins get a read-only view in L.10). Roles: admin, team admin, user. In
+  three steps:
+  - [x] **L.8a.1** Data per user: `user_id` (a random UUID) on every personal table; a migration gives all existing records to the only
+    user and makes that user admin (a database with data but no user: the first user created takes over everything
+    without an owner). Repositories, reports, review, dashboard, setup and the importer work per user (`--user` for the
+    importer); a new user starts with the four default activity types and goes through the setup for their own data
+  - [ ] **L.8a.2** Registration and roles: `/register` (the fields of the login), switched on or off by the admin in the
+    settings (off by default); an admin page lists the users (change role, deactivate)
+  - [ ] **L.8a.3** Teams: the admin creates teams and names team admins; a team is chosen at registration or later in
+    the settings, and stays pending until an admin or that team's admin approves it; then the team's services are
+    shared. Leaving a team removes them; tickets with such a service become "without service" (review)
 - [ ] **L.9** Narrow screens and zoom (WCAG 1.4.10 Reflow, 320 CSS px / 200 % zoom): wide tables scroll in their own
   container, the navigation wraps, form grids fall back to one column
+- [ ] **L.10** Team view for team admins (after L.8a.3, to be discussed): on the dashboard, a team admin switches to a
+  member of their team and sees that member's summary and reports, read-only. To decide: which reports (dashboard, week,
+  month with the coding work and its descriptions, year), whether members see who looked at their data, and whether
+  admins get the same view

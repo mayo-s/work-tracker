@@ -5,16 +5,17 @@ from src.models.catalog import Ticket
 from src.modules.storage.catalog import ServiceRepository
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.tickets import TicketRepository
+from src.tests.users import USER
 
 
 @pytest.fixture
 def tickets(conn):
-    return TicketRepository(conn)
+    return TicketRepository(conn, USER)
 
 
 @pytest.fixture
 def service_ids(conn):
-    return {service.short_name: service.id for service in ServiceRepository(conn).all()}
+    return {service.short_name: service.id for service in ServiceRepository(conn, USER).all()}
 
 
 def test_get_missing_ticket(tickets):
@@ -96,6 +97,8 @@ def test_entry_counts(conn, tickets):
     tickets.ensure('TNG-4138')
     for key in ('KP-1951', 'KP-1951', 'TNG-5214'):
         tickets.ensure(key)
-        conn.execute("INSERT INTO entries (date, kind, ticket_key, duration) VALUES ('2026-01-08', 'ticket', ?, 60)", (key,))
-    conn.execute("INSERT INTO entries (date, kind, duration) VALUES ('2026-01-08', 'ticket', 60)")
+        conn.execute("INSERT INTO entries (user_id, date, kind, ticket_key, duration)"
+                     " VALUES (?, '2026-01-08', 'ticket', ?, 60)",
+                     (USER, key))
+    conn.execute("INSERT INTO entries (user_id, date, kind, duration) VALUES (?, '2026-01-08', 'ticket', 60)", (USER,))
     assert tickets.entry_counts() == {'KP-1951': 2, 'TNG-5214': 1}

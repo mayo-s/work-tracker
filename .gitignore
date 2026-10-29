@@ -2,6 +2,6 @@
 /.idea/
 __pycache__/
 .pytest_cache/
-/work_tracker.db
+*.db
 node_modules/
 /src/templates/static/js/

@@ -9,6 +9,7 @@ from spectree import Response
 
 from src.modules.reports.schemas import MonthReport, Reports, WeekReport, YearReport
 from src.modules.storage.database import Database
+from src.modules.auth.sessions import current_user
 from src.utils.spec import spec
 
 TAGS = ['Reports']
@@ -30,7 +31,7 @@ class WeekReportResource(_Report):
         """Totals of a week (Monday to Sunday) and the overtime balance before and after it."""
         monday = _monday_of(week)
         with self._database.transaction() as conn:
-            resp.media = Reports(conn, self._today()).week(week, monday)
+            resp.media = Reports(conn, current_user(req), self._today()).week(week, monday)
 
 
 class MonthReportResource(_Report):
@@ -39,7 +40,7 @@ class MonthReportResource(_Report):
     def on_get(self, req: falcon.Request, resp: falcon.Response, month: dt.datetime) -> None:
         """Totals of a month and the monthly work report: coding work by service and ticket."""
         with self._database.transaction() as conn:
-            resp.media = Reports(conn, self._today()).month(month.year, month.month)
+            resp.media = Reports(conn, current_user(req), self._today()).month(month.year, month.month)
 
 
 class YearReportResource(_Report):
@@ -47,7 +48,7 @@ class YearReportResource(_Report):
     def on_get(self, req: falcon.Request, resp: falcon.Response, year: int) -> None:
         """Totals of a year, per month, and the PTO account (replaces the spreadsheet dashboard)."""
         with self._database.transaction() as conn:
-            resp.media = Reports(conn, self._today()).year(year)
+            resp.media = Reports(conn, current_user(req), self._today()).year(year)
 
 
 def _monday_of(week: str) -> dt.date:

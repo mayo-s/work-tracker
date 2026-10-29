@@ -4,15 +4,16 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.models.users import EMAIL_PATTERN, PASSWORD_MIN_LENGTH, USERNAME_PATTERN, User
+from src.models.users import EMAIL_PATTERN, PASSWORD_MIN_LENGTH, USERNAME_PATTERN, Role, User
 
 
 class UserView(BaseModel):
-    id: int
+    id: str = Field(description='Random UUID')
     username: str
     email: str
     first_name: str
     last_name: str
+    role: Role = Field(description='admin, team_admin or user')
 
     @classmethod
     def of(cls, user: User) -> Self:

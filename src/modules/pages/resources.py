@@ -1,11 +1,14 @@
 """Frontend pages: the shared frame (src/templates/frame.html) around a page's content (src/templates/pages)."""
 
+import sqlite3
 from pathlib import Path
 
 import falcon
 
 from src.modules.storage.database import Database
+from src.modules.storage.owners import NO_OWNER
 from src.modules.storage.settings import load_theme, setup_done
+from src.modules.storage.users import UserRepository
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / 'templates'
 STATIC_DIR = TEMPLATES_DIR / 'static'
@@ -54,11 +57,20 @@ class PageSettings:
     def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict) -> None:
         if not isinstance(resource, Page):
             return
+        user_id = req.context.get('user_id')
         with self._database.transaction() as conn:
-            done = setup_done(conn)
-            req.context.theme = load_theme(conn)
+            done = _set_up(conn, user_id)
+            req.context.theme = load_theme(conn, NO_OWNER if user_id is None else user_id)
         if done == (resource.name == 'setup'):
             raise falcon.HTTPSeeOther('/' if done else '/setup')
+
+
+def _set_up(conn: sqlite3.Connection, user_id: int | None) -> bool:
+    """The user's setup state; not logged in, only a database without users is set up first (the login handles the
+    rest)."""
+    if user_id is not None:
+        return setup_done(conn, user_id)
+    return bool(UserRepository(conn).count()) or setup_done(conn, NO_OWNER)
 
 
 class Redirect:

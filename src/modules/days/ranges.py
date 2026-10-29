@@ -72,10 +72,10 @@ class DayRangeResult(BaseModel):
 class _Plan:
     """The days of the range sorted into free work days, conflicts and days left out."""
 
-    def __init__(self, conn: sqlite3.Connection, data: DayRangeInput) -> None:
-        self.schedules: Schedules = ScheduleRepository(conn).schedules()
-        self.recorded = {day.date: day for day in DayRepository(conn).between(data.start, data.end)}
-        self.entries = Counter(entry.date for entry in EntryRepository(conn).between(data.start, data.end))
+    def __init__(self, conn: sqlite3.Connection, user_id: int, data: DayRangeInput) -> None:
+        self.schedules: Schedules = ScheduleRepository(conn, user_id).schedules()
+        self.recorded = {day.date: day for day in DayRepository(conn, user_id).between(data.start, data.end)}
+        self.entries = Counter(entry.date for entry in EntryRepository(conn, user_id).between(data.start, data.end))
         self.free: list[dt.date] = []
         self.conflicts: list[RecordedDay] = []
         self.left_out: list[LeftOutDay] = []
@@ -125,13 +125,13 @@ def _weekday(date: dt.date) -> str:
     return WEEKDAYS[date.weekday()]
 
 
-def book_range(conn: sqlite3.Connection, data: DayRangeInput) -> DayRangeResult:
+def book_range(conn: sqlite3.Connection, user_id: int, data: DayRangeInput) -> DayRangeResult:
     """Book the day type on the work days of the range, or only preview it; refused conflicts raise a ConflictError."""
-    plan = _Plan(conn, data)
+    plan = _Plan(conn, user_id, data)
     plan.check(data)
     booked = plan.booked(data.conflicts)
     if not data.preview:
-        _save(DayRepository(conn), plan, booked, data)
+        _save(DayRepository(conn, user_id), plan, booked, data)
     return DayRangeResult(saved=not data.preview, days=booked, conflicts=plan.conflicts, left_out=plan.left_out,
                           pto_days=plan.pto_days(booked, data.day_type))
 

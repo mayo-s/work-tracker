@@ -12,7 +12,7 @@ task entries. It consists of a REST API (Falcon) and a simple browser frontend.
 - Produce the **monthly work report**: coding work grouped by service.
 - Import the existing spreadsheet data (2024, 2025, 2026).
 
-Out of scope for now: export, multiple users, authentication, hosting.
+Out of scope for now: export, hosting.
 
 ## 2. Conventions
 
@@ -266,7 +266,17 @@ corners, one accent color. Warnings are the only loud element.
 - Every page and the API need a login (pages forward to `/login?next=…`, the API answers 401); `/login`, `/health`,
   the API docs and the static files stay open. A new database creates the first user in the setup, an existing one
   once on `/login`. A command on the computer running the app resets a forgotten password.
-- `WORK_TRACKER_AUTH=off` switches the login off for local development. All users share the data (TASKS.md L.8a).
+- `WORK_TRACKER_AUTH=off` switches the login off for local development; the app then works on the first user's data.
+
+### 5.7 Data per user
+
+- Each user has their own days, entries with their history, review flags, tickets with their service, services,
+  activity types, work schedules, PTO years and settings (balance start, opening balance, theme, setup done).
+  Nobody sees or changes another user's records, the admin neither; an unknown or foreign id answers 404, using
+  another user's service or activity type 409.
+- A user is identified by a random UUID. Roles: admin, team admin, user. The first user is admin and takes over all records of a database used without
+  users. A new user starts with the four default activity types and goes through the setup.
+- Registration, teams and shared team services follow in TASKS.md L.8a.2 and L.8a.3.
 
 ## 6. Import (spreadsheet CSV)
 
@@ -332,6 +342,8 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 ### 6.4 Safety and reconciliation
 
 - Re-importing a year that already holds data is refused unless replacing is requested explicitly.
+- The data goes to the only user (without users: to the first one created later); with several users the user is
+  named (`--user`, username or e-mail address).
 - The import prints a summary: days, entries, corrections, flagged items.
 - Every imported entry gets an `imported` history line with its original spreadsheet line.
 - **Reconciliation**: per year, the app's overtime is compared with the sheet's (`Sum` − 8:00 per calendar day); days

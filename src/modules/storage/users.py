@@ -4,21 +4,29 @@ import datetime as dt
 import hashlib
 import secrets
 import sqlite3
+import uuid
+from collections.abc import Callable
 
 from src.lib.passwords import hash_password, verify_password
 from src.models.users import User
 from src.modules.storage.errors import ConflictError, NotFoundError
+from src.modules.storage.owners import start_with_defaults, take_over_unowned
 
 SESSION_LIFETIME = dt.timedelta(hours=24)
 SESSION_RENEWAL = dt.timedelta(minutes=30)  # the stored expiry is renewed at most this often
 FAILED_LOGINS_ALLOWED = 5
 FAILED_LOGIN_PAUSE = dt.timedelta(minutes=1)
-_COLUMNS = 'id, username, email, first_name, last_name'
+_COLUMNS = 'id, username, email, first_name, last_name, role'
+
+
+def random_id() -> str:
+    return str(uuid.uuid4())
 
 
 class UserRepository:
-    def __init__(self, conn: sqlite3.Connection) -> None:
+    def __init__(self, conn: sqlite3.Connection, new_id: Callable[[], str] = random_id) -> None:
         self._conn = conn
+        self._new_id = new_id
 
     def count(self) -> int:
         return self._conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
@@ -30,15 +38,28 @@ class UserRepository:
         return User(**dict(row))
 
     def add(self, user: User, password: str) -> User:
-        sql = 'INSERT INTO users (username, email, first_name, last_name, password_hash) VALUES (?, ?, ?, ?, ?)'
-        cursor = self._write(sql, (*_profile(user), hash_password(password)))
-        return user.model_copy(update={'id': cursor.lastrowid})
+        """A new user with the default activity types and the setup still to do; the first user becomes admin and
+        takes over all records without an owner."""
+        first = self.count() == 0
+        added = user.model_copy(update={'id': self._new_id()} | ({'role': 'admin'} if first else {}))
+        sql = 'INSERT INTO users (id, username, email, first_name, last_name, role, password_hash)' \
+              ' VALUES (?, ?, ?, ?, ?, ?, ?)'
+        self._write(sql, (added.id, *_profile(added), added.role, hash_password(password)))
+        if first:
+            take_over_unowned(self._conn, added.id)
+        start_with_defaults(self._conn, added.id)
+        return added
+
+    def first_id(self) -> str | None:
+        """The first user, as whom the app acts when the login is off (the rowid keeps the order of creation)."""
+        row = self._conn.execute('SELECT id FROM users ORDER BY rowid LIMIT 1').fetchone()
+        return row[0] if row else None
 
     def update(self, user: User) -> User:
         sql = 'UPDATE users SET username = ?, email = ?, first_name = ?, last_name = ? WHERE id = ?'
         if not self._write(sql, (*_profile(user), user.id)).rowcount:
             raise NotFoundError(f'No user with id {user.id}')
-        return user
+        return self.get(user.id)  # the role stays as it is
 
     def by_login(self, login: str) -> User | None:
         """The user with this username or e-mail address (ignoring case)."""
@@ -75,7 +96,7 @@ class SessionRepository:
                            (_hash(token), user_id, (now + SESSION_LIFETIME).isoformat(), now.isoformat()))
         return token
 
-    def user_id(self, token: str, now: dt.datetime) -> tuple[int | None, bool]:
+    def user_id(self, token: str, now: dt.datetime) -> tuple[str | None, bool]:
         """The user of a valid session and whether it was renewed now (the cookie then gets renewed too)."""
         row = self._conn.execute('SELECT user_id, expires_at, renewed_at FROM sessions WHERE token_hash = ?',
                                  (_hash(token),)).fetchone()

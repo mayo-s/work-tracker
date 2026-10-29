@@ -15,6 +15,7 @@ from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
 from src.modules.storage.schedules import ScheduleRepository
 from src.utils.api import PeriodQuery
+from src.modules.auth.sessions import current_user
 from src.utils.spec import spec
 
 TAGS = ['Days']
@@ -30,10 +31,11 @@ class DayCollection:
         """Every calendar day of a week or date range, recorded or not."""
         start, end = query.period()
         with self._database.transaction() as conn:
-            days = DayRepository(conn)
+            user_id = current_user(req)
+            days = DayRepository(conn, user_id)
             recorded = {day.date: day for day in days.between(start, end)}
             flags = _flags_by_date(days.day_flags(), start, end)
-            schedules = ScheduleRepository(conn).schedules()
+            schedules = ScheduleRepository(conn, user_id).schedules()
         resp.media = [day_view(date, recorded.get(date), flags[date], schedules.on(date)) for date in each_day(start, end)]
 
 
@@ -45,20 +47,20 @@ class DayItem:
     def on_get(self, req: falcon.Request, resp: falcon.Response, date: dt.datetime) -> None:
         """One calendar day, recorded or not."""
         with self._database.transaction() as conn:
-            resp.media = _view(conn, date.date())
+            resp.media = _view(conn, current_user(req), date.date())
 
     @spec.validate(json=DayInput, resp=Response(HTTP_200=DayView), tags=TAGS, path_parameter_descriptions=DATE_PARAMETER)
     def on_put(self, req: falcon.Request, resp: falcon.Response, date: dt.datetime, json: DayInput) -> None:
         """Record a day (insert or replace)."""
         with self._database.transaction() as conn:
-            DayRepository(conn).save(json.to_day(date.date()))
-            resp.media = _view(conn, date.date())
+            DayRepository(conn, current_user(req)).save(json.to_day(date.date()))
+            resp.media = _view(conn, current_user(req), date.date())
 
     @spec.validate(resp=Response('HTTP_204', 'HTTP_404'), tags=TAGS, path_parameter_descriptions=DATE_PARAMETER)
     def on_delete(self, req: falcon.Request, resp: falcon.Response, date: dt.datetime) -> None:
         """Delete a recorded day and its review flags."""
         with self._database.transaction() as conn:
-            DayRepository(conn).delete(date.date())
+            DayRepository(conn, current_user(req)).delete(date.date())
         resp.status = falcon.HTTP_204
 
 
@@ -74,12 +76,12 @@ class DayRange:
         entries are refused (409), skipped or booked too, as `conflicts` says; all days are saved or none.
         """
         with self._database.transaction() as conn:
-            resp.media = book_range(conn, json)
+            resp.media = book_range(conn, current_user(req), json)
 
 
-def _view(conn: sqlite3.Connection, date: dt.date) -> DayView:
-    days = DayRepository(conn)
-    return day_view(date, days.get(date), days.flags_on(date), ScheduleRepository(conn).schedules().on(date))
+def _view(conn: sqlite3.Connection, user_id: int, date: dt.date) -> DayView:
+    days = DayRepository(conn, user_id)
+    return day_view(date, days.get(date), days.flags_on(date), ScheduleRepository(conn, user_id).schedules().on(date))
 
 
 def _flags_by_date(flags: list[ReviewFlag], start: dt.date, end: dt.date) -> defaultdict[dt.date, list[ReviewFlag]]:

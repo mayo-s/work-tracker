@@ -2,12 +2,13 @@ import falcon
 import pytest
 
 from src.modules.storage.catalog import ServiceRepository
+from src.tests.users import USER
 
 
 @pytest.fixture
 def service_ids(database):
     with database.transaction() as conn:
-        return {service.short_name: service.id for service in ServiceRepository(conn).all()}
+        return {service.short_name: service.id for service in ServiceRepository(conn, USER).all()}
 
 
 def add_entry(client, key, date='2026-03-02'):

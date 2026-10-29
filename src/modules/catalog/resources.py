@@ -9,6 +9,7 @@ from spectree import Response
 from src.models.catalog import ActivityType, Service
 from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository
 from src.modules.storage.database import Database
+from src.modules.auth.sessions import current_user
 from src.utils.spec import spec
 
 
@@ -41,13 +42,13 @@ def catalog_resources(repository: type, model: type[BaseModel], input_model: typ
         def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
             """All records of the list."""
             with self._database.transaction() as conn:
-                resp.media = repository(conn).all()
+                resp.media = repository(conn, current_user(req)).all()
 
         @spec.validate(json=input_model, resp=Response('HTTP_409', HTTP_201=model), tags=tags)
         def on_post(self, req: falcon.Request, resp: falcon.Response, json: input_model) -> None:
             """Add a record."""
             with self._database.transaction() as conn:
-                added = repository(conn).add(model(**json.model_dump()))
+                added = repository(conn, current_user(req)).add(model(**json.model_dump()))
             resp.status = falcon.HTTP_201
             resp.location = f'{req.path}/{added.id}'
             resp.media = added
@@ -60,20 +61,20 @@ def catalog_resources(repository: type, model: type[BaseModel], input_model: typ
         def on_get(self, req: falcon.Request, resp: falcon.Response, item_id: int) -> None:
             """One record."""
             with self._database.transaction() as conn:
-                resp.media = repository(conn).get(item_id)
+                resp.media = repository(conn, current_user(req)).get(item_id)
 
         @spec.validate(json=input_model, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=model), tags=tags,
                        path_parameter_descriptions=id_parameter)
         def on_put(self, req: falcon.Request, resp: falcon.Response, item_id: int, json: input_model) -> None:
             """Change a record."""
             with self._database.transaction() as conn:
-                resp.media = repository(conn).update(model(id=item_id, **json.model_dump()))
+                resp.media = repository(conn, current_user(req)).update(model(id=item_id, **json.model_dump()))
 
         @spec.validate(resp=Response('HTTP_204', 'HTTP_404', 'HTTP_409'), tags=tags, path_parameter_descriptions=id_parameter)
         def on_delete(self, req: falcon.Request, resp: falcon.Response, item_id: int) -> None:
             """Delete a record."""
             with self._database.transaction() as conn:
-                repository(conn).delete(item_id)
+                repository(conn, current_user(req)).delete(item_id)
             resp.status = falcon.HTTP_204
 
     return Collection, Item

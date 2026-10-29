@@ -13,7 +13,8 @@ SETUP = {
     'pto_per_year': 30,
     'pto_first_year': 25,
     'services': [{'short_name': 'AUTH', 'name': 'auth-service'}],
-    'user': {'username': 'mario', 'email': 'mario@example.com', 'first_name': 'Mario', 'password': 'correct horse battery'},
+    'user': {'username': 'pascal', 'email': 'turbo.pascal@example.com', 'first_name': 'Pascal', 'last_name': 'Turbo',
+             'password': 'correct horse battery'},
 }
 
 
@@ -100,7 +101,7 @@ def test_setup_creates_the_first_user_and_logs_in(fresh_database):
     result = client.simulate_post('/api/setup', json=SETUP)
     assert 'wt_session' in result.cookies
     status = client.simulate_get('/api/auth/status', cookies={'wt_session': result.cookies['wt_session'].value}).json
-    assert (status['has_users'], status['user']['username']) == (True, 'mario')
+    assert (status['has_users'], status['user']['username']) == (True, 'pascal')
 
 
 def test_setup_needs_the_first_user(new):
