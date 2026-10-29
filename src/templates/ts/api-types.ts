@@ -332,10 +332,116 @@ export interface paths {
         get: operations["get__api_setup"];
         put?: never;
         /**
-         * Set up a new database at once: start day, opening balance, work schedule, PTO years and services.
+         * Set up a new database at once: the first user, start day, opening balance, work schedule, PTO years and services; the new user is logged in.
          * @description The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once the database is set up: then the settings page changes everything.
          */
         post: operations["post__api_setup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the login is on, whether a user exists, and who is logged in. */
+        get: operations["get__api_auth_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Log in with username or e-mail address; sets the session cookie (valid 24 h since the last activity).
+         * @description After 5 failed logins within a minute, logins pause (429).
+         */
+        post: operations["post__api_auth_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Log out: ends the session and removes the cookie. */
+        post: operations["post__api_auth_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/first-user": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create the first user of a database that has none, and log in; refused (409) once a user exists. */
+        post: operations["post__api_auth_first-user"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The logged-in user. */
+        get: operations["get__api_auth_me"];
+        /** Change username, e-mail address and name of the logged-in user. */
+        put: operations["put__api_auth_me"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change the password: ends all sessions of the user and starts a new one for this browser. */
+        put: operations["put__api_auth_me_password"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -600,6 +706,101 @@ export interface components {
          * @description Model of a validation error response.
          */
         ValidationError: components["schemas"]["ValidationErrorElement"][];
+        /** AuthStatus */
+        AuthStatus: {
+            /**
+             * Enabled
+             * @description False when the login is switched off (WORK_TRACKER_AUTH=off)
+             */
+            enabled: boolean;
+            /**
+             * Has Users
+             * @description False until the first user is created
+             */
+            has_users: boolean;
+            /** @description The logged-in user */
+            user: components["schemas"]["UserView"] | null;
+        };
+        /** LoginInput */
+        LoginInput: {
+            /**
+             * Login
+             * @description Username or e-mail address
+             */
+            login: string;
+            /** Password */
+            password: string;
+        };
+        /** UserView */
+        UserView: {
+            /** Id */
+            id: number;
+            /** Username */
+            username: string;
+            /** Email */
+            email: string;
+            /** First Name */
+            first_name: string;
+            /** Last Name */
+            last_name: string;
+        };
+        /** NewUserInput */
+        NewUserInput: {
+            /**
+             * Username
+             * @description 3 to 30 letters, digits, dots, dashes or underscores
+             * @example mario
+             */
+            username: string;
+            /**
+             * Email
+             * @example mario@example.com
+             */
+            email: string;
+            /** First Name */
+            first_name: string;
+            /**
+             * Last Name
+             * @default
+             */
+            last_name?: string;
+            /**
+             * Password
+             * @description At least 12 characters
+             */
+            password: string;
+        };
+        /** ProfileInput */
+        ProfileInput: {
+            /**
+             * Username
+             * @description 3 to 30 letters, digits, dots, dashes or underscores
+             * @example mario
+             */
+            username: string;
+            /**
+             * Email
+             * @example mario@example.com
+             */
+            email: string;
+            /** First Name */
+            first_name: string;
+            /**
+             * Last Name
+             * @default
+             */
+            last_name?: string;
+        };
+        /** PasswordInput */
+        PasswordInput: {
+            /** Current Password */
+            current_password: string;
+            /**
+             * New Password
+             * @description At least 12 characters
+             */
+            new_password: string;
+        };
         /** ServiceList */
         ServiceList: components["schemas"]["Service"][];
         /** ServiceInput */
@@ -1287,6 +1488,11 @@ export interface components {
              * @default []
              */
             services?: components["schemas"]["ServiceInput"][];
+            /**
+             * @description The first user, who is logged in afterwards
+             * @default null
+             */
+            user?: components["schemas"]["NewUserInput"] | null;
         };
         /** SettingsView */
         SettingsView: {
@@ -2803,6 +3009,277 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_auth_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthStatus"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    post__api_auth_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    post__api_auth_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_auth_first-user": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewUserInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserView"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_auth_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    put__api_auth_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    put__api_auth_me_password: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordInput"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -13,6 +13,7 @@ SETUP = {
     'pto_per_year': 30,
     'pto_first_year': 25,
     'services': [{'short_name': 'AUTH', 'name': 'auth-service'}],
+    'user': {'username': 'mario', 'email': 'mario@example.com', 'first_name': 'Mario', 'password': 'correct horse battery'},
 }
 
 
@@ -92,3 +93,24 @@ def test_setup_rejects_invalid_input(new, changes):
 
 def test_setup_is_documented(client):
     assert set(client.simulate_get('/apidoc/openapi.json').json['paths']['/api/setup']) == {'get', 'post'}
+
+
+def test_setup_creates_the_first_user_and_logs_in(fresh_database):
+    client = testing.TestClient(create_app(fresh_database, auth=True))
+    result = client.simulate_post('/api/setup', json=SETUP)
+    assert 'wt_session' in result.cookies
+    status = client.simulate_get('/api/auth/status', cookies={'wt_session': result.cookies['wt_session'].value}).json
+    assert (status['has_users'], status['user']['username']) == (True, 'mario')
+
+
+def test_setup_needs_the_first_user(new):
+    body = {key: value for key, value in SETUP.items() if key != 'user'}
+    assert new.simulate_post('/api/setup', json=body).status == falcon.HTTP_409
+    assert new.simulate_get('/api/setup').json == {'done': False}
+
+
+def test_setup_keeps_an_existing_user(new):
+    new.simulate_post('/api/auth/first-user', json=SETUP['user'])
+    assert new.simulate_post('/api/setup', json=SETUP).status == falcon.HTTP_409
+    body = {key: value for key, value in SETUP.items() if key != 'user'}
+    assert new.simulate_post('/api/setup', json=body).status == falcon.HTTP_200

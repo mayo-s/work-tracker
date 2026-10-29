@@ -28,6 +28,9 @@
       "name": "Setup"
     },
     {
+      "name": "Login"
+    },
+    {
       "name": "Work schedules"
     },
     {
@@ -1338,7 +1341,7 @@
         }
       },
       "post": {
-        "summary": "Set up a new database at once: start day, opening balance, work schedule, PTO years and services.",
+        "summary": "Set up a new database at once: the first user, start day, opening balance, work schedule, PTO years and services; the new user is logged in.",
         "operationId": "post__api_setup",
         "description": "The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once the database is set up: then the settings page changes everything.",
         "tags": [
@@ -1375,6 +1378,285 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SetupInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/auth/status": {
+      "get": {
+        "summary": "Whether the login is on, whether a user exists, and who is logged in.",
+        "operationId": "get__api_auth_status",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Log in with username or e-mail address; sets the session cookie (valid 24 h since the last activity).",
+        "operationId": "post__api_auth_login",
+        "description": "After 5 failed logins within a minute, logins pause (429).",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Log out: ends the session and removes the cookie.",
+        "operationId": "post__api_auth_logout",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/first-user": {
+      "post": {
+        "summary": "Create the first user of a database that has none, and log in; refused (409) once a user exists.",
+        "operationId": "post__api_auth_first-user",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "409": {
+            "description": "Conflict"
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewUserInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "summary": "The logged-in user.",
+        "operationId": "get__api_auth_me",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Change username, e-mail address and name of the logged-in user.",
+        "operationId": "put__api_auth_me",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/auth/me/password": {
+      "put": {
+        "summary": "Change the password: ends all sessions of the user and starts a new one for this browser.",
+        "operationId": "put__api_auth_me_password",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordInput"
               }
             }
           },
@@ -2372,6 +2654,211 @@
         },
         "title": "ValidationErrorType",
         "type": "array"
+      },
+      "AuthStatus": {
+        "properties": {
+          "enabled": {
+            "description": "False when the login is switched off (WORK_TRACKER_AUTH=off)",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "has_users": {
+            "description": "False until the first user is created",
+            "title": "Has Users",
+            "type": "boolean"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserView"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The logged-in user"
+          }
+        },
+        "required": [
+          "enabled",
+          "has_users",
+          "user"
+        ],
+        "title": "AuthStatus",
+        "type": "object"
+      },
+      "LoginInput": {
+        "additionalProperties": false,
+        "properties": {
+          "login": {
+            "description": "Username or e-mail address",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Login",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "login",
+          "password"
+        ],
+        "title": "LoginInput",
+        "type": "object"
+      },
+      "UserView": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "email",
+          "first_name",
+          "last_name"
+        ],
+        "title": "UserView",
+        "type": "object"
+      },
+      "NewUserInput": {
+        "additionalProperties": false,
+        "properties": {
+          "username": {
+            "description": "3 to 30 letters, digits, dots, dashes or underscores",
+            "examples": [
+              "mario"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,29}$",
+            "title": "Username",
+            "type": "string"
+          },
+          "email": {
+            "examples": [
+              "mario@example.com"
+            ],
+            "maxLength": 200,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "default": "",
+            "maxLength": 50,
+            "title": "Last Name",
+            "type": "string"
+          },
+          "password": {
+            "description": "At least 12 characters",
+            "maxLength": 200,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "email",
+          "first_name",
+          "password"
+        ],
+        "title": "NewUserInput",
+        "type": "object"
+      },
+      "ProfileInput": {
+        "additionalProperties": false,
+        "properties": {
+          "username": {
+            "description": "3 to 30 letters, digits, dots, dashes or underscores",
+            "examples": [
+              "mario"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,29}$",
+            "title": "Username",
+            "type": "string"
+          },
+          "email": {
+            "examples": [
+              "mario@example.com"
+            ],
+            "maxLength": 200,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "default": "",
+            "maxLength": 50,
+            "title": "Last Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "email",
+          "first_name"
+        ],
+        "title": "ProfileInput",
+        "type": "object"
+      },
+      "PasswordInput": {
+        "additionalProperties": false,
+        "properties": {
+          "current_password": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "description": "At least 12 characters",
+            "maxLength": 200,
+            "minLength": 12,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "PasswordInput",
+        "type": "object"
       },
       "ServiceList": {
         "items": {
@@ -3775,6 +4262,18 @@
             },
             "title": "Services",
             "type": "array"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewUserInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The first user, who is logged in afterwards"
           }
         },
         "required": [

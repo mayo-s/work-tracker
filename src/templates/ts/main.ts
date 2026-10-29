@@ -24,6 +24,7 @@ const PAGES: Record<string, () => Promise<void>> = {
   review: async () => (await import('./review.ts')).renderReviewPage(document),
   settings: async () => (await import('./settings.ts')).renderSettingsPage(document),
   setup: async () => (await import('./setup.ts')).renderSetupPage(document),
+  login: async () => (await import('./account.ts')).renderLoginPage(document),
 };
 
 /** Shows the number of open review items next to the Review link, as a warning badge. */
@@ -40,13 +41,30 @@ async function showReviewCount(nav: Element): Promise<void> {
   }
 }
 
-const nav = document.querySelector('.app-nav');
-if (nav) {
-  markCurrentPage(nav, window.location.pathname);
-  showReviewCount(nav).catch(() => undefined);  // the count is a hint; pages work without it
+/** The logged-in user's first name and "Log out" in the header (nothing when the login is off). */
+async function showUser(header: Element): Promise<void> {
+  const { api } = await import('./api.ts');
+  const status = await api.authStatus();
+  if (!status.enabled || !status.user) {
+    return;
+  }
+  const logout = Object.assign(document.createElement('button'), { type: 'button', className: 'button-small',
+    textContent: 'Log out' });
+  logout.addEventListener('click', () => void api.logout().then(() => window.location.assign('/login')));
+  const user = Object.assign(document.createElement('div'), { className: 'app-user' });
+  const name = Object.assign(document.createElement('span'), { className: 'muted', textContent: status.user.first_name });
+  user.append(name, logout);
+  header.append(user);
 }
 
 const page = document.querySelector<HTMLElement>('#app')?.dataset.page;
+const nav = document.querySelector('.app-nav');
+if (nav && page !== 'login' && page !== 'setup') {
+  markCurrentPage(nav, window.location.pathname);
+  showReviewCount(nav).catch(() => undefined);  // the count is a hint; pages work without it
+  showUser(document.querySelector('.app-header')!).catch(() => undefined);
+}
+
 if (page && page in PAGES) {
   await PAGES[page]?.();
 }

@@ -128,4 +128,26 @@ MIGRATIONS = (
     DELETE FROM pto_years WHERE (SELECT value FROM settings WHERE key = 'setup_done') = '0';
     DELETE FROM services WHERE (SELECT value FROM settings WHERE key = 'setup_done') = '0';
     """,
+    # 7: users who log in, their sessions (only a hash of the token) and failed logins (to pause guessing)
+    """
+    CREATE TABLE users (
+        id            INTEGER PRIMARY KEY,
+        username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        first_name    TEXT NOT NULL,
+        last_name     TEXT NOT NULL DEFAULT '',
+        password_hash TEXT NOT NULL
+    );
+
+    CREATE TABLE sessions (
+        token_hash TEXT    PRIMARY KEY,  -- SHA-256 of the cookie's token
+        user_id    INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        expires_at TEXT    NOT NULL,
+        renewed_at TEXT    NOT NULL
+    );
+
+    CREATE TABLE failed_logins (
+        at TEXT NOT NULL
+    );
+    """,
 )

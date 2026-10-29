@@ -1328,3 +1328,35 @@ button.button-danger {
   color: var(--color-accent);
   cursor: pointer;
 }
+
+/* Login (/login) and the user in the header */
+
+.app-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+body:has(main[data-page='login']) .app-nav,
+body:has(main[data-page='setup']) .app-nav {
+  display: none;
+}
+
+.login {
+  max-width: 28rem;
+  margin: var(--space-6) auto;
+}
+
+.login-form .field {
+  margin-bottom: var(--space-4);
+}
+
+.login-hint {
+  margin: var(--space-4) 0 0;
+  font-size: var(--font-size-small);
+}
+
+.account-heading {
+  margin: var(--space-6) 0 var(--space-3);
+}

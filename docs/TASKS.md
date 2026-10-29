@@ -114,7 +114,15 @@ and ends with passing tests and the flake8 check.
   next 60 days (public holidays, company half days and planned days off, days in a row combined), and this year's
   figures (days worked and average, sick days, overtime-off days, coding hours, top services). Data from
   `GET /api/dashboard` in one transaction
-- [ ] **L.8** User Login: i would like to secure the app behind a login page. Valid login expires after 24 hours.
+- [x] **L.8** Login: a user has a username and an e-mail address (both unique, ignoring case), a first name, an optional
+  last name and a password (at least 12 characters, stored as a salted scrypt hash). Login with username or e-mail
+  address; the session is a random token in an `HttpOnly`, `SameSite=Strict` cookie (`Secure` over HTTPS), stored hashed
+  in a table, valid for 24 h since the last activity (each request extends it to 24 h from now; the stored expiry is
+  renewed at most every 30 minutes); log out ends it, a password change ends all sessions; after 5 wrong attempts logins
+  pause for a minute. Pages forward to `/login?next=…`, the API answers 401; `/login`, static files, `/health` and the
+  API docs stay open. The first user is created in the setup (new databases) or once on the next visit (existing ones);
+  the settings page changes the profile and password; a command resets a forgotten password. `WORK_TRACKER_AUTH=off`
+  switches the login off for local development. Data stays shared by all users until L.8a is decided
 - [ ] **L.8a** Multi User App: What if not just one person wants to use the app but multiple? same db or one db by user?
 - [ ] **L.9** Narrow screens and zoom (WCAG 1.4.10 Reflow, 320 CSS px / 200 % zoom): wide tables scroll in their own
   container, the navigation wraps, form grids fall back to one column

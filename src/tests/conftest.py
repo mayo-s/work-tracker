@@ -17,6 +17,12 @@ ORIGINAL_SETUP = """
 """
 
 
+@pytest.fixture(autouse=True)
+def login_off(monkeypatch):
+    """Most tests are about other things: the login is off unless a test switches it on (create_app(auth=True))."""
+    monkeypatch.setenv('WORK_TRACKER_AUTH', 'off')
+
+
 @pytest.fixture
 def fresh_database(tmp_path):
     """A new migrated database, not set up yet."""

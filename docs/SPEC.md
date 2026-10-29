@@ -256,6 +256,18 @@ corners, one accent color. Warnings are the only loud element.
   forms, and focus returns to the button that opened them; "Skip to content" is the first link on each page.
   Narrow screens and zoom follow in TASKS.md L.9.
 
+### 5.6 Login
+
+- A user has a username and an e-mail address (both unique, ignoring case), a first name, an optional last name and a
+  password (at least 12 characters, stored as a salted scrypt hash). Log in with the username or the e-mail address.
+- A login is a session: a random token in an `HttpOnly`, `SameSite=Strict` cookie (`Secure` over HTTPS), stored only as
+  a hash. It stays valid for 24 hours since the last activity (renewed at most every 30 minutes); "Log out" ends it,
+  a new password ends all other sessions. After 5 failed logins within a minute, logins pause for a minute.
+- Every page and the API need a login (pages forward to `/login?next=…`, the API answers 401); `/login`, `/health`,
+  the API docs and the static files stay open. A new database creates the first user in the setup, an existing one
+  once on `/login`. A command on the computer running the app resets a forgotten password.
+- `WORK_TRACKER_AUTH=off` switches the login off for local development. All users share the data (TASKS.md L.8a).
+
 ## 6. Import (spreadsheet CSV)
 
 Run locally as a command, one CSV per year (e.g. `Time_tracking_DK - 2026_Data.csv`).
