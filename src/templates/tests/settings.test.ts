@@ -23,8 +23,10 @@ test('work days in short form', () => {
   assert.equal(formatWorkDays('Sat,Sun'), 'Sat, Sun');
 });
 
-test('schedule input with work days as a list', () => {
-  assert.deepEqual(scheduleInput({ valid_from: '2027-03-01', weekly_hours: '32:00', work_days: 'Mon,Tue,Wed,Thu' }),
-    { valid_from: '2027-03-01', weekly_hours: '32:00', work_days: ['Mon', 'Tue', 'Wed', 'Thu'] });
+test('schedule input with work days as a list and the holiday rules', () => {
+  const values = { valid_from: '2027-03-01', weekly_hours: '32:00', work_days: 'Mon,Tue,Wed,Thu', state: 'BY',
+    company_half_days: 'false' };
+  assert.deepEqual(scheduleInput(values), { valid_from: '2027-03-01', weekly_hours: '32:00',
+    work_days: ['Mon', 'Tue', 'Wed', 'Thu'], state: 'BY', company_half_days: false });
   assert.deepEqual(scheduleInput({ valid_from: '2027-03-01', weekly_hours: '32:00', work_days: '' }).work_days, []);
 });

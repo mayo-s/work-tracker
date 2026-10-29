@@ -41,8 +41,9 @@ start; it comes with the settings, PTO years and services of the original setup,
 2. On `/settings`, set the start date of the overtime balance, and an opening balance (e.g. `12:30` or `-1:45`) if
    overtime is taken over; otherwise `0:00`.
 
-   Below it, check the work schedule: hours per week and work days (initially 40 h, Monday to Friday); add a new
-   one from the day the hours change.
+   Below it, check the work schedule: hours per week, work days, the federal state for public holidays and whether
+   24.12. / 31.12. are company half days (initially 40 h, Monday to Friday, Berlin, with half days); add a new one
+   from the day the hours, the employer or the state change.
 
 3. On the same page, enter the PTO days per year, pro rata in the first one (March–December of 30 days: 25), and
    delete the years of the original setup that do not apply. A year without entry has no PTO account; the
@@ -52,7 +53,7 @@ start; it comes with the settings, PTO years and services of the original setup,
 
 5. Record every day in the week view (`/`): times, day type (PTO, sick, …) and entries. From the start day on,
    each work day counts its full target as missing until its times are entered (today included); days off of the
-   schedule and Berlin public holidays need nothing. The Berlin holidays are fixed for now (task L.1c).
+   schedule and public holidays need nothing.
 
 ## Import the spreadsheet
 
@@ -133,39 +134,39 @@ JSON over HTTP; dates in ISO format (`2026-10-28`), clock times as `HH:MM`, dura
 Invalid input gives 422, unknown records 404, conflicts 409.
 Reports count worked time, target and overtime up to today (today included); planned days off count too.
 
-| Endpoint                                             | Method           | Description                                                                                                                         |
-|------------------------------------------------------|------------------|-------------------------------------------------------------------------------------------------------------------------------------|
-| `/health`                                            | GET              | Status in plain text (Maintenance)                                                                                                  |
-| `/apidoc/openapi.json`                               | GET              | OpenAPI specification (Maintenance)                                                                                                 |
-| `/apidoc/swagger`, `/apidoc/redoc`, `/apidoc/scalar` | GET              | API documentation pages (Maintenance)                                                                                               |
-| `/api/days`                                          | GET              | Every calendar day of `?week=2026-W44` or `?start=…&end=…` (max. 366 days): day type, times, worked, target, overtime, flags        |
-| `/api/days/{date}`                                   | GET              | One calendar day, recorded or not                                                                                                   |
-| `/api/days/{date}`                                   | PUT              | Record a day: `day_type`, `start`, `end`, `break_time` (empty: legal minimum), `note`                                               |
-| `/api/days/{date}`                                   | DELETE           | Delete a recorded day and its review flags                                                                                          |
-| `/api/entries`                                       | GET              | Entries of `?week=…` or `?start=…&end=…`, with service, activity type, flags and `changed` marker                                   |
-| `/api/entries`                                       | POST             | Create a ticket entry (`ticket_key`, `description`, `coding`, optional `service_id`) or activity entry (`activity_type_id`, `note`) |
-| `/api/entries/{id}`                                  | GET              | One entry                                                                                                                           |
-| `/api/entries/{id}`                                  | PUT              | Change an entry (same kind); a given `service_id` applies to all entries of the ticket                                              |
-| `/api/entries/{id}`                                  | DELETE           | Delete an entry and its flags; the history is kept                                                                                  |
-| `/api/entries/{id}/history`                          | GET              | Change history of an entry (also after deletion)                                                                                    |
-| `/api/entries/{id}/split`                            | POST             | Divide a ticket entry among several tickets (`ticket_keys`), hours split evenly; recorded in the history                            |
-| `/api/tickets`                                       | GET              | All tickets with service and number of entries; `?without_service=true` for review                                                  |
-| `/api/tickets/{key}`                                 | GET              | A known ticket with its remembered service (pre-fill)                                                                               |
-| `/api/tickets/{key}`                                 | PUT              | Set or unassign the service (`service_id`); applies to all entries of the ticket                                                    |
-| `/api/tickets/assign-service`                        | POST             | One service for several tickets: `keys`, `service_id` (all or nothing)                                                              |
-| `/api/tickets/{key}/rename`                          | POST             | Rename to `new_key`, or merge into an existing ticket (keeps its service); recorded in the history                                  |
-| `/api/reports/weeks/{week}`                          | GET              | Week (`2026-W44`): worked, target, overtime up to today, balance before and after, days off                                         |
-| `/api/reports/months/{month}`                        | GET              | Month (`2026-10`): totals, days off, PTO days and the work report: coding hours by service and ticket                               |
-| `/api/reports/years/{year}`                          | GET              | Year: totals, per month, days worked and average, days off, PTO account                                                             |
-| `/api/settings`                                      | GET, PUT         | Start date and opening balance (`balance_start`, `opening_balance` as signed h:mm, e.g. `-1:45`)                                    |
-| `/api/work-schedules`                                | GET, POST        | Work schedules (`valid_from`, `weekly_hours` as h:mm, `work_days` as `Mon`…`Sun`) with their `daily_target`                         |
-| `/api/work-schedules/{id}`                           | GET, PUT, DELETE | Read, change or delete a work schedule (the only one cannot be deleted)                                                             |
-| `/api/pto-years`                                     | GET              | PTO days per year: `allowance`, `extra_days`, `carried_over` (empty: remainder of the year before), `note`                          |
-| `/api/pto-years/{year}`                              | GET, PUT, DELETE | Read, enter (insert or replace) or delete the PTO days of a year; a year without entry has no PTO account                           |
-| `/api/review`                                        | GET              | What needs attention: tickets without service, entries with 0:00 / without ticket / import flag, flagged days                       |
-| `/api/review/flags/{id}`                             | DELETE           | Clear a review flag of an entry or a day                                                                                            |
-| `/api/services`, `/api/activity-types`               | GET, POST        | List and add (names unique)                                                                                                         |
-| `/api/services/{id}`, `/api/activity-types/{id}`     | GET, PUT, DELETE | Read, change, delete (activity types in use cannot be deleted; deleting a service unassigns its tickets)                            |
+| Endpoint                                             | Method           | Description                                                                                                                                         |
+|------------------------------------------------------|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `/health`                                            | GET              | Status in plain text (Maintenance)                                                                                                                  |
+| `/apidoc/openapi.json`                               | GET              | OpenAPI specification (Maintenance)                                                                                                                 |
+| `/apidoc/swagger`, `/apidoc/redoc`, `/apidoc/scalar` | GET              | API documentation pages (Maintenance)                                                                                                               |
+| `/api/days`                                          | GET              | Every calendar day of `?week=2026-W44` or `?start=…&end=…` (max. 366 days): day type, times, worked, target, overtime, flags                        |
+| `/api/days/{date}`                                   | GET              | One calendar day, recorded or not                                                                                                                   |
+| `/api/days/{date}`                                   | PUT              | Record a day: `day_type`, `start`, `end`, `break_time` (empty: legal minimum), `note`                                                               |
+| `/api/days/{date}`                                   | DELETE           | Delete a recorded day and its review flags                                                                                                          |
+| `/api/entries`                                       | GET              | Entries of `?week=…` or `?start=…&end=…`, with service, activity type, flags and `changed` marker                                                   |
+| `/api/entries`                                       | POST             | Create a ticket entry (`ticket_key`, `description`, `coding`, optional `service_id`) or activity entry (`activity_type_id`, `note`)                 |
+| `/api/entries/{id}`                                  | GET              | One entry                                                                                                                                           |
+| `/api/entries/{id}`                                  | PUT              | Change an entry (same kind); a given `service_id` applies to all entries of the ticket                                                              |
+| `/api/entries/{id}`                                  | DELETE           | Delete an entry and its flags; the history is kept                                                                                                  |
+| `/api/entries/{id}/history`                          | GET              | Change history of an entry (also after deletion)                                                                                                    |
+| `/api/entries/{id}/split`                            | POST             | Divide a ticket entry among several tickets (`ticket_keys`), hours split evenly; recorded in the history                                            |
+| `/api/tickets`                                       | GET              | All tickets with service and number of entries; `?without_service=true` for review                                                                  |
+| `/api/tickets/{key}`                                 | GET              | A known ticket with its remembered service (pre-fill)                                                                                               |
+| `/api/tickets/{key}`                                 | PUT              | Set or unassign the service (`service_id`); applies to all entries of the ticket                                                                    |
+| `/api/tickets/assign-service`                        | POST             | One service for several tickets: `keys`, `service_id` (all or nothing)                                                                              |
+| `/api/tickets/{key}/rename`                          | POST             | Rename to `new_key`, or merge into an existing ticket (keeps its service); recorded in the history                                                  |
+| `/api/reports/weeks/{week}`                          | GET              | Week (`2026-W44`): worked, target, overtime up to today, balance before and after, days off                                                         |
+| `/api/reports/months/{month}`                        | GET              | Month (`2026-10`): totals, days off, PTO days and the work report: coding hours by service and ticket                                               |
+| `/api/reports/years/{year}`                          | GET              | Year: totals, per month, days worked and average, days off, PTO account                                                                             |
+| `/api/settings`                                      | GET, PUT         | Start date and opening balance (`balance_start`, `opening_balance` as signed h:mm, e.g. `-1:45`)                                                    |
+| `/api/work-schedules`                                | GET, POST        | Work schedules (`valid_from`, `weekly_hours` as h:mm, `work_days` as `Mon`…`Sun`, `state` e.g. `BE`, `company_half_days`) with their `daily_target` |
+| `/api/work-schedules/{id}`                           | GET, PUT, DELETE | Read, change or delete a work schedule (the only one cannot be deleted)                                                                             |
+| `/api/pto-years`                                     | GET              | PTO days per year: `allowance`, `extra_days`, `carried_over` (empty: remainder of the year before), `note`                                          |
+| `/api/pto-years/{year}`                              | GET, PUT, DELETE | Read, enter (insert or replace) or delete the PTO days of a year; a year without entry has no PTO account                                           |
+| `/api/review`                                        | GET              | What needs attention: tickets without service, entries with 0:00 / without ticket / import flag, flagged days                                       |
+| `/api/review/flags/{id}`                             | DELETE           | Clear a review flag of an entry or a day                                                                                                            |
+| `/api/services`, `/api/activity-types`               | GET, POST        | List and add (names unique)                                                                                                                         |
+| `/api/services/{id}`, `/api/activity-types/{id}`     | GET, PUT, DELETE | Read, change, delete (activity types in use cannot be deleted; deleting a service unassigns its tickets)                                            |
 
 ## Calculation rules (`src/lib`)
 
@@ -175,10 +176,10 @@ All times and durations are whole minutes.
 |-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `durations`       | Parse and format clock times (`HH:MM`), durations (`h:mm`, signed `-1:45` for balances) and decimal-comma hours (`1,5`); split durations evenly in quarter hours                                                                               |
 | `worktime`        | Worked time = end − start − break; without a break, the legal minimum applies (German ArbZG §4: 0:30 beyond 6 h, 0:45 beyond 9 h)                                                                                                              |
-| `public_holidays` | Berlin public holidays (via `holidays`), plus Heiligabend and Silvester as company half days                                                                                                                                                   |
+| `public_holidays` | Public holidays of a German federal state (via `holidays`), plus Heiligabend and Silvester as company half days if they apply                                                                                                                  |
 | `daytypes`        | Day types (see below) with their share of the daily target and PTO used; days off of the schedule have no target. Overtime = worked − target                                                                                                   |
 | `balances`        | Overtime balance over every calendar day up to a cut-off date (a weekday without record counts as −8:00); PTO per year from its terms (allowance + extra days; carry-over fixed or the remainder of the year before): used, planned, remaining |
-| `schedules`       | Work schedules: hours per week split evenly over the work days into the daily target; each valid from a date until the next one starts                                                                                                         |
+| `schedules`       | Work schedules: hours per week split evenly over the work days into the daily target, and the holiday rules; each valid from a date until the next one starts                                                                                  |
 | `dates`           | Date range helper                                                                                                                                                                                                                              |
 
 ### Day types
@@ -186,17 +187,17 @@ All times and durations are whole minutes.
 Targets and PTO apply on the work days of the work schedule (e.g. Mon–Fri) and follow its daily target (e.g. 8:00);
 on other days every type has target 0:00 and uses no PTO.
 
-| Type               | Description                                              | Target | PTO |
-|--------------------|----------------------------------------------------------|--------|-----|
-| `work`             | Regular work day (default)                               | full   | 0   |
-| `pto`              | Paid time off, full day                                  | 0:00   | 1   |
-| `pto_half`         | Paid time off, half day                                  | half   | 0.5 |
-| `sick`             | Off sick, full day                                       | 0:00   | 0   |
-| `sick_half`        | Off sick, half day                                       | half   | 0   |
-| `overtime_off`     | Day off taken from the overtime balance                  | full   | 0   |
-| `unpaid_leave`     | Unpaid day off                                           | 0:00   | 0   |
-| `public_holiday`   | Berlin public holiday (automatic)                        | 0:00   | 0   |
-| `company_half_day` | Heiligabend / Silvester: half PTO, half free (automatic) | 0:00   | 0.5 |
+| Type               | Description                                                      | Target | PTO |
+|--------------------|------------------------------------------------------------------|--------|-----|
+| `work`             | Regular work day (default)                                       | full   | 0   |
+| `pto`              | Paid time off, full day                                          | 0:00   | 1   |
+| `pto_half`         | Paid time off, half day                                          | half   | 0.5 |
+| `sick`             | Off sick, full day                                               | 0:00   | 0   |
+| `sick_half`        | Off sick, half day                                               | half   | 0   |
+| `overtime_off`     | Day off taken from the overtime balance                          | full   | 0   |
+| `unpaid_leave`     | Unpaid day off                                                   | 0:00   | 0   |
+| `public_holiday`   | Public holiday of the schedule's state (automatic)               | 0:00   | 0   |
+| `company_half_day` | Heiligabend / Silvester: half PTO, half free (automatic, if set) | 0:00   | 0.5 |
 
 ## Domain models (`src/models`)
 
@@ -209,7 +210,7 @@ Pydantic models; times in minutes, validated on creation and assignment.
 | `catalog`   | `Service`, `ActivityType` and `Ticket` (key like `ENGINE-461`, remembers its service)                                                          |
 | `history`   | `EntryChange`: one line of an entry's history (created, imported, updated, renamed, merged, split, deleted) with the changed fields, old → new |
 | `review`    | `ReviewFlag`: import flag on an entry or a day (uncertain ticket, weekend hours)                                                               |
-| `schedules` | `Schedule`: valid from, minutes per week, work days (ISO weekdays)                                                                             |
+| `schedules` | `Schedule`: valid from, minutes per week, work days (ISO weekdays), federal state, company half days                                           |
 | `pto`       | `PtoYear`: allowance, extra days, fixed carry-over (empty = remainder of the year before), note                                                |
 | `settings`  | `Settings`: balance start date, opening balance                                                                                                |
 
@@ -218,19 +219,19 @@ Pydantic models; times in minutes, validated on creation and assignment.
 SQLite, one connection per transaction (commit on success, rollback on error), foreign keys enforced.
 Repositories work within the transaction of the connection they are given.
 
-| Module       | Contents                                                                                                                                                                                                                                                                                                                                 |
-|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `database`   | `Database(path)`: transactions and schema migration (`migrate()`, tracked in `PRAGMA user_version`)                                                                                                                                                                                                                                      |
-| `migrations` | Schema scripts, applied once in order; the first one seeds settings, services and activity types, the second the PTO allowances 2024–2027, the third moves them into `pto_years`, the fourth adds `work_schedules` (40 h, Mon–Fri from the balance start). Entries keep a change history that outlives them (entry ids are never reused) |
-| `settings`   | Load and save user settings                                                                                                                                                                                                                                                                                                              |
-| `schedules`  | `ScheduleRepository`: list, get, add, update and delete work schedules (the only one cannot be deleted); all schedules for the calculations                                                                                                                                                                                              |
-| `pto_years`  | `PtoYearRepository`: list, get, save (insert or replace) and delete the PTO days of a year; terms for the PTO accounts                                                                                                                                                                                                                   |
-| `days`       | `DayRepository`: get, list, save (insert or replace) and delete days; records for balances; review flags on days                                                                                                                                                                                                                         |
-| `catalog`    | `ServiceRepository`, `ActivityTypeRepository`: list, get, add, update, delete (deleting a service unassigns its tickets; an activity type in use cannot be deleted)                                                                                                                                                                      |
-| `tickets`    | `TicketRepository`: get, list (sorted by prefix and number), create on first use; set a service on one or several tickets; tickets without service                                                                                                                                                                                       |
-| `entries`    | `EntryRepository`: get, list, create, update and delete entries, each change written to the entry's history (kept after deletion); review flags on entries                                                                                                                                                                               |
-| `renames`    | `rename_ticket`: move all entries to a new key (history line per entry); renaming to an existing ticket merges both, the existing ticket keeps its service                                                                                                                                                                               |
-| `errors`     | `NotFoundError` for records that do not exist, `ConflictError` for duplicates and records still in use                                                                                                                                                                                                                                   |
+| Module       | Contents                                                                                                                                                                                                                                                                                                                                                                                            |
+|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `database`   | `Database(path)`: transactions and schema migration (`migrate()`, tracked in `PRAGMA user_version`)                                                                                                                                                                                                                                                                                                 |
+| `migrations` | Schema scripts, applied once in order; the first one seeds settings, services and activity types, the second the PTO allowances 2024–2027, the third moves them into `pto_years`, the fourth adds `work_schedules` (40 h, Mon–Fri from the balance start), the fifth their holiday rules (Berlin, company half days). Entries keep a change history that outlives them (entry ids are never reused) |
+| `settings`   | Load and save user settings                                                                                                                                                                                                                                                                                                                                                                         |
+| `schedules`  | `ScheduleRepository`: list, get, add, update and delete work schedules (the only one cannot be deleted); all schedules for the calculations                                                                                                                                                                                                                                                         |
+| `pto_years`  | `PtoYearRepository`: list, get, save (insert or replace) and delete the PTO days of a year; terms for the PTO accounts                                                                                                                                                                                                                                                                              |
+| `days`       | `DayRepository`: get, list, save (insert or replace) and delete days; records for balances; review flags on days                                                                                                                                                                                                                                                                                    |
+| `catalog`    | `ServiceRepository`, `ActivityTypeRepository`: list, get, add, update, delete (deleting a service unassigns its tickets; an activity type in use cannot be deleted)                                                                                                                                                                                                                                 |
+| `tickets`    | `TicketRepository`: get, list (sorted by prefix and number), create on first use; set a service on one or several tickets; tickets without service                                                                                                                                                                                                                                                  |
+| `entries`    | `EntryRepository`: get, list, create, update and delete entries, each change written to the entry's history (kept after deletion); review flags on entries                                                                                                                                                                                                                                          |
+| `renames`    | `rename_ticket`: move all entries to a new key (history line per entry); renaming to an existing ticket merges both, the existing ticket keeps its service                                                                                                                                                                                                                                          |
+| `errors`     | `NotFoundError` for records that do not exist, `ConflictError` for duplicates and records still in use                                                                                                                                                                                                                                                                                              |
 
 ### Database schema
 
@@ -256,6 +257,8 @@ erDiagram
         TEXT valid_from UK
         INTEGER weekly_minutes
         TEXT work_days "ISO weekdays, e.g. 1,2,3,4,5"
+        TEXT state "federal state, e.g. BE"
+        INTEGER company_half_days "0 or 1"
     }
     pto_years {
         INTEGER year PK

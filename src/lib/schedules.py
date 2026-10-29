@@ -1,9 +1,11 @@
-"""Work schedules: hours per week on chosen work days, each valid from a date until the next one starts."""
+"""Work schedules: hours per week on chosen work days and the holiday rules, each valid until the next one starts."""
 
 import bisect
 import datetime as dt
 from collections.abc import Iterable
 from dataclasses import dataclass
+
+from src.lib.public_holidays import BERLIN, HolidayRules
 
 MINUTES_PER_WEEK = 7 * 24 * 60
 WEEKDAYS = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
@@ -14,6 +16,7 @@ class WorkSchedule:
     valid_from: dt.date
     weekly_minutes: int
     work_days: frozenset[int]  # ISO weekdays: Monday = 1 … Sunday = 7
+    holidays: HolidayRules = BERLIN
 
     def __post_init__(self) -> None:
         if not 0 <= self.weekly_minutes <= MINUTES_PER_WEEK:

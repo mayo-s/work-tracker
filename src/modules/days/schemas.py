@@ -77,7 +77,7 @@ class DayView(BaseModel):
 def day_view(date: dt.date, day: Day | None, flags: list[ReviewFlag], schedule: WorkSchedule = STANDARD) -> DayView:
     record = day or Day(date=date)
     summary = summarize_day(date, record.worked, record.day_type, schedule)
-    holiday = holiday_on(date)
+    holiday = holiday_on(date, schedule.holidays)
     return DayView(
         date=date,
         weekday=_WEEKDAYS[date.weekday()],

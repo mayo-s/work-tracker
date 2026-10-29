@@ -6,7 +6,7 @@ from src.lib.schedules import Schedules
 from src.models.schedules import Schedule
 from src.modules.storage.errors import ConflictError, NotFoundError
 
-_COLUMNS = 'id, valid_from, weekly_minutes, work_days'
+_COLUMNS = 'id, valid_from, weekly_minutes, work_days, state, company_half_days'
 
 
 class ScheduleRepository:
@@ -26,12 +26,14 @@ class ScheduleRepository:
         return _schedule(row)
 
     def add(self, schedule: Schedule) -> Schedule:
-        sql = 'INSERT INTO work_schedules (valid_from, weekly_minutes, work_days) VALUES (?, ?, ?)'
+        sql = ('INSERT INTO work_schedules (valid_from, weekly_minutes, work_days, state, company_half_days)'
+               ' VALUES (?, ?, ?, ?, ?)')
         cursor = self._write(sql, _values(schedule), schedule)
         return schedule.model_copy(update={'id': cursor.lastrowid})
 
     def update(self, schedule: Schedule) -> Schedule:
-        sql = 'UPDATE work_schedules SET valid_from = ?, weekly_minutes = ?, work_days = ? WHERE id = ?'
+        sql = ('UPDATE work_schedules SET valid_from = ?, weekly_minutes = ?, work_days = ?, state = ?, company_half_days = ?'
+               ' WHERE id = ?')
         if not self._write(sql, (*_values(schedule), schedule.id), schedule).rowcount:
             raise NotFoundError(f'No work schedule with id {schedule.id}')
         return schedule
@@ -54,11 +56,13 @@ class ScheduleRepository:
 
 
 def _values(schedule: Schedule) -> tuple:
-    return schedule.valid_from.isoformat(), schedule.weekly_minutes, ','.join(map(str, schedule.work_days))
+    days = ','.join(map(str, schedule.work_days))
+    return schedule.valid_from.isoformat(), schedule.weekly_minutes, days, schedule.state, int(schedule.company_half_days)
 
 
 def _schedule(row: sqlite3.Row) -> Schedule:
     return Schedule(
         id=row['id'], valid_from=row['valid_from'], weekly_minutes=row['weekly_minutes'],
-        work_days=[int(day) for day in row['work_days'].split(',')],
+        work_days=[int(day) for day in row['work_days'].split(',')], state=row['state'],
+        company_half_days=bool(row['company_half_days']),
     )

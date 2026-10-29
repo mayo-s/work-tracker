@@ -1000,6 +1000,19 @@ export interface components {
              *     ]
              */
             work_days: ("Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun")[];
+            /**
+             * State
+             * @description German federal state whose public holidays apply
+             * @default BE
+             * @enum {string}
+             */
+            state?: "BB" | "BE" | "BW" | "BY" | "HB" | "HE" | "HH" | "MV" | "NI" | "NW" | "RP" | "SH" | "SL" | "SN" | "ST" | "TH";
+            /**
+             * Company Half Days
+             * @description 24.12. and 31.12. are half PTO, half free
+             * @default true
+             */
+            company_half_days?: boolean;
         };
         /** ScheduleView */
         ScheduleView: {
@@ -1026,6 +1039,19 @@ export interface components {
              *     ]
              */
             work_days: ("Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun")[];
+            /**
+             * State
+             * @description German federal state whose public holidays apply
+             * @default BE
+             * @enum {string}
+             */
+            state?: "BB" | "BE" | "BW" | "BY" | "HB" | "HE" | "HH" | "MV" | "NI" | "NW" | "RP" | "SH" | "SL" | "SN" | "ST" | "TH";
+            /**
+             * Company Half Days
+             * @description 24.12. and 31.12. are half PTO, half free
+             * @default true
+             */
+            company_half_days?: boolean;
             /** Id */
             id: number;
             /**

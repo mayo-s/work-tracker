@@ -880,3 +880,20 @@ button.button-danger {
 .weekday-picker input {
   width: auto;
 }
+
+.checkbox-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-small);
+  white-space: nowrap;
+}
+
+.checkbox-field input {
+  width: auto;
+}
+
+.list-form select {
+  flex: 1 1 10rem;
+  width: auto;
+}

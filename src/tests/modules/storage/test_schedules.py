@@ -17,6 +17,7 @@ def schedules(conn):
 def test_migrated_schedule_starts_with_the_balance(schedules):
     [schedule] = schedules.all()
     assert (schedule.valid_from, schedule.weekly_minutes, schedule.work_days) == (dt.date(2024, 6, 1), 2400, [1, 2, 3, 4, 5])
+    assert (schedule.state, schedule.company_half_days) == ('BE', True)
 
 
 def test_add_get_and_order(schedules):
@@ -34,7 +35,7 @@ def test_add_second_schedule_on_the_same_day(schedules):
 
 def test_update(schedules):
     added = schedules.add(PART_TIME)
-    changed = schedules.update(added.model_copy(update={'weekly_minutes': 1800}))
+    changed = schedules.update(added.model_copy(update={'weekly_minutes': 1800, 'state': 'HH', 'company_half_days': False}))
     assert schedules.get(added.id) == changed
 
 

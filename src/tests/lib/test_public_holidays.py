@@ -2,7 +2,7 @@ import datetime as dt
 
 import pytest
 
-from src.lib.public_holidays import Holiday, HolidayKind, holiday_on, holidays_between
+from src.lib.public_holidays import Holiday, HolidayKind, HolidayRules, holiday_on, holidays_between
 
 BERLIN_2025 = [
     dt.date(2025, 1, 1),
@@ -82,3 +82,28 @@ def test_holidays_between_rejects_end_before_start():
     start, end = dt.date(2026, 2, 1), dt.date(2026, 1, 1)
     with pytest.raises(ValueError):
         holidays_between(start, end)
+
+
+@pytest.mark.parametrize('state, date, name', [
+    ('BY', dt.date(2027, 1, 6), 'Epiphany'),
+    ('HH', dt.date(2026, 10, 31), 'Reformation Day'),
+    ('NW', dt.date(2026, 6, 4), 'Corpus Christi'),
+])
+def test_public_holidays_of_other_states(state, date, name):
+    assert holiday_on(date, HolidayRules(state)) == Holiday(date, name, HolidayKind.PUBLIC)
+
+
+def test_womens_day_is_no_holiday_in_bavaria():
+    assert holiday_on(dt.date(2026, 3, 8), HolidayRules('BY')) is None
+
+
+def test_without_company_half_days():
+    rules = HolidayRules('BE', company_half_days=False)
+    assert holidays_between(dt.date(2025, 12, 20), dt.date(2025, 12, 31), rules) == [
+        holiday_on(dt.date(2025, 12, 25)), holiday_on(dt.date(2025, 12, 26))]
+
+
+@pytest.mark.parametrize('state', ['Berlin', 'Augsburg', 'XX', ''])
+def test_rules_reject_unknown_states(state):
+    with pytest.raises(ValueError):
+        HolidayRules(state)

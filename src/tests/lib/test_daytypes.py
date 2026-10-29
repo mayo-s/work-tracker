@@ -5,6 +5,7 @@ import pytest
 
 from src.lib.daytypes import DayType, automatic_day_type, is_weekend, summarize_day
 from src.lib.durations import parse_duration
+from src.lib.public_holidays import HolidayRules
 from src.lib.schedules import WorkSchedule
 
 MONDAY = dt.date(2026, 10, 26)
@@ -114,3 +115,10 @@ def test_target_follows_the_schedule(day_type, target):
 def test_day_off_of_the_schedule_is_like_a_weekend():
     summary = summarize_day(dt.date(2027, 1, 8), parse_duration('2:00'), DayType.PTO, schedule=FOUR_DAYS)  # a Friday
     assert (summary.target, summary.pto_days, summary.overtime, summary.work_day) == (0, 0, 120, False)
+
+
+def test_automatic_type_follows_the_holiday_rules_of_the_schedule():
+    bavaria = WorkSchedule(dt.date(2027, 1, 1), 40 * 60, frozenset(range(1, 6)), HolidayRules('BY', company_half_days=False))
+    assert summarize_day(dt.date(2027, 1, 6), schedule=bavaria).day_type is DayType.PUBLIC_HOLIDAY
+    christmas_eve = summarize_day(dt.date(2027, 12, 24), schedule=bavaria)
+    assert (christmas_eve.day_type, christmas_eve.target, christmas_eve.pto_days) == (DayType.WORK, 480, 0)

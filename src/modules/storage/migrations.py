@@ -114,4 +114,10 @@ MIGRATIONS = (
     INSERT INTO work_schedules (valid_from, weekly_minutes, work_days)
         SELECT value, 2400, '1,2,3,4,5' FROM settings WHERE key = 'balance_start';
     """,
+    # 5: holiday rules per work schedule; existing schedules keep the former fixed rule (Berlin, company half days)
+    """
+    ALTER TABLE work_schedules ADD COLUMN state TEXT NOT NULL DEFAULT 'BE';
+    ALTER TABLE work_schedules
+        ADD COLUMN company_half_days INTEGER NOT NULL DEFAULT 1 CHECK (company_half_days IN (0, 1));
+    """,
 )

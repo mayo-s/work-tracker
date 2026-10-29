@@ -6,7 +6,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import NamedTuple
 
-from src.lib.public_holidays import HolidayKind, holiday_on
+from src.lib.public_holidays import BERLIN, HolidayKind, HolidayRules, holiday_on
 from src.lib.schedules import STANDARD, WorkSchedule
 
 
@@ -61,9 +61,9 @@ def is_weekend(date: dt.date) -> bool:
     return date.weekday() >= 5
 
 
-def automatic_day_type(date: dt.date) -> DayType:
-    """Public holiday or company half day from the Berlin calendar, otherwise work."""
-    found = holiday_on(date)
+def automatic_day_type(date: dt.date, rules: HolidayRules = BERLIN) -> DayType:
+    """Public holiday or company half day under the holiday rules (Berlin by default), otherwise work."""
+    found = holiday_on(date, rules)
     return _HOLIDAY_TYPES[found.kind] if found else DayType.WORK
 
 
@@ -73,7 +73,7 @@ def summarize_day(
     """Target, PTO used and overtime of a day under its work schedule; a chosen day type overrides the automatic one."""
     if worked < 0:
         raise ValueError('worked must not be negative')
-    resolved = day_type or automatic_day_type(date)
+    resolved = day_type or automatic_day_type(date, schedule.holidays)
     work_day = schedule.is_work_day(date)
     rule = _RULES[resolved] if work_day else _DAY_OFF
     target = schedule.daily_target * rule.target_halves // 2
