@@ -8,7 +8,7 @@ import falcon
 from src.defaultresources.default import Default
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
 from src.modules.days.resources import DayCollection, DayItem
-from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem
+from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem, EntrySplit
 from src.modules.pages.resources import STATIC_DIR, Page, RevalidateStaticFiles
 from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
 from src.modules.review.resources import Review, ReviewFlagItem
@@ -29,6 +29,7 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_error_handler(NotFoundError, _not_found)
     app.add_error_handler(ConflictError, _conflict)
     app.add_route('/', Page('week', 'Week'))
+    app.add_route('/review', Page('review', 'Review'))
     app.add_route('/components', Page('components', 'Component gallery'))
     app.add_static_route('/static', STATIC_DIR)
     app.add_route('/health', Default())
@@ -37,6 +38,7 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_route('/api/entries', EntryCollection(database))
     app.add_route('/api/entries/{entry_id:int}', EntryItem(database))
     app.add_route('/api/entries/{entry_id:int}/history', EntryHistory(database))
+    app.add_route('/api/entries/{entry_id:int}/split', EntrySplit(database))
     app.add_route('/api/tickets', TicketCollection(database))
     app.add_route('/api/tickets/assign-service', TicketServiceAssignment(database))
     app.add_route('/api/tickets/{key}', TicketItem(database))

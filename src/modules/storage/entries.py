@@ -3,10 +3,12 @@
 import datetime as dt
 import json
 import sqlite3
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 
 from pydantic import JsonValue
 
+from src.lib.durations import split_evenly
+from src.models.catalog import Ticket
 from src.models.entries import ActivityEntry, Entry, TicketEntry
 from src.models.history import EntryChange, HistoryAction
 from src.models.review import FlagReason, ReviewFlag
@@ -79,6 +81,21 @@ class EntryRepository:
         )
         return [_to_entry(row) for row in rows]
 
+    def imported_together(self, entry_id: int) -> list[Entry]:
+        """Entries imported from the same spreadsheet line as this one (same date and original line), itself included.
+
+        Empty if the entry was not imported.
+        """
+        rows = self._conn.execute(
+            f'SELECT {", ".join(f"e.{column}" for column in _ENTRY_COLUMNS.split(", "))} FROM entries e '
+            "JOIN entry_history h ON h.entry_id = e.id AND h.action = 'imported' "
+            "JOIN entry_history own ON own.entry_id = ? AND own.action = 'imported' "
+            'JOIN entries mine ON mine.id = own.entry_id '
+            'WHERE h.detail = own.detail AND e.date = mine.date ORDER BY e.id',
+            (entry_id,),
+        )
+        return [_to_entry(row) for row in rows]
+
     def for_review(self) -> list[Entry]:
         """Entries with 0:00, ticket entries without ticket and flagged entries, by date."""
         rows = self._conn.execute(
@@ -100,7 +117,7 @@ class EntryRepository:
         self.add_history(created.id, action, _diff({}, _fields(created)), detail)
         return created
 
-    def update(self, entry: Entry) -> Entry:
+    def update(self, entry: Entry, action: HistoryAction = HistoryAction.UPDATED, detail: str = '') -> Entry:
         """Replace an entry; only changed fields are recorded. The kind of an entry cannot change."""
         old = self.get(entry.id)
         if old.kind != entry.kind:
@@ -112,8 +129,29 @@ class EntryRepository:
                 'coding = ? WHERE id = ?',
                 (*_to_values(entry), entry.id),
             )
-            self.add_history(entry.id, HistoryAction.UPDATED, changes)
+            self.add_history(entry.id, action, changes, detail)
         return entry
+
+    def split(self, entry_id: int, ticket_keys: Sequence[str]) -> list[Entry]:
+        """Divide a ticket entry among several tickets, the hours split evenly in quarter hours.
+
+        The entry itself gets the first ticket; the others become new entries with the same date and description.
+        """
+        entry = self.get(entry_id)
+        keys = list(dict.fromkeys(Ticket(key=key).key for key in ticket_keys))
+        if not isinstance(entry, TicketEntry) or len(keys) < 2:
+            raise ConflictError('Only a ticket entry can be split, into at least two different tickets')
+        shares = split_evenly(entry.duration, len(keys))
+        first = self.update(
+            entry.model_copy(update={'ticket_key': keys[0], 'duration': shares[0]}), HistoryAction.SPLIT,
+            f'Split into {", ".join(keys)}',
+        )
+        others = [
+            self.create(entry.model_copy(update={'id': None, 'ticket_key': key, 'duration': share}), HistoryAction.SPLIT,
+                        f'Split from entry {entry_id}')
+            for key, share in zip(keys[1:], shares[1:])
+        ]
+        return [first, *others]
 
     def delete(self, entry_id: int) -> None:
         """Delete an entry and its review flags; its history is kept."""

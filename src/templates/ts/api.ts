@@ -18,6 +18,8 @@ export type ServiceInput = Schemas['ServiceInput'];
 export type ActivityType = Schemas['ActivityType'];
 export type ActivityTypeInput = Schemas['ActivityTypeInput'];
 export type ReviewView = Schemas['ReviewView'];
+export type ReviewEntry = Schemas['ReviewEntry'];
+export type ReviewReason = Schemas['ReviewReason'];
 export type WeekReport = Schemas['WeekReport'];
 export type MonthReport = Schemas['MonthReport'];
 export type YearReport = Schemas['YearReport'];
@@ -95,6 +97,8 @@ export const api = {
   updateEntry: (id: number, input: EntryInput) => request<EntryView>('PUT', `/api/entries/${segment(id)}`, input),
   deleteEntry: (id: number) => request<void>('DELETE', `/api/entries/${segment(id)}`),
   entryHistory: (id: number) => request<ChangeView[]>('GET', `/api/entries/${segment(id)}/history`),
+  splitEntry: (id: number, ticketKeys: string[]) =>
+    request<EntryView[]>('POST', `/api/entries/${segment(id)}/split`, { ticket_keys: ticketKeys }),
 
   tickets: (withoutService = false) =>
     request<TicketView[]>('GET', withoutService ? '/api/tickets?without_service=true' : '/api/tickets'),

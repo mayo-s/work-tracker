@@ -8,7 +8,7 @@ const FIELD_LABELS: Record<string, string> = {
   note: 'note', coding: 'coding',
 };
 const ACTION_LABELS: Record<string, string> = {
-  created: 'Created', imported: 'Imported', updated: 'Changed', renamed: 'Ticket renamed', merged: 'Ticket merged',
+  created: 'Created', imported: 'Imported', updated: 'Changed', renamed: 'Ticket renamed', merged: 'Ticket merged', split: 'Split',
   deleted: 'Deleted',
 };
 
@@ -38,7 +38,9 @@ export function formatValue(field: string, value: unknown, activityNames: Map<nu
 
 /** The changed fields of a history line: `old → new`, or only the value for created, imported and deleted. */
 export function describeChanges(change: ChangeView, activityNames: Map<number, string>): string[] {
-  const onlyValue = ['created', 'imported', 'deleted'].includes(change.action);
+  const values = Object.values(change.changes);
+  const onlyValue = ['created', 'imported', 'deleted'].includes(change.action)
+    || (values.length > 0 && values.every(([before]) => before === null));  // e.g. an entry created by a split
   return Object.entries(change.changes).map(([field, [before, after]]) => {
     const label = FIELD_LABELS[field] ?? field;
     const shown = change.action === 'deleted' ? before : after;
@@ -59,7 +61,7 @@ function historyItem(change: ChangeView, activityNames: Map<number, string>): HT
     el('span', { class: 'num muted' }, formatTimestamp(change.changed_at)), ' ',
     el('strong', {}, ACTION_LABELS[change.action] ?? change.action), ' ',
     el('span', {}, describeChanges(change, activityNames).join(' · ')),
-    change.detail ? el('div', { class: 'muted' }, `Original: ${change.detail}`) : null,
+    change.detail ? el('div', { class: 'muted' }, change.action === 'imported' ? `Original: ${change.detail}` : change.detail) : null,
   );
 }
 

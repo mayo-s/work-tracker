@@ -5,7 +5,7 @@ import sqlite3
 import falcon
 from spectree import Response
 
-from src.modules.entries.schemas import ChangeView, EntryInput, EntryView, EntryViewer
+from src.modules.entries.schemas import ChangeView, EntryInput, EntrySplitInput, EntryView, EntryViewer
 from src.modules.storage.database import Database
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.tickets import TicketRepository
@@ -59,6 +59,18 @@ class EntryItem:
         with self._database.transaction() as conn:
             EntryRepository(conn).delete(entry_id)
         resp.status = falcon.HTTP_204
+
+
+class EntrySplit:
+    def __init__(self, database: Database) -> None:
+        self._database = database
+
+    @spec.validate(json=EntrySplitInput, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=list[EntryView]), tags=TAGS,
+                   path_parameter_descriptions=ID_PARAMETER)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, entry_id: int, json: EntrySplitInput) -> None:
+        """Divide a ticket entry among several tickets (e.g. an alias like #4347 aka #1482), hours split evenly."""
+        with self._database.transaction() as conn:
+            resp.media = EntryViewer(conn).views(EntryRepository(conn).split(entry_id, json.ticket_keys))
 
 
 class EntryHistory:
