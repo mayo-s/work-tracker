@@ -7,9 +7,10 @@ import falcon
 
 from src.defaultresources.default import Default
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
+from src.modules.dashboard.resources import DashboardResource
 from src.modules.days.resources import DayCollection, DayItem, DayRange
 from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem, EntrySplit
-from src.modules.pages.resources import STATIC_DIR, Page, PageSettings, Redirect, RevalidateStaticFiles
+from src.modules.pages.resources import STATIC_DIR, Page, PageSettings, Redirect, RevalidateStaticFiles, StartPage
 from src.modules.pto.resources import PtoYearCollection, PtoYearItem
 from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
 from src.modules.review.resources import Review, ReviewFlagItem
@@ -32,7 +33,8 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app = falcon.App(middleware=[RevalidateStaticFiles(), PageSettings(database)])
     app.add_error_handler(NotFoundError, _not_found)
     app.add_error_handler(ConflictError, _conflict)
-    app.add_route('/', Page('week', 'Week'))
+    app.add_route('/', StartPage())
+    app.add_route('/week', Page('week', 'Week'))
     app.add_route('/month', Page('month', 'Month'))
     app.add_route('/year', Page('year', 'Year'))
     app.add_route('/review', Page('review', 'Review'))
@@ -53,6 +55,7 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_route('/api/tickets/assign-service', TicketServiceAssignment(database))
     app.add_route('/api/tickets/{key}', TicketItem(database))
     app.add_route('/api/tickets/{key}/rename', TicketRenaming(database))
+    app.add_route('/api/dashboard', DashboardResource(database, today))
     app.add_route('/api/reports/weeks/{week}', WeekReportResource(database, today))
     app.add_route('/api/reports/months/{month:dt("%Y-%m")}', MonthReportResource(database, today))
     app.add_route('/api/reports/years/{year:int(4)}', YearReportResource(database, today))

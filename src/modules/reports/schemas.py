@@ -113,7 +113,7 @@ class Reports:
     def month(self, year: int, month: int) -> MonthReport:
         start, end = _month_bounds(year, month)
         records = self._records(end)
-        coding = _CodingWork(self._conn).by_service(start, end)
+        coding = CodingWork(self._conn).by_service(start, end)
         return MonthReport(
             month=f'{year}-{month:02d}',
             totals=self._totals(records, start, end),
@@ -193,7 +193,7 @@ class Reports:
         )
 
 
-class _CodingWork:
+class CodingWork:
     """Coding entries of a period, grouped by the service of their ticket and by ticket."""
 
     def __init__(self, conn: sqlite3.Connection) -> None:

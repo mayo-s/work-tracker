@@ -32,6 +32,18 @@ class Page:
         resp.text = render_page(self.name, self._title, req.context.get('theme', 'system'))
 
 
+class StartPage(Page):
+    """The dashboard at `/`; former week view links (`/?week=…`, `&edit=…`, `&entry=…`) forward to `/week`."""
+
+    def __init__(self) -> None:
+        super().__init__('dashboard', 'Dashboard')
+
+    def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+        if {'week', 'edit', 'entry'} & set(req.params):
+            raise falcon.HTTPMovedPermanently(f'/week?{req.query_string}')
+        super().on_get(req, resp)
+
+
 class PageSettings:
     """Middleware for pages: the color theme for the frame; until the database is set up, pages forward to /setup,
     and /setup forwards to the week once it is."""

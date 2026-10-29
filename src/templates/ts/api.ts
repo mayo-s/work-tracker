@@ -26,6 +26,7 @@ export type PeriodTotals = Schemas['PeriodTotals'];
 export type WeekReport = Schemas['WeekReport'];
 export type MonthReport = Schemas['MonthReport'];
 export type YearReport = Schemas['YearReport'];
+export type DashboardView = Schemas['DashboardView'];
 export type SettingsView = Schemas['SettingsView'];
 export type ThemeView = Schemas['ThemeView'];
 export type Theme = ThemeView['theme'];
@@ -140,6 +141,7 @@ export const api = {
   weekReport: (week: string) => request<WeekReport>('GET', `/api/reports/weeks/${segment(week)}`),
   monthReport: (month: string) => request<MonthReport>('GET', `/api/reports/months/${segment(month)}`),
   yearReport: (year: number) => request<YearReport>('GET', `/api/reports/years/${segment(year)}`),
+  dashboard: () => request<DashboardView>('GET', '/api/dashboard'),
 
   setupStatus: () => request<SetupStatus>('GET', '/api/setup'),
   setup: (input: SetupInput) => request<SetupStatus>('POST', '/api/setup', input),

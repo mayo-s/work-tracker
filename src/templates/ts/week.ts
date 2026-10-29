@@ -71,8 +71,8 @@ function renderHeader(doc: Document, week: string, today: IsoDate): void {
   const [year, number] = week.split('-W');
   doc.querySelector('#week-title')!.textContent = `Week ${Number(number)} · ${year}`;
   doc.querySelector('#week-period')!.textContent = `${formatDate(monday)} – ${formatDate(addDays(monday, 6))}`;
-  doc.querySelector<HTMLAnchorElement>('#week-previous')!.href = `/?week=${shiftWeek(week, -1)}`;
-  doc.querySelector<HTMLAnchorElement>('#week-next')!.href = `/?week=${shiftWeek(week, 1)}`;
+  doc.querySelector<HTMLAnchorElement>('#week-previous')!.href = `/week?week=${shiftWeek(week, -1)}`;
+  doc.querySelector<HTMLAnchorElement>('#week-next')!.href = `/week?week=${shiftWeek(week, 1)}`;
   doc.querySelector<HTMLAnchorElement>('#week-today')!.toggleAttribute('aria-disabled', week === isoWeek(today));
 }
 
