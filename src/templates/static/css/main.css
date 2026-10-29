@@ -1339,6 +1339,7 @@ button.button-danger {
 }
 
 body:has(main[data-page='login']) .app-nav,
+body:has(main[data-page='register']) .app-nav,
 body:has(main[data-page='setup']) .app-nav {
   display: none;
 }

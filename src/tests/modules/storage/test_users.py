@@ -4,7 +4,7 @@ import uuid
 import pytest
 
 from src.modules.storage.errors import ConflictError
-from src.modules.storage.users import FailedLogins, SessionRepository, UserRepository
+from src.modules.storage.users import LoginAttempts, SessionRepository, UserRepository
 from src.tests.users import PASCAL, RAINER, USER
 
 LOGIN = dt.datetime(2026, 10, 29, 8, 0)
@@ -84,11 +84,52 @@ def test_tokens_are_stored_hashed(users, conn):
 
 
 def test_failed_logins_pause_after_five_within_a_minute(conn):
-    failed = FailedLogins(conn)
+    attempts = LoginAttempts(conn)
     for second in range(5):
-        assert not failed.paused(LOGIN + dt.timedelta(seconds=second))
-        failed.add(LOGIN + dt.timedelta(seconds=second))
-    assert failed.paused(LOGIN + dt.timedelta(seconds=30))
-    assert not failed.paused(LOGIN + dt.timedelta(seconds=61))
-    failed.clear()
-    assert not failed.paused(LOGIN + dt.timedelta(seconds=30))
+        assert not attempts.paused(LOGIN + dt.timedelta(seconds=second))
+        attempts.add(LOGIN + dt.timedelta(seconds=second))
+    assert attempts.paused(LOGIN + dt.timedelta(seconds=30))
+    assert not attempts.paused(LOGIN + dt.timedelta(seconds=61))
+    attempts.clear_failed()
+    assert not attempts.paused(LOGIN + dt.timedelta(seconds=30))
+
+
+def test_registrations_count_towards_the_pause_and_stay_after_a_login(conn):
+    attempts = LoginAttempts(conn)
+    for second in range(4):
+        attempts.add(LOGIN + dt.timedelta(seconds=second), 'registration')
+    attempts.add(LOGIN + dt.timedelta(seconds=4))
+    assert attempts.paused(LOGIN + dt.timedelta(seconds=5))
+    attempts.clear_failed()
+    assert not attempts.paused(LOGIN + dt.timedelta(seconds=5))
+    attempts.add(LOGIN + dt.timedelta(seconds=6), 'registration')
+    assert attempts.paused(LOGIN + dt.timedelta(seconds=7))
+
+
+def test_a_user_records_registration_and_last_login(conn):
+    users = UserRepository(conn, clock=lambda: LOGIN)
+    rainer = users.add(RAINER, 'correct horse battery')
+    assert (rainer.registered_at, rainer.last_login_at, rainer.active) == (LOGIN, None, True)
+    SessionRepository(conn).start(rainer.id, LOGIN + dt.timedelta(hours=2))
+    assert users.get(rainer.id).last_login_at == LOGIN + dt.timedelta(hours=2)
+
+
+def test_all_users_in_the_order_they_registered(users):
+    users.add(RAINER, 'correct horse battery')
+    users.add(PASCAL, 'correct horse battery')
+    assert [user.username for user in users.all()] == ['klara', 'rainer', 'pascal']
+
+
+def test_change_role(users):
+    rainer = users.add(RAINER, 'correct horse battery')
+    assert users.set_role(rainer.id, 'admin').role == 'admin'
+
+
+def test_deactivating_ends_the_sessions_and_keeps_the_user(users, conn):
+    sessions = SessionRepository(conn)
+    rainer = users.add(RAINER, 'correct horse battery')
+    token = sessions.start(rainer.id, LOGIN)
+    assert users.set_active(rainer.id, False).active is False
+    assert sessions.user_id(token, LOGIN) == (None, False)
+    assert users.set_active(rainer.id, True).active is True
+    assert sessions.user_id(sessions.start(rainer.id, LOGIN), LOGIN) == (rainer.id, False)

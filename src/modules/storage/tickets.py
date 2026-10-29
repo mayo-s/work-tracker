@@ -24,7 +24,7 @@ def _to_tickets(rows: Iterable[sqlite3.Row]) -> list[Ticket]:
 class TicketRepository:
     """Tickets of one user remember their service; works within the transaction of the given connection."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: int) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: str) -> None:
         self._conn = conn
         self._user = user_id
 

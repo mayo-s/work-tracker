@@ -5,8 +5,9 @@ import { test } from 'node:test';
 
 import { countedMonths, initialState, proRata, setupInput, stepError, steps, summary } from '../ts/setup.ts';
 
-const MARIO = {
-  username: ' mario ', email: 'mario@example.com', first_name: 'Mario', last_name: '', password: 'correct horse battery',
+const PASCAL = {
+  username: ' pascal ', email: 'turbo.pascal@example.com', first_name: 'Pascal', last_name: '',
+  password: 'correct horse battery',
   repeat: 'correct horse battery',
 };
 
@@ -40,7 +41,7 @@ test('steps check their values before going on', () => {
   assert.equal(stepError({ ...state, firstYear: '' }, 'PTO'), 'Enter the PTO days.');
   assert.equal(stepError(state, 'Services'), null);
   assert.equal(stepError(state, 'Login'), 'Enter your first name.');
-  assert.equal(stepError({ ...state, account: MARIO }, 'Login'), null);
+  assert.equal(stepError({ ...state, account: PASCAL }, 'Login'), null);
   assert.equal(stepError({ ...state, account: null }, 'Login'), null);
 });
 
@@ -51,22 +52,23 @@ test('the login step only when the database has no user yet', () => {
 });
 
 test('setup input leaves out empty services and trims', () => {
-  const state = { ...initialState('2027-03-01'), opening: ' +2:30 ', account: MARIO,
+  const state = { ...initialState('2027-03-01'), opening: ' +2:30 ', account: PASCAL,
     services: [{ short_name: ' AUTH ', name: ' auth-service ' }, { short_name: ' ', name: 'unused' }] };
   assert.deepEqual(setupInput(state), {
     balance_start: '2027-03-01', opening_balance: '+2:30',
     schedule: { weekly_hours: '40:00', work_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], state: 'BE', company_half_days: true },
     pto_per_year: 30, pto_first_year: 25, services: [{ short_name: 'AUTH', name: 'auth-service' }],
     user: {
-      username: 'mario', email: 'mario@example.com', first_name: 'Mario', last_name: '', password: 'correct horse battery',
+      username: 'pascal', email: 'turbo.pascal@example.com', first_name: 'Pascal', last_name: '',
+      password: 'correct horse battery',
     },
   });
   assert.equal(setupInput({ ...state, account: null }).user, null);
 });
 
 test('summary of all steps', () => {
-  assert.deepEqual(summary({ ...initialState('2027-03-01'), state: 'HH', companyHalfDays: false, account: MARIO }), [
-    ['Login', 'mario · mario@example.com'],
+  assert.deepEqual(summary({ ...initialState('2027-03-01'), state: 'HH', companyHalfDays: false, account: PASCAL }), [
+    ['Login', 'pascal · turbo.pascal@example.com'],
     ['First day', '01.03.2027'],
     ['Opening balance', '0:00'],
     ['Work schedule', '40:00 h per week, Mon, Tue, Wed, Thu, Fri'],

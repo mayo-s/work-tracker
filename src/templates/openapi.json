@@ -31,6 +31,9 @@
       "name": "Login"
     },
     {
+      "name": "Admin"
+    },
+    {
       "name": "Work schedules"
     },
     {
@@ -1387,7 +1390,7 @@
     },
     "/api/auth/status": {
       "get": {
-        "summary": "Whether the login is on, whether a user exists, and who is logged in.",
+        "summary": "Whether the login is on, whether a user exists, who is logged in, and whether new users can register.",
         "operationId": "get__api_auth_status",
         "description": "",
         "tags": [
@@ -1422,7 +1425,7 @@
       "post": {
         "summary": "Log in with username or e-mail address; sets the session cookie (valid 24 h since the last activity).",
         "operationId": "post__api_auth_login",
-        "description": "After 5 failed logins within a minute, logins pause (429).",
+        "description": "After 5 failed logins or registrations within a minute, logins pause (429). A deactivated user is refused (403).",
         "tags": [
           "Login"
         ],
@@ -1430,6 +1433,9 @@
         "responses": {
           "401": {
             "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           },
           "429": {
             "description": "Too Many Requests"
@@ -1505,6 +1511,58 @@
         "responses": {
           "409": {
             "description": "Conflict"
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewUserInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register a new user and log in; the user then goes through the setup. Only while an admin has switched registration on (404 otherwise, and with the login off).",
+        "operationId": "post__api_auth_register",
+        "description": "Registrations count towards the pause after failed logins: after 5 within a minute, both pause (429).",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "429": {
+            "description": "Too Many Requests"
           },
           "201": {
             "description": "Created",
@@ -1657,6 +1715,184 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/PasswordInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "summary": "All users in the order they registered, with role, status, registration and last login.",
+        "operationId": "get__api_admin_users",
+        "description": "",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserViewList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}": {
+      "put": {
+        "summary": "Change a user's role, or deactivate (their sessions end, their data is kept) or reactivate them.",
+        "operationId": "put__api_admin_users_{user_id}",
+        "description": "Nobody demotes or deactivates themselves (409), so an active admin always remains.",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id (UUID) of the user"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUserInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/admin/settings": {
+      "get": {
+        "summary": "App-wide settings: whether new users can register.",
+        "operationId": "get__api_admin_settings",
+        "description": "",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSettings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Switch registration on or off; the login page links to /register only while it is on.",
+        "operationId": "put__api_admin_settings",
+        "description": "",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSettings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminSettings"
               }
             }
           },
@@ -2655,6 +2891,130 @@
         "title": "ValidationErrorType",
         "type": "array"
       },
+      "AdminUserViewList": {
+        "items": {
+          "$ref": "#/components/schemas/AdminUserView"
+        },
+        "title": "AdminUserViewList",
+        "type": "array"
+      },
+      "AdminUserInput": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "description": "Team admins follow with teams (TASKS.md L.8a.3)",
+            "enum": [
+              "admin",
+              "user"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "active": {
+            "description": "False deactivates the user: they cannot log in, their sessions end",
+            "title": "Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "role",
+          "active"
+        ],
+        "title": "AdminUserInput",
+        "type": "object"
+      },
+      "AdminUserView": {
+        "properties": {
+          "id": {
+            "description": "Random UUID",
+            "title": "Id",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "team_admin",
+              "user"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "active": {
+            "description": "False: deactivated, cannot log in",
+            "title": "Active",
+            "type": "boolean"
+          },
+          "registered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for users registered before it was recorded",
+            "title": "Registered At"
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "email",
+          "first_name",
+          "last_name",
+          "role",
+          "active",
+          "registered_at",
+          "last_login_at"
+        ],
+        "title": "AdminUserView",
+        "type": "object"
+      },
+      "AdminSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "registration": {
+            "description": "Whether new users can register on /register (off by default)",
+            "title": "Registration",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "registration"
+        ],
+        "title": "AdminSettings",
+        "type": "object"
+      },
       "AuthStatus": {
         "properties": {
           "enabled": {
@@ -2677,12 +3037,18 @@
               }
             ],
             "description": "The logged-in user"
+          },
+          "registration": {
+            "description": "True while new users can register on /register",
+            "title": "Registration",
+            "type": "boolean"
           }
         },
         "required": [
           "enabled",
           "has_users",
-          "user"
+          "user",
+          "registration"
         ],
         "title": "AuthStatus",
         "type": "object"

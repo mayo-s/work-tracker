@@ -88,7 +88,7 @@ class TicketRenaming:
                                     moved=result.moved)
 
 
-def _existing(conn: sqlite3.Connection, user_id: int, key: str) -> Ticket:
+def _existing(conn: sqlite3.Connection, user_id: str, key: str) -> Ticket:
     """The user's ticket with this key; 404 for unknown or invalid keys."""
     try:
         ticket = TicketRepository(conn, user_id).get(key)

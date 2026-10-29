@@ -82,7 +82,7 @@ def import_user(conn: sqlite3.Connection, login: str | None) -> str:
 
 
 def import_rows(
-    conn: sqlite3.Connection, user_id: int, rows: Sequence[SheetRow], replace: bool = False,
+    conn: sqlite3.Connection, user_id: str, rows: Sequence[SheetRow], replace: bool = False,
     clock: Callable[[], dt.datetime] | None = None,
 ) -> ImportSummary:
     """Import the rows of one year into a user's data; refused if the year already holds data, unless `replace`."""
@@ -105,7 +105,7 @@ def _year_of(rows: Sequence[SheetRow]) -> int:
 _YEAR_TABLES = ('days', 'entries', 'review_flags')
 
 
-def _clear_year(conn: sqlite3.Connection, user_id: int, year: int, replace: bool) -> bool:
+def _clear_year(conn: sqlite3.Connection, user_id: str, year: int, replace: bool) -> bool:
     """Delete the user's data of the year if `replace` is set; returns whether there was data. Tickets and services
     stay."""
     scope = (user_id, f'{year}-01-01', f'{year}-12-31')
@@ -122,7 +122,7 @@ def _clear_year(conn: sqlite3.Connection, user_id: int, year: int, replace: bool
 
 class _YearImporter:
     def __init__(
-        self, conn: sqlite3.Connection, user_id: int, summary: ImportSummary, clock: Callable[[], dt.datetime] | None,
+        self, conn: sqlite3.Connection, user_id: str, summary: ImportSummary, clock: Callable[[], dt.datetime] | None,
     ) -> None:
         self._days = DayRepository(conn, user_id)
         self._entries = EntryRepository(conn, user_id, clock)

@@ -5,18 +5,19 @@ import { test } from 'node:test';
 
 import { accountError, emptyAccount, passwordError, profileInput, safeNext } from '../ts/account.ts';
 
-const MARIO = {
-  username: 'mario', email: 'mario@example.com', first_name: 'Mario', last_name: '', password: 'correct horse battery',
+const RAINER = {
+  username: 'rainer', email: 'rainer.zufall@example.com', first_name: 'Rainer', last_name: '',
+  password: 'correct horse battery',
   repeat: 'correct horse battery',
 };
 
 test('account values are checked like the API does', () => {
-  assert.equal(accountError(MARIO, true), null);
+  assert.equal(accountError(RAINER, true), null);
   assert.equal(accountError(emptyAccount(), false), 'Enter your first name.');
-  assert.equal(accountError({ ...MARIO, username: 'm' }, false),
+  assert.equal(accountError({ ...RAINER, username: 'm' }, false),
     'The username needs 3 to 30 letters, digits, dots, dashes or underscores.');
-  assert.equal(accountError({ ...MARIO, email: 'mario' }, false), 'Enter a valid e-mail address.');
-  assert.equal(accountError({ ...MARIO, password: 'short' }, false), null);
+  assert.equal(accountError({ ...RAINER, email: 'rainer' }, false), 'Enter a valid e-mail address.');
+  assert.equal(accountError({ ...RAINER, password: 'short' }, false), null);
 });
 
 test('passwords need 12 characters, twice the same', () => {
@@ -26,8 +27,8 @@ test('passwords need 12 characters, twice the same', () => {
 });
 
 test('profile input is trimmed', () => {
-  assert.deepEqual(profileInput({ ...MARIO, username: ' mario ', last_name: ' S. ' }),
-    { username: 'mario', email: 'mario@example.com', first_name: 'Mario', last_name: 'S.' });
+  assert.deepEqual(profileInput({ ...RAINER, username: ' rainer ', last_name: ' Z. ' }),
+    { username: 'rainer', email: 'rainer.zufall@example.com', first_name: 'Rainer', last_name: 'Z.' });
 });
 
 test('after logging in, only paths of this app', () => {

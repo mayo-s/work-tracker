@@ -13,7 +13,7 @@ _COLUMNS = 'year, allowance, extra_days, carried_over, note'
 class PtoYearRepository:
     """The PTO years of one user; works within the transaction of the given connection."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: int) -> None:
+    def __init__(self, conn: sqlite3.Connection, user_id: str) -> None:
         self._conn = conn
         self._user = user_id
 

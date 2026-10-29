@@ -1,6 +1,6 @@
-// The user's account: fields for name, username, e-mail address and password (login page, setup and settings).
+// The user's account: fields for name, username, e-mail address and password (login, registration, setup, settings).
 
-import { api, ApiError, type ProfileInput, type UserView } from './api.ts';
+import { api, ApiError, type NewUserInput, type ProfileInput, type UserView } from './api.ts';
 import { el } from './dom.ts';
 import { field, submit } from './forms.ts';
 
@@ -93,10 +93,34 @@ export async function renderLoginPage(doc: Document): Promise<void> {
   };
   if (!status.has_users) {
     doc.querySelector('#login-title')!.textContent = 'Create your login';
-    root.replaceChildren(firstUserForm(error, fail, next));
+    root.replaceChildren(newUserForm('first-user', 'This database has no login yet. Create it once; from then on, the app '
+      + 'asks for it.', 'Create login', api.firstUser, error, fail, next));
   } else {
-    root.replaceChildren(loginForm(error, fail, next));
+    root.replaceChildren(loginForm(error, fail, next, status.registration));
   }
+  root.querySelector<HTMLElement>('input')?.focus();
+}
+
+/** The registration page (/register, only while an admin has switched registration on); then on to the setup. */
+export async function renderRegisterPage(doc: Document): Promise<void> {
+  const root = doc.querySelector<HTMLElement>('#register');
+  if (!root) {
+    return;
+  }
+  const status = await api.authStatus();
+  if (status.user) {
+    window.location.assign('/');
+    return;
+  }
+  const error = el('p', { class: 'form-error field-error', role: 'alert', hidden: true });
+  const fail = (failure: unknown, fallback: string): void => {
+    error.textContent = errorText(failure, fallback);
+    error.hidden = false;
+  };
+  const form = newUserForm('register', 'Create your account. Your days and entries are yours alone; next, the setup asks '
+    + 'for your start day, work schedule and PTO days.', 'Register', api.register, error, fail, '/');
+  form.append(el('p', { class: 'muted login-hint' }, 'Already registered? ', el('a', { href: '/login' }, 'Log in')));
+  root.replaceChildren(form);
   root.querySelector<HTMLElement>('input')?.focus();
 }
 
@@ -105,7 +129,9 @@ export function safeNext(next: string | null): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
 }
 
-function loginForm(error: HTMLElement, fail: (failure: unknown, fallback: string) => void, next: string): HTMLFormElement {
+function loginForm(
+  error: HTMLElement, fail: (failure: unknown, fallback: string) => void, next: string, registration: boolean,
+): HTMLFormElement {
   const name = el('input', { id: 'login-name', name: 'login', autocomplete: 'username', required: true });
   const password = el('input', { id: 'login-password', name: 'password', type: 'password', autocomplete: 'current-password',
     required: true });
@@ -114,6 +140,7 @@ function loginForm(error: HTMLElement, fail: (failure: unknown, fallback: string
     field('login', 'password', 'Password', password),
     error,
     el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Log in')),
+    registration && el('p', { class: 'muted login-hint' }, 'No account yet? ', el('a', { href: '/register' }, 'Register')),
     el('p', { class: 'muted login-hint' }, 'Forgot the password? Reset it on the computer running the app: ',
       el('code', {}, 'pipenv run python -m src.modules.auth set-password USERNAME')));
   form.addEventListener('submit', (event) => {
@@ -124,13 +151,17 @@ function loginForm(error: HTMLElement, fail: (failure: unknown, fallback: string
   return form;
 }
 
-function firstUserForm(error: HTMLElement, fail: (failure: unknown, fallback: string) => void, next: string): HTMLFormElement {
+/** A form creating a user with `create` (the first user, or a registration), who is logged in; then on to `next`. */
+function newUserForm(
+  prefix: string, intro: string, submitLabel: string, create: (input: NewUserInput) => Promise<UserView>,
+  error: HTMLElement, fail: (failure: unknown, fallback: string) => void, next: string,
+): HTMLFormElement {
   const values = emptyAccount();
   const form = el('form', { class: 'card login-form', novalidate: true },
-    el('p', {}, 'This database has no login yet. Create it once; from then on, the app asks for it.'),
-    ...accountFields('first-user', values, true),
+    el('p', {}, intro),
+    ...accountFields(prefix, values, true),
     error,
-    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Create login')));
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, submitLabel)));
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const problem = accountError(values, true);
@@ -138,8 +169,8 @@ function firstUserForm(error: HTMLElement, fail: (failure: unknown, fallback: st
       fail(null, problem);
       return;
     }
-    api.firstUser({ ...profileInput(values), password: values.password }).then(() => window.location.assign(next),
-      (failure: unknown) => fail(failure, 'The login could not be created.'));
+    create({ ...profileInput(values), password: values.password }).then(() => window.location.assign(next),
+      (failure: unknown) => fail(failure, 'The account could not be created.'));
   });
   return form;
 }

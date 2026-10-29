@@ -455,4 +455,14 @@ MIGRATIONS = (
     DROP TABLE temp.user_ids;
     DROP TABLE temp.entry_sequence;
     """,
+    # 10: registration and user administration (TASKS.md L.8a.2): users can be deactivated and show when they registered
+    # and last logged in; registrations count towards the pause after failed logins
+    """
+    ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1));
+    ALTER TABLE users ADD COLUMN registered_at TEXT;  -- NULL: registered before it was recorded
+    ALTER TABLE users ADD COLUMN last_login_at TEXT;
+    ALTER TABLE failed_logins RENAME TO login_attempts;
+    ALTER TABLE login_attempts ADD COLUMN kind TEXT NOT NULL DEFAULT 'failed_login'
+        CHECK (kind IN ('failed_login', 'registration'));
+    """,
 )

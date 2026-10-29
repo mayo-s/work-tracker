@@ -49,7 +49,7 @@ class ReviewView(BaseModel):
     days: list[DayView] = Field(description='Days with import flags (e.g. weekend hours), by date')
 
 
-def review(conn: sqlite3.Connection, user_id: int) -> ReviewView:
+def review(conn: sqlite3.Connection, user_id: str) -> ReviewView:
     """What needs attention in the user's data."""
     without_service = TicketRepository(conn, user_id).without_service()
     tickets = [ticket for ticket in ticket_views(conn, user_id, without_service) if ticket.entries]
@@ -83,7 +83,7 @@ def _reasons(entry: EntryView) -> list[ReviewReason]:
     return list(dict.fromkeys(reasons))
 
 
-def _flagged_days(conn: sqlite3.Connection, user_id: int) -> list[DayView]:
+def _flagged_days(conn: sqlite3.Connection, user_id: str) -> list[DayView]:
     days, schedules = DayRepository(conn, user_id), ScheduleRepository(conn, user_id).schedules()
     flags = defaultdict(list)
     for flag in days.day_flags():

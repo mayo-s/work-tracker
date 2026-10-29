@@ -1,4 +1,4 @@
-"""Login endpoints: /api/auth/status, /login, /logout, /first-user, /me and /me/password."""
+"""Login endpoints: /api/auth/status, /login, /logout, /first-user, /register, /me and /me/password."""
 
 import datetime as dt
 import sqlite3
@@ -12,11 +12,13 @@ from src.modules.auth.schemas import AuthStatus, LoginInput, NewUserInput, Passw
 from src.modules.auth.sessions import COOKIE, clear_session_cookie, set_session_cookie
 from src.modules.storage.database import Database
 from src.modules.storage.errors import ConflictError
-from src.modules.storage.users import FailedLogins, SessionRepository, UserRepository
+from src.modules.storage.settings import registration_open
+from src.modules.storage.users import LoginAttempts, SessionRepository, UserRepository
 from src.utils.spec import spec
 
 TAGS = ['Login']
 WRONG_LOGIN = 'Wrong username, e-mail address or password'
+PAUSED = 'Too many attempts; try again in a minute'
 
 
 class _AuthResource:
@@ -27,6 +29,13 @@ class _AuthResource:
 
     def _log_in(self, req: falcon.Request, resp: falcon.Response, conn: sqlite3.Connection, user: User) -> None:
         set_session_cookie(req, resp, SessionRepository(conn).start(user.id, self._clock()))
+
+    def _create(self, req: falcon.Request, resp: falcon.Response, conn: sqlite3.Connection, json: NewUserInput) -> None:
+        """Add the user, log them in and answer with them (201)."""
+        user = UserRepository(conn, self._clock).add(json.to_user(), json.password)
+        self._log_in(req, resp, conn, user)
+        resp.status = falcon.HTTP_201
+        resp.media = UserView.of(user)
 
 
 def _user_id(req: falcon.Request) -> str:
@@ -39,20 +48,21 @@ def _user_id(req: falcon.Request) -> str:
 class AuthStatusResource(_AuthResource):
     @spec.validate(resp=Response(HTTP_200=AuthStatus), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
-        """Whether the login is on, whether a user exists, and who is logged in."""
+        """Whether the login is on, whether a user exists, who is logged in, and whether new users can register."""
         user_id = req.context.get('user_id') if self._enabled else None  # with the login off, nobody is logged in
         with self._database.transaction() as conn:
             users = UserRepository(conn)
             user = UserView.of(users.get(user_id)) if user_id is not None else None
-            resp.media = AuthStatus(enabled=self._enabled, has_users=users.count() > 0, user=user)
+            resp.media = AuthStatus(enabled=self._enabled, has_users=users.count() > 0, user=user,
+                                    registration=self._enabled and registration_open(conn))
 
 
 class LoginResource(_AuthResource):
-    @spec.validate(json=LoginInput, resp=Response('HTTP_401', 'HTTP_429', HTTP_200=UserView), tags=TAGS)
+    @spec.validate(json=LoginInput, resp=Response('HTTP_401', 'HTTP_403', 'HTTP_429', HTTP_200=UserView), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: LoginInput) -> None:
         """Log in with username or e-mail address; sets the session cookie (valid 24 h since the last activity).
 
-        After 5 failed logins within a minute, logins pause (429).
+        After 5 failed logins or registrations within a minute, logins pause (429). A deactivated user is refused (403).
         """
         with self._database.transaction() as conn:
             user = self._check(conn, json)
@@ -64,14 +74,16 @@ class LoginResource(_AuthResource):
 
     def _check(self, conn: sqlite3.Connection, json: LoginInput) -> User | None:
         now = self._clock()
-        failed, users = FailedLogins(conn), UserRepository(conn)
-        if failed.paused(now):
-            raise falcon.HTTPTooManyRequests(description='Too many failed logins; try again in a minute')
+        attempts, users = LoginAttempts(conn), UserRepository(conn)
+        if attempts.paused(now):
+            raise falcon.HTTPTooManyRequests(description=PAUSED)
         user = users.by_login(json.login)
         if user is None or not users.check_password(user.id, json.password):
-            failed.add(now)
+            attempts.add(now)
             return None
-        failed.clear()
+        if not user.active:
+            raise falcon.HTTPForbidden(description='This account is deactivated; ask an admin')
+        attempts.clear_failed()
         return user
 
 
@@ -92,13 +104,28 @@ class FirstUserResource(_AuthResource):
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: NewUserInput) -> None:
         """Create the first user of a database that has none, and log in; refused (409) once a user exists."""
         with self._database.transaction() as conn:
-            users = UserRepository(conn)
-            if users.count():
+            if UserRepository(conn).count():
                 raise ConflictError('A user exists already; log in instead')
-            user = users.add(json.to_user(), json.password)
-            self._log_in(req, resp, conn, user)
-        resp.status = falcon.HTTP_201
-        resp.media = UserView.of(user)
+            self._create(req, resp, conn, json)
+
+
+class RegisterResource(_AuthResource):
+    @spec.validate(json=NewUserInput, resp=Response('HTTP_404', 'HTTP_409', 'HTTP_429', HTTP_201=UserView), tags=TAGS)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, json: NewUserInput) -> None:
+        """Register a new user and log in; the user then goes through the setup. Only while an admin has switched
+        registration on (404 otherwise, and with the login off).
+
+        Registrations count towards the pause after failed logins: after 5 within a minute, both pause (429).
+        """
+        with self._database.transaction() as conn:  # the attempt is kept even if the registration fails
+            if not (self._enabled and registration_open(conn)):
+                raise falcon.HTTPNotFound(description='Registration is switched off')
+            attempts = LoginAttempts(conn)
+            if attempts.paused(self._clock()):
+                raise falcon.HTTPTooManyRequests(description=PAUSED)
+            attempts.add(self._clock(), 'registration')
+        with self._database.transaction() as conn:
+            self._create(req, resp, conn, json)
 
 
 class MeResource(_AuthResource):

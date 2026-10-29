@@ -262,10 +262,11 @@ corners, one accent color. Warnings are the only loud element.
   password (at least 12 characters, stored as a salted scrypt hash). Log in with the username or the e-mail address.
 - A login is a session: a random token in an `HttpOnly`, `SameSite=Strict` cookie (`Secure` over HTTPS), stored only as
   a hash. It stays valid for 24 hours since the last activity (renewed at most every 30 minutes); "Log out" ends it,
-  a new password ends all other sessions. After 5 failed logins within a minute, logins pause for a minute.
-- Every page and the API need a login (pages forward to `/login?next=…`, the API answers 401); `/login`, `/health`,
-  the API docs and the static files stay open. A new database creates the first user in the setup, an existing one
-  once on `/login`. A command on the computer running the app resets a forgotten password.
+  a new password ends all other sessions. After 5 failed logins or registrations within a minute, both pause for a
+  minute.
+- Every page and the API need a login (pages forward to `/login?next=…`, the API answers 401); `/login`, `/register`,
+  `/health`, the API docs and the static files stay open. A new database creates the first user in the setup, an
+  existing one once on `/login`. A command on the computer running the app resets a forgotten password.
 - `WORK_TRACKER_AUTH=off` switches the login off for local development; the app then works on the first user's data.
 
 ### 5.7 Data per user
@@ -276,7 +277,15 @@ corners, one accent color. Warnings are the only loud element.
   another user's service or activity type 409.
 - A user is identified by a random UUID. Roles: admin, team admin, user. The first user is admin and takes over all records of a database used without
   users. A new user starts with the four default activity types and goes through the setup.
-- Registration, teams and shared team services follow in TASKS.md L.8a.2 and L.8a.3.
+- Registration: while an admin has switched it on (off by default), the login page links to `/register`. A new user
+  enters the fields of the login, is logged in at once (no e-mail confirmation) and goes through the setup. Off, or
+  with the login off, `/register` answers 404.
+- Admin page `/admin` (linked in the navigation for admins; the admin API answers 403 to others): registration on or
+  off, and the users with username, name, e-mail address, role, status, registration and last login, none of their
+  time data. Admins change the role (admin or user), deactivate users (logged out at once, refused at login, data kept)
+  and reactivate them. Nobody demotes or deactivates themselves, so an active admin always remains; users are not
+  deleted. A forgotten password is reset with the command on the computer running the app.
+- Teams and shared team services follow in TASKS.md L.8a.3.
 
 ## 6. Import (spreadsheet CSV)
 

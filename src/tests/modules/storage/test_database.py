@@ -9,7 +9,7 @@ from src.tests.users import USER
 
 TABLES = {
     'settings', 'user_settings', 'pto_years', 'work_schedules', 'services', 'activity_types', 'tickets', 'days', 'entries',
-    'entry_history', 'review_flags', 'users', 'sessions', 'failed_logins',
+    'entry_history', 'review_flags', 'users', 'sessions', 'login_attempts',
 }
 
 
