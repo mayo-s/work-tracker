@@ -6,6 +6,10 @@ from collections.abc import Callable
 import falcon
 
 from src.defaultresources.default import Default
+from src.modules.auth.resources import (
+    AuthStatusResource, FirstUserResource, LoginResource, LogoutResource, MeResource, PasswordResource,
+)
+from src.modules.auth.sessions import Authentication, auth_enabled
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
 from src.modules.dashboard.resources import DashboardResource
 from src.modules.days.resources import DayCollection, DayItem, DayRange
@@ -23,14 +27,20 @@ from src.modules.tickets.resources import TicketCollection, TicketItem, TicketRe
 from src.utils.spec import spec
 
 
-def create_app(database: Database | None = None, today: Callable[[], dt.date] = dt.date.today) -> falcon.App:
+def create_app(
+    database: Database | None = None, today: Callable[[], dt.date] = dt.date.today, auth: bool | None = None,
+    clock: Callable[[], dt.datetime] = dt.datetime.now,
+) -> falcon.App:
     """The app on the given database (default: $WORK_TRACKER_DB or work_tracker.db), migrated on start.
 
-    `today` decides up to which day reports count (replaceable for tests).
+    `today` decides up to which day reports count, `clock` the time of sessions (both replaceable for tests).
+    The login is on unless `auth` is False or, by default, WORK_TRACKER_AUTH=off.
     """
     database = database or Database(database_path())
     database.migrate()
-    app = falcon.App(middleware=[RevalidateStaticFiles(), PageSettings(database)])
+    enabled = auth_enabled() if auth is None else auth
+    login = [Authentication(database, clock)] if enabled else []
+    app = falcon.App(middleware=[*login, RevalidateStaticFiles(), PageSettings(database)])
     app.add_error_handler(NotFoundError, _not_found)
     app.add_error_handler(ConflictError, _conflict)
     app.add_route('/', StartPage())
@@ -41,6 +51,7 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_route('/lists', Redirect('/settings#services'))
     app.add_route('/settings', Page('settings', 'Settings'))
     app.add_route('/setup', Page('setup', 'Setup'))
+    app.add_route('/login', Page('login', 'Log in'))
     app.add_route('/components', Page('components', 'Component gallery'))
     app.add_static_route('/static', STATIC_DIR)
     app.add_route('/health', Default())
@@ -61,7 +72,13 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     app.add_route('/api/reports/years/{year:int(4)}', YearReportResource(database, today))
     app.add_route('/api/settings', SettingsResource(database))
     app.add_route('/api/theme', ThemeResource(database))
-    app.add_route('/api/setup', SetupResource(database))
+    app.add_route('/api/setup', SetupResource(database, clock))
+    app.add_route('/api/auth/status', AuthStatusResource(database, clock, enabled))
+    app.add_route('/api/auth/login', LoginResource(database, clock))
+    app.add_route('/api/auth/logout', LogoutResource(database, clock))
+    app.add_route('/api/auth/first-user', FirstUserResource(database, clock))
+    app.add_route('/api/auth/me', MeResource(database, clock))
+    app.add_route('/api/auth/me/password', PasswordResource(database, clock))
     app.add_route('/api/work-schedules', ScheduleCollection(database))
     app.add_route('/api/work-schedules/{schedule_id:int}', ScheduleItem(database))
     app.add_route('/api/pto-years', PtoYearCollection(database))

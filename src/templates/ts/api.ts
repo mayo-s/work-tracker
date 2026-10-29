@@ -27,6 +27,10 @@ export type WeekReport = Schemas['WeekReport'];
 export type MonthReport = Schemas['MonthReport'];
 export type YearReport = Schemas['YearReport'];
 export type DashboardView = Schemas['DashboardView'];
+export type AuthStatus = Schemas['AuthStatus'];
+export type UserView = Schemas['UserView'];
+export type ProfileInput = Schemas['ProfileInput'];
+export type NewUserInput = Schemas['NewUserInput'];
 export type SettingsView = Schemas['SettingsView'];
 export type ThemeView = Schemas['ThemeView'];
 export type Theme = ThemeView['theme'];
@@ -80,6 +84,9 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
     init.body = JSON.stringify(body);
   }
   const response = await fetch(path, init);
+  if (response.status === 401 && !path.startsWith('/api/auth/') && typeof window !== 'undefined') {
+    window.location.assign(loginLink(window.location.pathname + window.location.search));  // e.g. the session ended
+  }
   if (response.status === 204) {
     return undefined as T;
   }
@@ -88,6 +95,11 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
     throw new ApiError(response.status, errorMessage(response.status, data), data);
   }
   return data as T;
+}
+
+/** The login page that returns to `next` afterwards. */
+export function loginLink(next: string): string {
+  return `/login?next=${encodeURIComponent(next)}`;
 }
 
 function periodQuery(period: Period): string {
@@ -142,6 +154,14 @@ export const api = {
   monthReport: (month: string) => request<MonthReport>('GET', `/api/reports/months/${segment(month)}`),
   yearReport: (year: number) => request<YearReport>('GET', `/api/reports/years/${segment(year)}`),
   dashboard: () => request<DashboardView>('GET', '/api/dashboard'),
+
+  authStatus: () => request<AuthStatus>('GET', '/api/auth/status'),
+  login: (login: string, password: string) => request<UserView>('POST', '/api/auth/login', { login, password }),
+  logout: () => request<void>('POST', '/api/auth/logout'),
+  firstUser: (input: NewUserInput) => request<UserView>('POST', '/api/auth/first-user', input),
+  saveProfile: (input: ProfileInput) => request<UserView>('PUT', '/api/auth/me', input),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<void>('PUT', '/api/auth/me/password', { current_password: currentPassword, new_password: newPassword }),
 
   setupStatus: () => request<SetupStatus>('GET', '/api/setup'),
   setup: (input: SetupInput) => request<SetupStatus>('POST', '/api/setup', input),

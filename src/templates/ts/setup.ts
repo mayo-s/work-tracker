@@ -1,5 +1,6 @@
-// Setup page (/setup): the initial setup of a new database in five steps, saved at once with "Start".
+// Setup page (/setup): the initial setup of a new database in steps, saved at once with "Start".
 
+import { accountError, accountFields, emptyAccount, profileInput, type AccountValues } from './account.ts';
 import { api, ApiError, type SetupInput } from './api.ts';
 import { formatDate, isoDate, type IsoDate } from './dates.ts';
 import { el } from './dom.ts';
@@ -19,9 +20,14 @@ export type SetupState = {
   firstYear: string;
   firstYearChanged: boolean;
   services: Service[];
+  account: AccountValues | null;  // the first user; null if the database already has one
 };
 
-const STEPS = ['Start', 'Work schedule', 'PTO', 'Services', 'Summary'];
+export type Step = 'Login' | 'Start' | 'Work schedule' | 'PTO' | 'Services' | 'Summary';
+
+export function steps(state: SetupState): Step[] {
+  return [...(state.account ? ['Login' as const] : []), 'Start', 'Work schedule', 'PTO', 'Services', 'Summary'];
+}
 const DURATION = /^[+-]?\d+:[0-5]\d$/;
 
 /** The months of the first year that count: the start month only if starting by the 15th (01.03. → 10, 20.03. → 9). */
@@ -39,18 +45,21 @@ export function initialState(today: IsoDate): SetupState {
   return {
     start: today, opening: '0:00', weeklyHours: '40:00', workDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], state: 'BE',
     companyHalfDays: true, perYear: '30', firstYear: String(proRata(30, today)), firstYearChanged: false, services: [],
+    account: emptyAccount(),
   };
 }
 
 /** The problem that keeps a step from going on, or null. */
-export function stepError(state: SetupState, step: number): string | null {
-  const checks: (() => string | null)[] = [
-    () => (!state.start ? 'Enter the first day.'
+export function stepError(state: SetupState, step: Step): string | null {
+  const checks: Partial<Record<Step, () => string | null>> = {
+    'Login': () => (state.account ? accountError(state.account, true) : null),
+    'Start': () => (!state.start ? 'Enter the first day.'
       : DURATION.test(state.opening.trim()) ? null : 'Enter the opening balance as h:mm, e.g. 0:00.'),
-    () => (!DURATION.test(state.weeklyHours.trim()) ? 'Enter the hours per week as h:mm, e.g. 40:00.'
+    'Work schedule': () => (!DURATION.test(state.weeklyHours.trim()) ? 'Enter the hours per week as h:mm, e.g. 40:00.'
       : state.workDays.length ? null : 'Choose at least one work day.'),
-    () => ([state.perYear, state.firstYear].every((days) => days !== '' && Number(days) >= 0) ? null : 'Enter the PTO days.'),
-  ];
+    'PTO': () => ([state.perYear, state.firstYear].every((days) => days !== '' && Number(days) >= 0)
+      ? null : 'Enter the PTO days.'),
+  };
   return checks[step]?.() ?? null;
 }
 
@@ -66,6 +75,7 @@ export function setupInput(state: SetupState): SetupInput {
     pto_first_year: Number(state.firstYear),
     services: state.services.filter((service) => service.short_name.trim())
       .map((service) => ({ short_name: service.short_name.trim(), name: service.name.trim() })),
+    user: state.account ? { ...profileInput(state.account), password: state.account.password } : null,
   };
 }
 
@@ -73,7 +83,9 @@ export function setupInput(state: SetupState): SetupInput {
 export function summary(state: SetupState): [string, string][] {
   const year = Number(state.start.slice(0, 4));
   const services = setupInput(state).services ?? [];
+  const account = state.account;
   return [
+    ...(account ? [['Login', `${account.username.trim()} · ${account.email.trim()}`] as [string, string]] : []),
     ['First day', formatDate(state.start)],
     ['Opening balance', state.opening.trim()],
     ['Work schedule', `${state.weeklyHours.trim()} h per week, ${state.workDays.join(', ')}`],
@@ -100,6 +112,13 @@ function importNote(): HTMLElement {
     el('strong', {}, 'Coming from the spreadsheet? '),
     'Import its yearly CSV exports first (README, "Import the spreadsheet"), e.g. ',
     el('code', {}, 'pipenv run python -m src.modules.importer "SHEET.csv"'), ', then finish the setup here.');
+}
+
+function loginStep(state: SetupState): HTMLElement[] {
+  return [
+    el('p', {}, 'Your login for the app: log in with the username or the e-mail address.'),
+    el('div', { class: 'setup-fields' }, ...accountFields('setup-user', state.account!, true)),
+  ];
 }
 
 function startStep(state: SetupState, changed: () => void): HTMLElement[] {
@@ -202,18 +221,29 @@ function button(label: string, onClick: () => void, className = ''): HTMLButtonE
   return element;
 }
 
-function progress(step: number): HTMLElement {
+function progress(names: Step[], step: number): HTMLElement {
   return el('ol', { class: 'setup-steps' },
-    ...STEPS.map((name, index) => el('li', { class: index === step ? 'is-current' : index < step ? 'is-done' : null,
+    ...names.map((name, index) => el('li', { class: index === step ? 'is-current' : index < step ? 'is-done' : null,
       'aria-current': index === step ? 'step' : null }, name)));
 }
 
-export function renderSetupPage(doc: Document): void {
+function stepContent(state: SetupState, name: Step, draw: () => void): HTMLElement[] {
+  const builders: Record<Step, () => HTMLElement[]> = {
+    'Login': () => loginStep(state), 'Start': () => startStep(state, () => undefined),
+    'Work schedule': () => scheduleStep(state),
+    'PTO': () => ptoStep(state), 'Services': () => servicesStep(state, draw), 'Summary': () => summaryStep(state),
+  };
+  return builders[name]();
+}
+
+export async function renderSetupPage(doc: Document): Promise<void> {
   const root = doc.querySelector<HTMLElement>('#setup');
   if (!root) {
     return;
   }
   const state = initialState(isoDate(new Date()));
+  state.account = (await api.authStatus()).has_users ? null : state.account;  // a database with a user keeps it
+  const names = steps(state);
   let step = 0;
   const error = el('p', { class: 'field-error', role: 'alert', hidden: true });
   root.addEventListener('input', () => (error.hidden = true));
@@ -222,7 +252,7 @@ export function renderSetupPage(doc: Document): void {
     error.hidden = false;
   };
   const go = (next: number): void => {
-    const problem = next > step ? stepError(state, step) : null;
+    const problem = next > step ? stepError(state, names[step]!) : null;
     if (problem) {
       fail(problem);
       return;
@@ -238,15 +268,14 @@ export function renderSetupPage(doc: Document): void {
     if (!state.firstYearChanged) {
       state.firstYear = String(proRata(Number(state.perYear) || 0, state.start));
     }
-    const content = [startStep(state, () => undefined), scheduleStep(state), ptoStep(state), servicesStep(state, draw),
-      summaryStep(state)][step]!;
+    const content = stepContent(state, names[step]!, draw);
     error.hidden = true;
-    root.replaceChildren(progress(step),
+    root.replaceChildren(progress(names, step),
       el('section', { class: 'card setup-step', 'aria-labelledby': 'setup-step-title' },
-        el('h2', { id: 'setup-step-title' }, `${step + 1}. ${STEPS[step]}`), ...content, error,
+        el('h2', { id: 'setup-step-title' }, `${step + 1}. ${names[step]}`), ...content, error,
         el('div', { class: 'form-actions' },
           step > 0 ? button('Back', () => go(step - 1)) : null,
-          step < STEPS.length - 1 ? button('Next', () => go(step + 1), 'primary')
+          step < names.length - 1 ? button('Next', () => go(step + 1), 'primary')
             : button('Start', startCounting, 'primary'))));
     root.querySelector<HTMLElement>('.setup-step input, .setup-step select')?.focus();
   };

@@ -6,6 +6,7 @@ import {
 import { formatDate } from './dates.ts';
 import { el } from './dom.ts';
 import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
+import { accountSection } from './account.ts';
 import { field, submit } from './forms.ts';
 import { STATE_NAMES, WEEKDAY_NAMES } from './labels.ts';
 import { activityTypesTable, servicesTable } from './lists.ts';
@@ -13,7 +14,7 @@ import { activityTypesTable, servicesTable } from './lists.ts';
 const BALANCE_FIELDS = ['balance_start', 'opening_balance'] as const;
 const SECTIONS = [
   ['balance', 'Overtime balance'], ['schedules', 'Work schedules'], ['pto-years', 'PTO years'], ['services', 'Services'],
-  ['activity-types', 'Activity types'], ['appearance', 'Appearance'],
+  ['activity-types', 'Activity types'], ['appearance', 'Appearance'], ['account', 'Account'],
 ];
 const THEMES: [Theme, string][] = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
 
@@ -189,8 +190,9 @@ function contents(): HTMLElement {
 
 export async function renderSettingsPage(doc: Document): Promise<void> {
   await renderEditablePage(doc, 'settings', 'settings-status', async (page) => {
-    const [settings, schedules, years, services, activityTypes, tickets, theme] = await Promise.all([
+    const [settings, schedules, years, services, activityTypes, tickets, theme, status] = await Promise.all([
       api.settings(), api.schedules(), api.ptoYears(), api.services(), api.activityTypes(), api.tickets(), api.theme(),
+      api.authStatus(),
     ]);
     return [
       contents(),
@@ -200,6 +202,7 @@ export async function renderSettingsPage(doc: Document): Promise<void> {
       tableSection(servicesTable(services, tickets), page),
       tableSection(activityTypesTable(activityTypes), page),
       appearanceSection(theme.theme, page),
+      accountSection(status.user ?? null, status.enabled, page.reload),
     ];
   });
   doc.getElementById(doc.location.hash.slice(1))?.scrollIntoView();  // a link like /settings#services

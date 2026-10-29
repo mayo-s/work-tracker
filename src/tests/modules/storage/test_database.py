@@ -7,7 +7,7 @@ from src.modules.storage.database import Database, SchemaVersionError
 
 TABLES = {
     'settings', 'pto_years', 'work_schedules', 'services', 'activity_types', 'tickets', 'days', 'entries', 'entry_history',
-    'review_flags',
+    'review_flags', 'users', 'sessions', 'failed_logins',
 }
 
 
