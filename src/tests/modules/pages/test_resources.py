@@ -81,7 +81,8 @@ def test_static_files_are_revalidated(client):
 
 def test_main_navigation_links_all_pages(client):
     html = client.simulate_get('/').text
-    assert '<a href="/">Week</a>' in html
+    assert '<a href="/">Dashboard</a>' in html
+    assert '<a href="/week">Week</a>' in html
     assert '<a href="/month">Month</a>' in html
     assert '<a href="/year">Year</a>' in html
     assert '<a href="/review">Review</a>' in html
@@ -89,7 +90,8 @@ def test_main_navigation_links_all_pages(client):
 
 
 @pytest.mark.parametrize('path, page, title, element', [
-    ('/', 'week', 'Week', 'id="week"'),
+    ('/', 'dashboard', 'Dashboard', 'id="dashboard"'),
+    ('/week', 'week', 'Week', 'id="week"'),
     ('/month', 'month', 'Month', 'id="month"'),
     ('/year', 'year', 'Year', 'id="year"'),
     ('/review', 'review', 'Review', 'id="review-status"'),
@@ -115,4 +117,10 @@ def test_skip_link_comes_first(client):
     html = client.simulate_get('/').text
     body = html[html.index('<body>'):]
     assert body.index('<a class="skip-link" href="#app">Skip to content</a>') < body.index('<header')
-    assert '<main id="app" data-page="week" tabindex="-1">' in html
+    assert '<main id="app" data-page="dashboard" tabindex="-1">' in html
+
+
+@pytest.mark.parametrize('query', ['week=2026-W44', 'week=2025-W49&edit=2025-12-06', 'week=2024-W44&entry=129'])
+def test_former_week_links_forward_to_the_week_page(client, query):
+    result = client.simulate_get('/', query_string=query)
+    assert (result.status, result.headers['location']) == (falcon.HTTP_301, f'/week?{query}')

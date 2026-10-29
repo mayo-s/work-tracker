@@ -17,6 +17,7 @@ export function markCurrentPage(nav: ParentNode, path: string): void {
 /** Page code, loaded only on its page (`<main data-page="…">`). */
 const PAGES: Record<string, () => Promise<void>> = {
   components: async () => (await import('./gallery.ts')).renderGallery(document),
+  dashboard: async () => (await import('./dashboard.ts')).renderDashboardPage(document),
   week: async () => (await import('./week.ts')).renderWeekPage(document),
   month: async () => (await import('./month.ts')).renderMonthPage(document),
   year: async () => (await import('./year.ts')).renderYearPage(document),

@@ -13,9 +13,9 @@ export const REASON_LABELS: Record<ReviewReason, string> = {
   no_ticket: 'No ticket',
 };
 
-/** A link into the week view of a date, e.g. `/?week=2024-W45&entry=129`. */
+/** A link into the week view of a date, e.g. `/week?week=2024-W45&entry=129`. */
 export function weekLink(date: IsoDate, parameter: string): string {
-  return `/?week=${isoWeek(date)}&${parameter}`;
+  return `/week?week=${isoWeek(date)}&${parameter}`;
 }
 
 export function reviewTotal(counts: ReviewView['counts']): number {

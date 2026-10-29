@@ -164,7 +164,19 @@ Every change to a task entry is recorded, so it can be checked later what change
 
 ## 5. Views
 
-### 5.1 Week (default)
+### 5.0 Dashboard (start page)
+
+- At `/` (a new database first goes through `/setup`); the week view is at `/week`, and former links like
+  `/?week=…&edit=…` forward there.
+- Key figures, each linking to its page: overtime balance today and its change this year, PTO left and planned, this
+  week's worked of target, open review items.
+- The overtime balance over time as a line (plain SVG, both themes; below zero in the warning color) with a switch:
+  this month by day; this year, the last 12 months and everything since the balance start by month. Hover or the
+  arrow keys show each value; all values also as a table.
+- Coming up in the next 60 days: public holidays, company half days and planned days off (days in a row combined).
+- This year: days worked and average, sick days, overtime-off days, coding hours and the top three services.
+
+### 5.1 Week
 
 - Shows the work days of the current week (e.g. Mon–Fri); other days only if they hold data. Prev / next / today
   navigation.

@@ -217,6 +217,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Key figures, the overtime balance over time, days off coming up and this year's figures, up to today. */
+        get: operations["get__api_dashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reports/weeks/{week}": {
         parameters: {
             query?: never;
@@ -640,6 +657,50 @@ export interface components {
              * @description e.g. Tool Management
              */
             name: string;
+        };
+        /** DashboardView */
+        DashboardView: {
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /**
+             * Balance
+             * @description Overtime balance today
+             */
+            balance: string;
+            /**
+             * Balance Change This Year
+             * @description Change since the end of last year (or the balance start)
+             */
+            balance_change_this_year: string;
+            /** @description This year's PTO account; null without PTO days entered */
+            pto: components["schemas"]["PtoView"] | null;
+            /**
+             * Week
+             * @example 2026-W44
+             */
+            week: string;
+            /** @description Worked, target and overtime of this week up to today */
+            this_week: components["schemas"]["PeriodTotals"];
+            /**
+             * Week Target
+             * @description The whole week's target under the work schedule, planned days off included
+             */
+            week_target: string;
+            /**
+             * Review Open
+             * @description Open items on the review page
+             */
+            review_open: number;
+            balance_series: components["schemas"]["BalanceSeries"];
+            /**
+             * Coming Up
+             * @description Public holidays, company half days and planned days off in the next 60 days; days in a row combined
+             */
+            coming_up: components["schemas"]["ComingUp"][];
+            this_year: components["schemas"]["YearFigures"];
         };
         /**
          * PeriodQuery
@@ -1358,6 +1419,172 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** BalancePoint */
+        BalancePoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Minutes
+             * @description Overtime balance at the end of the day, in minutes
+             */
+            minutes: number;
+            /**
+             * Balance
+             * @description The same as h:mm
+             */
+            balance: string;
+        };
+        /**
+         * BalanceSeries
+         * @description The overtime balance over time; months end with their last day (the current one with today).
+         */
+        BalanceSeries: {
+            /**
+             * Month
+             * @description Each day of the current month up to today
+             */
+            month: components["schemas"]["BalancePoint"][];
+            /**
+             * Year
+             * @description The end of each month of the current year
+             */
+            year: components["schemas"]["BalancePoint"][];
+            /**
+             * Last 12 Months
+             * @description The end of each of the last 12 months
+             */
+            last_12_months: components["schemas"]["BalancePoint"][];
+            /**
+             * All
+             * @description The end of each month since the balance start
+             */
+            all: components["schemas"]["BalancePoint"][];
+        };
+        /** ComingUp */
+        ComingUp: {
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            day_type: components["schemas"]["DayType"];
+            /**
+             * Holiday
+             * @description Name of the public holiday or company half day
+             */
+            holiday: string | null;
+            /**
+             * Days
+             * @description Work days from start to end
+             */
+            days: number;
+        };
+        /**
+         * DayType
+         * @enum {string}
+         */
+        DayType: "work" | "pto" | "pto_half" | "sick" | "sick_half" | "overtime_off" | "unpaid_leave" | "public_holiday" | "company_half_day";
+        /** PeriodTotals */
+        PeriodTotals: {
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /**
+             * Until
+             * @description Last day counted (today at the latest); null if nothing counted yet
+             */
+            until: string | null;
+            /** Worked */
+            worked: string;
+            /** Target */
+            target: string;
+            /** Overtime */
+            overtime: string;
+            /**
+             * Balance In
+             * @description Overtime balance before the period
+             */
+            balance_in: string;
+            /**
+             * Balance Out
+             * @description Overtime balance at the end of the period (today at the latest)
+             */
+            balance_out: string;
+        };
+        /** PtoView */
+        PtoView: {
+            /** Carried Over */
+            carried_over: number;
+            /**
+             * Carried Over Fixed
+             * @description Entered for the year instead of the remainder of the year before
+             */
+            carried_over_fixed: boolean;
+            /** Allowance */
+            allowance: number;
+            /**
+             * Extra Days
+             * @description Days granted on top of the allowance
+             */
+            extra_days: number;
+            /** Used */
+            used: number;
+            /** Planned */
+            planned: number;
+            /** Remaining */
+            remaining: number;
+        };
+        /** ServiceHours */
+        ServiceHours: {
+            /**
+             * Service
+             * @description Short name; null for tickets without service
+             */
+            service: string | null;
+            /** Duration */
+            duration: string;
+        };
+        /** YearFigures */
+        YearFigures: {
+            /** Year */
+            year: number;
+            /** Days Worked */
+            days_worked: number;
+            /** Average Per Day Worked */
+            average_per_day_worked: string;
+            /**
+             * Sick Days
+             * @description Full sick days, half days count half
+             */
+            sick_days: number;
+            /** Overtime Off Days */
+            overtime_off_days: number;
+            /**
+             * Coding
+             * @description Coding hours of the year
+             */
+            coding: string;
+            /**
+             * Top Services
+             * @description The three services with the most coding hours
+             */
+            top_services: components["schemas"]["ServiceHours"][];
+        };
         /** DayFlagView */
         DayFlagView: {
             /** Id */
@@ -1366,11 +1593,6 @@ export interface components {
             /** Detail */
             detail: string;
         };
-        /**
-         * DayType
-         * @enum {string}
-         */
-        DayType: "work" | "pto" | "pto_half" | "sick" | "sick_half" | "overtime_off" | "unpaid_leave" | "public_holiday" | "company_half_day";
         /**
          * FlagReason
          * @enum {string}
@@ -1447,40 +1669,6 @@ export interface components {
          */
         HistoryAction: "created" | "imported" | "updated" | "renamed" | "merged" | "split" | "deleted";
         JsonValue: unknown;
-        /** PeriodTotals */
-        PeriodTotals: {
-            /**
-             * Start
-             * Format: date
-             */
-            start: string;
-            /**
-             * End
-             * Format: date
-             */
-            end: string;
-            /**
-             * Until
-             * @description Last day counted (today at the latest); null if nothing counted yet
-             */
-            until: string | null;
-            /** Worked */
-            worked: string;
-            /** Target */
-            target: string;
-            /** Overtime */
-            overtime: string;
-            /**
-             * Balance In
-             * @description Overtime balance before the period
-             */
-            balance_in: string;
-            /**
-             * Balance Out
-             * @description Overtime balance at the end of the period (today at the latest)
-             */
-            balance_out: string;
-        };
         /** ServiceWork */
         ServiceWork: {
             /**
@@ -1517,29 +1705,6 @@ export interface components {
             target: string;
             /** Overtime */
             overtime: string;
-        };
-        /** PtoView */
-        PtoView: {
-            /** Carried Over */
-            carried_over: number;
-            /**
-             * Carried Over Fixed
-             * @description Entered for the year instead of the remainder of the year before
-             */
-            carried_over_fixed: boolean;
-            /** Allowance */
-            allowance: number;
-            /**
-             * Extra Days
-             * @description Days granted on top of the allowance
-             */
-            extra_days: number;
-            /** Used */
-            used: number;
-            /** Planned */
-            planned: number;
-            /** Remaining */
-            remaining: number;
         };
         /** ReviewCounts */
         ReviewCounts: {
@@ -2317,6 +2482,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_dashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardView"];
+                };
             };
             /** @description Unprocessable Content */
             422: {

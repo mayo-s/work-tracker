@@ -104,9 +104,16 @@ and ends with passing tests and the flake8 check.
   gallery's code blocks focusable. No separate axe script and no screen-reader checklist
 - [ ] **L.6** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g.
   `2,0 PTO Dentist`,
-  today only a day note) as a value, and show them in the year report next to the days off.
-- [ ] **L.7** Dashboard: A dashboard page with a clean overview and summary of vacation days, overtime balance and other
-  interesting stats.
+  today only a day note) as a value, and show them in the year report next to the days off. On hold: kept as day
+  notes for now, to see how hours off are used in practice
+- [x] **L.7** Dashboard as the start page `/` (until the database is set up, `/setup` as before); the week view moves to
+  `/week`, and old links like `/?week=2026-W44&edit=…` forward there with their parameters. Content: key figures
+  (balance today and this year's change, PTO left and planned, this week worked of target, open review items; each
+  links to its page), a chart of the overtime balance with a switch (current month by day; year, last 12 months and
+  all since the balance start by month; below zero in the warning color; plain SVG, both themes), coming up in the
+  next 60 days (public holidays, company half days and planned days off, days in a row combined), and this year's
+  figures (days worked and average, sick days, overtime-off days, coding hours, top services). Data from
+  `GET /api/dashboard` in one transaction
 - [ ] **L.8** User Login: i would like to secure the app behind a login page. Valid login expires after 24 hours.
 - [ ] **L.8a** Multi User App: What if not just one person wants to use the app but multiple? same db or one db by user?
 - [ ] **L.9** Narrow screens and zoom (WCAG 1.4.10 Reflow, 320 CSS px / 200 % zoom): wide tables scroll in their own

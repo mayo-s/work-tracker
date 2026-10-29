@@ -990,6 +990,39 @@
         }
       }
     },
+    "/api/dashboard": {
+      "get": {
+        "summary": "Key figures, the overtime balance over time, days off coming up and this year's figures, up to today.",
+        "operationId": "get__api_dashboard",
+        "description": "",
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/reports/weeks/{week}": {
       "get": {
         "summary": "Totals of a week (Monday to Sunday) and the overtime balance before and after it.",
@@ -2464,6 +2497,86 @@
           "name"
         ],
         "title": "ActivityType",
+        "type": "object"
+      },
+      "DashboardView": {
+        "properties": {
+          "today": {
+            "format": "date",
+            "title": "Today",
+            "type": "string"
+          },
+          "balance": {
+            "description": "Overtime balance today",
+            "title": "Balance",
+            "type": "string"
+          },
+          "balance_change_this_year": {
+            "description": "Change since the end of last year (or the balance start)",
+            "title": "Balance Change This Year",
+            "type": "string"
+          },
+          "pto": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PtoView"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "This year's PTO account; null without PTO days entered"
+          },
+          "week": {
+            "examples": [
+              "2026-W44"
+            ],
+            "title": "Week",
+            "type": "string"
+          },
+          "this_week": {
+            "$ref": "#/components/schemas/PeriodTotals",
+            "description": "Worked, target and overtime of this week up to today"
+          },
+          "week_target": {
+            "description": "The whole week's target under the work schedule, planned days off included",
+            "title": "Week Target",
+            "type": "string"
+          },
+          "review_open": {
+            "description": "Open items on the review page",
+            "title": "Review Open",
+            "type": "integer"
+          },
+          "balance_series": {
+            "$ref": "#/components/schemas/BalanceSeries"
+          },
+          "coming_up": {
+            "description": "Public holidays, company half days and planned days off in the next 60 days; days in a row combined",
+            "items": {
+              "$ref": "#/components/schemas/ComingUp"
+            },
+            "title": "Coming Up",
+            "type": "array"
+          },
+          "this_year": {
+            "$ref": "#/components/schemas/YearFigures"
+          }
+        },
+        "required": [
+          "today",
+          "balance",
+          "balance_change_this_year",
+          "pto",
+          "week",
+          "this_week",
+          "week_target",
+          "review_open",
+          "balance_series",
+          "coming_up",
+          "this_year"
+        ],
+        "title": "DashboardView",
         "type": "object"
       },
       "PeriodQuery": {
@@ -3948,6 +4061,316 @@
         "title": "ValidationErrorElement",
         "type": "object"
       },
+      "BalancePoint": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "minutes": {
+            "description": "Overtime balance at the end of the day, in minutes",
+            "title": "Minutes",
+            "type": "integer"
+          },
+          "balance": {
+            "description": "The same as h:mm",
+            "title": "Balance",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "minutes",
+          "balance"
+        ],
+        "title": "BalancePoint",
+        "type": "object"
+      },
+      "BalanceSeries": {
+        "description": "The overtime balance over time; months end with their last day (the current one with today).",
+        "properties": {
+          "month": {
+            "description": "Each day of the current month up to today",
+            "items": {
+              "$ref": "#/components/schemas/BalancePoint"
+            },
+            "title": "Month",
+            "type": "array"
+          },
+          "year": {
+            "description": "The end of each month of the current year",
+            "items": {
+              "$ref": "#/components/schemas/BalancePoint"
+            },
+            "title": "Year",
+            "type": "array"
+          },
+          "last_12_months": {
+            "description": "The end of each of the last 12 months",
+            "items": {
+              "$ref": "#/components/schemas/BalancePoint"
+            },
+            "title": "Last 12 Months",
+            "type": "array"
+          },
+          "all": {
+            "description": "The end of each month since the balance start",
+            "items": {
+              "$ref": "#/components/schemas/BalancePoint"
+            },
+            "title": "All",
+            "type": "array"
+          }
+        },
+        "required": [
+          "month",
+          "year",
+          "last_12_months",
+          "all"
+        ],
+        "title": "BalanceSeries",
+        "type": "object"
+      },
+      "ComingUp": {
+        "properties": {
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "day_type": {
+            "$ref": "#/components/schemas/DayType"
+          },
+          "holiday": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the public holiday or company half day",
+            "title": "Holiday"
+          },
+          "days": {
+            "description": "Work days from start to end",
+            "title": "Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "day_type",
+          "holiday",
+          "days"
+        ],
+        "title": "ComingUp",
+        "type": "object"
+      },
+      "DayType": {
+        "enum": [
+          "work",
+          "pto",
+          "pto_half",
+          "sick",
+          "sick_half",
+          "overtime_off",
+          "unpaid_leave",
+          "public_holiday",
+          "company_half_day"
+        ],
+        "title": "DayType",
+        "type": "string"
+      },
+      "PeriodTotals": {
+        "properties": {
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Last day counted (today at the latest); null if nothing counted yet",
+            "title": "Until"
+          },
+          "worked": {
+            "title": "Worked",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          },
+          "overtime": {
+            "title": "Overtime",
+            "type": "string"
+          },
+          "balance_in": {
+            "description": "Overtime balance before the period",
+            "title": "Balance In",
+            "type": "string"
+          },
+          "balance_out": {
+            "description": "Overtime balance at the end of the period (today at the latest)",
+            "title": "Balance Out",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "until",
+          "worked",
+          "target",
+          "overtime",
+          "balance_in",
+          "balance_out"
+        ],
+        "title": "PeriodTotals",
+        "type": "object"
+      },
+      "PtoView": {
+        "properties": {
+          "carried_over": {
+            "title": "Carried Over",
+            "type": "number"
+          },
+          "carried_over_fixed": {
+            "description": "Entered for the year instead of the remainder of the year before",
+            "title": "Carried Over Fixed",
+            "type": "boolean"
+          },
+          "allowance": {
+            "title": "Allowance",
+            "type": "number"
+          },
+          "extra_days": {
+            "description": "Days granted on top of the allowance",
+            "title": "Extra Days",
+            "type": "number"
+          },
+          "used": {
+            "title": "Used",
+            "type": "number"
+          },
+          "planned": {
+            "title": "Planned",
+            "type": "number"
+          },
+          "remaining": {
+            "title": "Remaining",
+            "type": "number"
+          }
+        },
+        "required": [
+          "carried_over",
+          "carried_over_fixed",
+          "allowance",
+          "extra_days",
+          "used",
+          "planned",
+          "remaining"
+        ],
+        "title": "PtoView",
+        "type": "object"
+      },
+      "ServiceHours": {
+        "properties": {
+          "service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Short name; null for tickets without service",
+            "title": "Service"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "duration"
+        ],
+        "title": "ServiceHours",
+        "type": "object"
+      },
+      "YearFigures": {
+        "properties": {
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          },
+          "days_worked": {
+            "title": "Days Worked",
+            "type": "integer"
+          },
+          "average_per_day_worked": {
+            "title": "Average Per Day Worked",
+            "type": "string"
+          },
+          "sick_days": {
+            "description": "Full sick days, half days count half",
+            "title": "Sick Days",
+            "type": "number"
+          },
+          "overtime_off_days": {
+            "title": "Overtime Off Days",
+            "type": "integer"
+          },
+          "coding": {
+            "description": "Coding hours of the year",
+            "title": "Coding",
+            "type": "string"
+          },
+          "top_services": {
+            "description": "The three services with the most coding hours",
+            "items": {
+              "$ref": "#/components/schemas/ServiceHours"
+            },
+            "title": "Top Services",
+            "type": "array"
+          }
+        },
+        "required": [
+          "year",
+          "days_worked",
+          "average_per_day_worked",
+          "sick_days",
+          "overtime_off_days",
+          "coding",
+          "top_services"
+        ],
+        "title": "YearFigures",
+        "type": "object"
+      },
       "DayFlagView": {
         "properties": {
           "id": {
@@ -3969,21 +4392,6 @@
         ],
         "title": "DayFlagView",
         "type": "object"
-      },
-      "DayType": {
-        "enum": [
-          "work",
-          "pto",
-          "pto_half",
-          "sick",
-          "sick_half",
-          "overtime_off",
-          "unpaid_leave",
-          "public_holiday",
-          "company_half_day"
-        ],
-        "title": "DayType",
-        "type": "string"
       },
       "FlagReason": {
         "enum": [
@@ -4147,67 +4555,6 @@
         "type": "string"
       },
       "JsonValue": {},
-      "PeriodTotals": {
-        "properties": {
-          "start": {
-            "format": "date",
-            "title": "Start",
-            "type": "string"
-          },
-          "end": {
-            "format": "date",
-            "title": "End",
-            "type": "string"
-          },
-          "until": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Last day counted (today at the latest); null if nothing counted yet",
-            "title": "Until"
-          },
-          "worked": {
-            "title": "Worked",
-            "type": "string"
-          },
-          "target": {
-            "title": "Target",
-            "type": "string"
-          },
-          "overtime": {
-            "title": "Overtime",
-            "type": "string"
-          },
-          "balance_in": {
-            "description": "Overtime balance before the period",
-            "title": "Balance In",
-            "type": "string"
-          },
-          "balance_out": {
-            "description": "Overtime balance at the end of the period (today at the latest)",
-            "title": "Balance Out",
-            "type": "string"
-          }
-        },
-        "required": [
-          "start",
-          "end",
-          "until",
-          "worked",
-          "target",
-          "overtime",
-          "balance_in",
-          "balance_out"
-        ],
-        "title": "PeriodTotals",
-        "type": "object"
-      },
       "ServiceWork": {
         "properties": {
           "service_id": {
@@ -4314,51 +4661,6 @@
           "overtime"
         ],
         "title": "MonthTotals",
-        "type": "object"
-      },
-      "PtoView": {
-        "properties": {
-          "carried_over": {
-            "title": "Carried Over",
-            "type": "number"
-          },
-          "carried_over_fixed": {
-            "description": "Entered for the year instead of the remainder of the year before",
-            "title": "Carried Over Fixed",
-            "type": "boolean"
-          },
-          "allowance": {
-            "title": "Allowance",
-            "type": "number"
-          },
-          "extra_days": {
-            "description": "Days granted on top of the allowance",
-            "title": "Extra Days",
-            "type": "number"
-          },
-          "used": {
-            "title": "Used",
-            "type": "number"
-          },
-          "planned": {
-            "title": "Planned",
-            "type": "number"
-          },
-          "remaining": {
-            "title": "Remaining",
-            "type": "number"
-          }
-        },
-        "required": [
-          "carried_over",
-          "carried_over_fixed",
-          "allowance",
-          "extra_days",
-          "used",
-          "planned",
-          "remaining"
-        ],
-        "title": "PtoView",
         "type": "object"
       },
       "ReviewCounts": {

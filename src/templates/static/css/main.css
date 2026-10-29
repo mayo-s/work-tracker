@@ -1126,3 +1126,205 @@ button.button-danger {
 .theme-preview input {
   width: auto;
 }
+
+/* Dashboard (/) */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.tile:hover {
+  background: var(--color-surface);
+}
+
+.tile-label,
+.tile-detail {
+  color: var(--color-muted);
+  font-size: var(--font-size-small);
+}
+
+.tile-value {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-strong);
+}
+
+.dashboard-section {
+  margin-bottom: var(--space-6);
+}
+
+.dashboard-section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.dashboard-section-header h2 {
+  margin: 0;
+}
+
+.segmented {
+  display: inline-flex;
+  border: var(--border);
+  border-radius: var(--radius);
+}
+
+.segmented label {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-small);
+  cursor: pointer;
+}
+
+.segmented label + label {
+  border-left: var(--border);
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+}
+
+.segmented label:has(input:checked) {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  font-weight: var(--font-weight-strong);
+}
+
+.segmented label:has(input:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+
+.dashboard-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: var(--space-4);
+}
+
+.dashboard-columns .card + .card {
+  margin-top: 0;
+}
+
+.dashboard-columns h2 {
+  margin-top: 0;
+}
+
+.coming-up {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+/* Balance chart: plain SVG in the color variables, so both themes apply */
+
+.chart {
+  position: relative;
+}
+
+.chart-plot {
+  display: block;
+  max-width: 100%;
+}
+
+.chart-text {
+  fill: var(--color-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-end-label {
+  fill: var(--color-text);
+  font-weight: var(--font-weight-strong);
+}
+
+.chart-grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.chart-zero {
+  stroke: var(--color-muted);
+  stroke-width: 1;
+}
+
+.chart-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart-area {
+  opacity: 0.1;
+}
+
+.chart-above .chart-line {
+  stroke: var(--color-accent);
+}
+
+.chart-above .chart-area,
+.chart-above.chart-dot,
+.chart-above .chart-dot {
+  fill: var(--color-accent);
+}
+
+.chart-below .chart-line {
+  stroke: var(--color-warning);
+}
+
+.chart-below .chart-area,
+.chart-below.chart-dot,
+.chart-below .chart-dot {
+  fill: var(--color-warning);
+}
+
+.chart-dot {
+  stroke: var(--color-background);
+  stroke-width: 2;
+}
+
+.chart-crosshair {
+  stroke: var(--color-muted);
+  stroke-width: 1;
+}
+
+.chart-tooltip {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1) var(--space-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--color-background);
+  font-size: var(--font-size-small);
+  pointer-events: none;
+}
+
+.chart-tooltip[hidden] {
+  display: none;
+}
+
+.chart-table {
+  margin-top: var(--space-3);
+  font-size: var(--font-size-small);
+}
+
+.chart-table summary {
+  color: var(--color-accent);
+  cursor: pointer;
+}

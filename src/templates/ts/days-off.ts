@@ -149,7 +149,7 @@ export function daysOffForm(monday: IsoDate, onClose: () => void): HTMLElement {
       try {
         const result = await api.bookRange(input({ conflicts }));
         const first = result.days[0];
-        window.location.assign(first ? `/?week=${isoWeek(first)}` : window.location.href);
+        window.location.assign(first ? `/week?week=${isoWeek(first)}` : window.location.href);
       } catch (error) {
         preview.textContent = errorText(error);
         preview.className = 'days-off-preview field-error';
