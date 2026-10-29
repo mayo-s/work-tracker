@@ -35,28 +35,35 @@ class _CatalogRepository[M: DomainModel]:
 
     def add(self, item: M) -> M:
         placeholders = ', '.join('?' for _ in self.fields)
-        cursor = self._write(f'INSERT INTO {self.table} ({self._columns}) VALUES ({placeholders})', self._values(item))
+        sql = f'INSERT INTO {self.table} ({self._columns}) VALUES ({placeholders})'
+        cursor = self._write(sql, self._values(item), self._duplicate(item))
         return item.model_copy(update={'id': cursor.lastrowid})
 
     def update(self, item: M) -> M:
         assignments = ', '.join(f'{field} = ?' for field in self.fields)
-        cursor = self._write(f'UPDATE {self.table} SET {assignments} WHERE id = ?', (*self._values(item), item.id))
+        sql = f'UPDATE {self.table} SET {assignments} WHERE id = ?'
+        cursor = self._write(sql, (*self._values(item), item.id), self._duplicate(item))
         if not cursor.rowcount:
             raise NotFoundError(f'No {self.label} with id {item.id}')
         return item
 
     def delete(self, item_id: int) -> None:
-        if not self._write(f'DELETE FROM {self.table} WHERE id = ?', (item_id,)).rowcount:
+        in_use = f'The {self.label} is used by entries and cannot be deleted'
+        if not self._write(f'DELETE FROM {self.table} WHERE id = ?', (item_id,), in_use).rowcount:
             raise NotFoundError(f'No {self.label} with id {item_id}')
 
     def _values(self, item: M) -> tuple:
         return tuple(getattr(item, field) for field in self.fields)
 
-    def _write(self, sql: str, params: tuple) -> sqlite3.Cursor:
+    def _duplicate(self, item: M) -> str:
+        return f'A {self.label} named "{self._values(item)[0]}" already exists'
+
+    def _write(self, sql: str, params: tuple, conflict: str) -> sqlite3.Cursor:
+        """Runs a change; a unique or foreign key violation raises a ConflictError with the given message."""
         try:
             return self._conn.execute(sql, params)
         except sqlite3.IntegrityError as error:
-            raise ConflictError(f'Cannot change {self.label}: {error}') from error
+            raise ConflictError(conflict) from error
 
 
 class ServiceRepository(_CatalogRepository[Service]):

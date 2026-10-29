@@ -98,12 +98,13 @@ def test_review_page(client):
     assert 'id="review-status"' in result.text
 
 
-def test_main_navigation_links_week_and_review(client):
+def test_main_navigation_links_all_pages(client):
     html = client.simulate_get('/').text
     assert '<a href="/">Week</a>' in html
     assert '<a href="/month">Month</a>' in html
     assert '<a href="/year">Year</a>' in html
     assert '<a href="/review">Review</a>' in html
+    assert '<a href="/lists">Lists</a>' in html
 
 
 def test_month_page(client):
@@ -118,3 +119,11 @@ def test_year_page(client):
     assert result.status == falcon.HTTP_200
     assert '<title>Year · Work Tracker</title>' in result.text
     assert 'data-page="year"' in result.text
+
+
+def test_lists_page(client):
+    result = client.simulate_get('/lists')
+    assert result.status == falcon.HTTP_200
+    assert '<title>Lists · Work Tracker</title>' in result.text
+    assert 'data-page="lists"' in result.text
+    assert 'id="lists-status"' in result.text

@@ -811,3 +811,24 @@ button.button-danger {
 .year-months tr.is-future td {
   color: var(--color-muted);
 }
+
+/* Lists (/lists) */
+
+.list-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.list-form input {
+  flex: 1 1 10rem;
+  width: auto;
+}
+
+.list-table + .list-form {
+  margin-top: var(--space-3);
+}
+
+.list-table .list-form input {
+  padding: 0 var(--space-2);
+}
