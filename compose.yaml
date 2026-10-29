@@ -1,0 +1,13 @@
+# Work Tracker on a NAS or any Docker host: docker compose up -d --build
+services:
+  work-tracker:
+    build: .
+    image: work-tracker:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"  # host port on the left
+    environment:
+      TZ: Europe/Berlin  # "today" of the reports follows this time zone
+    user: "${WORK_TRACKER_UID:-1000}:${WORK_TRACKER_GID:-1000}"  # needs write access to the data folder
+    volumes:
+      - ${WORK_TRACKER_DATA:-./data}:/data  # work_tracker.db lives here

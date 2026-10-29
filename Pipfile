@@ -8,6 +8,7 @@ falcon = "*"
 spectree = "*"
 pydantic = "*"
 holidays = "*"
+gunicorn = "*"
 
 [dev-packages]
 flake8 = "*"
@@ -17,7 +18,6 @@ pytest = "*"
 pytest-cov = "*"
 pytest-github-report = "*"
 pdbpp = "*"
-gunicorn = "*"
 
 [requires]
 python_version = "3.15"
