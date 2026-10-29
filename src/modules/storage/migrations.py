@@ -86,4 +86,9 @@ MIGRATIONS = (
         ('TTS', 'text-transformation-service');
     INSERT INTO activity_types (name) VALUES ('Tool Management'), ('Meeting'), ('Travel'), ('Other');
     """,
+    # 2: 2024 pro rata (30 × 7/12), one extra PTO day granted in 2025 and 2026 (not permanent: 30 again from 2027)
+    """
+    INSERT INTO pto_allowances (year, days) VALUES (2024, '17.5'), (2025, '31'), (2026, '31'), (2027, '30')
+        ON CONFLICT (year) DO UPDATE SET days = excluded.days;
+    """,
 )

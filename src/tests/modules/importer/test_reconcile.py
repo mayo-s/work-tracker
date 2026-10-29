@@ -77,9 +77,9 @@ def test_pto_account_of_the_year(conn):
     rows = year_2025()
     import_rows(conn, rows)
     pto = reconcile(conn, rows, today=dt.date(2025, 12, 31)).pto
-    # 2024: 18 − 0.5 (Heiligabend) − 0.5 (Silvester); 30.12.2024 is unpaid leave
+    # 2024: 17.5 − 0.5 (Heiligabend) − 0.5 (Silvester); 30.12.2024 is unpaid leave
     # 2025: 1 (02.01.) + 0.5 (Heiligabend) + 0.5 (Silvester)
-    assert (pto.year, pto.carried_over, pto.allowance, pto.used) == (2025, Decimal(17), Decimal(30), Decimal(2))
+    assert (pto.year, pto.carried_over, pto.allowance, pto.used) == (2025, Decimal('16.5'), Decimal(31), Decimal(2))
 
 
 def test_lines(conn):

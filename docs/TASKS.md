@@ -70,3 +70,5 @@ and ends with passing tests and the flake8 check.
   enter a time range vor vacations. Same for sick days in case one is sick for more than just a few days.
 - [ ] **L.3** Dark mode: a second set of the color variables from the UI style (e.g. following the system setting)
 - [ ] **L.4** Accessibility: the ui should be accessible for everyone and follow modern accessibility standards
+- [ ] **L.5** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g. `2,0 PTO Zahnarzt`,
+  today only a day note) as a value, and show them in the year report next to the days off.

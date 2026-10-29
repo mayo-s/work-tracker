@@ -14,7 +14,7 @@ def test_seeded_settings(database):
     assert settings == Settings(
         balance_start=dt.date(2024, 6, 1),
         opening_balance=0,
-        pto_allowances={2024: Decimal(18), 2025: Decimal(30)},
+        pto_allowances={2024: Decimal('17.5'), 2025: Decimal(31), 2026: Decimal(31), 2027: Decimal(30)},
     )
 
 
