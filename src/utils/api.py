@@ -48,4 +48,4 @@ def check_domain(build: Callable[[], object]) -> None:
     try:
         build()
     except ValidationError as error:
-        raise ValueError('; '.join(detail['msg'] for detail in error.errors())) from None
+        raise ValueError('; '.join(detail['msg'].removeprefix('Value error, ') for detail in error.errors())) from None
