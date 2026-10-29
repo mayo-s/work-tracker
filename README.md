@@ -5,7 +5,8 @@ monthly work report. A Falcon REST API with a small browser frontend, backed by 
 
 The project was partially implemented using claude.ai.
 
-> Work in progress — calculation rules, storage, spreadsheet import and REST API are done; the frontend follows.
+> Calculation rules, storage, spreadsheet import, REST API and frontend are done; later ideas are listed in
+> `docs/TASKS.md`.
 
 ## Requirements
 
@@ -22,16 +23,51 @@ npm install
 npm run build    # compile the frontend: src/templates/ts → src/templates/static/js
 ```
 
-The compiled JavaScript is not committed; build it after checking out or changing TypeScript
-(`npm run watch` rebuilds on every change).
+The compiled JavaScript is not committed; build it after checking out or changing TypeScript (`npm run watch` rebuilds
+on every change).
+
+## Start from zero
+
+Without a spreadsheet, e.g. when starting a new job. A new database file is created and migrated on the first
+start; it comes with the settings, PTO years and services of the original setup, which the steps below replace.
+
+1. Start the app on a new database file:
+
+   ```shell
+   export WORK_TRACKER_DB=work_tracker.db  # a file that does not exist yet
+   pipenv run python -m src
+   ```
+
+2. Set the first day of the overtime balance, and an opening balance in minutes if overtime is taken over (otherwise 0).
+   There is no page or API for this yet (task L.1), so it is set in the database (`sqlite3`):
+
+   ```shell
+   sqlite3 "$WORK_TRACKER_DB" "UPDATE settings SET value = '2027-03-01' WHERE key = 'balance_start'"
+   sqlite3 "$WORK_TRACKER_DB" "UPDATE settings SET value = '0' WHERE key = 'opening_balance'"
+   ```
+
+3. Enter the PTO days per year, pro rata in the first one (March–December of 30 days: 25). Years before the start
+   day are ignored; a year without entry has no PTO account. Also possible in `/apidoc/swagger`:
+
+   ```shell
+   curl -X PUT localhost:8000/api/pto-years/2027 -H 'Content-Type: application/json' \
+     -d '{"allowance": 25, "note": "pro rata from March"}'
+   curl -X PUT localhost:8000/api/pto-years/2028 -H 'Content-Type: application/json' -d '{"allowance": 30}'
+   ```
+
+4. Replace the services on `/lists` with those of the new job; adjust the activity types if needed.
+
+5. Record every day in the week view (`/`): times, day type (PTO, sick, …) and entries. From the start day on,
+   each weekday counts −8:00 until its times are entered (today included); weekends and Berlin public holidays
+   need nothing. The 8:00 target and the Berlin holidays are fixed for now (task L.1).
 
 ## Import the spreadsheet
 
 One CSV export per year; the database is `$WORK_TRACKER_DB`, or `work_tracker.db` in the working directory.
 
 ```shell
-pipenv run python -m src.modules.importer "examples/Time_tracking - 2024_Data.csv"
-pipenv run python -m src.modules.importer "examples/Time_tracking - 2024_Data.csv" --replace  # import a year again
+pipenv run python -m src.modules.importer "examples/Time_tracking_DK - 2024_Data.csv"
+pipenv run python -m src.modules.importer "examples/Time_tracking_DK - 2024_Data.csv" --replace  # import a year again
 ```
 
 A year is imported in one transaction: on any error nothing is written. `--replace` deletes the year's days,
@@ -49,12 +85,13 @@ pipenv run gunicorn 'src.app:create_app()' --reload  # alternative with auto-rel
 Open http://127.0.0.1:8000/ for the frontend (build it first with `npm run build`): the current week,
 other weeks via `/?week=2026-W44`; days and entries are edited in place (`&edit=2025-12-06` opens a day's form,
 `&entry=129` an entry's form; each entry shows its change history). `/month` shows the month report with the work report
-(coding hours by service and ticket), `/year` the year report (totals, PTO account, balance month by month); `/review` lists what needs attention after
+(coding hours by service and ticket), `/year` the year report (totals, PTO account, balance month by month); `/review`
+lists what needs attention after
 the import: guessed tickets (confirm, rename or split), entries without duration or ticket, flagged days, and tickets
 without service (assign one to several at once). `/lists` manages services and activity types (add, edit, delete;
 an activity type used by entries cannot be deleted). `/components` is a
-gallery of the UI components, each with its use and the HTML to copy. The database
-(`$WORK_TRACKER_DB` or `work_tracker.db`) is migrated on start. API documentation:
+gallery of the UI components, each with its use and the HTML to copy. The database (`$WORK_TRACKER_DB` or
+`work_tracker.db`) is migrated on start. API documentation:
 `/apidoc/swagger`, `/apidoc/redoc` or `/apidoc/scalar`; the OpenAPI spec is at `/apidoc/openapi.json`.
 These documentation routes are listed in the spec as well, under the Maintenance tag.
 `$WORK_TRACKER_HOST` and `$WORK_TRACKER_PORT` change the address of the development server.
@@ -68,7 +105,7 @@ pipenv run flake8 --count --exit-zero --radon-max-cc 6 --radon-no-assert --max-l
 ```
 
 ```shell
-npm test           # frontend: API client tests (Node runs the TypeScript tests directly)
+npm test           # frontend tests (Node runs the TypeScript tests directly)
 ```
 
 ## API types for the frontend
@@ -90,7 +127,7 @@ runs through `npx` with its own TypeScript 5, as it does not support the project
 | `src/__main__.py`      | Development server (`python -m src`)                                                                                                                                                                                                                                                                                                                                                                         |
 | `src/lib`              | Calculation rules: durations, breaks, holidays, targets, overtime, PTO                                                                                                                                                                                                                                                                                                                                       |
 | `src/models`           | Pydantic models                                                                                                                                                                                                                                                                                                                                                                                              |
-| `src/modules`          | Features: storage, import, days, entries, reports, review                                                                                                                                                                                                                                                                                                                                                    |
+| `src/modules`          | Features: storage, import, days, entries, tickets, catalog, PTO years, reports, review, pages                                                                                                                                                                                                                                                                                                                |
 | `src/utils`            | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types; `openapi`: spec file for the frontend types                                                                                                                                                                                                                                                                         |
 | `src/defaultresources` | Default resource at `/health` (plain-text status)                                                                                                                                                                                                                                                                                                                                                            |
 | `src/templates`        | Frontend: `frame.html` (shared page frame), `pages/` (page content), `static/` (served at `/static`: `css/main.css` with the UI style variables, Inter font with its OFL license in `fonts/`), TypeScript in `ts/` (`main.ts` loads the page code, e.g. `week.ts`; `api.ts`: typed API client, `api-types.ts`: generated) compiled to `static/js/` (git-ignored), `openapi.json`, frontend tests in `tests/` |
@@ -166,15 +203,15 @@ Targets and PTO apply Mon–Fri; on weekends every type has target 0:00 and uses
 
 Pydantic models; times in minutes, validated on creation and assignment.
 
-| Module     | Models                                                                                                                                  |
-|------------|-----------------------------------------------------------------------------------------------------------------------------------------|
-| `days`     | `Day`: date, day type (empty = automatic), start / end, break (empty = legal minimum), note; provides worked time                       |
-| `entries`  | `TicketEntry` (ticket, duration, description, coding) and `ActivityEntry` (activity type, duration, note); durations in quarter hours   |
-| `catalog`  | `Service`, `ActivityType` and `Ticket` (key like `ENGINE-461`, remembers its service)                                                   |
-| `history`  | `EntryChange`: one line of an entry's history (created, imported, updated, renamed, merged, deleted) with the changed fields, old → new |
-| `review`   | `ReviewFlag`: import flag on an entry or a day (uncertain ticket, weekend hours)                                                        |
-| `pto`      | `PtoYear`: allowance, extra days, fixed carry-over (empty = remainder of the year before), note                                         |
-| `settings` | `Settings`: balance start date, opening balance                                                                                         |
+| Module     | Models                                                                                                                                         |
+|------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| `days`     | `Day`: date, day type (empty = automatic), start / end, break (empty = legal minimum), note; provides worked time                              |
+| `entries`  | `TicketEntry` (ticket, duration, description, coding) and `ActivityEntry` (activity type, duration, note); durations in quarter hours          |
+| `catalog`  | `Service`, `ActivityType` and `Ticket` (key like `ENGINE-461`, remembers its service)                                                          |
+| `history`  | `EntryChange`: one line of an entry's history (created, imported, updated, renamed, merged, split, deleted) with the changed fields, old → new |
+| `review`   | `ReviewFlag`: import flag on an entry or a day (uncertain ticket, weekend hours)                                                               |
+| `pto`      | `PtoYear`: allowance, extra days, fixed carry-over (empty = remainder of the year before), note                                                |
+| `settings` | `Settings`: balance start date, opening balance                                                                                                |
 
 ## Storage (`src/modules/storage`)
 
@@ -255,7 +292,7 @@ erDiagram
         INTEGER id PK
         INTEGER entry_id
         TEXT changed_at
-        TEXT action "created, imported, updated, renamed, merged, deleted"
+        TEXT action "created, imported, updated, renamed, merged, split, deleted"
         TEXT changes "JSON: field to old and new"
         TEXT detail
     }
