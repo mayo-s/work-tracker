@@ -84,3 +84,8 @@ def test_component_gallery_page(client):
 
 def test_gallery_is_not_in_the_main_navigation(client):
     assert '/components' not in client.simulate_get('/').text
+
+
+def test_static_files_are_revalidated(client):
+    assert client.simulate_get('/static/css/main.css').headers['cache-control'] == 'no-cache'
+    assert 'cache-control' not in client.simulate_get('/api/review').headers

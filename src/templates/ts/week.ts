@@ -1,9 +1,11 @@
 // Week view (/): the days of a week with times, balance and task entries (read-only).
 
-import { api, ApiError, type DayView, type EntryView, type WeekReport } from './api.ts';
+import { api, ApiError, type ActivityType, type DayView, type EntryView, type Service, type WeekReport } from './api.ts';
 import { addDays, formatDate, formatDay, isoDate, isoWeek, isValidWeek, mondayOf, shiftWeek, type IsoDate } from './dates.ts';
 import { dayEditor } from './day-editor.ts';
 import { el } from './dom.ts';
+import { entryEditor, type EntryEditorOptions } from './entry-editor.ts';
+import { historyPanel } from './history.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 
 const WEEKEND = new Set(['Sat', 'Sun']);
@@ -51,6 +53,13 @@ export function editFromSearch(search: string, week: string): IsoDate | null {
   return date && /^\d{4}-\d{2}-\d{2}$/.test(date) && isoWeek(date) === week ? date : null;
 }
 
+/** The entry to open for editing from `?entry=129`, if it is an entry of the shown week. */
+export function entryFromSearch(search: string, entries: Map<IsoDate, EntryView[]>): Editing {
+  const id = Number(new URLSearchParams(search).get('entry'));
+  const entry = [...entries.values()].flat().find((item) => item.id === id);
+  return entry ? { kind: 'entry', date: entry.date, id: entry.id } : null;
+}
+
 function value(duration: string, withSign = false): HTMLElement {
   return el('span', { class: `num ${valueClass(duration)}`.trim() }, withSign ? signed(duration) : duration);
 }
@@ -78,12 +87,30 @@ function summary(report: WeekReport): HTMLElement {
   );
 }
 
-function entryItem(entry: EntryView): HTMLElement {
+type WeekData = {
+  days: DayView[]; entries: Map<IsoDate, EntryView[]>; report: WeekReport; services: Service[]; activityTypes: ActivityType[];
+};
+/** What is open: the form of a day, of an entry (id) or of a new entry (null) on a date, or nothing. */
+export type Editing = { kind: 'day'; date: IsoDate } | { kind: 'entry'; date: IsoDate; id: number | null } | null;
+type View = { data: WeekData; today: IsoDate; editing: Editing; history: number | null; actions: Actions };
+type Actions = {
+  edit: (editing: Editing) => void; cancel: () => void; changed: () => void; toggleHistory: (entryId: number) => void;
+};
+
+const COLUMNS = 8;
+
+function button(label: string, onClick: () => void, attributes: Record<string, string> = {}): HTMLButtonElement {
+  const element = el('button', { type: 'button', class: 'button-small', ...attributes }, label);
+  element.addEventListener('click', onClick);
+  return element;
+}
+
+function entryContent(entry: EntryView): (HTMLElement | null)[] {
   const label = entry.kind === 'ticket'
     ? el('strong', { class: entry.ticket_key ? '' : 'value-negative' }, entry.ticket_key ?? 'No ticket')
     : el('strong', {}, entry.activity_type ?? 'Activity');
   const text = entry.kind === 'ticket' ? entry.description : entry.note;
-  return el('li', { class: 'entry' },
+  return [
     el('span', { class: entry.duration === '0:00' ? 'num value-negative' : 'num', title: entry.duration === '0:00'
       ? 'No duration yet' : null }, entry.duration),
     label,
@@ -93,6 +120,29 @@ function entryItem(entry: EntryView): HTMLElement {
     entry.flags.length ? el('span', { class: 'badge warning', title: entry.flags.map((flag) => flag.detail).join('\n') },
       `${entry.flags.length} to review`) : null,
     entry.changed ? el('span', { class: 'badge', title: 'Changed after it was created or imported' }, 'changed') : null,
+  ];
+}
+
+function editorOptions(view: View, date: IsoDate, entry: EntryView | null): EntryEditorOptions {
+  return {
+    date, entry, services: view.data.services, activityTypes: view.data.activityTypes,
+    onDone: view.actions.changed, onCancel: view.actions.cancel,
+  };
+}
+
+function entryItem(entry: EntryView, view: View): HTMLElement {
+  const editing = view.editing;
+  if (editing?.kind === 'entry' && editing.id === entry.id) {
+    return el('li', { class: 'entry-editing' }, entryEditor(editorOptions(view, entry.date, entry)));
+  }
+  const activityNames = new Map(view.data.activityTypes.map((activity) => [activity.id ?? 0, activity.name]));
+  const historyOpen = view.history === entry.id;
+  return el('li', {},
+    el('div', { class: 'entry' }, ...entryContent(entry),
+      el('span', { class: 'entry-actions' },
+        button(historyOpen ? 'Hide history' : 'History', () => view.actions.toggleHistory(entry.id), { 'aria-expanded': String(historyOpen) }),
+        button('Edit', () => view.actions.edit({ kind: 'entry', date: entry.date, id: entry.id })))),
+    historyOpen ? historyPanel(entry.id, activityNames) : null,
   );
 }
 
@@ -106,19 +156,17 @@ function dayCell(day: DayView, warning: boolean, today: IsoDate): HTMLElement {
   );
 }
 
-type WeekData = { days: DayView[]; entries: Map<IsoDate, EntryView[]>; report: WeekReport };
-type Actions = { edit: (date: IsoDate) => void; cancel: () => void; changed: () => void };
-
-const COLUMNS = 8;
-
 function rowClass(day: DayView, warning: boolean, today: IsoDate): string | null {
   const classes = [warning ? 'is-warning' : '', day.date === today ? 'is-today' : '', WEEKEND.has(day.weekday) ? 'is-weekend' : ''];
   return classes.filter(Boolean).join(' ') || null;
 }
 
-function dayRow(day: DayView, warning: boolean, today: IsoDate, edit: HTMLElement | null): HTMLElement {
-  return el('tr', { class: rowClass(day, warning, today) },
-    dayCell(day, warning, today),
+function dayRow(day: DayView, warning: boolean, view: View): HTMLElement {
+  const editingDay = view.editing?.kind === 'day' && view.editing.date === day.date;
+  const edit = editingDay ? null : button('Edit', () => view.actions.edit({ kind: 'day', date: day.date }),
+    { 'aria-label': `Edit ${formatDay(day.date, day.weekday)}` });
+  return el('tr', { class: rowClass(day, warning, view.today) },
+    dayCell(day, warning, view.today),
     el('td', {}, day.day_type === 'work' ? null : el('span', { class: 'badge' }, DAY_TYPE_LABELS[day.day_type])),
     el('td', {}, day.start ? el('span', { class: 'num' }, `${day.start}–${day.end}`) : el('span', { class: 'muted' }, '—')),
     el('td', { class: 'num' }, day.break_time ?? '', day.break_default ? el('span', { class: 'muted' }, ' legal') : null),
@@ -129,61 +177,69 @@ function dayRow(day: DayView, warning: boolean, today: IsoDate, edit: HTMLElemen
   );
 }
 
-function detailsRow(day: DayView, entries: EntryView[], className: string | null): HTMLElement | null {
-  if (!entries.length && !day.note) {
-    return null;
+function newEntry(day: DayView, view: View): HTMLElement {
+  const editing = view.editing;
+  if (editing?.kind === 'entry' && editing.id === null && editing.date === day.date) {
+    return el('div', { class: 'entry-editing' }, entryEditor(editorOptions(view, day.date, null)));
   }
+  return button('+ Add entry', () => view.actions.edit({ kind: 'entry', date: day.date, id: null }));
+}
+
+function detailsRow(day: DayView, entries: EntryView[], className: string | null, view: View): HTMLElement {
   return el('tr', { class: ['day-details', className].filter(Boolean).join(' ') },
     el('td', { colspan: COLUMNS },
       day.note ? el('p', { class: 'day-note muted' }, day.note) : null,
-      entries.length ? el('ul', { class: 'entries' }, ...entries.map(entryItem)) : null));
+      entries.length ? el('ul', { class: 'entries' }, ...entries.map((entry) => entryItem(entry, view))) : null,
+      newEntry(day, view)));
 }
 
-function dayRows(day: DayView, entries: EntryView[], today: IsoDate, editing: IsoDate | null, actions: Actions): HTMLElement[] {
-  const warning = needsWarning(day, entries, today);
-  const details = detailsRow(day, entries, rowClass(day, warning, today));
-  if (day.date === editing) {
-    const editor = el('tr', { class: 'day-editor-row' },
-      el('td', { colspan: COLUMNS }, dayEditor(day, actions.changed, actions.cancel)));
-    return [dayRow(day, warning, today, null), editor, ...(details ? [details] : [])];
+function dayRows(day: DayView, view: View): HTMLElement[] {
+  const entries = view.data.entries.get(day.date) ?? [];
+  const warning = needsWarning(day, entries, view.today);
+  const rows = [dayRow(day, warning, view)];
+  if (view.editing?.kind === 'day' && view.editing.date === day.date) {
+    rows.push(el('tr', { class: 'day-editor-row' },
+      el('td', { colspan: COLUMNS }, dayEditor(day, view.actions.changed, view.actions.cancel))));
   }
-  const edit = el('button', { type: 'button', class: 'button-small', 'aria-label': `Edit ${formatDay(day.date, day.weekday)}` },
-    'Edit');
-  edit.addEventListener('click', () => actions.edit(day.date));
-  return [dayRow(day, warning, today, edit), ...(details ? [details] : [])];
+  rows.push(detailsRow(day, entries, rowClass(day, warning, view.today), view));
+  return rows;
 }
 
-function dayTable(data: WeekData, today: IsoDate, editing: IsoDate | null, actions: Actions): HTMLElement {
-  const days = visibleDays(data.days, data.entries);
-  if (editing && !days.some((day) => day.date === editing)) {
-    days.push(...data.days.filter((day) => day.date === editing));  // e.g. a weekend day opened for editing
-  }
+/** Days shown: Monday to Friday, weekend days with data, and a weekend day being edited. */
+export function shownDays(days: DayView[], entries: Map<IsoDate, EntryView[]>, editing: Editing): DayView[] {
+  return days.filter((day) => visibleDays([day], entries).length || day.date === editing?.date);
+}
+
+function dayTable(view: View): HTMLElement {
   return el('table', { class: 'week-table' },
     el('thead', {}, el('tr', {},
       el('th', {}, 'Day'), el('th', {}, 'Type'), el('th', {}, 'Times'), el('th', { class: 'num' }, 'Break'),
       el('th', { class: 'num' }, 'Worked'), el('th', { class: 'num' }, 'Target'), el('th', { class: 'num' }, 'Overtime'),
       el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
-    el('tbody', {}, ...days.sort((a, b) => a.date.localeCompare(b.date))
-      .flatMap((day) => dayRows(day, data.entries.get(day.date) ?? [], today, editing, actions))),
+    el('tbody', {}, ...shownDays(view.data.days, view.data.entries, view.editing).flatMap((day) => dayRows(day, view))),
   );
 }
 
-function weekendLinks(data: WeekData, edit: (date: IsoDate) => void): HTMLElement | null {
-  const hidden = data.days.filter((day) => !visibleDays([day], data.entries).length);
+function weekendLinks(view: View): HTMLElement | null {
+  const hidden = view.data.days.filter((day) => !shownDays([day], view.data.entries, view.editing).length);
   if (!hidden.length) {
     return null;
   }
   return el('p', { class: 'muted week-weekend' }, 'Worked on the weekend? ',
-    ...hidden.map((day) => {
-      const button = el('button', { type: 'button', class: 'button-small' }, `Record ${formatDay(day.date, day.weekday)}`);
-      button.addEventListener('click', () => edit(day.date));
-      return button;
-    }));
+    ...hidden.map((day) => button(`Record ${formatDay(day.date, day.weekday)}`,
+      () => view.actions.edit({ kind: 'day', date: day.date }))));
 }
 
 function errorCard(error: unknown): HTMLElement {
   const message = error instanceof ApiError ? error.message : 'The week could not be loaded.';
   return el('div', { class: 'card is-warning', role: 'alert' }, message);
+}
+
+async function loadWeek(week: string): Promise<WeekData> {
+  const [days, entries, report, services, activityTypes] = await Promise.all([
+    api.days({ week }), api.entries({ week }), api.weekReport(week), api.services(), api.activityTypes(),
+  ]);
+  return { days, entries: entriesByDate(entries), report, services, activityTypes };
 }
 
 export async function renderWeekPage(doc: Document): Promise<void> {
@@ -195,21 +251,23 @@ export async function renderWeekPage(doc: Document): Promise<void> {
   const week = weekFromSearch(doc.location.search, today);
   renderHeader(doc, week, today);
   let data: WeekData | null = null;
-  let editing: IsoDate | null = null;
-  let firstLoad = true;
+  const initialDay = editFromSearch(doc.location.search, week);
+  let editing: Editing = initialDay ? { kind: 'day', date: initialDay } : null;
+  let history: number | null = null;
 
   const draw = (): void => {
     if (!data) {
       return;
     }
-    root.replaceChildren(summary(data.report), dayTable(data, today, editing, actions), weekendLinks(data, actions.edit) ?? '');
-    root.querySelector<HTMLElement>('.day-editor select, .day-editor input')?.focus();
+    const view: View = { data, today, editing, history, actions };
+    root.replaceChildren(summary(data.report), dayTable(view), weekendLinks(view) ?? '');
+    root.querySelector<HTMLElement>('form input:not([type="radio"]):not(:disabled), form select')?.focus();
   };
+  let firstLoad = true;
   const load = async (): Promise<void> => {
     try {
-      const [days, entries, report] = await Promise.all([api.days({ week }), api.entries({ week }), api.weekReport(week)]);
-      data = { days, entries: entriesByDate(entries), report };
-      editing = firstLoad ? editFromSearch(doc.location.search, week) : null;
+      data = await loadWeek(week);
+      editing = firstLoad ? entryFromSearch(doc.location.search, data.entries) ?? editing : editing;
       firstLoad = false;
       draw();
     } catch (error) {
@@ -217,15 +275,22 @@ export async function renderWeekPage(doc: Document): Promise<void> {
     }
   };
   const actions: Actions = {
-    edit: (date) => {
-      editing = date;
+    edit: (next) => {
+      editing = next;
       draw();
     },
     cancel: () => {
       editing = null;
       draw();
     },
-    changed: () => void load(),
+    changed: () => {
+      editing = null;
+      void load();
+    },
+    toggleHistory: (entryId) => {
+      history = history === entryId ? null : entryId;
+      draw();
+    },
   };
 
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));

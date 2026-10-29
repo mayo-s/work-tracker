@@ -9,7 +9,7 @@ from src.defaultresources.default import Default
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
 from src.modules.days.resources import DayCollection, DayItem
 from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem
-from src.modules.pages.resources import STATIC_DIR, Page
+from src.modules.pages.resources import STATIC_DIR, Page, RevalidateStaticFiles
 from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
 from src.modules.review.resources import Review, ReviewFlagItem
 from src.modules.storage.database import Database, database_path
@@ -25,7 +25,7 @@ def create_app(database: Database | None = None, today: Callable[[], dt.date] = 
     """
     database = database or Database(database_path())
     database.migrate()
-    app = falcon.App()
+    app = falcon.App(middleware=[RevalidateStaticFiles()])
     app.add_error_handler(NotFoundError, _not_found)
     app.add_error_handler(ConflictError, _conflict)
     app.add_route('/', Page('week', 'Week'))

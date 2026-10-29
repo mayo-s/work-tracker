@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import type { DayView, EntryView } from '../ts/api.ts';
 import { DAY_TYPE_LABELS } from '../ts/labels.ts';
 import {
-  editFromSearch, entriesByDate, needsWarning, signed, valueClass, visibleDays, weekFromSearch,
+  editFromSearch, entriesByDate, entryFromSearch, needsWarning, shownDays, signed, valueClass, visibleDays, weekFromSearch,
 } from '../ts/week.ts';
 
 function day(date: string, weekday: string, changes: Partial<DayView> = {}): DayView {
@@ -71,4 +71,19 @@ test('day to edit from the address, only within the shown week', () => {
   assert.equal(editFromSearch('?edit=2025-12-06', '2026-W44'), null);
   assert.equal(editFromSearch('?edit=06.12.2025', '2025-W49'), null);
   assert.equal(editFromSearch('', '2026-W44'), null);
+});
+
+test('shown days include a weekend day being edited', () => {
+  const days = [day('2026-10-30', 'Fri'), day('2026-10-31', 'Sat')];
+  assert.deepEqual(shownDays(days, new Map(), null).map((item) => item.weekday), ['Fri']);
+  assert.deepEqual(shownDays(days, new Map(), { kind: 'day', date: '2026-10-31' }).map((item) => item.weekday), ['Fri', 'Sat']);
+  assert.deepEqual(shownDays(days, new Map(), { kind: 'entry', date: '2026-10-31', id: null }).map((item) => item.weekday),
+    ['Fri', 'Sat']);
+});
+
+test('entry to edit from the address, only within the shown week', () => {
+  const entries = entriesByDate([{ ...entry('2026-10-27'), id: 129 }]);
+  assert.deepEqual(entryFromSearch('?week=2026-W44&entry=129', entries), { kind: 'entry', date: '2026-10-27', id: 129 });
+  assert.equal(entryFromSearch('?entry=7', entries), null);
+  assert.equal(entryFromSearch('', entries), null);
 });
