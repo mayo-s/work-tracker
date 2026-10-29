@@ -11,7 +11,14 @@
 
         <section class="story" id="colors">
           <h2>Colors</h2>
-          <p>Use the variables, never hex values. Warning colors only for real warnings; mint only for positive values.</p>
+          <p>Use the variables, never hex values. Warning colors only for real warnings; mint only for positive values.
+            Dark mode uses the same variables with dark values; preview it here (not saved, it only changes this page).</p>
+          <fieldset class="theme-preview" id="theme-preview" data-no-snippet>
+            <legend>Theme</legend>
+            <label><input type="radio" name="theme" value="" checked> System</label>
+            <label><input type="radio" name="theme" value="light"> Light</label>
+            <label><input type="radio" name="theme" value="dark"> Dark</label>
+          </fieldset>
           <div class="swatches" id="swatches" data-no-snippet></div>
         </section>
 
