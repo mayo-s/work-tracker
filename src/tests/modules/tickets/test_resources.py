@@ -102,3 +102,8 @@ def test_merge_into_existing_ticket(client, service_ids):
 def test_rename_errors(client, key, body, status):
     add_entry(client, 'TNG-2035')
     assert client.simulate_post(f'/api/tickets/{key}/rename', json=body).status_code == status
+
+
+@pytest.mark.parametrize('key', ['ENGINE-404', 'not-a-ticket'])
+def test_unknown_ticket(client, key):
+    assert client.simulate_get(f'/api/tickets/{key}').status == falcon.HTTP_404

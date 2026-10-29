@@ -34,7 +34,7 @@ and ends with passing tests and the flake8 check.
 - [x] **3.4** Ticket clean-up rules and flags
 - [x] **3.5** Import command with `--replace`, known corrections and summary
 - [x] **3.6** Reconciliation report; real run on the 3 CSVs (expect 13:15 → 6:30 → 13:45, 0.5 PTO days carried into
-  2025)
+    2025)
 
 ## 4. REST API
 
@@ -72,7 +72,10 @@ and ends with passing tests and the flake8 check.
   configurable; builds on the stored settings from 2.2.
 - [ ] **L.2** Vacation day range: Instead of booking every vacation day one after another, there should be an option to
   enter a time range vor vacations. Same for sick days in case one is sick for more than just a few days.
-- [ ] **L.3** Dark mode: a second set of the color variables from the UI style (e.g. following the system setting)
-- [ ] **L.4** Accessibility: the ui should be accessible for everyone and follow modern accessibility standards
-- [ ] **L.5** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g. `2,0 PTO Zahnarzt`,
+- [ ] **L.3** Initial setup: the "start from zero" section explains how to start from scratch, but many steps should be
+  part of an initial start-setup page. Guiding the user through the process, when there is no database yet.
+- [ ] **L.4** Dark mode: a second set of the color variables from the UI style (e.g. following the system setting)
+- [ ] **L.5** Accessibility: the ui should be accessible for everyone and follow modern accessibility standards
+- [ ] **L.6** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g.
+  `2,0 PTO Zahnarzt`,
   today only a day note) as a value, and show them in the year report next to the days off.

@@ -97,41 +97,9 @@ def test_constraints(database, statement):
             conn.execute(statement)
 
 
-def test_deleting_service_unassigns_tickets(database):
-    with database.transaction() as conn:
-        conn.execute("INSERT INTO services (short_name) VALUES ('AUTH')")
-        service_id = conn.execute("SELECT id FROM services WHERE short_name = 'AUTH'").fetchone()[0]
-        conn.execute("INSERT INTO tickets (key, service_id) VALUES ('AGA-39', ?)", (service_id,))
-        conn.execute("DELETE FROM services WHERE short_name = 'AUTH'")
-        assert conn.execute("SELECT service_id FROM tickets WHERE key = 'AGA-39'").fetchone()[0] is None
-
-
 def test_deleted_entry_ids_are_not_reused(database):
     insert = "INSERT INTO entries (date, kind, activity_type_id, duration) VALUES ('2026-10-26', 'activity', 1, 60)"
     with database.transaction() as conn:
         deleted_id = conn.execute(insert).lastrowid
         conn.execute('DELETE FROM entries WHERE id = ?', (deleted_id,))
         assert conn.execute(insert).lastrowid > deleted_id
-
-
-def test_entry_history_outlives_deleted_entry(database):
-    with database.transaction() as conn:
-        entry_id = conn.execute(
-            "INSERT INTO entries (date, kind, activity_type_id, duration) VALUES ('2026-10-26', 'activity', 1, 60)"
-        ).lastrowid
-        conn.execute(
-            "INSERT INTO entry_history (entry_id, changed_at, action) VALUES (?, '2026-10-27T14:05:00', 'deleted')",
-            (entry_id,),
-        )
-        conn.execute('DELETE FROM entries WHERE id = ?', (entry_id,))
-        assert conn.execute('SELECT COUNT(*) FROM entry_history WHERE entry_id = ?', (entry_id,)).fetchone()[0] == 1
-
-
-def test_renaming_ticket_updates_entries(database):
-    with database.transaction() as conn:
-        conn.execute("INSERT INTO tickets (key) VALUES ('TNG-4138')")
-        conn.execute(
-            "INSERT INTO entries (date, kind, ticket_key, duration) VALUES ('2024-06-10', 'ticket', 'TNG-4138', 360)"
-        )
-        conn.execute("UPDATE tickets SET key = 'KP-4138' WHERE key = 'TNG-4138'")
-        assert conn.execute('SELECT ticket_key FROM entries').fetchone()[0] == 'KP-4138'

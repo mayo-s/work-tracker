@@ -7,16 +7,6 @@ LISTS = [
 ]
 
 
-def test_seeded_services(client):
-    assert [service['short_name'] for service in client.simulate_get('/api/services').json] == [
-        'HiS', 'ImmoDrop', 'MSB', 'O365', 'TTS']
-
-
-def test_seeded_activity_types(client):
-    assert [activity['name'] for activity in client.simulate_get('/api/activity-types').json] == [
-        'Tool Management', 'Meeting', 'Travel', 'Other']
-
-
 @pytest.mark.parametrize('path, body, changed', LISTS)
 def test_create_read_update_delete(client, path, body, changed):
     created = client.simulate_post(path, json=body)

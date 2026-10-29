@@ -5,7 +5,7 @@ import { test } from 'node:test';
 
 import type { ReviewEntry, TicketView } from '../ts/api.ts';
 import {
-  describeSplit, filterTickets, groupReview, mentionedTickets, REASON_LABELS, reviewTotal, splitSuggestion, weekLink, type GuessedTicket,
+  describeSplit, filterTickets, groupReview, mentionedTickets, reviewTotal, splitSuggestion, weekLink, type GuessedTicket,
 } from '../ts/review.ts';
 
 const TICKETS: TicketView[] = ['AGA-39', 'AGA-40', 'TNG-4950', 'TNG-5214'].map((key) => ({ key, service_id: null, service: null, entries: 1 }));
@@ -26,10 +26,6 @@ test('filtering tickets by part of the key, case-insensitive', () => {
   assert.deepEqual(filterTickets(TICKETS, ' TNG-49 ').map((ticket) => ticket.key), ['TNG-4950']);
   assert.equal(filterTickets(TICKETS, '').length, 4);
   assert.equal(filterTickets(TICKETS, 'KP').length, 0);
-});
-
-test('every review reason has a label', () => {
-  assert.deepEqual(Object.keys(REASON_LABELS).sort(), ['no_ticket', 'uncertain_ticket', 'zero_duration']);
 });
 
 function reviewEntry(

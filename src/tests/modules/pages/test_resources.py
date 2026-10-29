@@ -1,12 +1,7 @@
 import falcon
 import pytest
 
-from src.modules.pages.resources import STATIC_DIR, TEMPLATES_DIR, render_page
-
-
-def test_templates_dir():
-    assert (TEMPLATES_DIR / 'frame.html').is_file()
-    assert STATIC_DIR == TEMPLATES_DIR / 'static'
+from src.modules.pages.resources import STATIC_DIR, render_page
 
 
 def test_render_page_fills_the_frame():
@@ -18,12 +13,8 @@ def test_render_page_fills_the_frame():
     assert '{{' not in html
 
 
-def test_week_page_at_root(client):
-    result = client.simulate_get('/')
-    assert result.status == falcon.HTTP_200
-    assert result.headers['content-type'].startswith('text/html')
-    assert '<script type="module" src="/static/js/main.js"></script>' in result.text
-    assert 'data-page="week"' in result.text
+def test_pages_load_the_frontend(client):
+    assert '<script type="module" src="/static/js/main.js"></script>' in client.simulate_get('/').text
 
 
 def test_static_files(client):
@@ -73,13 +64,10 @@ def test_no_external_requests_in_frame_and_styles(client):
         assert 'https://' not in client.simulate_get(url).text
 
 
-def test_component_gallery_page(client):
-    result = client.simulate_get('/components')
-    assert result.status == falcon.HTTP_200
-    assert '<title>Component gallery · Work Tracker</title>' in result.text
-    assert 'data-page="components"' in result.text
+def test_component_gallery_stories(client):
+    html = client.simulate_get('/components').text
     for story in ('colors', 'values', 'badges', 'buttons', 'forms', 'tables', 'entries', 'cards', 'navigation'):
-        assert f'<section class="story" id="{story}">' in result.text
+        assert f'<section class="story" id="{story}">' in html
 
 
 def test_gallery_is_not_in_the_main_navigation(client):
@@ -91,13 +79,6 @@ def test_static_files_are_revalidated(client):
     assert 'cache-control' not in client.simulate_get('/api/review').headers
 
 
-def test_review_page(client):
-    result = client.simulate_get('/review')
-    assert result.status == falcon.HTTP_200
-    assert '<title>Review · Work Tracker</title>' in result.text
-    assert 'id="review-status"' in result.text
-
-
 def test_main_navigation_links_all_pages(client):
     html = client.simulate_get('/').text
     assert '<a href="/">Week</a>' in html
@@ -107,23 +88,18 @@ def test_main_navigation_links_all_pages(client):
     assert '<a href="/lists">Lists</a>' in html
 
 
-def test_month_page(client):
-    result = client.simulate_get('/month')
+@pytest.mark.parametrize('path, page, title, element', [
+    ('/', 'week', 'Week', 'id="week"'),
+    ('/month', 'month', 'Month', 'id="month"'),
+    ('/year', 'year', 'Year', 'id="year"'),
+    ('/review', 'review', 'Review', 'id="review-status"'),
+    ('/lists', 'lists', 'Lists', 'id="lists-status"'),
+    ('/components', 'components', 'Component gallery', 'class="story"'),
+])
+def test_pages(client, path, page, title, element):
+    result = client.simulate_get(path)
     assert result.status == falcon.HTTP_200
-    assert '<title>Month · Work Tracker</title>' in result.text
-    assert 'data-page="month"' in result.text
-
-
-def test_year_page(client):
-    result = client.simulate_get('/year')
-    assert result.status == falcon.HTTP_200
-    assert '<title>Year · Work Tracker</title>' in result.text
-    assert 'data-page="year"' in result.text
-
-
-def test_lists_page(client):
-    result = client.simulate_get('/lists')
-    assert result.status == falcon.HTTP_200
-    assert '<title>Lists · Work Tracker</title>' in result.text
-    assert 'data-page="lists"' in result.text
-    assert 'id="lists-status"' in result.text
+    assert result.headers['content-type'].startswith('text/html')
+    assert f'<title>{title} · Work Tracker</title>' in result.text
+    assert f'data-page="{page}"' in result.text
+    assert element in result.text

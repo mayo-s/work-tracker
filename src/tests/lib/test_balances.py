@@ -75,7 +75,7 @@ def pto_2024():
     return records
 
 
-def test_pto_2024_from_spreadsheet_carries_half_a_day_into_2025():
+def test_pto_remainder_is_carried_into_the_next_year():
     accounts = pto_accounts(pto_2024(), TERMS, BALANCE_START, dt.date(2025, 1, 31))
     assert [account.year for account in accounts] == [2024, 2025]
     assert accounts[0].used == Decimal('17.5')

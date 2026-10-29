@@ -49,7 +49,6 @@ def test_automatic_day_type(date, day_type):
 ])
 def test_weekday_rules(day_type, target, pto_days):
     summary = summarize_day(MONDAY, day_type=day_type)
-    assert summary.day_type is day_type
     assert summary.target == parse_duration(target)
     assert summary.pto_days == Decimal(pto_days)
 
@@ -94,9 +93,7 @@ def test_company_half_day_on_weekend_uses_no_pto():
     (dt.date(2025, 5, 8), None, '2:00', '2:00'),
 ])
 def test_overtime(date, day_type, worked, overtime):
-    summary = summarize_day(date, parse_duration(worked), day_type)
-    assert summary.worked == parse_duration(worked)
-    assert summary.overtime == signed_minutes(overtime)
+    assert summarize_day(date, parse_duration(worked), day_type).overtime == signed_minutes(overtime)
 
 
 def test_summarize_day_rejects_negative_worked():

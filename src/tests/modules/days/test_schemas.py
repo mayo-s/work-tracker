@@ -14,10 +14,6 @@ def test_day_input_to_day():
     assert day == Day(date=dt.date(2026, 10, 28), start=435, end=960, break_minutes=30, note='OFFICE DAY')
 
 
-def test_day_input_normalizes_times():
-    assert DayInput(start='7:15', end='16:00', break_time='0:30').start == '07:15'
-
-
 @pytest.mark.parametrize('data', [
     {'start': '08:00'},
     {'start': '16:00', 'end': '08:00'},

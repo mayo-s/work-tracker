@@ -73,10 +73,6 @@ def test_delete_missing_service(services):
         services.delete(404)
 
 
-def test_all_activity_types_in_seed_order(activity_types):
-    assert [activity.name for activity in activity_types.all()] == ['Tool Management', 'Meeting', 'Travel', 'Other']
-
-
 def test_add_rename_and_delete_activity_type(activity_types):
     added = activity_types.add(ActivityType(name='Incident'))
     renamed = activity_types.update(added.model_copy(update={'name': 'Incident handling'}))

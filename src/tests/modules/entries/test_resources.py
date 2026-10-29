@@ -128,11 +128,6 @@ def test_history_of_unknown_entry_is_empty(client):
     assert client.simulate_get('/api/entries/404/history').json == []
 
 
-@pytest.mark.parametrize('key', ['ENGINE-404', 'not-a-ticket'])
-def test_unknown_ticket(client, key):
-    assert client.simulate_get(f'/api/tickets/{key}').status == falcon.HTTP_404
-
-
 def test_imported_entry_without_ticket_must_get_one_when_changed(client, database):
     with database.transaction() as conn:
         created = EntryRepository(conn).create(TicketEntry(date=dt.date(2025, 11, 26), duration=360, coding=True))

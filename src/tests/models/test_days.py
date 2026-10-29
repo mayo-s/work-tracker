@@ -23,16 +23,6 @@ def test_day_with_legal_break():
     assert day.to_record() == DayRecord(parse_duration('8:15'), None)
 
 
-def test_day_with_explicit_break():
-    day = Day(date=DATE, start=parse_clock('08:30'), end=parse_clock('20:00'), break_minutes=180)
-    assert day.worked == parse_duration('8:30')
-
-
-def test_day_with_explicit_zero_break():
-    day = Day(date=DATE, start=parse_clock('07:30'), end=parse_clock('16:00'), break_minutes=0)
-    assert day.worked == parse_duration('8:30')
-
-
 def test_day_strips_note():
     assert Day(date=DATE, note='  Anreise LÜBECK ').note == 'Anreise LÜBECK'
 

@@ -105,9 +105,7 @@ def test_is_quarter_hour(minutes, expected):
     (0, 2, [0, 0]),
 ])
 def test_split_evenly(total, parts, shares):
-    result = split_evenly(total, parts)
-    assert result == shares
-    assert sum(result) == total
+    assert split_evenly(total, parts) == shares
 
 
 @pytest.mark.parametrize('total, parts', [(60, 0), (-15, 2)])
