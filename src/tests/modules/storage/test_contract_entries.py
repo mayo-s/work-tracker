@@ -261,3 +261,26 @@ def test_entries_imported_together(entries):
     assert [entry.id for entry in entries.imported_together(first.id)] == [first.id, second.id]
     assert [entry.id for entry in entries.imported_together(alone.id)] == [alone.id]
     assert entries.imported_together(created.id) == []
+
+
+@pytest.fixture
+def tickets(per_call, klara_id):
+    return per_call(lambda store: store.tickets(klara_id))
+
+
+def test_create_ticket_entry_creates_ticket(entries, tickets, ticket_entry):
+    entries.create(ticket_entry)
+    assert tickets.get('ENGINE-597') is not None
+
+
+def test_update_to_new_ticket_creates_ticket(entries, tickets, ticket_entry):
+    created = entries.create(ticket_entry)
+    entries.update(created.model_copy(update={'ticket_key': 'ENGINE-598'}))
+    assert tickets.get('ENGINE-598') is not None
+    assert entries.history(created.id)[-1].changes == {'ticket_key': ('ENGINE-597', 'ENGINE-598')}
+
+
+def test_split_creates_the_tickets(entries, tickets):
+    entry = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4347', duration=360))
+    entries.split(entry.id, ['tng-4347', 'KP-1482'])
+    assert tickets.get('KP-1482') is not None

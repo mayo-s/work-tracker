@@ -60,6 +60,12 @@ class Unit:
     def next_id(self, kind: str) -> int:
         return self._table.next_id(kind)
 
+    def make_room(self, items: int) -> None:
+        """Write the pending changes now, as an atomic chunk, if `items` more would not fit into one transaction: for a
+        larger change that ends with the step closing it, so repeating it completes it (SPEC 7.2)."""
+        if len(self._pending) + items > MAX_ITEMS:
+            self.flush()
+
     def flush(self) -> None:
         """Write the pending changes now, all or nothing: at the end of the transaction, or as a chunk of a larger one."""
         writes = list(self._pending.items())

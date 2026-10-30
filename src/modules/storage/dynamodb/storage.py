@@ -1,19 +1,22 @@
 """The DynamoDB backend of the storage interfaces (store.py), used on AWS Lambda; so far users, sessions, login attempts,
-settings, days and entries, the other repositories follow."""
+settings, days, entries, tickets, services and activity types; schedules, PTO years and teams follow."""
 
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
 from src.models.settings import Settings
 from src.modules.storage.dynamodb import settings as stored_settings
+from src.modules.storage.dynamodb.catalog import DynamoActivityTypes, DynamoServices
 from src.modules.storage.dynamodb.days import DynamoDays
 from src.modules.storage.dynamodb.entries import DynamoEntries
-from src.modules.storage.dynamodb.keys import META, SCHEMA
+from src.modules.storage.dynamodb.keys import META, SCHEMA, user_partition
+from src.modules.storage.dynamodb.renames import rename_ticket
 from src.modules.storage.dynamodb.table import Table
+from src.modules.storage.dynamodb.tickets import DynamoTickets
 from src.modules.storage.dynamodb.unit import Unit
 from src.modules.storage.dynamodb.users import DynamoAttempts, DynamoSessions, DynamoUsers
 from src.modules.storage.errors import SchemaVersionError
-from src.modules.storage.store import Clock, Theme
+from src.modules.storage.store import Clock, RenameResult, Theme
 
 # Changes of the item layout, applied once in order: MIGRATIONS[0] brings a table from version 1 to 2, and so on
 MIGRATIONS: list[Callable[[Table], None]] = []
@@ -32,6 +35,15 @@ class DynamoStore:
     def entries(self, user_id: str, clock: Clock | None = None) -> DynamoEntries:
         return DynamoEntries(self._unit, user_id, clock)
 
+    def tickets(self, user_id: str) -> DynamoTickets:
+        return DynamoTickets(self._unit, user_id)
+
+    def services(self, user_id: str) -> DynamoServices:
+        return DynamoServices(self._unit, user_partition(user_id))
+
+    def activity_types(self, user_id: str) -> DynamoActivityTypes:
+        return DynamoActivityTypes(self._unit, user_partition(user_id))
+
     def users(self, clock: Clock | None = None) -> DynamoUsers:
         return DynamoUsers(self._unit, clock)
 
@@ -40,6 +52,9 @@ class DynamoStore:
 
     def attempts(self) -> DynamoAttempts:
         return DynamoAttempts(self._unit)
+
+    def rename_ticket(self, user_id: str, old_key: str, new_key: str, clock: Clock | None = None) -> RenameResult:
+        return rename_ticket(self._unit, user_id, old_key, new_key, clock)
 
     def load_settings(self, user_id: str) -> Settings:
         return stored_settings.load_settings(self._unit, user_id)

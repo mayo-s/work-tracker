@@ -197,8 +197,10 @@ and ends with passing tests and the flake8 check.
   - [x] **L.11g** DynamoDB repositories: users, sessions, failed logins, user settings (the app settings came with
     L.11f); their tests are contract tests now, on both backends
   - [x] **L.11h** DynamoDB repositories: days, entries with history, review flags; their tests are contract tests now
-  - [ ] **L.11i** DynamoDB repositories: tickets, services, activity types, rename and merge tickets
-  - [ ] **L.11j** DynamoDB repositories: work schedules, PTO years, teams, memberships, invitations, report views
+  - [x] **L.11i** DynamoDB repositories: tickets, personal services, activity types, rename and merge tickets (in
+    resumable chunks); their tests are contract tests now
+  - [ ] **L.11j** DynamoDB repositories: work schedules, PTO years, teams, memberships, invitations, report views;
+    team services and the team's service choices (deleting one unassigns the members' tickets)
   - [ ] **L.11j2** Import on DynamoDB: an export file holds thousands of items, far more than one transaction's 100,
     so the import writes atomic chunks and, if it fails, removes what it wrote (SPEC 5.8)
   - [ ] **L.11k** Access tests on both backends: another user's id answers 404 for every repository and API resource

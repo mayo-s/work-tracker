@@ -22,9 +22,9 @@ def rename_ticket(
     """
     tickets = TicketRepository(conn, user_id)
     source, target = tickets.get(old_key), tickets.get(new_key)
-    new = _new_key(source, old_key, new_key)
+    new = new_key_for(source, old_key, new_key)
     tickets.ensure(new)
-    tickets.set_service(new, _kept_service(source, target))
+    tickets.set_service(new, kept_service(source, target))
     moved = _move_entries(conn, user_id, source.key, new)
     conn.execute('DELETE FROM tickets WHERE user_id = ? AND key = ?', (user_id, source.key))
     action = HistoryAction.MERGED if target else HistoryAction.RENAMED
@@ -34,7 +34,7 @@ def rename_ticket(
     return RenameResult(tickets.get(new), action, len(moved))
 
 
-def _new_key(source: Ticket | None, old_key: str, new_key: str) -> str:
+def new_key_for(source: Ticket | None, old_key: str, new_key: str) -> str:
     """The normalized new key; the old ticket must exist and differ from it."""
     if source is None:
         raise NotFoundError(f'Unknown ticket {old_key}')
@@ -44,7 +44,7 @@ def _new_key(source: Ticket | None, old_key: str, new_key: str) -> str:
     return new
 
 
-def _kept_service(source: Ticket, target: Ticket | None) -> int | None:
+def kept_service(source: Ticket, target: Ticket | None) -> int | None:
     """An existing ticket keeps its service; it takes the old ticket's service only if it has none."""
     if target and target.service_id is not None:
         return target.service_id
