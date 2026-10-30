@@ -201,7 +201,8 @@ runs through `npx` with its own TypeScript 5, as it does not support the project
 
 JSON over HTTP; dates in ISO format (`2026-10-28`), clock times as `HH:MM`, durations answered as `h:mm` (`-1:30`)
 and read also as `1.5`, `1,5`, `1h30m`, `1h30` or `90m`.
-Invalid input gives 422, unknown records 404, conflicts 409.
+Invalid input gives 422, unknown records 404, conflicts 409. The log names only where validation failed and the
+error type (`data.days.0.date (missing)`), never the values: they may be personal data, e.g. an imported file.
 Reports count worked time, target and overtime up to today (today included); planned days off count too.
 
 | Endpoint                                                                           | Method                 | Description                                                                                                                                                                                                                    |
