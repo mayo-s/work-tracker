@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 from src.models.teams import Invitation, Member, Membership, ReportView, Team
 from src.modules.storage.errors import ConflictError, NotFoundError
+from src.modules.storage.store import Teams
 
 _CURRENT = 'left_on IS NULL'
 
@@ -144,7 +145,7 @@ class InvitationRepository:
             ' ORDER BY invited_at, team_invitations.id', (user_id,))
         return [Invitation(**dict(row)) for row in rows]
 
-    def accept(self, user_id: str, invitation_id: int, teams: TeamRepository) -> Membership:
+    def accept(self, user_id: str, invitation_id: int, teams: Teams) -> Membership:
         """The user joins the team (leaving their current one); their other invitations are declined."""
         invitation = self._own(user_id, invitation_id)
         membership = teams.join(user_id, invitation.team_id)

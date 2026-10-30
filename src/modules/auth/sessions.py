@@ -7,10 +7,9 @@ from urllib.parse import quote
 
 import falcon
 
-from src.modules.storage.database import Database
-from src.modules.storage.settings import setup_done
 from src.modules.storage.owners import NO_OWNER
-from src.modules.storage.users import SESSION_LIFETIME, SessionRepository, UserRepository
+from src.modules.storage.store import Storage
+from src.modules.storage.users import SESSION_LIFETIME
 
 COOKIE = 'wt_session'
 OPEN_PATHS = {
@@ -48,16 +47,16 @@ class Authentication:
     pages forward to `/login?next=…` and the API answers 401. Until the first user exists, a new database is set up
     on /setup (which creates it), an existing one gets it on /login."""
 
-    def __init__(self, database: Database, clock: Callable[[], dt.datetime]) -> None:
-        self._database = database
+    def __init__(self, storage: Storage, clock: Callable[[], dt.datetime]) -> None:
+        self._storage = storage
         self._clock = clock
 
     def process_request(self, req: falcon.Request, resp: falcon.Response) -> None:
         token = req.cookies.get(COOKIE)
-        with self._database.transaction() as conn:
-            user_id, renewed = SessionRepository(conn).user_id(token, self._clock()) if token else (None, False)
-            first_user_missing = not UserRepository(conn).count()
-            set_up = setup_done(conn, NO_OWNER)
+        with self._storage.transaction() as store:
+            user_id, renewed = store.sessions().user_id(token, self._clock()) if token else (None, False)
+            first_user_missing = not store.users().count()
+            set_up = store.setup_done(NO_OWNER)
         req.context.user_id = user_id
         if renewed:
             set_session_cookie(req, resp, token)
@@ -83,10 +82,10 @@ class LocalUser:
     """Middleware with the login off (local development): every request works on the first user's data, or on the
     data without an owner while there is no user yet."""
 
-    def __init__(self, database: Database) -> None:
-        self._database = database
+    def __init__(self, storage: Storage) -> None:
+        self._storage = storage
 
     def process_request(self, req: falcon.Request, resp: falcon.Response) -> None:
-        with self._database.transaction() as conn:
-            first = UserRepository(conn).first_id()
+        with self._storage.transaction() as store:
+            first = store.users().first_id()
         req.context.user_id = NO_OWNER if first is None else first

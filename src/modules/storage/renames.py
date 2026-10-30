@@ -3,19 +3,13 @@
 import datetime as dt
 import sqlite3
 from collections.abc import Callable
-from typing import NamedTuple
 
 from src.models.catalog import Ticket
 from src.models.history import HistoryAction
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.errors import ConflictError, NotFoundError
+from src.modules.storage.store import RenameResult
 from src.modules.storage.tickets import TicketRepository
-
-
-class RenameResult(NamedTuple):
-    ticket: Ticket
-    action: HistoryAction  # renamed, or merged into an existing ticket
-    moved: int  # number of entries moved
 
 
 def rename_ticket(

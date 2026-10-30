@@ -13,9 +13,8 @@ from src.models.entries import ActivityEntry, Entry, TicketEntry
 from src.models.history import EntryChange, HistoryAction
 from src.models.review import FlagReason, ReviewFlag
 from src.modules.storage.errors import ConflictError, NotFoundError
+from src.modules.storage.store import Changes
 from src.modules.storage.tickets import TicketRepository
-
-Changes = dict[str, tuple[JsonValue, JsonValue]]
 
 _ENTRY_COLUMNS = 'id, date, kind, ticket_key, activity_type_id, duration, text, coding'
 _HISTORY_COLUMNS = 'id, entry_id, changed_at, action, changes, detail'
