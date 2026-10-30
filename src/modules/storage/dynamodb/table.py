@@ -1,8 +1,10 @@
 """The one DynamoDB table (SPEC 7.2): keys `PK` / `SK`, on-demand capacity, time to live, point-in-time recovery.
 
-Items are plain dicts here, converted from and to DynamoDB's typed format; numbers come back as Decimal.
+Items are plain dicts here, converted from and to DynamoDB's typed format; whole numbers come back as int, others as
+Decimal.
 """
 
+from decimal import Decimal
 from typing import Any
 
 from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
@@ -21,7 +23,25 @@ def to_dynamo(item: Item) -> dict[str, Any]:
 
 
 def from_dynamo(item: dict[str, Any]) -> Item:
-    return {name: _deserializer.deserialize(value) for name, value in item.items()}
+    return {name: _plain(_deserializer.deserialize(value)) for name, value in item.items()}
+
+
+def _plain(value: Any) -> Any:
+    """Whole numbers as int (DynamoDB returns every number as Decimal), also within lists and maps."""
+    if isinstance(value, list):
+        return [_plain(element) for element in value]
+    if isinstance(value, dict):
+        return {name: _plain(element) for name, element in value.items()}
+    return _number(value)
+
+
+def _number(value: Any) -> Any:
+    return int(value) if isinstance(value, Decimal) and value == value.to_integral_value() else value
+
+
+def attributes(item: Item) -> Item:
+    """The item without its keys, e.g. as the fields of a model."""
+    return {name: value for name, value in item.items() if name not in ('PK', 'SK')}
 
 
 def key(pk: str, sk: str) -> dict[str, Any]:
