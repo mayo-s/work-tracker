@@ -129,7 +129,8 @@ creates the first user in the setup, an existing one asks for it once on the nex
 the e-mail address; a login stays valid for 24 hours since the last activity, "Log out" ends it, and the settings page
 changes the profile and the password. Each user has their own data (days, entries, tickets, services, activity
 types, schedules, PTO years, settings); nobody sees another user's. The first user is admin and takes over the data
-of a database in use; a new user starts with the four default activity types and goes through the setup.
+of a database in use; a new user starts with the four default activity types and goes through the setup. "Log out"
+is there during the setup too; after the next login, the setup continues.
 
 Admins see an "Admin" link to `/admin`: switching registration on or off (off by default) and the users with role,
 status, registration and last login, but none of their time data. They make users admins or users again, deactivate

@@ -294,7 +294,8 @@ corners, one accent color. Warnings are the only loud element.
   Nobody sees or changes another user's records, the admin neither; an unknown or foreign id answers 404, using
   another user's service or activity type 409.
 - A user is identified by a random UUID. Roles: admin, team admin, user. The first user is admin and takes over all records of a database used without
-  users. A new user starts with the four default activity types and goes through the setup.
+  users. A new user starts with the four default activity types and goes through the setup; "Log out" is there during
+  the setup too, and after the next login the setup continues.
 - Registration: while an admin has switched it on (off by default), the login page links to `/register`. A new user
   enters the fields of the login, is logged in at once (no e-mail confirmation) and goes through the setup. Off, or
   with the login off, `/register` answers 404.
