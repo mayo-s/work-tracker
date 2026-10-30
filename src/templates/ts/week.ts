@@ -142,7 +142,8 @@ export function entryContent(entry: EntryView, showFlags = true): (HTMLElement |
 
 function editorOptions(view: View, date: IsoDate, entry: EntryView | null): EntryEditorOptions {
   return {
-    date, entry, services: view.data.services, activityTypes: view.data.activityTypes,
+    date, entry, dayStart: view.data.days.find((day) => day.date === date)?.start ?? null,
+    services: view.data.services, activityTypes: view.data.activityTypes,
     onDone: view.actions.changed, onCancel: view.actions.cancel,
   };
 }

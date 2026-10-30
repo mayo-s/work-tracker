@@ -8,6 +8,7 @@ from src.lib.durations import (
     parse_clock,
     parse_decimal_hours,
     parse_duration,
+    parse_hours_minutes,
     parse_signed_duration,
     split_evenly,
 )
@@ -48,12 +49,27 @@ def test_format_clock_rejects_out_of_range(minutes):
     ('12:45', 765),
     ('25:00', 1500),
     (' 2:15 ', 135),
+    ('1.5', 90),
+    ('1,5', 90),
+    ('2', 120),
+    ('0.25', 15),
+    ('1h30m', 90),
+    ('1h30', 90),
+    ('1h', 60),
+    ('1.5h', 90),
+    ('1 H 30 Min', 90),
+    ('1 h  30 min', 90),
+    ('90m', 90),
+    ('90 min', 90),
+    ('45M', 45),
 ])
 def test_parse_duration(text, minutes):
     assert parse_duration(text) == minutes
 
 
-@pytest.mark.parametrize('text', ['', '1', '1:5', '1:60', '-1:30', '1,5', ':30'])
+@pytest.mark.parametrize('text', [
+    '', '1:5', '1:60', '-1:30', ':30', '1.01', 'h', '30s', '1h60m', '1.5h30m', '1m30', 'abc', '1:30h',
+])
 def test_parse_duration_rejects_invalid(text):
     with pytest.raises(TimeFormatError):
         parse_duration(text)
@@ -64,7 +80,7 @@ def test_parse_signed_duration(text, minutes):
     assert parse_signed_duration(text) == minutes
 
 
-@pytest.mark.parametrize('text', ['', '-', '+-1:00', '--1:00', '1,5'])
+@pytest.mark.parametrize('text', ['', '-', '+-1:00', '--1:00', '1:5'])
 def test_parse_signed_duration_rejects_invalid(text):
     with pytest.raises(TimeFormatError):
         parse_signed_duration(text)
@@ -124,3 +140,13 @@ def test_split_evenly(total, parts, shares):
 def test_split_evenly_rejects_invalid(total, parts):
     with pytest.raises(ValueError):
         split_evenly(total, parts)
+
+
+def test_signed_durations_take_the_new_formats():
+    assert (parse_signed_duration('-1.5'), parse_signed_duration('+2h')) == (-90, 120)
+
+
+@pytest.mark.parametrize('text', ['1.5', '8', '1h30m'])
+def test_hours_minutes_stay_strict(text):
+    with pytest.raises(TimeFormatError):
+        parse_hours_minutes(text)

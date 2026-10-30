@@ -159,3 +159,23 @@ def test_split_errors(client, entry_id, body, status):
     created = create(client, TICKET | {'ticket_key': 'TNG-4347'})
     path = f'/api/entries/{entry_id or created["id"]}/split'
     assert client.simulate_post(path, json=body).status_code == status
+
+
+@pytest.mark.parametrize('duration, saved', [('1.5', '1:30'), ('1,25', '1:15'), ('1h30m', '1:30'), ('45m', '0:45')])
+def test_durations_in_other_formats(client, duration, saved):
+    assert create(client, TICKET | {'duration': duration})['duration'] == saved
+
+
+def test_entry_fits_the_rest_of_its_day(client):
+    client.simulate_put('/api/days/2026-10-27', json={'start': '08:00', 'end': '16:30'})
+    assert client.simulate_post('/api/entries', json=TICKET | {'duration': '16h'}).status == falcon.HTTP_201
+    refused = client.simulate_post('/api/entries', json=TICKET | {'duration': '16h15m'})
+    assert (refused.status, refused.json['description']) == (
+        falcon.HTTP_409, 'Longer than the day allows: at most 16:00 from 08:00 on')
+
+
+def test_entry_change_fits_the_day_too(client):
+    client.simulate_put('/api/days/2026-10-27', json={'start': '20:00', 'end': '23:00'})
+    entry = create(client, TICKET)
+    changed = client.simulate_put(f'/api/entries/{entry["id"]}', json=TICKET | {'duration': '4:15'})
+    assert changed.status == falcon.HTTP_409

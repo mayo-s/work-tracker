@@ -2,6 +2,7 @@
 
 import { api, ApiError, type DayRangeInput, type DayRangeResult } from './api.ts';
 import { addDays, formatDate, formatDay, isoWeek, type IsoDate } from './dates.ts';
+import { ask } from './dialog.ts';
 import { el, onEscape } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 
@@ -63,30 +64,12 @@ function labelled(label: string, control: HTMLElement): HTMLElement {
 
 /** Asks what to do with days that hold times or entries; resolves to the choice, or null for cancel. */
 function askAboutConflicts(conflicts: Conflict[]): Promise<'skip' | 'include' | null> {
-  return new Promise((resolve) => {
-    const dialog = el('dialog', { class: 'dialog', 'aria-labelledby': 'conflicts-title' });
-    const choose = (choice: 'skip' | 'include' | null) => (): void => {
-      dialog.close();
-      dialog.remove();
-      resolve(choice);
-    };
-    const choice = (label: string, value: 'skip' | 'include' | null, className = ''): HTMLButtonElement => {
-      const button = el('button', { type: 'button', class: className }, label);
-      button.addEventListener('click', choose(value));
-      return button;
-    };
-    dialog.addEventListener('cancel', choose(null));
-    dialog.append(
-      el('h2', { id: 'conflicts-title' },
-        `${plural(conflicts.length, ['day already holds', 'days already hold'])} times or entries`),
-      el('ul', {}, ...conflicts.map((day) => el('li', {}, describeConflict(day)))),
-      el('p', { class: 'muted' }, 'Booked days keep their times and entries; hours on a day off count as overtime.'),
-      el('div', { class: 'form-actions' },
-        choice('Skip these days', 'skip', 'primary'), choice('Book them too', 'include'), choice('Cancel', null)),
-    );
-    document.body.append(dialog);
-    dialog.showModal();
-  });
+  return ask<'skip' | 'include'>(
+    `${plural(conflicts.length, ['day already holds', 'days already hold'])} times or entries`,
+    [el('ul', {}, ...conflicts.map((day) => el('li', {}, describeConflict(day)))),
+      'Booked days keep their times and entries; hours on a day off count as overtime.'],
+    [{ label: 'Skip these days', value: 'skip', primary: true }, { label: 'Book them too', value: 'include' }],
+  );
 }
 
 function errorText(error: unknown): string {

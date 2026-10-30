@@ -16,13 +16,26 @@ Out of scope for now: export, hosting.
 
 ## 2. Conventions
 
-| Topic       | Rule                                                                                  |
-|-------------|---------------------------------------------------------------------------------------|
-| UI language | English                                                                               |
-| Dates (UI)  | `DD.MM.YYYY`; weeks start on Monday                                                   |
-| Dates (API) | ISO 8601 `YYYY-MM-DD`                                                                 |
-| Times       | 24 h format `HH:MM`                                                                   |
-| Durations   | `h:mm` (e.g. `1:30`); task entries in quarter-hour steps (`:00`, `:15`, `:30`, `:45`) |
+| Topic       | Rule                                                                                                                                                           |
+|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| UI language | English                                                                                                                                                        |
+| Dates (UI)  | `DD.MM.YYYY`; weeks start on Monday                                                                                                                            |
+| Dates (API) | ISO 8601 `YYYY-MM-DD`                                                                                                                                          |
+| Times       | 24 h format `HH:MM`                                                                                                                                            |
+| Durations   | Shown as `h:mm` (e.g. `1:30`); entered also as `1.5`, `1,5`, `1h30m`, `1h30`, `90m` (see 2.1); task entries in quarter-hour steps (`:00`, `:15`, `:30`, `:45`) |
+
+### 2.1 Entering durations
+
+- Every duration field (entry duration, break, hours per week, opening balance with a minus) takes `1:30`, `1.5`,
+  `1,5`, `2` (hours), `1h30m`, `1h30`, `1h`, `1 h 30 min`, `90m` and `90min`; spaces and case do not matter. A field
+  shows the normalized `h:mm` once left; the API reads the same formats and answers with `h:mm`.
+- Limits: an entry is at most as long as the rest of its day (from 08:00 at most 16:00; without a start time 24:00),
+  a break at most the day from start to end, the hours per week at most 168:00. Explicit units over the limit are
+  refused, naming the limit.
+- A plain number (`2`, `90`) means hours if that fits the limit; otherwise the form asks "Did you mean 90 minutes
+  (1:30)?" before saving.
+- Entries stay in quarter hours: for `1.1` (1:06) the form offers 1:00 and 1:15 (the nearest one first) or cancel.
+  Breaks and hours per week need no quarter hours.
 
 ## 3. Days
 

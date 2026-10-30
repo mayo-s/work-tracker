@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterable, Sequence
 
 from pydantic import JsonValue
 
-from src.lib.durations import split_evenly
+from src.lib.durations import MINUTES_PER_DAY, format_clock, format_duration, split_evenly
 from src.models.catalog import Ticket
 from src.models.entries import ActivityEntry, Entry, TicketEntry
 from src.models.history import EntryChange, HistoryAction
@@ -209,6 +209,15 @@ class EntryRepository:
         sql = 'DELETE FROM review_flags WHERE id = ? AND user_id = ? AND entry_id IS NOT NULL'
         if not self._conn.execute(sql, (flag_id, self._user)).rowcount:
             raise NotFoundError(f'No entry flag with id {flag_id}')
+
+    def check_fits_day(self, entry: Entry) -> None:
+        """An entry is at most as long as the rest of its day from the day's start (24:00 without a start time)."""
+        row = self._conn.execute('SELECT start_time FROM days WHERE user_id = ? AND date = ?',
+                                 (self._user, entry.date.isoformat())).fetchone()
+        start = row[0] if row and row[0] is not None else 0
+        if entry.duration > MINUTES_PER_DAY - start:
+            since = f' from {format_clock(start)} on' if start else ''
+            raise ConflictError(f'Longer than the day allows: at most {format_duration(MINUTES_PER_DAY - start)}{since}')
 
     def _check_references(self, entry: Entry) -> None:
         """A ticket entry's ticket is created if needed; an activity entry needs one of the user's activity types."""

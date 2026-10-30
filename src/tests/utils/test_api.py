@@ -46,7 +46,7 @@ def test_times_are_normalized():
     assert Times(clock='7:15', duration='01:30', balance='-01:45').balance == '-1:45'
 
 
-@pytest.mark.parametrize('data', [{'clock': '24:00', 'duration': '1:30'}, {'clock': '08:00', 'duration': '1,5'}])
+@pytest.mark.parametrize('data', [{'clock': '24:00', 'duration': '1:30'}, {'clock': '08:00', 'duration': '1:5'}])
 def test_times_reject_invalid(data):
     with pytest.raises(ValidationError):
         Times(**data)

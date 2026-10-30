@@ -31,7 +31,7 @@ def test_activity_entry_input():
     {'kind': 'ticket', 'duration': '1:30', 'ticket_key': 'ENGINE-597', 'note': 'x'},
     {'kind': 'ticket', 'duration': '1:30', 'ticket_key': 'TNG4840'},
     {'kind': 'ticket', 'duration': '1:20', 'ticket_key': 'ENGINE-597'},
-    {'kind': 'ticket', 'duration': '1,5', 'ticket_key': 'ENGINE-597'},
+    {'kind': 'ticket', 'duration': '1:5', 'ticket_key': 'ENGINE-597'},
     {'kind': 'activity', 'duration': '1:00'},
     {'kind': 'activity', 'duration': '1:00', 'activity_type_id': 1, 'ticket_key': 'ENGINE-597'},
     {'kind': 'activity', 'duration': '1:00', 'activity_type_id': 1, 'service_id': 2},

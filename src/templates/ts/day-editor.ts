@@ -3,6 +3,7 @@
 import { api, type DayInput, type DayType, type DayView } from './api.ts';
 import { formatDay } from './dates.ts';
 import { el } from './dom.ts';
+import { clockMinutes, normalizeOnLeave, settleDuration, type DurationRules } from './duration-input.ts';
 import { field, formFooter, submit } from './forms.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 
@@ -36,9 +37,9 @@ export function dayInput(values: DayFormValues): DayInput {
   return input;
 }
 
-function textInput(name: string, value: string, placeholder: string): HTMLInputElement {
+function textInput(name: string, value: string, placeholder: string, inputmode = 'numeric'): HTMLInputElement {
   return el('input', {
-    id: `${PREFIX}-${name}`, name, value, placeholder, inputmode: 'numeric', autocomplete: 'off',
+    id: `${PREFIX}-${name}`, name, value, placeholder, inputmode, autocomplete: 'off',
     'aria-describedby': `${PREFIX}-${name}-error`,
   });
 }
@@ -56,6 +57,13 @@ function values(form: HTMLFormElement): DayFormValues {
   return Object.fromEntries(FIELDS.map((name) => [name, String(data.get(name) ?? '')])) as DayFormValues;
 }
 
+/** A break is at most as long as the day from start to end (unlimited until both are entered). */
+export function breakRules(values: DayFormValues): DurationRules {
+  const start = clockMinutes(values.start);
+  const end = clockMinutes(values.end);
+  return start !== null && end !== null && end > start ? { limit: end - start } : {};
+}
+
 /** The editor of one day; `onDone` after saving or deleting, `onCancel` on Cancel or Escape. */
 export function dayEditor(day: DayView, onDone: () => void, onCancel: () => void): HTMLFormElement {
   const initial = formValues(day);
@@ -64,15 +72,20 @@ export function dayEditor(day: DayView, onDone: () => void, onCancel: () => void
       field(PREFIX, 'day_type', 'Day type', typeSelect(initial.day_type)),
       field(PREFIX, 'start', 'Start', textInput('start', initial.start, '08:00')),
       field(PREFIX, 'end', 'End', textInput('end', initial.end, '16:30')),
-      field(PREFIX, 'break_time', 'Break', textInput('break_time', initial.break_time, 'legal'), 'empty: legal minimum'),
+      field(PREFIX, 'break_time', 'Break', textInput('break_time', initial.break_time, 'legal', 'text'),
+        'e.g. 0:30 or 45m; empty: legal minimum'),
       field(PREFIX, 'note', 'Note', el('textarea', { id: `${PREFIX}-note`, name: 'note', rows: 2,
         'aria-describedby': `${PREFIX}-note-error` }, initial.note)),
     ),
     ...formFooter(day.recorded ? 'Delete day' : null),
   );
-  form.addEventListener('submit', (event) => {
+  const breakTime = form.querySelector<HTMLInputElement>(`#${PREFIX}-break_time`)!;
+  normalizeOnLeave(breakTime, () => breakRules(values(form)));
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    void submit(form, PREFIX, FIELDS, () => api.saveDay(day.date, dayInput(values(form))), onDone);
+    if (await settleDuration(breakTime, breakRules(values(form)))) {
+      void submit(form, PREFIX, FIELDS, () => api.saveDay(day.date, dayInput(values(form))), onDone);
+    }
   });
   form.querySelector('[data-action="cancel"]')!.addEventListener('click', onCancel);
   form.addEventListener('keydown', (event) => event.key === 'Escape' && onCancel());

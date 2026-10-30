@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.lib.durations import TimeFormatError, parse_clock, parse_duration
+from src.lib.durations import TimeFormatError, parse_clock, parse_hours_minutes
 
 COLUMNS = ['Date', 'Start', 'End', 'Pause', 'Sum', 'Comment']
 PLACEHOLDER_START = parse_clock('08:00')
@@ -64,7 +64,7 @@ def _parse_row(cells: list[str]) -> SheetRow:
         start=_optional(start, parse_clock),
         end=_optional(end, parse_clock),
         pause=_optional(pause, int),
-        total=parse_duration(total),
+        total=parse_hours_minutes(total),
         comment=tuple(line.strip() for line in comment.splitlines() if line.strip()),
     )
 

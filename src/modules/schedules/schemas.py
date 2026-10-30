@@ -20,7 +20,7 @@ class ScheduleTerms(BaseModel):
 
     model_config = ConfigDict(extra='forbid')
 
-    weekly_hours: DurationText = Field(description='Hours per week, h:mm', examples=['40:00'])
+    weekly_hours: DurationText = Field(description='Hours per week, e.g. 40:00, 40 or 38.5', examples=['40:00'])
     work_days: list[Weekday] = Field(min_length=1, examples=[['Mon', 'Tue', 'Wed', 'Thu', 'Fri']])
     state: State = Field(default='BE', description='German federal state whose public holidays apply')
     company_half_days: bool = Field(default=True, description='24.12. and 31.12. are half PTO, half free')

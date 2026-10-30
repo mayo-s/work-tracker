@@ -83,7 +83,7 @@ def test_duplicate_services_save_nothing(new):
 @pytest.mark.parametrize('changes', [
     {'pto_first_year': -1},
     {'pto_first_year': 2.25},
-    {'opening_balance': '1,5'},
+    {'opening_balance': '1:5'},
     {'schedule': SETUP['schedule'] | {'work_days': []}},
     {'schedule': SETUP['schedule'] | {'state': 'XX'}},
     {'unknown': 1},

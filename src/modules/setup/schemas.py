@@ -22,7 +22,7 @@ class SetupInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     balance_start: dt.date = Field(description='First day counted, e.g. the first day at a new job')
-    opening_balance: SignedDurationText = Field(default='0:00', description='Overtime taken over, h:mm')
+    opening_balance: SignedDurationText = Field(default='0:00', description='Overtime taken over, e.g. 12:30, -1.5 or 2h')
     schedule: ScheduleTerms = Field(description='The work schedule from the first day on')
     pto_per_year: Days = Field(default=Decimal(30), description='PTO days per year, entered for the year after the first')
     pto_first_year: Days = Field(description='PTO days of the first year, e.g. pro rata')

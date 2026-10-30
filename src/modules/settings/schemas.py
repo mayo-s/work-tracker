@@ -15,7 +15,9 @@ class SettingsView(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     balance_start: dt.date = Field(description='First day counted in the overtime balance', examples=['2024-06-01'])
-    opening_balance: SignedDurationText = Field(description='Overtime before the start day, h:mm (negative with a minus)')
+    opening_balance: SignedDurationText = Field(
+        description='Overtime before the start day, e.g. 12:30, -1:45, 1.5 or -2h; answered as h:mm',
+    )
 
     @classmethod
     def of(cls, settings: Settings) -> Self:

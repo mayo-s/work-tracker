@@ -4,6 +4,7 @@ import { accountError, accountFields, emptyAccount, profileInput, type AccountVa
 import { api, ApiError, type SetupInput } from './api.ts';
 import { formatDate, isoDate, type IsoDate } from './dates.ts';
 import { el } from './dom.ts';
+import { checkDuration, normalizeOnLeave, type DurationRules } from './duration-input.ts';
 import { STATE_NAMES, WEEKDAY_NAMES } from './labels.ts';
 
 type Weekday = (typeof WEEKDAY_NAMES)[number];
@@ -28,7 +29,8 @@ export type Step = 'Login' | 'Start' | 'Work schedule' | 'PTO' | 'Services' | 'S
 export function steps(state: SetupState): Step[] {
   return [...(state.account ? ['Login' as const] : []), 'Start', 'Work schedule', 'PTO', 'Services', 'Summary'];
 }
-const DURATION = /^[+-]?\d+:[0-5]\d$/;
+const OPENING: DurationRules = { signed: true };
+const WEEKLY_HOURS: DurationRules = { limit: 168 * 60 };
 
 /** The months of the first year that count: the start month only if starting by the 15th (01.03. → 10, 20.03. → 9). */
 export function countedMonths(start: IsoDate): number {
@@ -54,8 +56,10 @@ export function stepError(state: SetupState, step: Step): string | null {
   const checks: Partial<Record<Step, () => string | null>> = {
     'Login': () => (state.account ? accountError(state.account, true) : null),
     'Start': () => (!state.start ? 'Enter the first day.'
-      : DURATION.test(state.opening.trim()) ? null : 'Enter the opening balance as h:mm, e.g. 0:00.'),
-    'Work schedule': () => (!DURATION.test(state.weeklyHours.trim()) ? 'Enter the hours per week as h:mm, e.g. 40:00.'
+      : checkDuration(state.opening, OPENING).kind === 'ok' ? null
+        : 'Enter the opening balance, e.g. 0:00, 12:30, -1:45 or 1.5.'),
+    'Work schedule': () => (checkDuration(state.weeklyHours, WEEKLY_HOURS).kind !== 'ok'
+      ? 'Enter the hours per week, e.g. 40:00 or 38.5 (at most 168:00).'
       : state.workDays.length ? null : 'Choose at least one work day.'),
     'PTO': () => ([state.perYear, state.firstYear].every((days) => days !== '' && Number(days) >= 0)
       ? null : 'Enter the PTO days.'),
@@ -107,6 +111,12 @@ function input(id: string, value: string, onInput: (value: string) => void, attr
   return element;
 }
 
+/** A duration field that shows how it was read when left (`38.5` → `38:30`). */
+function duration(element: HTMLInputElement, rules: DurationRules): HTMLInputElement {
+  normalizeOnLeave(element, () => rules);
+  return element;
+}
+
 function importNote(): HTMLElement {
   return el('div', { class: 'card card-surface setup-note' },
     el('strong', {}, 'Coming from the spreadsheet? '),
@@ -130,8 +140,8 @@ function startStep(state: SetupState, changed: () => void): HTMLElement[] {
     el('p', {}, 'The overtime balance counts from the first day on, e.g. the first day at a new job.'),
     el('div', { class: 'setup-fields' },
       field('First day', start),
-      field('Opening balance', input('setup-opening', state.opening, (value) => (state.opening = value)),
-        'Overtime taken over, e.g. 12:30 or -1:45; otherwise 0:00.')),
+      field('Opening balance', duration(input('setup-opening', state.opening, (value) => (state.opening = value)), OPENING),
+        'Overtime taken over, e.g. 12:30, -1:45 or 1.5; otherwise 0:00.')),
     importNote(),
   ];
 }
@@ -152,7 +162,8 @@ function scheduleStep(state: SetupState): HTMLElement[] {
   return [
     el('p', {}, 'The hours per week are split evenly over the work days (40 h / 5 days = 8:00 per day).'),
     el('div', { class: 'setup-fields' },
-      field('Hours per week', input('setup-hours', state.weeklyHours, (value) => (state.weeklyHours = value))),
+      field('Hours per week',
+        duration(input('setup-hours', state.weeklyHours, (value) => (state.weeklyHours = value)), WEEKLY_HOURS)),
       el('div', { class: 'field' }, el('span', { class: 'field-label' }, 'Work days'),
         el('fieldset', { class: 'weekday-picker' }, el('legend', { class: 'visually-hidden' }, 'Work days'), ...days)),
       field('Public holidays of', region),

@@ -8,8 +8,8 @@ MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR
 QUARTER_HOUR = 15
 
 _CLOCK = re.compile(r'(\d{1,2}):(\d{2})')
-_DURATION = re.compile(r'(\d+):(\d{2})')
 _DECIMAL_HOURS = re.compile(r'\d+(?:[,.]\d+)?')
+_HOURS = r'(\d+(?:[,.]\d+)?)'  # whole or decimal hours, with a point or a comma
 
 
 class TimeFormatError(ValueError):
@@ -36,14 +36,60 @@ def format_clock(minutes: int) -> str:
 
 
 def parse_duration(text: str) -> int:
-    """Parse a duration in `h:mm` format (`1:30`, `0:45`, `12:00`) into minutes."""
-    match = _DURATION.fullmatch(text.strip())
-    if not match:
+    """Parse a duration into minutes: `1:30`, hours `1.5`, `1,5` or `2`, `1h30m`, `1h30`, `1h`, `1 h 30 min`, minutes
+    `90m` or `90min` (spaces and case do not matter)."""
+    cleaned = ' '.join(text.lower().split())
+    for pattern, to_minutes in _DURATION_FORMATS:
+        if match := pattern.fullmatch(cleaned):
+            return to_minutes(text, match)
+    raise TimeFormatError(f'Invalid duration {text!r}, expected e.g. 1:30, 1.5, 1h30m or 90m')
+
+
+def parse_hours_minutes(text: str) -> int:
+    """Parse strictly `h:mm` (`1:30`, `12:00`), e.g. the spreadsheet's `Sum` column."""
+    if not (match := _DURATION_FORMATS[0][0].fullmatch(text.strip())):
         raise TimeFormatError(f'Invalid duration {text!r}, expected h:mm')
-    hours, minutes = int(match[1]), int(match[2])
+    return _from_clock_format(text, match)
+
+
+def _from_clock_format(text: str, match: re.Match) -> int:
+    return _hours_and_minutes(text, int(match[1]), int(match[2]))
+
+
+def _from_hours(text: str, match: re.Match) -> int:
+    return _whole_minutes(text, Decimal(match[1].replace(',', '.')) * MINUTES_PER_HOUR)
+
+
+def _from_units(text: str, match: re.Match) -> int:
+    if match[2] is None:
+        return _from_hours(text, match)
+    if not match[1].isdigit():
+        raise TimeFormatError(f'Invalid duration {text!r}: decimal hours and minutes together')
+    return _hours_and_minutes(text, int(match[1]), int(match[2]))
+
+
+def _from_minutes(text: str, match: re.Match) -> int:
+    return int(match[1])
+
+
+def _hours_and_minutes(text: str, hours: int, minutes: int) -> int:
     if minutes >= MINUTES_PER_HOUR:
         raise TimeFormatError(f'Invalid duration {text!r}, minutes out of range')
     return hours * MINUTES_PER_HOUR + minutes
+
+
+def _whole_minutes(text: str, minutes: Decimal) -> int:
+    if minutes != minutes.to_integral_value():
+        raise TimeFormatError(f'Duration {text!r} is not a whole number of minutes')
+    return int(minutes)
+
+
+_DURATION_FORMATS = (
+    (re.compile(r'(\d+):(\d{2})'), _from_clock_format),  # 1:30
+    (re.compile(_HOURS), _from_hours),  # 1.5, 1,5, 2
+    (re.compile(_HOURS + r' ?h(?: ?(\d+) ?(?:m|min)?)?'), _from_units),  # 1h30m, 1h30, 1.5h, 1 h 30 min
+    (re.compile(r'(\d+) ?(?:m|min)'), _from_minutes),  # 90m, 90 min
+)
 
 
 def parse_signed_duration(text: str) -> int:

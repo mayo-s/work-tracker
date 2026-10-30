@@ -184,3 +184,12 @@ and ends with passing tests and the flake8 check.
     report and when
 - [ ] **L.11** AWS Lambda deployment (to be discussed); with it, the admin sets a one-time password for a user who
   forgot theirs (changed at the next login), since nobody has a shell on the computer running the app
+- [x] **L.12** Duration formats: every duration field (entry duration, break, hours per week, opening balance with a
+  minus) accepts `1:30`, `1.5`, `1,5`, `1h30m`, `1h30`, `1h`, `1 h 30 min`, `90m`, `90min` (spaces and case do not
+  matter); the field shows the normalized `h:mm` when left, and the API reads the same formats
+  - Limits: an entry at most the rest of its day (from 08:00 at most 16:00; without a start time 24:00), a break at
+    most the day from start to end, hours per week at most 168:00. Explicit units over the limit are an error naming it
+  - A bare number (`2`, `90`) is hours if that fits the limit; otherwise a popup asks "Did you mean 90 minutes
+    (1:30)?" (use it or cancel)
+  - Entries stay in quarter hours: `1.1` (1:06) opens a popup with "1:00", "1:15" or cancel; breaks and hours per
+    week need no quarter hours. The API refuses non-quarter-hour entries and durations over the limit

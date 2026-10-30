@@ -33,7 +33,8 @@ class EntryCollection:
 
     @spec.validate(json=EntryInput, resp=Response('HTTP_409', HTTP_201=EntryView), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: EntryInput) -> None:
-        """Create an entry; a new ticket is created, `service_id` sets the ticket's service."""
+        """Create an entry; a new ticket is created, `service_id` sets the ticket's service. The duration takes e.g.
+        `1:30`, `1.5`, `1h30m` or `90m`, in quarter hours, at most the rest of the day from its start (409)."""
         with self._database.transaction() as conn:
             view = _save(conn, current_user(req), json)
         resp.status = falcon.HTTP_201
@@ -94,6 +95,7 @@ class EntryHistory:
 
 def _save(conn: sqlite3.Connection, user_id: str, json: EntryInput, entry_id: int | None = None) -> EntryView:
     entries = EntryRepository(conn, user_id)
+    entries.check_fits_day(json.to_entry(entry_id))
     entry = entries.create(json.to_entry()) if entry_id is None else entries.update(json.to_entry(entry_id))
     if json.sets_service:
         TicketRepository(conn, user_id).set_service(entry.ticket_key, json.service_id)
