@@ -1,5 +1,5 @@
-// Settings page (/settings): overtime balance, schedules, PTO days per year, services, activity types, team, theme and
-// account.
+// Settings page (/settings): overtime balance, schedules, PTO days per year, services, activity types, team, theme,
+// export of the own data and account.
 
 import {
   api, ApiError, type MyInvitationView, type MyTeamView, type PtoYear, type PtoYearInput, type ReportViewEntry,
@@ -18,7 +18,8 @@ const BALANCE_FIELDS = ['balance_start', 'opening_balance'] as const;
 const SIGNED: DurationRules = { signed: true };  // the opening balance may be negative
 const SECTIONS = [
   ['balance', 'Overtime balance'], ['schedules', 'Work schedules'], ['pto-years', 'PTO years'], ['services', 'Services'],
-  ['activity-types', 'Activity types'], ['team', 'Team'], ['appearance', 'Appearance'], ['account', 'Account'],
+  ['activity-types', 'Activity types'], ['team', 'Team'], ['appearance', 'Appearance'], ['data', 'Your data'],
+  ['account', 'Account'],
 ];
 const THEMES: [Theme, string][] = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
 
@@ -189,6 +190,15 @@ function appearanceSection(theme: Theme, page: Page): HTMLElement {
     el('fieldset', { class: 'theme-preview' }, el('legend', {}, 'Theme'), ...choices));
 }
 
+function dataSection(): HTMLElement {
+  return el('section', { class: 'review-section', id: 'data' },
+    el('h2', {}, 'Your data'),
+    el('p', { class: 'muted' }, 'All your own records in one JSON file, e.g. as a backup: settings, work schedules, PTO '
+      + 'years, services, activity types, tickets, days, and entries with their history. Your password and team are not '
+      + 'in it.'),
+    el('div', { class: 'form-actions' }, el('a', { class: 'button', href: '/api/export', download: true }, 'Export my data')));
+}
+
 /** What accepting an invitation means: joining, and leaving the current team if there is one. */
 export function acceptQuestion(invitation: MyInvitationView, current: string | null): string {
   return current
@@ -280,6 +290,7 @@ export async function renderSettingsPage(doc: Document): Promise<void> {
       tableSection(activityTypesTable(activityTypes), page),
       teamSection(mine, page),
       appearanceSection(theme.theme, page),
+      dataSection(),
       accountSection(status.user ?? null, status.enabled, page.reload),
     ];
   });

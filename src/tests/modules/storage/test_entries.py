@@ -138,6 +138,14 @@ def test_delete_keeps_history_with_last_values(entries, activity_entry):
     assert entries.history(created.id)[-1].changes['note'] == ('GCC Tactical', None)
 
 
+def test_all_history_includes_deleted_entries_in_written_order(entries, ticket_entry, activity_entry):
+    deleted, kept = entries.create(activity_entry), entries.create(ticket_entry)
+    entries.delete(deleted.id)
+    lines = [(change.entry_id, change.action) for change in entries.all_history()]
+    assert lines == [(deleted.id, HistoryAction.CREATED), (kept.id, HistoryAction.CREATED),
+                     (deleted.id, HistoryAction.DELETED)]
+
+
 def test_delete_removes_entry_and_its_flags(entries, ticket_entry):
     created = entries.create(ticket_entry)
     entries.add_flag(created.id, FlagReason.UNCERTAIN_TICKET)

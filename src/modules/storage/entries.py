@@ -174,6 +174,11 @@ class EntryRepository:
         rows = self._conn.execute(sql, (entry_id, self._user))
         return [_to_change(row) for row in rows]
 
+    def all_history(self) -> list[EntryChange]:
+        """The history of all the user's entries, deleted ones included, in the order it was written."""
+        rows = self._conn.execute(f'SELECT {_HISTORY_COLUMNS} FROM entry_history WHERE user_id = ? ORDER BY id', (self._user,))
+        return [_to_change(row) for row in rows]
+
     def changed(self, entry_ids: Iterable[int]) -> set[int]:
         """Those of the given entries that changed after they were created or imported (for the UI marker)."""
         ids = list(entry_ids)
