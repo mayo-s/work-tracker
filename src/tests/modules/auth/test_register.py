@@ -50,6 +50,17 @@ def test_new_user_is_logged_in_and_set_up_first(app, registration):
     assert app.simulate_get('/api/admin/users', cookies=cookies).status == falcon.HTTP_403
 
 
+def test_a_new_user_can_log_out_and_finds_the_setup_after_the_next_login(app, registration):
+    cookies = {'wt_session': register(app).cookies['wt_session'].value}
+    assert app.simulate_post('/api/auth/logout', cookies=cookies).status == falcon.HTTP_204
+    assert app.simulate_get('/setup', cookies=cookies).headers['location'].startswith('/login')
+    login = app.simulate_post('/api/auth/login', json={'login': 'pascal', 'password': PASCAL['password']})
+    cookies = {'wt_session': login.cookies['wt_session'].value}
+    start = app.simulate_get('/', cookies=cookies)
+    assert (start.status, start.headers['location']) == (falcon.HTTP_303, '/setup')
+    assert app.simulate_get('/setup', cookies=cookies).status == falcon.HTTP_200
+
+
 def test_taken_username(app, registration):
     assert register(app, username='klara').status == falcon.HTTP_409
 

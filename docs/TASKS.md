@@ -219,3 +219,5 @@ and ends with passing tests and the flake8 check.
 - [x] **L.13** Validation errors are logged with their locations and error types only (e.g.
   `data.history.3.changed_at (datetime_parsing)`), never with the input or the message: a refused import or export
   would otherwise put a user's whole data into the log (on Lambda: CloudWatch); the answer still names the problem
+- [x] **L.14** Log out during the setup: a new user (e.g. after registering) sees their name and "Log out" on `/setup`
+  as well; after the next login, every page forwards to the setup again until it is done

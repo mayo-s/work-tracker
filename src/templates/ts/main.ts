@@ -44,12 +44,23 @@ async function showReviewCount(nav: Element): Promise<void> {
   }
 }
 
-/** The logged-in user's first name and "Log out" in the header, the Team link for team admins, the Admin link for
- * admins, and a badge on Settings for open team invitations (nothing when the login is off). */
-async function showUser(header: Element, nav: Element): Promise<void> {
+/** The logged-in user's first name and "Log out" in the header (nothing when the login is off). With `nav`, also the
+ * Team link for team admins, the Admin link for admins, and a badge on Settings for open team invitations; without it
+ * (the setup page) only name and "Log out": a new user can leave and finds the setup again after the next login. */
+async function showUser(header: Element, nav: Element | null): Promise<void> {
   const { api } = await import('./api.ts');
   const status = await api.authStatus();
   if (!status.enabled || !status.user) {
+    return;
+  }
+  const logout = Object.assign(document.createElement('button'), { type: 'button', className: 'button-small',
+    textContent: 'Log out' });
+  logout.addEventListener('click', () => void api.logout().then(() => window.location.assign('/login')));
+  const user = Object.assign(document.createElement('div'), { className: 'app-user' });
+  const name = Object.assign(document.createElement('span'), { className: 'muted', textContent: status.user.first_name });
+  user.append(name, logout);
+  header.append(user);
+  if (!nav) {
     return;
   }
   if (status.user.role === 'team_admin') {
@@ -64,13 +75,6 @@ async function showUser(header: Element, nav: Element): Promise<void> {
       className: 'badge warning', textContent: String(status.invitations), title: 'Open team invitations',
     }));
   }
-  const logout = Object.assign(document.createElement('button'), { type: 'button', className: 'button-small',
-    textContent: 'Log out' });
-  logout.addEventListener('click', () => void api.logout().then(() => window.location.assign('/login')));
-  const user = Object.assign(document.createElement('div'), { className: 'app-user' });
-  const name = Object.assign(document.createElement('span'), { className: 'muted', textContent: status.user.first_name });
-  user.append(name, logout);
-  header.append(user);
 }
 
 const page = document.querySelector<HTMLElement>('#app')?.dataset.page;
@@ -79,6 +83,9 @@ if (nav && !['login', 'register', 'setup'].includes(page ?? '')) {
   markCurrentPage(nav, window.location.pathname);
   showReviewCount(nav).catch(() => undefined);  // the count is a hint; pages work without it
   showUser(document.querySelector('.app-header')!, nav).catch(() => undefined);
+}
+if (page === 'setup') {  // e.g. a new user after registering: not set up yet, but able to log out
+  showUser(document.querySelector('.app-header')!, null).catch(() => undefined);
 }
 
 const member = new URLSearchParams(window.location.search).get('member');
