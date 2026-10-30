@@ -1,5 +1,7 @@
 """The DynamoDB base: table, transactions (unit of work), id counters, schema version; simulated by moto."""
 
+import datetime as dt
+
 import pytest
 
 from src.modules.storage.dynamodb.__main__ import main
@@ -8,8 +10,12 @@ from src.modules.storage.dynamodb.storage import LATEST, DynamoStorage
 from src.modules.storage.dynamodb.table import TTL_ATTRIBUTE
 from src.modules.storage.dynamodb.unit import MAX_ITEMS, Unit
 from src.modules.storage.errors import ConflictError, SchemaVersionError, TooManyChangesError
+from src.modules.storage.owners import DEFAULT_ACTIVITY_TYPES
+from src.modules.storage.users import SESSION_LIFETIME, token_hash
+from src.tests.users import KLARA
 
 USER = 'USER#5f0c2a9e'
+LOGIN = dt.datetime(2026, 10, 29, 8, 0)
 
 
 def day(date, **values):
@@ -88,11 +94,20 @@ def test_a_larger_change_is_written_in_chunks(dynamo_table):
     assert len(dynamo_table.query(USER, 'DAY#', 'DAY#~')) == 150
 
 
-def test_a_unique_item_that_exists_fails_the_whole_transaction(dynamo_table):
-    put_all(dynamo_table, {'PK': 'USERNAME#klara', 'SK': 'USERNAME'})
+CLAIM = {'PK': 'LOGIN', 'SK': 'USERNAME#klara', 'user_id': 'klara'}
+
+
+def test_a_unique_item_that_exists_is_refused_at_once(dynamo_table):
+    put_all(dynamo_table, CLAIM)
+    with pytest.raises(ConflictError, match='The username klara is taken'):
+        Unit(dynamo_table).put(CLAIM | {'user_id': 'other'}, unique='The username klara is taken')
+
+
+def test_a_unique_item_written_meanwhile_fails_the_whole_transaction(dynamo_table):
     unit = Unit(dynamo_table)
     unit.put(day('2026-10-26'))
-    unit.put({'PK': 'USERNAME#klara', 'SK': 'USERNAME'}, unique='The username klara is taken')
+    unit.put(CLAIM | {'user_id': 'other'}, unique='The username klara is taken')
+    put_all(dynamo_table, CLAIM)  # another request, between the check and the end of this transaction
     with pytest.raises(ConflictError, match='The username klara is taken'):
         unit.flush()
     assert dynamo_table.get(USER, 'DAY#2026-10-26') is None
@@ -112,3 +127,19 @@ def test_a_table_of_a_newer_app_is_refused(dynamo_table):
     put_all(dynamo_table, {'PK': META, 'SK': SCHEMA, 'version': LATEST + 1})
     with pytest.raises(SchemaVersionError, match=f'Table schema {LATEST + 1} is newer than this app'):
         DynamoStorage(dynamo_table).migrate()
+
+
+def test_session_tokens_are_stored_hashed_and_expire(dynamo_table):
+    storage = DynamoStorage(dynamo_table)
+    with storage.transaction() as store:
+        user_id = store.users().add(KLARA, 'correct horse battery 9!').id
+        token = store.sessions().start(user_id, LOGIN)
+    session = dynamo_table.get(f'SESSION#{token_hash(token)}', 'SESSION')
+    assert token not in str(session) and session['expires_at'] == int((LOGIN + SESSION_LIFETIME).timestamp()) + 1
+
+
+def test_a_new_user_starts_with_the_default_activity_types(dynamo_table):
+    with DynamoStorage(dynamo_table).transaction() as store:
+        user_id = store.users().add(KLARA, 'correct horse battery 9!').id
+    names = [item['name'] for item in dynamo_table.query(f'USER#{user_id}', 'ACTIVITY_TYPE#', 'ACTIVITY_TYPE#~')]
+    assert names == list(DEFAULT_ACTIVITY_TYPES)

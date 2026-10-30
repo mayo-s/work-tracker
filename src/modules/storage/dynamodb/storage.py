@@ -1,13 +1,17 @@
-"""The DynamoDB backend of the storage interfaces (store.py), used on AWS Lambda; it holds the app settings so far,
-the repositories follow."""
+"""The DynamoDB backend of the storage interfaces (store.py), used on AWS Lambda; so far users, sessions, login attempts
+and settings, the other repositories follow."""
 
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
-from src.modules.storage.dynamodb.keys import APP, META, SCHEMA, SETTINGS
+from src.models.settings import Settings
+from src.modules.storage.dynamodb import settings as stored_settings
+from src.modules.storage.dynamodb.keys import META, SCHEMA
 from src.modules.storage.dynamodb.table import Table
 from src.modules.storage.dynamodb.unit import Unit
+from src.modules.storage.dynamodb.users import DynamoAttempts, DynamoSessions, DynamoUsers
 from src.modules.storage.errors import SchemaVersionError
+from src.modules.storage.store import Clock, Theme
 
 # Changes of the item layout, applied once in order: MIGRATIONS[0] brings a table from version 1 to 2, and so on
 MIGRATIONS: list[Callable[[Table], None]] = []
@@ -20,13 +24,38 @@ class DynamoStore:
     def __init__(self, unit: Unit) -> None:
         self._unit = unit
 
+    def users(self, clock: Clock | None = None) -> DynamoUsers:
+        return DynamoUsers(self._unit, clock)
+
+    def sessions(self) -> DynamoSessions:
+        return DynamoSessions(self._unit)
+
+    def attempts(self) -> DynamoAttempts:
+        return DynamoAttempts(self._unit)
+
+    def load_settings(self, user_id: str) -> Settings:
+        return stored_settings.load_settings(self._unit, user_id)
+
+    def save_settings(self, user_id: str, settings: Settings) -> None:
+        stored_settings.save_settings(self._unit, user_id, settings)
+
+    def setup_done(self, user_id: str) -> bool:
+        return stored_settings.setup_done(self._unit, user_id)
+
+    def finish_setup(self, user_id: str) -> None:
+        stored_settings.finish_setup(self._unit, user_id)
+
+    def load_theme(self, user_id: str) -> Theme:
+        return stored_settings.load_theme(self._unit, user_id)
+
+    def save_theme(self, user_id: str, theme: Theme) -> None:
+        stored_settings.save_theme(self._unit, user_id, theme)
+
     def registration_open(self) -> bool:
-        """Whether new users can register on /register (off until an admin switches it on)."""
-        return bool((self._unit.get(APP, SETTINGS) or {}).get('registration'))
+        return stored_settings.registration_open(self._unit)
 
     def set_registration(self, enabled: bool) -> None:
-        settings = self._unit.get(APP, SETTINGS) or {'PK': APP, 'SK': SETTINGS}
-        self._unit.put(settings | {'registration': enabled})
+        stored_settings.set_registration(self._unit, enabled)
 
 
 class DynamoStorage:

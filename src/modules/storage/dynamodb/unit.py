@@ -47,8 +47,10 @@ class Unit:
         return self.query(pk, prefix, prefix + '\U0010ffff')
 
     def put(self, item: Item, unique: str | None = None) -> None:
-        """Write the item (insert or replace) when the transaction ends; with `unique`, only if it does not exist yet
-        (otherwise the transaction fails with a ConflictError with that message)."""
+        """Write the item (insert or replace) when the transaction ends; with `unique`, only if it does not exist yet:
+        otherwise a ConflictError with that message, at once or (if another request writes it meanwhile) at the end."""
+        if unique and self.get(item['PK'], item['SK']) is not None:
+            raise ConflictError(unique)
         earlier = self._pending.get((item['PK'], item['SK']))
         self._pending[item['PK'], item['SK']] = _Write(copy.deepcopy(item), unique or (earlier.unique if earlier else None))
 
