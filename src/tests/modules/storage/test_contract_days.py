@@ -1,3 +1,5 @@
+"""Days and their review flags: the same behaviour on SQLite and on DynamoDB (moto)."""
+
 import datetime as dt
 
 import pytest
@@ -6,18 +8,17 @@ from src.lib.balances import DayRecord
 from src.lib.daytypes import DayType
 from src.lib.durations import parse_clock, parse_duration
 from src.models.days import Day
+from src.models.entries import ActivityEntry
 from src.models.review import FlagReason
-from src.modules.storage.days import DayRepository
 from src.modules.storage.errors import NotFoundError
-from src.tests.users import USER
 
 MONDAY = dt.date(2026, 10, 26)
 WORK_DAY = Day(date=MONDAY, start=parse_clock('08:15'), end=parse_clock('15:45'), note='ENGINE-597 europace permissions')
 
 
 @pytest.fixture
-def days(conn):
-    return DayRepository(conn, USER)
+def days(per_call, klara_id):
+    return per_call(lambda store: store.days(klara_id))
 
 
 def test_get_missing_day(days):
@@ -82,12 +83,10 @@ def test_add_and_list_flags(days):
     assert [found.date for found in days.day_flags()] == [dt.date(2024, 1, 6), saturday]
 
 
-def test_day_flags_ignore_entry_flags(days, conn):
-    entry_id = conn.execute(
-        "INSERT INTO entries (user_id, date, kind, activity_type_id, duration) VALUES (?, '2026-10-26', 'activity', 1, 0)",
-        (USER,),
-    ).lastrowid
-    conn.execute("INSERT INTO review_flags (user_id, entry_id, reason) VALUES (?, ?, 'uncertain_ticket')", (USER, entry_id))
+def test_day_flags_ignore_entry_flags(days, per_call, klara_id):
+    entries = per_call(lambda store: store.entries(klara_id))
+    entry = entries.create(ActivityEntry(date=MONDAY, activity_type_id=1, duration=0))
+    entries.add_flag(entry.id, FlagReason.UNCERTAIN_TICKET)
     assert days.day_flags() == []
 
 

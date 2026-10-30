@@ -6,6 +6,8 @@ import pytest
 from src.modules.storage import store
 from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository, TeamServiceRepository
 from src.modules.storage.days import DayRepository
+from src.modules.storage.dynamodb.days import DynamoDays
+from src.modules.storage.dynamodb.entries import DynamoEntries
 from src.modules.storage.dynamodb.storage import DynamoStorage, DynamoStore
 from src.modules.storage.dynamodb.users import DynamoAttempts, DynamoSessions, DynamoUsers
 from src.modules.storage.entries import EntryRepository
@@ -26,8 +28,8 @@ IMPLEMENTATIONS = [
     (store.Storage, SqliteStorage),
 ]
 DYNAMODB = [
-    (store.Users, DynamoUsers), (store.Sessions, DynamoSessions), (store.Attempts, DynamoAttempts),
-    (store.Storage, DynamoStorage),
+    (store.Days, DynamoDays), (store.Entries, DynamoEntries), (store.Users, DynamoUsers), (store.Sessions, DynamoSessions),
+    (store.Attempts, DynamoAttempts), (store.Storage, DynamoStorage),
 ]
 
 

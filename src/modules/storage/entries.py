@@ -21,7 +21,8 @@ _HISTORY_COLUMNS = 'id, entry_id, changed_at, action, changes, detail'
 _FLAG_COLUMNS = 'id, entry_id, reason, detail'
 
 
-def _now() -> dt.datetime:
+def history_time() -> dt.datetime:
+    """The time of a history line, to the second."""
     return dt.datetime.now().replace(microsecond=0)
 
 
@@ -39,11 +40,13 @@ def _to_values(entry: Entry) -> tuple:
     return entry.date.isoformat(), entry.kind, None, entry.activity_type_id, entry.duration, entry.note, False
 
 
-def _fields(entry: Entry) -> dict[str, JsonValue]:
+def entry_fields(entry: Entry) -> dict[str, JsonValue]:
+    """The fields a history line records changes of."""
     return entry.model_dump(mode='json', exclude={'id', 'kind'})
 
 
-def _diff(old: dict[str, JsonValue], new: dict[str, JsonValue]) -> Changes:
+def field_changes(old: dict[str, JsonValue], new: dict[str, JsonValue]) -> Changes:
+    """Each changed field as (old, new); a new entry has no old values, a deleted one no new ones."""
     return {field: (old.get(field), new.get(field)) for field in old | new if old.get(field) != new.get(field)}
 
 
@@ -64,7 +67,7 @@ class EntryRepository:
     def __init__(self, conn: sqlite3.Connection, user_id: str, clock: Callable[[], dt.datetime] | None = None) -> None:
         self._conn = conn
         self._user = user_id
-        self._clock = clock or _now
+        self._clock = clock or history_time
         self._tickets = TicketRepository(conn, user_id)
 
     def get(self, entry_id: int) -> Entry:
@@ -110,7 +113,7 @@ class EntryRepository:
     def create(self, entry: Entry, action: HistoryAction = HistoryAction.CREATED, detail: str = '') -> Entry:
         """Store a new entry; its ticket is created if needed. `action` is `created` or `imported`."""
         created = self.restore(entry)
-        self.add_history(created.id, action, _diff({}, _fields(created)), detail)
+        self.add_history(created.id, action, field_changes({}, entry_fields(created)), detail)
         return created
 
     def update(self, entry: Entry, action: HistoryAction = HistoryAction.UPDATED, detail: str = '') -> Entry:
@@ -118,7 +121,7 @@ class EntryRepository:
         old = self.get(entry.id)
         if old.kind != entry.kind:
             raise ConflictError(f'Entry {entry.id} is a {old.kind} entry, not a {entry.kind} entry')
-        if changes := _diff(_fields(old), _fields(entry)):
+        if changes := field_changes(entry_fields(old), entry_fields(entry)):
             self._check_references(entry)
             self._write(
                 'UPDATE entries SET date = ?, kind = ?, ticket_key = ?, activity_type_id = ?, duration = ?, text = ?, '
@@ -153,7 +156,7 @@ class EntryRepository:
         """Delete an entry and its review flags; its history is kept."""
         old = self.get(entry_id)
         self._conn.execute('DELETE FROM entries WHERE id = ? AND user_id = ?', (entry_id, self._user))
-        self.add_history(entry_id, HistoryAction.DELETED, _diff(_fields(old), {}))
+        self.add_history(entry_id, HistoryAction.DELETED, field_changes(entry_fields(old), {}))
 
     def restore(self, entry: Entry) -> Entry:
         """Store an entry without a history line (its history comes along, e.g. from an export file); its ticket is
@@ -235,10 +238,7 @@ class EntryRepository:
         """An entry is at most as long as the rest of its day from the day's start (24:00 without a start time)."""
         row = self._conn.execute('SELECT start_time FROM days WHERE user_id = ? AND date = ?',
                                  (self._user, entry.date.isoformat())).fetchone()
-        start = row[0] if row and row[0] is not None else 0
-        if entry.duration > MINUTES_PER_DAY - start:
-            since = f' from {format_clock(start)} on' if start else ''
-            raise ConflictError(f'Longer than the day allows: at most {format_duration(MINUTES_PER_DAY - start)}{since}')
+        check_fits(entry, row[0] if row else None)
 
     def _check_references(self, entry: Entry) -> None:
         """A ticket entry's ticket is created if needed; an activity entry needs one of the user's activity types."""
@@ -256,3 +256,11 @@ class EntryRepository:
             return self._conn.execute(sql, params)
         except sqlite3.IntegrityError as error:
             raise ConflictError(f'Cannot save entry: {error}') from error
+
+
+def check_fits(entry: Entry, start: int | None) -> None:
+    """An entry is at most as long as the rest of its day from the day's start (24:00 without a start time)."""
+    start = start or 0
+    if entry.duration > MINUTES_PER_DAY - start:
+        since = f' from {format_clock(start)} on' if start else ''
+        raise ConflictError(f'Longer than the day allows: at most {format_duration(MINUTES_PER_DAY - start)}{since}')

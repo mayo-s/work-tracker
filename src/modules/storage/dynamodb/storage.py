@@ -1,11 +1,13 @@
-"""The DynamoDB backend of the storage interfaces (store.py), used on AWS Lambda; so far users, sessions, login attempts
-and settings, the other repositories follow."""
+"""The DynamoDB backend of the storage interfaces (store.py), used on AWS Lambda; so far users, sessions, login attempts,
+settings, days and entries, the other repositories follow."""
 
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
 from src.models.settings import Settings
 from src.modules.storage.dynamodb import settings as stored_settings
+from src.modules.storage.dynamodb.days import DynamoDays
+from src.modules.storage.dynamodb.entries import DynamoEntries
 from src.modules.storage.dynamodb.keys import META, SCHEMA
 from src.modules.storage.dynamodb.table import Table
 from src.modules.storage.dynamodb.unit import Unit
@@ -23,6 +25,12 @@ class DynamoStore:
 
     def __init__(self, unit: Unit) -> None:
         self._unit = unit
+
+    def days(self, user_id: str) -> DynamoDays:
+        return DynamoDays(self._unit, user_id)
+
+    def entries(self, user_id: str, clock: Clock | None = None) -> DynamoEntries:
+        return DynamoEntries(self._unit, user_id, clock)
 
     def users(self, clock: Clock | None = None) -> DynamoUsers:
         return DynamoUsers(self._unit, clock)
