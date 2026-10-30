@@ -46,13 +46,27 @@ class Unit:
         """The items of a partition whose sort key starts with the prefix, e.g. `DAY#`."""
         return self.query(pk, prefix, prefix + '\U0010ffff')
 
+    def newest(self, pk: str, prefix: str, count: int) -> list[Item]:
+        """The last `count` items whose sort key starts with the prefix, last first (e.g. a log by time)."""
+        high = prefix + '\U0010ffff'
+        items = {item['SK']: item for item in self._table.query(pk, prefix, high, newest=count)}
+        items |= self._pending_between(pk, prefix, high)
+        return [items[sort_key] for sort_key in sorted(items, reverse=True) if items[sort_key] is not None][:count]
+
     def put(self, item: Item, unique: str | None = None) -> None:
         """Write the item (insert or replace) when the transaction ends; with `unique`, only if it does not exist yet:
         otherwise a ConflictError with that message, at once or (if another request writes it meanwhile) at the end."""
         if unique and self.get(item['PK'], item['SK']) is not None:
             raise ConflictError(unique)
-        earlier = self._pending.get((item['PK'], item['SK']))
-        self._pending[item['PK'], item['SK']] = _Write(copy.deepcopy(item), unique or (earlier.unique if earlier else None))
+        key = (item['PK'], item['SK'])
+        self._pending[key] = _Write(copy.deepcopy(item), self._condition(key, unique))
+
+    def _condition(self, key: tuple[str, str], unique: str | None) -> str | None:
+        """The condition a put keeps at the end of the transaction."""
+        earlier = self._pending.get(key)
+        if earlier and earlier.item is None:
+            return None  # deleted earlier in this transaction: a replacement, which the condition would refuse
+        return unique or (earlier.unique if earlier else None)
 
     def delete(self, pk: str, sk: str) -> None:
         self._pending[pk, sk] = _Write(None)

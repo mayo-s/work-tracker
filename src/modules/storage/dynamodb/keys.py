@@ -9,12 +9,17 @@
 | `LOGIN`          | `USERNAME#<lower case>` | the user id of a username, kept unique (also `EMAIL#…`)           |
 | `SESSION#<hash>` | `SESSION`               | a session by the hash of its token (time to live `expires_at`)    |
 | `ATTEMPTS`       | `AT#<time>#<random>`    | a failed login or registration; `CLEARED`: failed ones up to then |
+| `TEAMS`          | `TEAM#<id>`             | a team (`deleted_at` once deleted; `NAME#…` keeps names unique)   |
+| `TEAM#<id>`      | `MEMBER#<user id>`      | a current member; also `INVITE#<id>` and the team's services      |
+| `INVITES#<mail>` | `TEAM#<id>`             | an invitation to an e-mail address (lower case), for that user    |
 | `USER#<user id>` | e.g. `DAY#2026-10-30`   | a user's records: one partition per user, so only their own data  |
 
 In a user's partition: `SETTINGS` (balance, setup, theme), `SESSION#<hash>` (to end all their sessions),
 `SERVICE#<id>` and `ACTIVITY_TYPE#<id>` (names unique by `SERVICE_NAME#…` / `ACTIVITY_TYPE_NAME#<lower case>`),
-`TICKET#<key>`, `DAY#<date>`, `ENTRY#<date>#<id>` with `ENTRY_ID#<id>` (its date), `HISTORY#<entry id>#<id>` and
-`FLAG#<id>`. Ids in sort keys have ten digits, so they sort in the order of creation.
+`TICKET#<key>`, `DAY#<date>`, `ENTRY#<date>#<id>` with `ENTRY_ID#<id>` (its date), `HISTORY#<entry id>#<id>`,
+`FLAG#<id>`, `SCHEDULE#<id>` (one per day by `SCHEDULE_FROM#<date>`), `PTO#<year>`, `MEMBERSHIP#<id>` (the teams they
+were in) and `VIEW#<time>#<id>` (who looked at their reports). Ids in sort keys have ten digits, so they sort in the
+order of creation.
 """
 
 META, SCHEMA = 'META', 'SCHEMA'

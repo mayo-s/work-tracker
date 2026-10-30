@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from src.models.catalog import Ticket
 from src.modules.storage.dynamodb.catalog import service_key
 from src.modules.storage.dynamodb.keys import user_partition
+from src.modules.storage.dynamodb.memberships import current_membership, team_partition
 from src.modules.storage.dynamodb.table import attributes
 from src.modules.storage.dynamodb.unit import Unit
 from src.modules.storage.errors import ConflictError, NotFoundError
@@ -28,6 +29,7 @@ class DynamoTickets:
 
     def __init__(self, unit: Unit, user_id: str) -> None:
         self._unit = unit
+        self._user = user_id
         self._pk = user_partition(user_id)
 
     def get(self, key: str) -> Ticket | None:
@@ -60,12 +62,20 @@ class DynamoTickets:
         More than fit into one transaction are written in chunks; each ticket on its own is right after each chunk.
         """
         tickets = self._existing(keys)
-        if service_id is not None and self._unit.get(self._pk, service_key(service_id)) is None:
+        if service_id is not None and not self._own_service(service_id):
             raise ConflictError(f'Unknown service {service_id}')
         for ticket in tickets:
             self._unit.make_room(1)
             self._unit.put({'PK': self._pk, 'SK': TICKET + ticket.key, **ticket.model_dump(), 'service_id': service_id})
         return len(tickets)
+
+    def _own_service(self, service_id: int) -> bool:
+        """Only the user's personal services and those of their team can be assigned (not another user's or team's,
+        though the id exists)."""
+        if self._unit.get(self._pk, service_key(service_id)):
+            return True
+        membership = current_membership(self._unit, self._user)
+        return bool(membership and self._unit.get(team_partition(membership['team_id']), service_key(service_id)))
 
     def _existing(self, keys: Iterable[str]) -> list[Ticket]:
         """The tickets of the normalized, distinct keys; raises if any does not exist."""

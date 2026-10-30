@@ -1,6 +1,11 @@
+import datetime as dt
+from decimal import Decimal
+
 import pytest
 
 from src.models.catalog import Service
+from src.models.pto import PtoYear
+from src.models.schedules import Schedule
 from src.modules.storage.database import Database
 from src.modules.storage.dynamodb.storage import DynamoStorage
 from src.modules.storage.sqlite import SqliteStorage
@@ -54,3 +59,19 @@ def service_ids(storage, klara_id):
     with storage.transaction() as store:
         return {short_name: store.services(klara_id).add(Service(short_name=short_name, name=name)).id
                 for short_name, name in services}
+
+
+@pytest.fixture
+def klara_schedule(storage, klara_id):
+    """Klara's work schedule of the original setup: 40 h, Monday to Friday, Berlin, from 01.06.2024."""
+    with storage.transaction() as store:
+        return store.schedules(klara_id).replace_all(
+            Schedule(valid_from=dt.date(2024, 6, 1), weekly_minutes=2400, work_days=[1, 2, 3, 4, 5]))
+
+
+@pytest.fixture
+def klara_pto_years(storage, klara_id):
+    """Klara's PTO years of the original setup."""
+    with storage.transaction() as store:
+        store.pto_years(klara_id).replace_all([PtoYear(year=year, allowance=Decimal(days)) for year, days in (
+            (2024, '17.5'), (2025, '31'), (2026, '31'), (2027, '30'))])

@@ -199,8 +199,8 @@ and ends with passing tests and the flake8 check.
   - [x] **L.11h** DynamoDB repositories: days, entries with history, review flags; their tests are contract tests now
   - [x] **L.11i** DynamoDB repositories: tickets, personal services, activity types, rename and merge tickets (in
     resumable chunks); their tests are contract tests now
-  - [ ] **L.11j** DynamoDB repositories: work schedules, PTO years, teams, memberships, invitations, report views;
-    team services and the team's service choices (deleting one unassigns the members' tickets)
+  - [x] **L.11j** DynamoDB repositories: work schedules, PTO years, teams, memberships, invitations, report views;
+    team services and the team's service choices (deleting one unassigns the members' tickets); contract tests
   - [ ] **L.11j2** Import on DynamoDB: an export file holds thousands of items, far more than one transaction's 100,
     so the import writes atomic chunks and, if it fails, removes what it wrote (SPEC 5.8)
   - [ ] **L.11k** Access tests on both backends: another user's id answers 404 for every repository and API resource
@@ -208,8 +208,8 @@ and ends with passing tests and the flake8 check.
   - [ ] **L.11l** One-time password: the admin sets it for a user who forgot theirs (changed at the next login)
   - [ ] **L.11m** Setup token on Lambda: the first user only with the token from the SSM parameter (SPEC 7.4; `moto`
     in the tests)
-  - [ ] **L.11n** zappa: `zappa_settings.json` (`eu-central-1`, `python3.14`, `TZ`, table, parameter name), WSGI
-    module, package excludes, IAM policy for the one table and the one parameter, README deployment steps (including
+  - [ ] **L.11n** zappa: the Lambda stage uses the DynamoDB table (`stages.py`, after the setup token of L.11m);
+    `zappa_settings.json` (`eu-central-1`, `python3.14`, `TZ`, table, parameter name), WSGI module, package excludes, IAM policy for the one table and the one parameter, README deployment steps (including
     creating and deleting the parameter)
 - [x] **L.12** Duration formats: every duration field (entry duration, break, hours per week, opening balance with a
   minus) accepts `1:30`, `1.5`, `1,5`, `1h30m`, `1h30`, `1h`, `1 h 30 min`, `90m`, `90min` (spaces and case do not

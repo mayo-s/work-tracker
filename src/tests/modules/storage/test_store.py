@@ -6,10 +6,12 @@ import pytest
 from src.modules.storage import store
 from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository, TeamServiceRepository
 from src.modules.storage.days import DayRepository
-from src.modules.storage.dynamodb.catalog import DynamoActivityTypes, DynamoServices
+from src.modules.storage.dynamodb.catalog import DynamoActivityTypes, DynamoServices, DynamoTeamServices
 from src.modules.storage.dynamodb.days import DynamoDays
 from src.modules.storage.dynamodb.entries import DynamoEntries
+from src.modules.storage.dynamodb.schedules import DynamoPtoYears, DynamoSchedules
 from src.modules.storage.dynamodb.storage import DynamoStorage, DynamoStore
+from src.modules.storage.dynamodb.teams import DynamoInvitations, DynamoReportViews, DynamoTeams
 from src.modules.storage.dynamodb.tickets import DynamoTickets
 from src.modules.storage.dynamodb.users import DynamoAttempts, DynamoSessions, DynamoUsers
 from src.modules.storage.entries import EntryRepository
@@ -32,7 +34,10 @@ IMPLEMENTATIONS = [
 DYNAMODB = [
     (store.Days, DynamoDays), (store.Entries, DynamoEntries), (store.Tickets, DynamoTickets),
     (store.Services, DynamoServices), (store.Catalog, DynamoActivityTypes), (store.Users, DynamoUsers),
-    (store.Sessions, DynamoSessions), (store.Attempts, DynamoAttempts), (store.Storage, DynamoStorage),
+    (store.Services, DynamoTeamServices), (store.WorkSchedules, DynamoSchedules), (store.PtoYears, DynamoPtoYears),
+    (store.Sessions, DynamoSessions), (store.Attempts, DynamoAttempts), (store.Teams, DynamoTeams),
+    (store.Invitations, DynamoInvitations), (store.ReportViews, DynamoReportViews), (store.Store, DynamoStore),
+    (store.Storage, DynamoStorage),
 ]
 
 
@@ -55,13 +60,6 @@ def test_sqlite_backend_implements_the_interfaces(protocol, implementation):
 def test_dynamodb_backend_implements_the_interfaces(protocol, implementation):
     for name in _methods(protocol):
         assert _parameters(getattr(implementation, name)) == _parameters(getattr(protocol, name)), name
-
-
-def test_the_dynamodb_store_matches_the_interface_so_far():
-    built = [name for name in _methods(store.Store) if hasattr(DynamoStore, name)]
-    assert 'users' in built
-    for name in built:
-        assert _parameters(getattr(DynamoStore, name)) == _parameters(getattr(store.Store, name)), name
 
 
 def test_the_sqlite_store_hands_out_repositories_of_its_transaction(database):
