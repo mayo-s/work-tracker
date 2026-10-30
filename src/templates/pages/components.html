@@ -182,6 +182,26 @@
           </div>
         </section>
 
+        <section class="story" id="dialog">
+          <h2>Dialog</h2>
+          <p>A question before saving, e.g. minutes instead of hours, the quarter hours around a time, or days off on days
+            that hold times. <code>ask()</code> in <code>dialog.ts</code> builds it and opens it modally with
+            <code>showModal()</code>: the focus stays inside, Escape cancels, the main choice is <code>primary</code>, Cancel
+            comes last. Use it only when a decision is needed; errors belong next to the field.</p>
+          <p><button type="button" id="dialog-try">Open as modal</button></p>
+          <div class="story-example">
+            <dialog class="dialog story-dialog" open aria-labelledby="dialog-example-title">
+              <h2 id="dialog-example-title">1:06 is not a quarter hour</h2>
+              <p class="muted">Entries are kept in quarter hours. Which one do you mean?</p>
+              <div class="form-actions">
+                <button type="button" class="primary">1:00</button>
+                <button type="button">1:15</button>
+                <button type="button">Cancel</button>
+              </div>
+            </dialog>
+          </div>
+        </section>
+
         <section class="story" id="navigation">
           <h2>Navigation</h2>
           <p>The current page is marked with <code>aria-current="page"</code> (set by <code>main.ts</code>).</p>

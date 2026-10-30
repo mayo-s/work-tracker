@@ -1,5 +1,7 @@
 // Component gallery (/components): index, color swatches and copyable HTML for every example.
 
+import { ask } from './dialog.ts';
+
 /** The HTML of an example, without the indentation of the page source. */
 export function snippet(html: string): string {
   const lines = html.replace(/^\n+|\s+$/g, '').split('\n');
@@ -88,4 +90,8 @@ export function renderGallery(root: ParentNode): void {
     wireThemePreview(preview, swatches);
   }
   renderSnippets(stories);
+  root.querySelector('#dialog-try')?.addEventListener('click', () => {
+    void ask('Did you mean 90 minutes (1:30)?', ['90 hours is longer than this field allows (at most 16:00).'],
+      [{ label: 'Yes, 1:30', value: true, primary: true }]);
+  });
 }

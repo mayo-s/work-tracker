@@ -1030,6 +1030,11 @@ button.button-danger {
   margin-top: 0;
 }
 
+.story-dialog {
+  position: static;  /* shown in place on the components page; ask() opens it modally */
+  margin: 0;
+}
+
 /* Initial setup (/setup) */
 
 .setup-steps {
