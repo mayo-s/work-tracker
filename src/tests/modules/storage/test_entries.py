@@ -3,7 +3,7 @@ import datetime as dt
 import pytest
 
 from src.models.entries import ActivityEntry, TicketEntry
-from src.models.history import HistoryAction
+from src.models.history import EntryChange, HistoryAction
 from src.models.review import FlagReason
 from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
@@ -144,6 +144,27 @@ def test_all_history_includes_deleted_entries_in_written_order(entries, ticket_e
     lines = [(change.entry_id, change.action) for change in entries.all_history()]
     assert lines == [(deleted.id, HistoryAction.CREATED), (kept.id, HistoryAction.CREATED),
                      (deleted.id, HistoryAction.DELETED)]
+
+
+def test_restore_writes_no_history_line(entries, ticket_entry):
+    restored = entries.restore(ticket_entry)
+    assert entries.get(restored.id) == restored
+    assert entries.history(restored.id) == []
+
+
+def test_restore_history_keeps_its_time(entries, ticket_entry):
+    restored = entries.restore(ticket_entry)
+    change = EntryChange(entry_id=restored.id, changed_at=dt.datetime(2025, 3, 4, 8, 15), action=HistoryAction.IMPORTED,
+                         changes={'duration': (None, 90)}, detail='3,0 ENGINE-597')
+    entries.restore_history(change)
+    assert entries.history(restored.id)[0].model_copy(update={'id': None}) == change
+
+
+def test_reserved_ids_are_never_given_to_entries(entries, ticket_entry):
+    reserved = entries.reserve_id()
+    with pytest.raises(NotFoundError):
+        entries.get(reserved)
+    assert entries.create(ticket_entry).id > reserved
 
 
 def test_delete_removes_entry_and_its_flags(entries, ticket_entry):

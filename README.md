@@ -48,6 +48,11 @@ days per year and of the first year (a pro-rata number is proposed), and the ser
 opens the dashboard. Afterwards, everything can be changed on `/settings`. From the first day on, each work day counts
 its full target as missing until its times are entered (today included).
 
+Moving from another Work Tracker (e.g. from the local one to AWS): "Export my data" on its settings page, then on the
+first step of `/setup` (after the login of a new database) "Import" that file instead of the steps. It sets up
+everything at once and shows how many records of each type it wrote; only for a user without days and entries, and
+nothing is written if the file does not fit.
+
 ## Import the spreadsheet
 
 One CSV export per year; the database is `$WORK_TRACKER_DB`, or `work_tracker.db` in the working directory.
@@ -237,6 +242,7 @@ Reports count worked time, target and overtime up to today (today included); pla
 | `/api/theme`                                                                       | GET, PUT               | Color theme of all pages: `system` (follows the system setting), `light` or `dark`                                                                                                                                             |
 | `/api/theme`                                                                       | GET                    | Your own records as one JSON file to download (format version 1): settings, schedules, PTO years, services, activity types, tickets, days, entries, all history and flags; file ids in place of database ids                   |
 | `/api/setup`                                                                       | GET, POST              | Whether the database is set up; set up a new one at once (first `user`, start day, opening balance, schedule, PTO of the first year and the next, services); 409 once set up                                                   |
+| `/api/setup/import`                                                                | POST                   | Set up from an export file (`data`; on a new database with the first `user`), counts per type; 409 with days, entries or set up already                                                                                        |
 | `/api/admin/users`                                                                 | GET                    | Admins: all users with role, `active`, `registered_at`, `last_login_at` (403 for others)                                                                                                                                       |
 | `/api/admin/users/{user_id}`                                                       | PUT                    | Admins: set `role` (admin or user) and `active`; 409 for oneself                                                                                                                                                               |
 | `/api/admin/settings`                                                              | GET, PUT               | Admins: `registration` on or off                                                                                                                                                                                               |

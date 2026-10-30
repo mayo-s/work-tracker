@@ -68,7 +68,7 @@ def _open(path: str, first_user_missing: bool, set_up: bool) -> bool:
     if path in OPEN_PATHS or path.startswith(OPEN_PREFIXES):
         return True
     if first_user_missing and not set_up:  # the setup creates the first user
-        return not path.startswith('/api/') or path == '/api/setup'
+        return not path.startswith('/api/') or path in ('/api/setup', '/api/setup/import')
     return False
 
 

@@ -362,6 +362,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/setup/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set up the user's data from an export file instead of the setup steps; answers how many records of each type it wrote. On a new database, it first creates the first user (`user`), who is logged in.
+         * @description Only for a user who is not set up and has no days or entries (409 otherwise). Everything is written or nothing: another format, a newer version (422) or a file referring to records it does not hold (409) leave no trace.
+         */
+        post: operations["post__api_setup_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/status": {
         parameters: {
             query?: never;
@@ -1954,6 +1974,40 @@ export interface components {
              */
             user?: components["schemas"]["NewUserInput"] | null;
         };
+        /** SetupImportInput */
+        SetupImportInput: {
+            /** @description The content of an export file ("Export my data" on the settings page) */
+            data: components["schemas"]["UserData"];
+            /**
+             * @description The first user, who is logged in afterwards
+             * @default null
+             */
+            user?: components["schemas"]["NewUserInput"] | null;
+        };
+        /**
+         * ImportSummary
+         * @description How many records of each type an import wrote.
+         */
+        ImportSummary: {
+            /** Work Schedules */
+            work_schedules: number;
+            /** Pto Years */
+            pto_years: number;
+            /** Services */
+            services: number;
+            /** Activity Types */
+            activity_types: number;
+            /** Tickets */
+            tickets: number;
+            /** Days */
+            days: number;
+            /** Entries */
+            entries: number;
+            /** History */
+            history: number;
+            /** Review Flags */
+            review_flags: number;
+        };
         /** SettingsView */
         SettingsView: {
             /**
@@ -2121,16 +2175,14 @@ export interface components {
         UserData: {
             /**
              * Format
-             * @default work-tracker
              * @constant
              */
-            format?: "work-tracker";
+            format: "work-tracker";
             /**
              * Version
              * @description Format version; a newer one cannot be imported
-             * @default 1
              */
-            version?: number;
+            version: number;
             /**
              * Exported At
              * Format: date-time
@@ -2553,108 +2605,6 @@ export interface components {
              */
             company_half_days?: boolean;
         };
-        /** InvitationView */
-        InvitationView: {
-            /** Id */
-            id: number;
-            /** Email */
-            email: string;
-            /**
-             * Invited At
-             * Format: date-time
-             */
-            invited_at: string;
-        };
-        /** MemberView */
-        MemberView: {
-            /** User Id */
-            user_id: string;
-            /** Username */
-            username: string;
-            /** Email */
-            email: string;
-            /** First Name */
-            first_name: string;
-            /** Last Name */
-            last_name: string;
-            /**
-             * Role
-             * @enum {string}
-             */
-            role: "admin" | "team_admin" | "user";
-            /**
-             * Joined On
-             * Format: date
-             */
-            joined_on: string;
-        };
-        /** MyInvitationView */
-        MyInvitationView: {
-            /** Id */
-            id: number;
-            /** Team Name */
-            team_name: string;
-            /**
-             * Invited At
-             * Format: date-time
-             */
-            invited_at: string;
-            /**
-             * Invited By
-             * @description Name of the inviting admin
-             */
-            invited_by: string;
-        };
-        /** ReportViewEntry */
-        ReportViewEntry: {
-            /**
-             * Viewer
-             * @description Name of the team admin who looked
-             */
-            viewer: string;
-            /**
-             * Report
-             * @description dashboard, week, month or year
-             */
-            report: string;
-            /**
-             * Period
-             * @description e.g. 2026-W44, 2026-10, 2026; empty for the dashboard
-             */
-            period: string;
-            /**
-             * Viewed At
-             * Format: date-time
-             */
-            viewed_at: string;
-        };
-        /**
-         * ServiceChoice
-         * @description A service to choose in an entry: a personal one, or one of the user's team (`team`: its name).
-         */
-        ServiceChoice: {
-            /**
-             * Id
-             * @default null
-             */
-            id?: number | null;
-            /**
-             * Short Name
-             * @description e.g. MSB
-             */
-            short_name: string;
-            /**
-             * Name
-             * @description e.g. microsoft-bookings-service
-             * @default
-             */
-            name?: string;
-            /**
-             * Team
-             * @default null
-             */
-            team?: string | null;
-        };
         /** ActivityEntry */
         ActivityEntry: {
             /**
@@ -2810,6 +2760,33 @@ export interface components {
              */
             company_half_days?: boolean;
         };
+        /**
+         * ServiceChoice
+         * @description A service to choose in an entry: a personal one, or one of the user's team (`team`: its name).
+         */
+        ServiceChoice: {
+            /**
+             * Id
+             * @default null
+             */
+            id?: number | null;
+            /**
+             * Short Name
+             * @description e.g. MSB
+             */
+            short_name: string;
+            /**
+             * Name
+             * @description e.g. microsoft-bookings-service
+             * @default
+             */
+            name?: string;
+            /**
+             * Team
+             * @default null
+             */
+            team?: string | null;
+        };
         /** Settings */
         Settings: {
             /**
@@ -2879,6 +2856,81 @@ export interface components {
              * @default false
              */
             coding?: boolean;
+        };
+        /** InvitationView */
+        InvitationView: {
+            /** Id */
+            id: number;
+            /** Email */
+            email: string;
+            /**
+             * Invited At
+             * Format: date-time
+             */
+            invited_at: string;
+        };
+        /** MemberView */
+        MemberView: {
+            /** User Id */
+            user_id: string;
+            /** Username */
+            username: string;
+            /** Email */
+            email: string;
+            /** First Name */
+            first_name: string;
+            /** Last Name */
+            last_name: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "team_admin" | "user";
+            /**
+             * Joined On
+             * Format: date
+             */
+            joined_on: string;
+        };
+        /** MyInvitationView */
+        MyInvitationView: {
+            /** Id */
+            id: number;
+            /** Team Name */
+            team_name: string;
+            /**
+             * Invited At
+             * Format: date-time
+             */
+            invited_at: string;
+            /**
+             * Invited By
+             * @description Name of the inviting admin
+             */
+            invited_by: string;
+        };
+        /** ReportViewEntry */
+        ReportViewEntry: {
+            /**
+             * Viewer
+             * @description Name of the team admin who looked
+             */
+            viewer: string;
+            /**
+             * Report
+             * @description dashboard, week, month or year
+             */
+            report: string;
+            /**
+             * Period
+             * @description e.g. 2026-W44, 2026-10, 2026; empty for the dashboard
+             */
+            period: string;
+            /**
+             * Viewed At
+             * Format: date-time
+             */
+            viewed_at: string;
         };
     };
     responses: never;
@@ -3992,6 +4044,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SetupStatus"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    post__api_setup_import: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetupImportInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportSummary"];
                 };
             };
             /** @description Conflict */

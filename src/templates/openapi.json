@@ -1560,6 +1560,52 @@
         }
       }
     },
+    "/api/setup/import": {
+      "post": {
+        "summary": "Set up the user's data from an export file instead of the setup steps; answers how many records of each type it wrote. On a new database, it first creates the first user (`user`), who is logged in.",
+        "operationId": "post__api_setup_import",
+        "description": "Only for a user who is not set up and has no days or entries (409 otherwise). Everything is written or nothing: another format, a newer version (422) or a file referring to records it does not hold (409) leave no trace.",
+        "tags": [
+          "Setup"
+        ],
+        "parameters": [],
+        "responses": {
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetupImportInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/auth/status": {
       "get": {
         "summary": "Whether the login is on, whether a user exists, who is logged in (with their team and number of open invitations), and whether new users can register.",
@@ -5835,6 +5881,86 @@
         "title": "SetupInput",
         "type": "object"
       },
+      "SetupImportInput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/UserData",
+            "description": "The content of an export file (\"Export my data\" on the settings page)"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewUserInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The first user, who is logged in afterwards"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "SetupImportInput",
+        "type": "object"
+      },
+      "ImportSummary": {
+        "description": "How many records of each type an import wrote.",
+        "properties": {
+          "work_schedules": {
+            "title": "Work Schedules",
+            "type": "integer"
+          },
+          "pto_years": {
+            "title": "Pto Years",
+            "type": "integer"
+          },
+          "services": {
+            "title": "Services",
+            "type": "integer"
+          },
+          "activity_types": {
+            "title": "Activity Types",
+            "type": "integer"
+          },
+          "tickets": {
+            "title": "Tickets",
+            "type": "integer"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          },
+          "history": {
+            "title": "History",
+            "type": "integer"
+          },
+          "review_flags": {
+            "title": "Review Flags",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "work_schedules",
+          "pto_years",
+          "services",
+          "activity_types",
+          "tickets",
+          "days",
+          "entries",
+          "history",
+          "review_flags"
+        ],
+        "title": "ImportSummary",
+        "type": "object"
+      },
       "SettingsView": {
         "additionalProperties": false,
         "properties": {
@@ -6195,13 +6321,13 @@
         "properties": {
           "format": {
             "const": "work-tracker",
-            "default": "work-tracker",
             "title": "Format",
             "type": "string"
           },
           "version": {
-            "default": 1,
             "description": "Format version; a newer one cannot be imported",
+            "maximum": 1,
+            "minimum": 1,
             "title": "Version",
             "type": "integer"
           },
@@ -6303,6 +6429,8 @@
           }
         },
         "required": [
+          "format",
+          "version",
           "exported_at",
           "settings",
           "theme",
@@ -7147,190 +7275,6 @@
         "title": "ScheduleTerms",
         "type": "object"
       },
-      "InvitationView": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "email": {
-            "title": "Email",
-            "type": "string"
-          },
-          "invited_at": {
-            "format": "date-time",
-            "title": "Invited At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "email",
-          "invited_at"
-        ],
-        "title": "InvitationView",
-        "type": "object"
-      },
-      "MemberView": {
-        "properties": {
-          "user_id": {
-            "title": "User Id",
-            "type": "string"
-          },
-          "username": {
-            "title": "Username",
-            "type": "string"
-          },
-          "email": {
-            "title": "Email",
-            "type": "string"
-          },
-          "first_name": {
-            "title": "First Name",
-            "type": "string"
-          },
-          "last_name": {
-            "title": "Last Name",
-            "type": "string"
-          },
-          "role": {
-            "enum": [
-              "admin",
-              "team_admin",
-              "user"
-            ],
-            "title": "Role",
-            "type": "string"
-          },
-          "joined_on": {
-            "format": "date",
-            "title": "Joined On",
-            "type": "string"
-          }
-        },
-        "required": [
-          "user_id",
-          "username",
-          "email",
-          "first_name",
-          "last_name",
-          "role",
-          "joined_on"
-        ],
-        "title": "MemberView",
-        "type": "object"
-      },
-      "MyInvitationView": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "team_name": {
-            "title": "Team Name",
-            "type": "string"
-          },
-          "invited_at": {
-            "format": "date-time",
-            "title": "Invited At",
-            "type": "string"
-          },
-          "invited_by": {
-            "description": "Name of the inviting admin",
-            "title": "Invited By",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "team_name",
-          "invited_at",
-          "invited_by"
-        ],
-        "title": "MyInvitationView",
-        "type": "object"
-      },
-      "ReportViewEntry": {
-        "properties": {
-          "viewer": {
-            "description": "Name of the team admin who looked",
-            "title": "Viewer",
-            "type": "string"
-          },
-          "report": {
-            "description": "dashboard, week, month or year",
-            "title": "Report",
-            "type": "string"
-          },
-          "period": {
-            "description": "e.g. 2026-W44, 2026-10, 2026; empty for the dashboard",
-            "title": "Period",
-            "type": "string"
-          },
-          "viewed_at": {
-            "format": "date-time",
-            "title": "Viewed At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "viewer",
-          "report",
-          "period",
-          "viewed_at"
-        ],
-        "title": "ReportViewEntry",
-        "type": "object"
-      },
-      "ServiceChoice": {
-        "additionalProperties": false,
-        "description": "A service to choose in an entry: a personal one, or one of the user's team (`team`: its name).",
-        "properties": {
-          "id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Id"
-          },
-          "short_name": {
-            "description": "e.g. MSB",
-            "maxLength": 30,
-            "minLength": 1,
-            "title": "Short Name",
-            "type": "string"
-          },
-          "name": {
-            "default": "",
-            "description": "e.g. microsoft-bookings-service",
-            "maxLength": 100,
-            "title": "Name",
-            "type": "string"
-          },
-          "team": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Team"
-          }
-        },
-        "required": [
-          "short_name"
-        ],
-        "title": "ServiceChoice",
-        "type": "object"
-      },
       "ActivityEntry": {
         "additionalProperties": false,
         "properties": {
@@ -7638,6 +7582,55 @@
         "title": "Schedule",
         "type": "object"
       },
+      "ServiceChoice": {
+        "additionalProperties": false,
+        "description": "A service to choose in an entry: a personal one, or one of the user's team (`team`: its name).",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "short_name": {
+            "description": "e.g. MSB",
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Short Name",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "description": "e.g. microsoft-bookings-service",
+            "maxLength": 100,
+            "title": "Name",
+            "type": "string"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Team"
+          }
+        },
+        "required": [
+          "short_name"
+        ],
+        "title": "ServiceChoice",
+        "type": "object"
+      },
       "Settings": {
         "additionalProperties": false,
         "properties": {
@@ -7666,7 +7659,7 @@
         "properties": {
           "key": {
             "description": "Ticket key, e.g. ENGINE-461",
-            "pattern": "^[A-Z][A-Z0-9]*-[1-9]\\d*$",
+            "maxLength": 30,
             "title": "Key",
             "type": "string"
           },
@@ -7719,7 +7712,7 @@
             "anyOf": [
               {
                 "description": "Ticket key, e.g. ENGINE-461",
-                "pattern": "^[A-Z][A-Z0-9]*-[1-9]\\d*$",
+                "maxLength": 30,
                 "type": "string"
               },
               {
@@ -7754,6 +7747,141 @@
           "duration"
         ],
         "title": "TicketEntry",
+        "type": "object"
+      },
+      "InvitationView": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "invited_at": {
+            "format": "date-time",
+            "title": "Invited At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "invited_at"
+        ],
+        "title": "InvitationView",
+        "type": "object"
+      },
+      "MemberView": {
+        "properties": {
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "team_admin",
+              "user"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "joined_on": {
+            "format": "date",
+            "title": "Joined On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "email",
+          "first_name",
+          "last_name",
+          "role",
+          "joined_on"
+        ],
+        "title": "MemberView",
+        "type": "object"
+      },
+      "MyInvitationView": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "team_name": {
+            "title": "Team Name",
+            "type": "string"
+          },
+          "invited_at": {
+            "format": "date-time",
+            "title": "Invited At",
+            "type": "string"
+          },
+          "invited_by": {
+            "description": "Name of the inviting admin",
+            "title": "Invited By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "team_name",
+          "invited_at",
+          "invited_by"
+        ],
+        "title": "MyInvitationView",
+        "type": "object"
+      },
+      "ReportViewEntry": {
+        "properties": {
+          "viewer": {
+            "description": "Name of the team admin who looked",
+            "title": "Viewer",
+            "type": "string"
+          },
+          "report": {
+            "description": "dashboard, week, month or year",
+            "title": "Report",
+            "type": "string"
+          },
+          "period": {
+            "description": "e.g. 2026-W44, 2026-10, 2026; empty for the dashboard",
+            "title": "Period",
+            "type": "string"
+          },
+          "viewed_at": {
+            "format": "date-time",
+            "title": "Viewed At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "viewer",
+          "report",
+          "period",
+          "viewed_at"
+        ],
+        "title": "ReportViewEntry",
         "type": "object"
       }
     }

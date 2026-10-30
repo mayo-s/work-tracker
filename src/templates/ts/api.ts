@@ -47,6 +47,8 @@ export type SettingsView = Schemas['SettingsView'];
 export type ThemeView = Schemas['ThemeView'];
 export type Theme = ThemeView['theme'];
 export type SetupInput = Schemas['SetupInput'];
+export type SetupImportInput = Schemas['SetupImportInput'];
+export type ImportSummary = Schemas['ImportSummary'];
 export type SetupStatus = Schemas['SetupStatus'];
 export type PtoYear = Schemas['PtoYear'];
 export type PtoYearInput = Schemas['PtoYearInput'];
@@ -220,6 +222,7 @@ export const api = {
 
   setupStatus: () => request<SetupStatus>('GET', '/api/setup'),
   setup: (input: SetupInput) => request<SetupStatus>('POST', '/api/setup', input),
+  importSetup: (input: SetupImportInput) => request<ImportSummary>('POST', '/api/setup/import', input),
 
   settings: () => request<SettingsView>('GET', '/api/settings'),
   saveSettings: (input: SettingsView) => request<SettingsView>('PUT', '/api/settings', input),

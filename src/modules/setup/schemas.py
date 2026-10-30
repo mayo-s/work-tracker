@@ -12,6 +12,7 @@ from src.models.pto import PtoDays, PtoYear
 from src.models.settings import Settings
 from src.modules.catalog.resources import ServiceInput
 from src.modules.schedules.schemas import ScheduleTerms
+from src.modules.userdata.schemas import UserData
 from src.lib.durations import parse_signed_duration
 from src.utils.api import SignedDurationText
 
@@ -38,6 +39,13 @@ class SetupInput(BaseModel):
 
     def service_models(self) -> list[Service]:
         return [Service(**service.model_dump()) for service in self.services]
+
+
+class SetupImportInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    data: UserData = Field(description='The content of an export file ("Export my data" on the settings page)')
+    user: NewUserInput | None = Field(default=None, description='The first user, who is logged in afterwards')
 
 
 class SetupStatus(BaseModel):

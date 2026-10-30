@@ -189,7 +189,7 @@ and ends with passing tests and the flake8 check.
     only, tests unchanged
   - [x] **L.11c** Stages: `.env.example` with `STAGE=Local`, Lambda detection, the startup errors of 7.1
   - [x] **L.11d** Export of the own data as JSON, download on the settings page (SPEC 5.8)
-  - [ ] **L.11e** Import of an export file in the setup, for a user without days and entries; removed again on failure;
+  - [x] **L.11e** Import of an export file in the setup, for a user without days and entries; removed again on failure;
     round-trip test (SPEC 5.8)
   - [ ] **L.11f** DynamoDB base: `boto3`, `moto` for the tests, table command (keys, on-demand, time to live,
     point-in-time recovery), schema version item, transactions up to 100 items and resumable atomic chunks beyond;

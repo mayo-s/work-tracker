@@ -24,7 +24,7 @@ from src.modules.pto.resources import PtoYearCollection, PtoYearItem
 from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
 from src.modules.review.resources import Review, ReviewFlagItem
 from src.modules.schedules.resources import ScheduleCollection, ScheduleItem
-from src.modules.setup.resources import SetupResource
+from src.modules.setup.resources import SetupImportResource, SetupResource
 from src.modules.settings.resources import SettingsResource, ThemeResource
 from src.modules.storage.database import Database
 from src.modules.storage.errors import ConflictError, NotFoundError
@@ -90,6 +90,7 @@ def create_app(
     app.add_route('/api/theme', ThemeResource(storage))
     app.add_route('/api/export', ExportResource(storage, clock))
     app.add_route('/api/setup', SetupResource(storage, clock))
+    app.add_route('/api/setup/import', SetupImportResource(storage, clock))
     app.add_route('/api/auth/status', AuthStatusResource(storage, clock, enabled))
     app.add_route('/api/auth/login', LoginResource(storage, clock))
     app.add_route('/api/auth/logout', LogoutResource(storage, clock))

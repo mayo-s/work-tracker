@@ -5,9 +5,9 @@ entry's type, a history line's or flag's entry) use these ids, not those of the 
 """
 
 import datetime as dt
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import BaseModel, Field, model_validator
 
 from src.models.base import DomainModel
 from src.models.catalog import ActivityType, ServiceChoice, Ticket
@@ -25,8 +25,8 @@ VERSION = 1
 
 
 class UserData(DomainModel):
-    format: Literal['work-tracker'] = FORMAT
-    version: int = Field(default=VERSION, description='Format version; a newer one cannot be imported')
+    format: Literal['work-tracker']
+    version: int = Field(ge=1, le=VERSION, description='Format version; a newer one cannot be imported')
     exported_at: dt.datetime
     settings: Settings
     theme: Theme
@@ -39,3 +39,32 @@ class UserData(DomainModel):
     entries: list[Entry]
     history: list[EntryChange] = Field(description='All history lines, also of deleted entries, in written order')
     review_flags: list[ReviewFlag]
+
+    @model_validator(mode='before')
+    @classmethod
+    def known_format(cls, data: Any) -> Any:
+        """Another format or a newer version is refused before the contents are checked."""
+        if isinstance(data, dict):
+            _check_format(data.get('format'), data.get('version'))
+        return data
+
+
+def _check_format(name: Any, version: Any) -> None:
+    if name != FORMAT:
+        raise ValueError('This is no Work Tracker export file')
+    if isinstance(version, int) and version > VERSION:
+        raise ValueError(f'The file has version {version}; this Work Tracker reads up to version {VERSION}')
+
+
+class ImportSummary(BaseModel):
+    """How many records of each type an import wrote."""
+
+    work_schedules: int
+    pto_years: int
+    services: int
+    activity_types: int
+    tickets: int
+    days: int
+    entries: int
+    history: int
+    review_flags: int
