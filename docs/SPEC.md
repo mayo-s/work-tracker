@@ -455,6 +455,8 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
     since the deletion can come late.
   - A schema version item takes the place of `PRAGMA user_version`: the app refuses a table written by a newer
     version, and later data changes are numbered scripts like the SQLite migrations.
+  - A transaction collects its writes and sends them at its end, so its reads see them and a failure writes
+    nothing; ids come from counters and are never reused.
   - A change touching at most 100 items is atomic, as in SQLite (DynamoDB's transaction limit). Larger changes
     (renaming or merging a ticket, assigning a service to many tickets, leaving a team) are written in atomic chunks,
     e.g. an entry together with its history line, and end with the step that closes them (deleting the old ticket,
