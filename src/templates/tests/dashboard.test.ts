@@ -23,8 +23,10 @@ test('points as days or months', () => {
 });
 
 test('coming up: ranges with their days, holidays by name', () => {
-  assert.equal(describeComingUp({ start: '2026-11-05', end: '2026-11-09', day_type: 'pto', holiday: null, days: 3 }),
-    'Thu 05.11. – Mon 09.11. · PTO · 3 days');
+  assert.equal(describeComingUp({ start: '2026-11-05', end: '2026-11-09', day_type: 'pto', holiday: null, days: 3,
+    pto_days: 3 }), 'Thu 05.11. – Mon 09.11. · PTO · 3 days');
   assert.equal(describeComingUp({ start: '2026-12-25', end: '2026-12-25', day_type: 'public_holiday',
-    holiday: 'Christmas Day', days: 1 }), 'Fri 25.12. · Christmas Day');
+    holiday: 'Christmas Day', days: 1, pto_days: 0 }), 'Fri 25.12. · Christmas Day');
+  assert.equal(describeComingUp({ start: '2026-12-24', end: '2026-12-24', day_type: 'company_half_day',
+    holiday: 'Christmas Eve', days: 1, pto_days: 0.5 }), 'Thu 24.12. · Christmas Eve · company half day: 0.5 PTO');
 });

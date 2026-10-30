@@ -187,18 +187,20 @@ Every change to a task entry is recorded, so it can be checked later what change
 - The overtime balance over time as a line (plain SVG, both themes; below zero in the warning color) with a switch:
   this month by day; this year, the last 12 months and everything since the balance start by month. Hover or the
   arrow keys show each value; all values also as a table.
-- Coming up in the next 60 days: public holidays, company half days and planned days off (days in a row combined).
+- Coming up in the next 60 days: public holidays, company half days and planned days off (days in a row combined);
+  a company half day says that it takes 0.5 PTO by itself.
 - This year: days worked and average, sick days, overtime-off days, coding hours and the top three services.
 
 ### 5.1 Week
 
 - Shows the work days of the current week (e.g. Mon–Fri); other days only if they hold data. Prev / next / today
   navigation.
-- Per day: day type, start / end / break, worked vs. target, overtime, the task entries and the warning.
+- Per day: day type (a company half day as "Company half day · 0.5 PTO (half free)"), start / end / break, worked
+  vs. target, overtime, the task entries and the warning.
 - Add, edit and delete days and entries inline; open an entry's history (4.5).
 - **Book days off** as a range (from, to, full-day type: PTO, sick, unpaid leave or overtime off; optional note): only
   the work days of the schedule get the type, public holidays and company half days stay automatic. A preview shows
-  the days and the PTO used; days that already hold times or entries are listed in a popup to skip them, book them too
+  the days and the PTO used, and names company half days in the range with their 0.5 PTO, booked automatically; days that already hold times or entries are listed in a popup to skip them, book them too
   (keeping times and entries) or cancel. Clearing a range is not offered: single days can be deleted.
 - Week totals and the overtime balance at the end of the week.
 

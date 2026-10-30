@@ -82,7 +82,8 @@ other weeks via `/week?week=2026-W44` (former `/?week=…` links forward there);
 (durations also as `1.5`, `1h30m` or `90m`; a plain number too long for the day is asked about as minutes, a time
 that is no quarter hour gets the two nearest offered)
 (`&edit=2025-12-06` opens a day's form,
-`&entry=129` an entry's form; each entry shows its change history). "Book days off" sets PTO, sick, unpaid leave or
+`&entry=129` an entry's form; each entry shows its change history). Company half days (24.12., 31.12.) show that they take 0.5 PTO by
+themselves, in the week, under "Coming up" and in the booking preview. "Book days off" sets PTO, sick, unpaid leave or
 overtime off on the work days of a range, with a preview and a popup for days that already hold times or entries. `/month` shows the month report with the work report
 (coding hours by service and ticket), `/year` the year report (totals, PTO account, balance month by month); `/review`
 lists what needs attention after

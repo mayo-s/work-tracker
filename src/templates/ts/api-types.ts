@@ -2317,6 +2317,11 @@ export interface components {
              * @description Work days from start to end
              */
             days: number;
+            /**
+             * Pto Days
+             * @description PTO the days use, also by themselves (0.5 for a company half day)
+             */
+            pto_days: number;
         };
         /**
          * DayType
@@ -2448,6 +2453,11 @@ export interface components {
              * @description Name of the public holiday or company half day
              */
             holiday: string | null;
+            /**
+             * Pto Days
+             * @description PTO the day uses by itself: 0.5 for a company half day on a work day
+             */
+            pto_days: number;
         };
         /** RecordedDay */
         RecordedDay: {

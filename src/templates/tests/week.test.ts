@@ -5,8 +5,8 @@ import { test } from 'node:test';
 
 import type { DayView, EntryView } from '../ts/api.ts';
 import {
-  editFromSearch, entriesByDate, entryFromSearch, needsWarning, openerKey, shownDays, signed, valueClass, visibleDays,
-  weekFromSearch,
+  dayTypeLabel, editFromSearch, entriesByDate, entryFromSearch, needsWarning, openerKey, shownDays, signed, valueClass,
+  visibleDays, weekFromSearch,
 } from '../ts/week.ts';
 
 function day(date: string, weekday: string, changes: Partial<DayView> = {}): DayView {
@@ -95,4 +95,10 @@ test('the key of the button that opened a form', () => {
   assert.equal(openerKey({ kind: 'entry', date: '2026-10-28', id: 129 }), 'entry-129');
   assert.equal(openerKey({ kind: 'entry', date: '2026-10-28', id: null }), 'add-2026-10-28');
   assert.equal(openerKey(null), null);
+});
+
+test('a company half day shows that it takes half a PTO day by itself', () => {
+  assert.equal(dayTypeLabel({ day_type: 'company_half_day', pto_days: 0.5 }), 'Company half day · 0.5 PTO (half free)');
+  assert.equal(dayTypeLabel({ day_type: 'company_half_day', pto_days: 0 }), 'Company half day');  // e.g. on a weekend
+  assert.equal(dayTypeLabel({ day_type: 'pto_half', pto_days: 0.5 }), 'PTO ½');
 });

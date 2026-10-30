@@ -47,12 +47,14 @@ export function labelIndexes(length: number, count: number): number[] {
   return [...indexes, length - 1];
 }
 
-/** `Thu 05.11. – Mon 09.11. · PTO · 3 days`, or `Fri 25.12. · Christmas Day` for a holiday. */
+/** `Thu 05.11. – Mon 09.11. · PTO · 3 days`, `Fri 25.12. · Christmas Day` for a holiday, or
+ * `Thu 24.12. · Christmas Eve · company half day: 0.5 PTO` (taken by itself). */
 export function describeComingUp(item: ComingUp): string {
   const day = (date: IsoDate): string => formatDay(date, WEEKDAYS[new Date(`${date}T12:00:00`).getDay()]!);
   const dates = item.start === item.end ? day(item.start) : `${day(item.start)} – ${day(item.end)}`;
   const label = item.holiday ?? DAY_TYPE_LABELS[item.day_type];
-  return [dates, label, item.days > 1 ? `${item.days} days` : ''].filter(Boolean).join(' · ');
+  const halfDay = item.day_type === 'company_half_day' && item.pto_days ? `company half day: ${item.pto_days} PTO` : '';
+  return [dates, label, halfDay, item.days > 1 ? `${item.days} days` : ''].filter(Boolean).join(' · ');
 }
 
 function tile(label: string, value: string, detail: string, href: string, valueClassName = ''): HTMLElement {

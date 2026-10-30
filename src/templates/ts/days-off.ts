@@ -22,6 +22,19 @@ function plural(count: number, [one, many]: [string, string]): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
+/** Company half days in the range, which take their half PTO day by themselves:
+ * `Thu 24.12. and Thu 31.12. are company half days: 0.5 PTO each, booked automatically`. */
+function automaticPto(leftOut: DayRangeResult['left_out']): string | null {
+  const days = leftOut.filter((day) => day.reason === 'company_half_day' && day.pto_days > 0);
+  if (!days.length) {
+    return null;
+  }
+  const dates = days.map((day) => formatDay(day.date, day.weekday));
+  const listed = dates.length === 1 ? dates[0] : `${dates.slice(0, -1).join(', ')} and ${dates.at(-1)}`;
+  return days.length === 1 ? `${listed} is a company half day: ${days[0]!.pto_days} PTO, booked automatically`
+    : `${listed} are company half days: ${days[0]!.pto_days} PTO each, booked automatically`;
+}
+
 /** The preview of a range: `15 work days, 13.07.2026 – 31.07.2026 · uses 15 PTO days · left out: 6 days off`. */
 export function describePreview(result: DayRangeResult, type: RangeType): string {
   const days = result.days;
@@ -31,6 +44,10 @@ export function describePreview(result: DayRangeResult, type: RangeType): string
   const parts = [`${plural(days.length, ['work day', 'work days'])}, ${formatDate(days[0]!)} – ${formatDate(days.at(-1)!)}`];
   if (type === 'pto') {
     parts.push(`uses ${plural(result.pto_days, ['PTO day', 'PTO days'])}`);
+  }
+  const automatic = automaticPto(result.left_out);
+  if (automatic) {
+    parts.push(automatic);
   }
   const counts = new Map<LeftOutReason, number>();
   for (const day of result.left_out) {
