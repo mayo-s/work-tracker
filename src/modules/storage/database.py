@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from src.modules.storage import migrations
+from src.modules.storage.errors import SchemaVersionError
 
 DEFAULT_PATH = 'work_tracker.db'
 
@@ -14,10 +15,6 @@ DEFAULT_PATH = 'work_tracker.db'
 def database_path() -> str:
     """The database file: $WORK_TRACKER_DB, or work_tracker.db in the working directory."""
     return os.environ.get('WORK_TRACKER_DB', DEFAULT_PATH)
-
-
-class SchemaVersionError(RuntimeError):
-    """Raised when the database was created by a newer version of the app."""
 
 
 class Database:

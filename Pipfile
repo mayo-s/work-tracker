@@ -9,6 +9,7 @@ spectree = "*"
 pydantic = "*"
 holidays = "*"
 gunicorn = "*"
+boto3 = "*"
 
 [dev-packages]
 flake8 = "*"
@@ -18,6 +19,7 @@ pytest = "*"
 pytest-cov = "*"
 pytest-github-report = "*"
 pdbpp = "*"
+moto = {extras = ["dynamodb"], version = "*"}
 
 [requires]
 python_version = "3.14"

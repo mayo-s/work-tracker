@@ -1,8 +1,11 @@
+import boto3
 import pytest
 from falcon import testing
+from moto import mock_aws
 
 from src.app import create_app
 from src.modules.storage.database import Database
+from src.modules.storage.dynamodb.table import REGION, Table, create_table
 from src.modules.storage.users import UserRepository
 from src.tests.users import KLARA, PASSWORD, USER
 
@@ -64,3 +67,15 @@ def conn(database):
 def client(database):
     """A test client for the app on the set-up database."""
     return testing.TestClient(create_app(database))
+
+
+@pytest.fixture
+def dynamo_table(monkeypatch):
+    """An empty DynamoDB table as on AWS, simulated by moto: no AWS account or network is involved."""
+    for name in ('AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SECURITY_TOKEN', 'AWS_SESSION_TOKEN'):
+        monkeypatch.setenv(name, 'testing')
+    monkeypatch.delenv('AWS_PROFILE', raising=False)
+    with mock_aws():
+        client = boto3.client('dynamodb', region_name=REGION)
+        create_table(client, 'work-tracker-test')
+        yield Table(client, 'work-tracker-test')
