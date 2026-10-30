@@ -36,6 +36,8 @@ def test_holidays_and_company_half_days_stay_automatic(client):
         ('2026-12-24', 'company_half_day'), ('2026-12-25', 'public_holiday'), ('2026-12-31', 'company_half_day'),
         ('2027-01-01', 'public_holiday')]
     assert client.simulate_get('/api/days/2026-12-24').json['day_type'] == 'company_half_day'
+    pto = {day['date']: day['pto_days'] for day in result['left_out']}
+    assert (pto['2026-12-24'], pto['2026-12-25'], pto['2026-12-26']) == (0.5, 0, 0)  # half PTO by itself; holiday; Saturday
 
 
 def test_days_with_times_or_entries_are_refused_by_default(client):

@@ -44,6 +44,7 @@ class ComingUp(BaseModel):
     day_type: DayType
     holiday: str | None = Field(description='Name of the public holiday or company half day')
     days: int = Field(description='Work days from start to end')
+    pto_days: float = Field(description='PTO the days use, also by themselves (0.5 for a company half day)')
 
 
 class ServiceHours(BaseModel):
@@ -180,13 +181,16 @@ def _add_coming_up(items: list[ComingUp], day: DaySummary, holiday: str | None) 
     """Adds a holiday or planned day off; a planned day continues the previous item of its type if that ended on the
     work day before (days off of the schedule in between do not count). Other work days end any run."""
     if day.day_type not in _HOLIDAYS | _PLANNED:
-        items.append(ComingUp(start=day.date, end=day.date, day_type=DayType.WORK, holiday=None, days=0))  # a run breaker
+        items.append(ComingUp(start=day.date, end=day.date, day_type=DayType.WORK, holiday=None, days=0,
+                              pto_days=0))  # a run breaker
         return
     last = items[-1] if items else None
     if _continues(last, day, holiday):
-        items[-1] = last.model_copy(update={'end': day.date, 'days': last.days + 1})
+        items[-1] = last.model_copy(update={'end': day.date, 'days': last.days + 1,
+                                            'pto_days': last.pto_days + float(day.pto_days)})
     else:
-        items.append(ComingUp(start=day.date, end=day.date, day_type=day.day_type, holiday=holiday, days=1))
+        items.append(ComingUp(start=day.date, end=day.date, day_type=day.day_type, holiday=holiday, days=1,
+                              pto_days=float(day.pto_days)))
 
 
 def _continues(last: ComingUp | None, day: DaySummary, holiday: str | None) -> bool:

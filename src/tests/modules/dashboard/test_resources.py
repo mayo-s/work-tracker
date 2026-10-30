@@ -57,14 +57,14 @@ def test_coming_up_combines_days_in_a_row_and_keeps_holidays_apart(client):
         client.simulate_put(f'/api/days/{date}', json={'day_type': 'pto'})
     client.simulate_put('/api/days/2026-11-11', json={'day_type': 'pto'})
     client.simulate_put('/api/days/2026-12-23', json={'day_type': 'pto'})
-    items = [(item['start'], item['end'], item['day_type'], item['holiday'], item['days'])
+    items = [(item['start'], item['end'], item['day_type'], item['holiday'], item['days'], item['pto_days'])
              for item in dashboard(client)['coming_up']]
     assert items == [
-        ('2026-11-05', '2026-11-09', 'pto', None, 3),
-        ('2026-11-11', '2026-11-11', 'pto', None, 1),
-        ('2026-12-23', '2026-12-23', 'pto', None, 1),
-        ('2026-12-24', '2026-12-24', 'company_half_day', 'Christmas Eve', 1),
-        ('2026-12-25', '2026-12-25', 'public_holiday', 'Christmas Day', 1),
+        ('2026-11-05', '2026-11-09', 'pto', None, 3, 3),
+        ('2026-11-11', '2026-11-11', 'pto', None, 1, 1),
+        ('2026-12-23', '2026-12-23', 'pto', None, 1, 1),
+        ('2026-12-24', '2026-12-24', 'company_half_day', 'Christmas Eve', 1, 0.5),  # half PTO by itself
+        ('2026-12-25', '2026-12-25', 'public_holiday', 'Christmas Day', 1, 0),
     ]  # 26.12. is a Saturday; 27.12. is more than 60 days ahead
 
 

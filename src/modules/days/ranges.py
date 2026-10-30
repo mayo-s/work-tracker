@@ -56,6 +56,7 @@ class LeftOutDay(BaseModel):
     weekday: str
     reason: Literal['day_off', 'public_holiday', 'company_half_day']
     holiday: str | None = Field(description='Name of the public holiday or company half day')
+    pto_days: float = Field(description='PTO the day uses by itself: 0.5 for a company half day on a work day')
 
 
 class DayRangeResult(BaseModel):
@@ -96,7 +97,8 @@ class _Plan:
         if schedule.is_work_day(date) and not holiday:
             return None
         reason = _HOLIDAY_REASONS[holiday.kind] if holiday and schedule.is_work_day(date) else 'day_off'
-        return LeftOutDay(date=date, weekday=_weekday(date), reason=reason, holiday=holiday.name if holiday else None)
+        return LeftOutDay(date=date, weekday=_weekday(date), reason=reason, holiday=holiday.name if holiday else None,
+                          pto_days=float(summarize_day(date, 0, None, schedule).pto_days))
 
     def _has_data(self, date: dt.date) -> bool:
         day = self.recorded.get(date)

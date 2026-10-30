@@ -14,15 +14,25 @@ test('preview of a PTO range with the days left out', () => {
   const summer = result({
     days: ['2026-07-13', '2026-07-14', '2026-07-31'], pto_days: 3,
     left_out: [
-      { date: '2026-07-18', weekday: 'Sat', reason: 'day_off', holiday: null },
-      { date: '2026-07-19', weekday: 'Sun', reason: 'day_off', holiday: null },
-      { date: '2026-12-24', weekday: 'Thu', reason: 'company_half_day', holiday: 'Christmas Eve' },
+      { date: '2026-07-18', weekday: 'Sat', reason: 'day_off', holiday: null, pto_days: 0 },
+      { date: '2026-07-19', weekday: 'Sun', reason: 'day_off', holiday: null, pto_days: 0 },
     ],
   });
   assert.equal(describePreview(summer, 'pto'),
-    '3 work days, 13.07.2026 – 31.07.2026 · uses 3 PTO days · left out: 2 days off, 1 company half day');
-  assert.equal(describePreview(summer, 'sick'),
-    '3 work days, 13.07.2026 – 31.07.2026 · left out: 2 days off, 1 company half day');
+    '3 work days, 13.07.2026 – 31.07.2026 · uses 3 PTO days · left out: 2 days off');
+  assert.equal(describePreview(summer, 'sick'), '3 work days, 13.07.2026 – 31.07.2026 · left out: 2 days off');
+});
+
+test('company half days in the range say that they take their half PTO day by themselves', () => {
+  const christmasEve = { date: '2026-12-24', weekday: 'Thu', reason: 'company_half_day', holiday: 'Christmas Eve',
+    pto_days: 0.5 } as const;
+  const newYearsEve = { ...christmasEve, date: '2026-12-31', holiday: "New Year's Eve" };
+  const christmas = result({ days: ['2026-12-21', '2026-12-22', '2026-12-23'], pto_days: 3, left_out: [christmasEve] });
+  assert.equal(describePreview(christmas, 'pto'), '3 work days, 21.12.2026 – 23.12.2026 · uses 3 PTO days · '
+    + 'Thu 24.12. is a company half day: 0.5 PTO, booked automatically · left out: 1 company half day');
+  const both = result({ days: ['2026-12-28'], pto_days: 1, left_out: [christmasEve, newYearsEve] });
+  assert.match(describePreview(both, 'sick'),
+    / · Thu 24.12. and Thu 31.12. are company half days: 0.5 PTO each, booked automatically · /);
 });
 
 test('preview without work days', () => {

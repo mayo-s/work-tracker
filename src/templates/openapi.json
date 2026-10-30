@@ -6613,6 +6613,11 @@
             "description": "Work days from start to end",
             "title": "Days",
             "type": "integer"
+          },
+          "pto_days": {
+            "description": "PTO the days use, also by themselves (0.5 for a company half day)",
+            "title": "Pto Days",
+            "type": "number"
           }
         },
         "required": [
@@ -6620,7 +6625,8 @@
           "end",
           "day_type",
           "holiday",
-          "days"
+          "days",
+          "pto_days"
         ],
         "title": "ComingUp",
         "type": "object"
@@ -6882,13 +6888,19 @@
             ],
             "description": "Name of the public holiday or company half day",
             "title": "Holiday"
+          },
+          "pto_days": {
+            "description": "PTO the day uses by itself: 0.5 for a company half day on a work day",
+            "title": "Pto Days",
+            "type": "number"
           }
         },
         "required": [
           "date",
           "weekday",
           "reason",
-          "holiday"
+          "holiday",
+          "pto_days"
         ],
         "title": "LeftOutDay",
         "type": "object"

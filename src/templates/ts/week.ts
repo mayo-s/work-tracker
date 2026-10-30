@@ -63,6 +63,13 @@ export function entryFromSearch(search: string, entries: Map<IsoDate, EntryView[
 }
 
 /** A duration as warning (negative), in mint (positive) or plain (zero). */
+/** The day type as shown; a company half day says that it takes half a PTO day by itself:
+ * `Company half day · 0.5 PTO (half free)`. */
+export function dayTypeLabel(day: Pick<DayView, 'day_type' | 'pto_days'>): string {
+  const label = DAY_TYPE_LABELS[day.day_type];
+  return day.day_type === 'company_half_day' && day.pto_days ? `${label} · ${day.pto_days} PTO (half free)` : label;
+}
+
 export function value(duration: string, withSign = false): HTMLElement {
   return el('span', { class: `num ${valueClass(duration)}`.trim() }, withSign ? signed(duration) : duration);
 }
@@ -199,7 +206,7 @@ function dayRow(day: DayView, warning: boolean, view: View): HTMLElement {
     { 'aria-label': `Edit ${formatDay(day.date, day.weekday)}`, 'data-opens': `day-${day.date}` });
   return el('tr', { class: rowClass(day, warning, view.today) },
     dayCell(day, warning, view.today),
-    el('td', {}, day.day_type === 'work' ? null : el('span', { class: 'badge' }, DAY_TYPE_LABELS[day.day_type])),
+    el('td', {}, day.day_type === 'work' ? null : el('span', { class: 'badge' }, dayTypeLabel(day))),
     el('td', {}, day.start ? el('span', { class: 'num' }, `${day.start}–${day.end}`) : el('span', { class: 'muted' }, '—')),
     el('td', { class: 'num' }, day.break_time ?? '', day.break_default ? el('span', { class: 'muted' }, ' legal') : null),
     el('td', { class: 'num' }, day.worked),

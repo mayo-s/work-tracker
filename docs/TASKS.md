@@ -223,3 +223,7 @@ and ends with passing tests and the flake8 check.
   would otherwise put a user's whole data into the log (on Lambda: CloudWatch); the answer still names the problem
 - [x] **L.14** Log out during the setup: a new user (e.g. after registering) sees their name and "Log out" on `/setup`
   as well; after the next login, every page forwards to the setup again until it is done
+- [x] **L.15** Company half days made visible: 24.12. and 31.12. take 0.5 PTO by themselves (half PTO, half free), and
+  the UI now says so: in the week ("Company half day · 0.5 PTO (half free)"), under "Coming up" on the dashboard
+  ("company half day: 0.5 PTO") and in the preview of "Book days off" ("… is a company half day: 0.5 PTO, booked
+  automatically"); the API gives the PTO of left-out days and coming-up items (`pto_days`)
