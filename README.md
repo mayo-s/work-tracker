@@ -97,13 +97,15 @@ docker compose exec work-tracker sqlite3 /data/work_tracker.db ".backup /data/ba
 ```
 
 The container runs as user 1000 and needs write access to the data folder (`WORK_TRACKER_UID` / `WORK_TRACKER_GID`
-change it). To take existing data along, copy the database into the folder: `sqlite3 work_tracker.db ".backup
+change it); `WORK_TRACKER_HOST_PORT` changes the port on the host. To take existing data along, copy the database into the folder: `sqlite3 work_tracker.db ".backup
 data/work_tracker.db"` (safe while the app runs, unlike copying the file).
 
 On a QNAP NAS: install Container Station, copy the project (without `node_modules`, `.venv` and `*.db`) to e.g.
 `/share/Container/work-tracker`, put the database into its `data` folder, then via SSH run `cd
 /share/Container/work-tracker && docker compose up -d --build`. From outside, reach it through a VPN such as Tailscale
-rather than a port opened on the router.
+rather than a port opened on the router. Building on the Mac is faster than on the NAS; the image then goes over SSH:
+`docker buildx build --platform linux/amd64 -t work-tracker --load . && docker save work-tracker | ssh admin@NAS docker
+load`, and on the NAS `docker compose up -d` (without `--build`).
 
 ## Login
 
