@@ -1,11 +1,11 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "4c2bbe2b683fa991fee7f73b445ad6b0e2c8d6f0226770ca780af6cf597f4f50"
+            "sha256": "3b799839bb2429b08260ddc604ab530913b8c1cb464cbc0ffcd5fcb10b118870"
         },
         "pipfile-spec": 6,
         "requires": {
-            "python_version": "3.15"
+            "python_version": "3.14"
         },
         "sources": [
             {
@@ -471,12 +471,12 @@
         },
         "flake8-annotations": {
             "hashes": [
-                "sha256:581fe79c1b1c9379dc7253380858471d5f88356a823df13d715a9971d78b9d3f",
-                "sha256:aafb555a706230fc574cd489a9e91267f6c6642fa201921e50bc7ddf597b9b31"
+                "sha256:64c926ccce95da4f666db6b04a7bfc8892118671a2b10cc339bbba9acf91ca70",
+                "sha256:7c2604896d2c35c80340ad5989a0fdd040636d2de8da29544988a57fede52b18"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.11'",
-            "version": "==3.3.0"
+            "version": "==3.3.1"
         },
         "iniconfig": {
             "hashes": [

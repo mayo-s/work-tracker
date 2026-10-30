@@ -182,8 +182,29 @@ and ends with passing tests and the flake8 check.
     members drop out of the view
   - Members see in their settings that their team admins can see their reports, and a log of who looked at which
     report and when
-- [ ] **L.11** AWS Lambda deployment (to be discussed); with it, the admin sets a one-time password for a user who
-  forgot theirs (changed at the next login), since nobody has a shell on the computer running the app
+- [ ] **L.11** AWS Lambda deployment with DynamoDB (SPEC 7.1–7.4), in steps:
+  - [x] **L.11a** Python 3.14: Pipfile, lock file, README, Dockerfile; tests and flake8 pass on 3.14
+  - [ ] **L.11b** Storage interfaces: repository protocols and a backend-neutral transaction; resources, reports and
+    the importer no longer touch `sqlite3`, which stays inside the SQLite backend. A refactoring only, tests unchanged
+  - [ ] **L.11c** Stages: `.env.example` with `STAGE=Local`, Lambda detection, the startup errors of 7.1
+  - [ ] **L.11d** Export of the own data as JSON, download on the settings page (SPEC 5.8)
+  - [ ] **L.11e** Import of an export file in the setup, for a user without days and entries; removed again on failure;
+    round-trip test (SPEC 5.8)
+  - [ ] **L.11f** DynamoDB base: `boto3`, `moto` for the tests, table command (keys, on-demand, time to live,
+    point-in-time recovery), schema version item, transactions up to 100 items and resumable atomic chunks beyond;
+    contract tests run on both backends
+  - [ ] **L.11g** DynamoDB repositories: users, sessions, failed logins, app and user settings
+  - [ ] **L.11h** DynamoDB repositories: days, entries with history, review flags
+  - [ ] **L.11i** DynamoDB repositories: tickets, services, activity types, rename and merge tickets
+  - [ ] **L.11j** DynamoDB repositories: work schedules, PTO years, teams, memberships, invitations, report views
+  - [ ] **L.11k** Access tests on both backends: another user's id answers 404 for every repository and API resource
+    (7.3)
+  - [ ] **L.11l** One-time password: the admin sets it for a user who forgot theirs (changed at the next login)
+  - [ ] **L.11m** Setup token on Lambda: the first user only with the token from the SSM parameter (SPEC 7.4; `moto`
+    in the tests)
+  - [ ] **L.11n** zappa: `zappa_settings.json` (`eu-central-1`, `python3.14`, `TZ`, table, parameter name), WSGI
+    module, package excludes, IAM policy for the one table and the one parameter, README deployment steps (including
+    creating and deleting the parameter)
 - [x] **L.12** Duration formats: every duration field (entry duration, break, hours per week, opening balance with a
   minus) accepts `1:30`, `1.5`, `1,5`, `1h30m`, `1h30`, `1h`, `1 h 30 min`, `90m`, `90min` (spaces and case do not
   matter); the field shows the normalized `h:mm` when left, and the API reads the same formats

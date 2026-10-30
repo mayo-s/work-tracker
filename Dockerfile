@@ -9,14 +9,14 @@ COPY src/templates src/templates
 RUN npm run build
 
 # 2. The Python packages of Pipfile.lock, without the dev packages
-FROM python:3.15-slim AS requirements
+FROM python:3.14-slim AS requirements
 RUN pip install --no-cache-dir --root-user-action=ignore pipenv
 WORKDIR /build
 COPY Pipfile Pipfile.lock ./
 RUN pipenv requirements > requirements.txt
 
 # 3. The app: gunicorn on port 8000, the database in /data
-FROM python:3.15-slim
+FROM python:3.14-slim
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata sqlite3 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=requirements /build/requirements.txt .

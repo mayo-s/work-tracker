@@ -10,14 +10,14 @@ The project was partially implemented using claude.ai.
 
 ## Requirements
 
-- Python 3.15
+- Python 3.14 (the newest Python runtime on AWS Lambda)
 - [Pipenv](https://pipenv.pypa.io/)
 - Node.js 26.13 (pinned in `.node-version`, e.g. via [fnm](https://github.com/Schniz/fnm)) for building the frontend
 
 ## Setup
 
 ```shell
-pipenv install --dev
+pipenv install --dev   # an older .venv (Python 3.15): rm -rf .venv first
 fnm use          # Node version from .node-version
 npm install
 npm run build    # compile the frontend: src/templates/ts → src/templates/static/js
