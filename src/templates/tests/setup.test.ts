@@ -3,7 +3,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { countedMonths, initialState, proRata, setupInput, stepError, steps, summary } from '../ts/setup.ts';
+import {
+  countedMonths, importSummary, initialState, parseExportFile, proRata, setupInput, stepError, steps, summary,
+} from '../ts/setup.ts';
 
 const PASCAL = {
   username: ' pascal ', email: 'turbo.pascal@example.com', first_name: 'Pascal', last_name: '',
@@ -80,4 +82,25 @@ test('summary of all steps', () => {
     ['PTO', '25 days in 2027, 30 days from 2028'],
     ['Services', 'none yet'],
   ]);
+});
+
+test('an export file is read when it has the format and a known version', () => {
+  const file = { format: 'work-tracker', version: 1, entries: [] };
+  assert.deepEqual(parseExportFile(JSON.stringify(file)), { data: file });
+});
+
+test('other files and newer versions are not imported', () => {
+  const noExport = { problem: 'This is no Work Tracker export file: choose the file of "Export my data".' };
+  assert.deepEqual(parseExportFile('Datum;Start;Ende'), noExport);
+  assert.deepEqual(parseExportFile('{"format": "spreadsheet"}'), noExport);
+  assert.deepEqual(parseExportFile('null'), noExport);
+  assert.deepEqual(parseExportFile('{"format": "work-tracker", "version": 2}'),
+    { problem: 'The file has version 2; this Work Tracker reads up to version 1.' });
+});
+
+test('the import summary lists the counts per type', () => {
+  const counts = { days: 633, entries: 732, history: 746, review_flags: 3, tickets: 189, services: 7, activity_types: 4,
+    work_schedules: 1, pto_years: 4 };
+  assert.deepEqual(importSummary(counts).slice(0, 3), [['Days', '633'], ['Entries', '732'], ['History lines', '746']]);
+  assert.equal(importSummary(counts).length, 9);
 });

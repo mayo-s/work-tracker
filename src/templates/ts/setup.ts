@@ -1,7 +1,8 @@
-// Setup page (/setup): the initial setup of a new database in steps, saved at once with "Start".
+// Setup page (/setup): the initial setup of a new database in steps, saved at once with "Start", or from the file of
+// "Export my data".
 
 import { accountError, accountFields, emptyAccount, profileInput, type AccountValues } from './account.ts';
-import { api, ApiError, type SetupInput } from './api.ts';
+import { api, ApiError, type ImportSummary, type SetupImportInput, type SetupInput } from './api.ts';
 import { formatDate, isoDate, type IsoDate } from './dates.ts';
 import { el } from './dom.ts';
 import { checkDuration, normalizeOnLeave, type DurationRules } from './duration-input.ts';
@@ -29,6 +30,7 @@ export type Step = 'Login' | 'Start' | 'Work schedule' | 'PTO' | 'Services' | 'S
 export function steps(state: SetupState): Step[] {
   return [...(state.account ? ['Login' as const] : []), 'Start', 'Work schedule', 'PTO', 'Services', 'Summary'];
 }
+const EXPORT_VERSION = 1;  // the newest export file version this app reads
 const OPENING: DurationRules = { signed: true };
 const WEEKLY_HOURS: DurationRules = { limit: 168 * 60 };
 
@@ -79,8 +81,39 @@ export function setupInput(state: SetupState): SetupInput {
     pto_first_year: Number(state.firstYear),
     services: state.services.filter((service) => service.short_name.trim())
       .map((service) => ({ short_name: service.short_name.trim(), name: service.name.trim() })),
-    user: state.account ? { ...profileInput(state.account), password: state.account.password } : null,
+    user: newUser(state),
   };
+}
+
+function newUser(state: SetupState): SetupInput['user'] {
+  return state.account ? { ...profileInput(state.account), password: state.account.password } : null;
+}
+
+/** The content of a chosen export file, or why it cannot be imported. */
+export function parseExportFile(text: string): { data: SetupImportInput['data'] } | { problem: string } {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = null;
+  }
+  if (!data || typeof data !== 'object' || (data as { format?: unknown }).format !== 'work-tracker') {
+    return { problem: 'This is no Work Tracker export file: choose the file of "Export my data".' };
+  }
+  const version = (data as { version?: unknown }).version;
+  if (typeof version === 'number' && version > EXPORT_VERSION) {
+    return { problem: `The file has version ${version}; this Work Tracker reads up to version ${EXPORT_VERSION}.` };
+  }
+  return { data: data as SetupImportInput['data'] };
+}
+
+/** What an import wrote, as label and count. */
+export function importSummary(summary: ImportSummary): [string, string][] {
+  return [
+    ['Days', summary.days], ['Entries', summary.entries], ['History lines', summary.history],
+    ['Review flags', summary.review_flags], ['Tickets', summary.tickets], ['Services', summary.services],
+    ['Activity types', summary.activity_types], ['Work schedules', summary.work_schedules], ['PTO years', summary.pto_years],
+  ].map(([label, count]) => [String(label), String(count)]);
 }
 
 /** The summary of step 5 as label and value. */
@@ -124,6 +157,15 @@ function importNote(): HTMLElement {
     el('code', {}, 'pipenv run python -m src.modules.importer "SHEET.csv"'), ', then finish the setup here.');
 }
 
+function fileImport(onImport: (file: File | undefined) => void): HTMLElement {
+  const file = el('input', { type: 'file', id: 'setup-import-file', accept: '.json,application/json' });
+  return el('div', { class: 'card card-surface setup-note' },
+    el('strong', {}, 'Moving from another Work Tracker? '),
+    'Import the file of "Export my data" (settings page) instead of the next steps: it sets up everything at once.',
+    field('Export file', file),
+    button('Import', () => onImport(file.files?.[0])));
+}
+
 function loginStep(state: SetupState): HTMLElement[] {
   return [
     el('p', {}, 'Your login for the app: log in with the username or the e-mail address.'),
@@ -131,11 +173,8 @@ function loginStep(state: SetupState): HTMLElement[] {
   ];
 }
 
-function startStep(state: SetupState, changed: () => void): HTMLElement[] {
-  const start = input('setup-start', state.start, (value) => {
-    state.start = value;
-    changed();
-  }, { type: 'date' });
+function startStep(state: SetupState, onImport: (file: File | undefined) => void): HTMLElement[] {
+  const start = input('setup-start', state.start, (value) => (state.start = value), { type: 'date' });
   return [
     el('p', {}, 'The overtime balance counts from the first day on, e.g. the first day at a new job.'),
     el('div', { class: 'setup-fields' },
@@ -143,6 +182,7 @@ function startStep(state: SetupState, changed: () => void): HTMLElement[] {
       field('Opening balance', duration(input('setup-opening', state.opening, (value) => (state.opening = value)), OPENING),
         'Overtime taken over, e.g. 12:30, -1:45 or 1.5; otherwise 0:00.')),
     importNote(),
+    fileImport(onImport),
   ];
 }
 
@@ -238,9 +278,11 @@ function progress(names: Step[], step: number): HTMLElement {
       'aria-current': index === step ? 'step' : null }, name)));
 }
 
-function stepContent(state: SetupState, name: Step, draw: () => void): HTMLElement[] {
+function stepContent(
+  state: SetupState, name: Step, draw: () => void, onImport: (file: File | undefined) => void,
+): HTMLElement[] {
   const builders: Record<Step, () => HTMLElement[]> = {
-    'Login': () => loginStep(state), 'Start': () => startStep(state, () => undefined),
+    'Login': () => loginStep(state), 'Start': () => startStep(state, onImport),
     'Work schedule': () => scheduleStep(state),
     'PTO': () => ptoStep(state), 'Services': () => servicesStep(state, draw), 'Summary': () => summaryStep(state),
   };
@@ -275,11 +317,31 @@ export async function renderSetupPage(doc: Document): Promise<void> {
     api.setup(setupInput(state)).then(() => window.location.assign('/'),
       (failure: unknown) => fail(failure instanceof ApiError ? failure.message : 'The setup could not be saved.'));
   };
+  const imported = (summary: ImportSummary): void => {
+    root.replaceChildren(el('section', { class: 'card setup-step', 'aria-labelledby': 'setup-step-title' },
+      el('h2', { id: 'setup-step-title' }, 'Imported'),
+      el('p', {}, 'Your data is set up from the file. Everything can be changed later on the settings page.'),
+      el('table', { class: 'card-table setup-summary' }, el('tbody', {},
+        ...importSummary(summary).map(([label, count]) => el('tr', {}, el('th', {}, label), el('td', {}, count))))),
+      el('div', { class: 'form-actions' }, button('Open the dashboard', () => window.location.assign('/'), 'primary'))));
+    root.querySelector<HTMLElement>('.setup-step button')?.focus();
+  };
+  const importFile = (file: File | undefined): void => {
+    if (!file) {
+      fail('Choose the file of "Export my data" first.');
+      return;
+    }
+    file.text().then((text) => {
+      const parsed = parseExportFile(text);
+      return 'problem' in parsed ? fail(parsed.problem)
+        : api.importSetup({ data: parsed.data, user: newUser(state) }).then(imported);
+    }).catch((failure: unknown) => fail(failure instanceof ApiError ? failure.message : 'The file could not be imported.'));
+  };
   const draw = (): void => {
     if (!state.firstYearChanged) {
       state.firstYear = String(proRata(Number(state.perYear) || 0, state.start));
     }
-    const content = stepContent(state, names[step]!, draw);
+    const content = stepContent(state, names[step]!, draw, importFile);
     error.hidden = true;
     root.replaceChildren(progress(names, step),
       el('section', { class: 'card setup-step', 'aria-labelledby': 'setup-step-title' },

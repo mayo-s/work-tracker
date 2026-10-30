@@ -9,7 +9,7 @@ from src.models.history import EntryChange, HistoryAction
 from src.models.review import ReviewFlag
 from src.models.schedules import Schedule
 from src.modules.storage.store import Changes, Store
-from src.modules.userdata.schemas import UserData
+from src.modules.userdata.schemas import FORMAT, VERSION, UserData
 
 SPLIT_FROM = re.compile(r'Split from entry (\d+)')  # the detail of an entry split off another one
 
@@ -45,7 +45,7 @@ class _Export:
         activity_types = self._activity_types_list()
         entries = self._entries_list()
         return UserData(
-            exported_at=exported_at, settings=self._store.load_settings(self._user),
+            format=FORMAT, version=VERSION, exported_at=exported_at, settings=self._store.load_settings(self._user),
             theme=self._store.load_theme(self._user), work_schedules=self._schedules(),
             pto_years=self._store.pto_years(self._user).all(), services=services, activity_types=activity_types,
             tickets=[ticket.model_copy(update={'service_id': self._services.known(ticket.service_id)}) for ticket in tickets],

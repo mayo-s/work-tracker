@@ -109,13 +109,7 @@ class EntryRepository:
 
     def create(self, entry: Entry, action: HistoryAction = HistoryAction.CREATED, detail: str = '') -> Entry:
         """Store a new entry; its ticket is created if needed. `action` is `created` or `imported`."""
-        self._check_references(entry)
-        cursor = self._write(
-            'INSERT INTO entries (user_id, date, kind, ticket_key, activity_type_id, duration, text, coding) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            (self._user, *_to_values(entry)),
-        )
-        created = entry.model_copy(update={'id': cursor.lastrowid})
+        created = self.restore(entry)
         self.add_history(created.id, action, _diff({}, _fields(created)), detail)
         return created
 
@@ -161,13 +155,36 @@ class EntryRepository:
         self._conn.execute('DELETE FROM entries WHERE id = ? AND user_id = ?', (entry_id, self._user))
         self.add_history(entry_id, HistoryAction.DELETED, _diff(_fields(old), {}))
 
-    def add_history(self, entry_id: int, action: HistoryAction, changes: Changes, detail: str = '') -> EntryChange:
-        change = EntryChange(entry_id=entry_id, changed_at=self._clock(), action=action, changes=changes, detail=detail)
+    def restore(self, entry: Entry) -> Entry:
+        """Store an entry without a history line (its history comes along, e.g. from an export file); its ticket is
+        created if needed."""
+        self._check_references(entry)
+        cursor = self._write(
+            'INSERT INTO entries (user_id, date, kind, ticket_key, activity_type_id, duration, text, coding) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            (self._user, *_to_values(entry)),
+        )
+        return entry.model_copy(update={'id': cursor.lastrowid})
+
+    def reserve_id(self) -> int:
+        """An id no entry will get, for an entry known only from its history (deleted before an export)."""
+        cursor = self._conn.execute(
+            "INSERT INTO entries (user_id, date, kind, duration) VALUES (?, '0001-01-01', 'ticket', 0)", (self._user,))
+        self._conn.execute('DELETE FROM entries WHERE id = ?', (cursor.lastrowid,))  # ids are never reused
+        return cursor.lastrowid
+
+    def restore_history(self, change: EntryChange) -> EntryChange:
+        """Store a history line as it was, with its own time."""
         cursor = self._conn.execute(
             'INSERT INTO entry_history (user_id, entry_id, changed_at, action, changes, detail) VALUES (?, ?, ?, ?, ?, ?)',
-            (self._user, entry_id, change.changed_at.isoformat(), change.action, json.dumps(change.changes), change.detail),
+            (self._user, change.entry_id, change.changed_at.isoformat(), change.action, json.dumps(change.changes),
+             change.detail),
         )
         return change.model_copy(update={'id': cursor.lastrowid})
+
+    def add_history(self, entry_id: int, action: HistoryAction, changes: Changes, detail: str = '') -> EntryChange:
+        return self.restore_history(
+            EntryChange(entry_id=entry_id, changed_at=self._clock(), action=action, changes=changes, detail=detail))
 
     def history(self, entry_id: int) -> list[EntryChange]:
         sql = f'SELECT {_HISTORY_COLUMNS} FROM entry_history WHERE entry_id = ? AND user_id = ? ORDER BY id'
