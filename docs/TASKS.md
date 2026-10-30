@@ -187,7 +187,7 @@ and ends with passing tests and the flake8 check.
   - [x] **L.11b** Storage interfaces: repository protocols and a backend-neutral transaction; resources and reports
     no longer touch `sqlite3`, which stays inside the SQLite backend (and the SQLite-only importer). A refactoring
     only, tests unchanged
-  - [ ] **L.11c** Stages: `.env.example` with `STAGE=Local`, Lambda detection, the startup errors of 7.1
+  - [x] **L.11c** Stages: `.env.example` with `STAGE=Local`, Lambda detection, the startup errors of 7.1
   - [ ] **L.11d** Export of the own data as JSON, download on the settings page (SPEC 5.8)
   - [ ] **L.11e** Import of an export file in the setup, for a user without days and entries; removed again on failure;
     round-trip test (SPEC 5.8)
