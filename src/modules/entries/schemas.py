@@ -26,7 +26,7 @@ class EntryInput(BaseModel):
 
     kind: Literal['ticket', 'activity']
     date: dt.date
-    duration: DurationText = Field(description='h:mm in quarter hours')
+    duration: DurationText = Field(description='In quarter hours, e.g. 1:30, 1.5, 1,5, 1h30m or 90m; answered as h:mm')
     ticket_key: str | None = Field(default=None, examples=['ENGINE-461'])
     service_id: int | None = Field(
         default=None, description="Ticket entries: set the ticket's service (applies to all its entries); omit to keep it"

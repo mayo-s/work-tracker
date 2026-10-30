@@ -11,6 +11,7 @@ from src.lib.durations import format_clock, format_duration, parse_clock, parse_
 MAX_DAYS = 366
 
 ClockText = Annotated[str, AfterValidator(lambda text: format_clock(parse_clock(text))), Field(examples=['08:15'])]
+# Durations are read in all formats of parse_duration (1:30, 1.5, 1,5, 1h30m, 90m) and answered as h:mm
 DurationText = Annotated[str, AfterValidator(lambda text: format_duration(parse_duration(text))), Field(examples=['1:30'])]
 SignedDurationText = Annotated[
     str, AfterValidator(lambda text: format_duration(parse_signed_duration(text))), Field(examples=['12:30', '-1:45']),

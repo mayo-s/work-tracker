@@ -2,6 +2,7 @@
 
 import { api, ApiError, type ActivityType, type EntryInput, type EntryView, type ServiceChoice } from './api.ts';
 import { el } from './dom.ts';
+import { clockMinutes, normalizeOnLeave, settleDuration, type DurationRules } from './duration-input.ts';
 import { field, formFooter, submit } from './forms.ts';
 import { serviceOptions } from './lists.ts';
 
@@ -17,11 +18,17 @@ const FIELDS = ['duration', 'ticket_key', 'service_id', 'description', 'coding',
 export type EntryEditorOptions = {
   date: string;
   entry: EntryView | null;  // null: a new entry
+  dayStart: string | null;  // the day's start time, e.g. 08:00: an entry fits the rest of the day
   services: ServiceChoice[];
   activityTypes: ActivityType[];
   onDone: () => void;
   onCancel: () => void;
 };
+
+/** An entry is in quarter hours and at most as long as the rest of its day (from 08:00: 16:00; no start: 24:00). */
+export function entryRules(dayStart: string | null): DurationRules {
+  return { limit: 24 * 60 - (clockMinutes(dayStart ?? '') ?? 0), quarter: true };
+}
 
 export function entryFormValues(entry: EntryView | null): EntryFormValues {
   return {
@@ -118,7 +125,7 @@ function fields(initial: EntryFormValues, options: EntryEditorOptions): HTMLElem
   return el('div', {},
     kindToggle(initial.kind, options.entry !== null),
     el('div', { class: 'entry-editor-fields' },
-      field(PREFIX, 'duration', 'Duration', input('duration', initial.duration, '1:30', { inputmode: 'numeric' }), 'h:mm'),
+      field(PREFIX, 'duration', 'Duration', input('duration', initial.duration, '1:30'), 'e.g. 1.5 or 90m'),
       onlyFor('ticket', field(PREFIX, 'ticket_key', 'Ticket', input('ticket_key', initial.ticket_key, 'ENGINE-461'))),
       onlyFor('ticket', field(PREFIX, 'service_id', 'Service', select('service_id', initial.service_id, '— no service —', services),
         ' ')),
@@ -145,8 +152,14 @@ function wire(form: HTMLFormElement, options: EntryEditorOptions, serviceChanged
     const key = values(form).ticket_key.trim().toUpperCase();
     serviceHint.textContent = key ? `Applies to all entries of ${key}` : '';
   });
-  form.addEventListener('submit', (event) => {
+  const duration = form.querySelector<HTMLInputElement>(`#${PREFIX}-duration`)!;
+  const rules = entryRules(options.dayStart);
+  normalizeOnLeave(duration, () => rules);
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (!await settleDuration(duration, rules)) {
+      return;
+    }
     const input = entryInput(values(form), options.date, serviceChanged.value);
     const save = options.entry ? () => api.updateEntry(options.entry!.id, input) : () => api.createEntry(input);
     void submit(form, PREFIX, FIELDS, save, options.onDone);

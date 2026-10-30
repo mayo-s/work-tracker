@@ -9,11 +9,13 @@ import { formatDate, formatMonth, formatTimestamp } from './dates.ts';
 import { el } from './dom.ts';
 import { button, renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 import { accountSection } from './account.ts';
+import { normalizeOnLeave, type DurationRules } from './duration-input.ts';
 import { field, submit } from './forms.ts';
 import { STATE_NAMES, WEEKDAY_NAMES } from './labels.ts';
 import { activityTypesTable, servicesTable } from './lists.ts';
 
 const BALANCE_FIELDS = ['balance_start', 'opening_balance'] as const;
+const SIGNED: DurationRules = { signed: true };  // the opening balance may be negative
 const SECTIONS = [
   ['balance', 'Overtime balance'], ['schedules', 'Work schedules'], ['pto-years', 'PTO years'], ['services', 'Services'],
   ['activity-types', 'Activity types'], ['team', 'Team'], ['appearance', 'Appearance'], ['account', 'Account'],
@@ -77,9 +79,11 @@ function balanceSection(settings: SettingsView, page: Page): HTMLElement {
     autocomplete: 'off' });
   const form = el('form', { class: 'balance-form', novalidate: true },
     field('balance', 'balance_start', 'Start date', start, 'First day counted; earlier days are ignored.'),
-    field('balance', 'opening_balance', 'Opening balance', opening, 'Overtime before the start day, e.g. 12:30 or -1:45.'),
+    field('balance', 'opening_balance', 'Opening balance', opening,
+      'Overtime before the start day, e.g. 12:30, -1:45 or 1.5.'),
     el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
     el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Save')));
+  normalizeOnLeave(opening, () => SIGNED);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     void submit(form, 'balance', BALANCE_FIELDS,
@@ -105,7 +109,7 @@ function schedulesTable(schedules: ScheduleView[]): EditableTable {
     fields: [
       { name: 'valid_from', label: 'Valid from', required: true, type: 'date', format: formatDate },
       { name: 'weekly_hours', label: 'Hours per week', required: true, numeric: true,
-        placeholder: 'e.g. 40:00' },
+        placeholder: 'e.g. 40:00', duration: { limit: 168 * 60 } },
       { name: 'work_days', label: 'Work days', required: true, type: 'weekdays', defaultValue: 'Mon,Tue,Wed,Thu,Fri',
         format: formatWorkDays },
       { name: 'state', label: 'Holidays', required: true, type: 'select', defaultValue: 'BE',

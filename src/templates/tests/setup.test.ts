@@ -35,9 +35,13 @@ test('initial state proposes the first year', () => {
 test('steps check their values before going on', () => {
   const state = initialState('2027-03-01');
   assert.equal(stepError(state, 'Start'), null);
-  assert.equal(stepError({ ...state, opening: '1,5' }, 'Start'), 'Enter the opening balance as h:mm, e.g. 0:00.');
+  assert.equal(stepError({ ...state, opening: '-1,5' }, 'Start'), null);
+  assert.equal(stepError({ ...state, opening: 'soon' }, 'Start'),
+    'Enter the opening balance, e.g. 0:00, 12:30, -1:45 or 1.5.');
   assert.equal(stepError({ ...state, workDays: [] }, 'Work schedule'), 'Choose at least one work day.');
-  assert.equal(stepError({ ...state, weeklyHours: '40' }, 'Work schedule'), 'Enter the hours per week as h:mm, e.g. 40:00.');
+  assert.equal(stepError({ ...state, weeklyHours: '38.5' }, 'Work schedule'), null);
+  assert.equal(stepError({ ...state, weeklyHours: '200' }, 'Work schedule'),
+    'Enter the hours per week, e.g. 40:00 or 38.5 (at most 168:00).');
   assert.equal(stepError({ ...state, firstYear: '' }, 'PTO'), 'Enter the PTO days.');
   assert.equal(stepError(state, 'Services'), null);
   assert.equal(stepError(state, 'Login'), 'Enter your first name.');

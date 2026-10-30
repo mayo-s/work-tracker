@@ -44,7 +44,7 @@ def test_report_counts_days_off_on_work_days_only(client):
     (PART_TIME | {'work_days': []}, 422),
     (PART_TIME | {'work_days': ['Monday']}, 422),
     (PART_TIME | {'weekly_hours': '169:00'}, 422),
-    (PART_TIME | {'weekly_hours': '30'}, 422),
+    (PART_TIME | {'weekly_hours': '30 hours'}, 422),
     (PART_TIME | {'state': 'Berlin'}, 422),
     (PART_TIME | {'state': 'Augsburg'}, 422),
 ])

@@ -68,6 +68,8 @@ Open http://127.0.0.1:8000/ for the frontend (build it first with `npm run build
 figures (balance, PTO left, this week, open review items), the overtime balance over time (month, year, 12 months,
 all), the days off coming up and this year's figures. `/week` shows the current week,
 other weeks via `/week?week=2026-W44` (former `/?week=…` links forward there); days and entries are edited in place
+(durations also as `1.5`, `1h30m` or `90m`; a plain number too long for the day is asked about as minutes, a time
+that is no quarter hour gets the two nearest offered)
 (`&edit=2025-12-06` opens a day's form,
 `&entry=129` an entry's form; each entry shows its change history). "Book days off" sets PTO, sick, unpaid leave or
 overtime off on the work days of a range, with a preview and a popup for days that already hold times or entries. `/month` shows the month report with the work report
@@ -184,7 +186,8 @@ runs through `npx` with its own TypeScript 5, as it does not support the project
 
 ## API (`src/modules/<feature>`)
 
-JSON over HTTP; dates in ISO format (`2026-10-28`), clock times as `HH:MM`, durations as `h:mm` (`-1:30`).
+JSON over HTTP; dates in ISO format (`2026-10-28`), clock times as `HH:MM`, durations answered as `h:mm` (`-1:30`)
+and read also as `1.5`, `1,5`, `1h30m`, `1h30` or `90m`.
 Invalid input gives 422, unknown records 404, conflicts 409.
 Reports count worked time, target and overtime up to today (today included); planned days off count too.
 
@@ -251,7 +254,7 @@ All times and durations are whole minutes.
 
 | Module            | Rules                                                                                                                                                                                                                                          |
 |-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `durations`       | Parse and format clock times (`HH:MM`), durations (`h:mm`, signed `-1:45` for balances) and decimal-comma hours (`1,5`); split durations evenly in quarter hours                                                                               |
+| `durations`       | Parse and format clock times (`HH:MM`), durations (`h:mm`, `1.5`, `1,5`, `1h30m`, `90m`, signed `-1:45` for balances; the spreadsheet's strictly `h:mm`) and decimal-comma hours (`1,5`); split durations evenly in quarter hours              |
 | `worktime`        | Worked time = end − start − break; without a break, the legal minimum applies (German ArbZG §4: 0:30 beyond 6 h, 0:45 beyond 9 h)                                                                                                              |
 | `public_holidays` | Public holidays of a German federal state (via `holidays`), plus Heiligabend and Silvester as company half days if they apply                                                                                                                  |
 | `daytypes`        | Day types (see below) with their share of the daily target and PTO used; days off of the schedule have no target. Overtime = worked − target                                                                                                   |

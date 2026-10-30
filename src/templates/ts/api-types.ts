@@ -87,7 +87,7 @@ export interface paths {
         /** Entries of a week or date range, by date and in the order they were created; `member` shows a member of the team admin's team (team view: from the day they joined the team). */
         get: operations["get__api_entries"];
         put?: never;
-        /** Create an entry; a new ticket is created, `service_id` sets the ticket's service. */
+        /** Create an entry; a new ticket is created, `service_id` sets the ticket's service. The duration takes e.g. `1:30`, `1.5`, `1h30m` or `90m`, in quarter hours, at most the rest of the day from its start (409). */
         post: operations["post__api_entries"];
         delete?: never;
         options?: never;
@@ -1524,7 +1524,7 @@ export interface components {
             date: string;
             /**
              * Duration
-             * @description h:mm in quarter hours
+             * @description In quarter hours, e.g. 1:30, 1.5, 1,5, 1h30m or 90m; answered as h:mm
              * @example 1:30
              */
             duration: string;
@@ -1803,7 +1803,7 @@ export interface components {
         ScheduleInput: {
             /**
              * Weekly Hours
-             * @description Hours per week, h:mm
+             * @description Hours per week, e.g. 40:00, 40 or 38.5
              * @example 40:00
              */
             weekly_hours: string;
@@ -1842,7 +1842,7 @@ export interface components {
         ScheduleView: {
             /**
              * Weekly Hours
-             * @description Hours per week, h:mm
+             * @description Hours per week, e.g. 40:00, 40 or 38.5
              * @example 40:00
              */
             weekly_hours: string;
@@ -1903,7 +1903,7 @@ export interface components {
             balance_start: string;
             /**
              * Opening Balance
-             * @description Overtime taken over, h:mm
+             * @description Overtime taken over, e.g. 12:30, -1.5 or 2h
              * @default 0:00
              * @example 12:30
              * @example -1:45
@@ -1945,7 +1945,7 @@ export interface components {
             balance_start: string;
             /**
              * Opening Balance
-             * @description Overtime before the start day, h:mm (negative with a minus)
+             * @description Overtime before the start day, e.g. 12:30, -1:45, 1.5 or -2h; answered as h:mm
              * @example 12:30
              * @example -1:45
              */
@@ -2454,7 +2454,7 @@ export interface components {
         ScheduleTerms: {
             /**
              * Weekly Hours
-             * @description Hours per week, h:mm
+             * @description Hours per week, e.g. 40:00, 40 or 38.5
              * @example 40:00
              */
             weekly_hours: string;

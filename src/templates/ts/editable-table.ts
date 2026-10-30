@@ -2,6 +2,7 @@
 
 import { ApiError } from './api.ts';
 import { el, onEscape } from './dom.ts';
+import { normalizeOnLeave, settleDuration, type DurationRules } from './duration-input.ts';
 import { WEEKDAY_NAMES } from './labels.ts';
 
 /**
@@ -24,6 +25,7 @@ export type Field = {
   numeric?: boolean;
   fixed?: boolean;
   placeholder?: string;
+  duration?: DurationRules;  // a duration in any format (1:30, 1.5, 90m), with its limit
 };
 
 /** A record as text values by field name; `label` names it in messages, `usage` fills the optional usage column, `link`
@@ -54,8 +56,9 @@ export function button(label: string, onClick: () => void, className = 'button-s
   return element;
 }
 
-/** The element to enter a field's value, and how to read the value back as text. */
-type Control = { name: string; element: HTMLElement; read: () => string };
+/** The element to enter a field's value, how to read the value back as text, and for durations how to settle it
+ * before saving (false: cancelled). */
+type Control = { name: string; element: HTMLElement; read: () => string; settle?: () => Promise<boolean> };
 
 function controlLabel(item: Item, field: Field): string {
   return `${field.label} of ${item.label}`;
@@ -86,7 +89,14 @@ function inputControl(item: Item | null, field: Field): Control {
     required: field.required,
     autocomplete: 'off',
   });
-  return { name: field.name, element: named(item, field, input), read: () => input.value.trim() };
+  const rules = field.duration;
+  if (rules) {
+    normalizeOnLeave(input, () => rules);
+  }
+  return {
+    name: field.name, element: named(item, field, input), read: () => input.value.trim(),
+    settle: rules && (() => settleDuration(input, rules)),
+  };
 }
 
 function weekdaysControl(item: Item | null, field: Field): Control {
@@ -131,8 +141,13 @@ function itemForm(table: EditableTable, item: Item | null, page: Page, ...button
   const fixed = item
     ? table.fields.filter((field) => field.fixed).map((field) => el('strong', {}, item.values[field.name])) : [];
   const form = el('form', { class: 'list-form' }, ...fixed, ...fields.map((control) => control.element), ...buttons);
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    for (const control of fields) {
+      if (control.settle && !await control.settle()) {
+        return;
+      }
+    }
     const entered = values(fields);
     const name = item?.label ?? entered[table.fields[0]!.name];
     const message = `${item ? 'Saved' : 'Added'} ${table.noun} ${name}`;

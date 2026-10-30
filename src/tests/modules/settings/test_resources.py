@@ -20,7 +20,7 @@ def test_reports_count_from_the_new_start_day(client):
 
 
 @pytest.mark.parametrize('body', [
-    {'balance_start': '2027-03-01', 'opening_balance': '1,5'},
+    {'balance_start': '2027-03-01', 'opening_balance': '1:5'},
     {'balance_start': '01.03.2027', 'opening_balance': '0:00'},
     {'balance_start': '2027-03-01'},
     {'balance_start': '2027-03-01', 'opening_balance': '0:00', 'unknown': 1},
