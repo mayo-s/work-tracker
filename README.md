@@ -18,10 +18,16 @@ The project was partially implemented using claude.ai.
 
 ```shell
 pipenv install --dev   # an older .venv (Python 3.15): rm -rf .venv first
+cp .env.example .env   # STAGE=Local: run locally on SQLite
 fnm use          # Node version from .node-version
 npm install
 npm run build    # compile the frontend: src/templates/ts → src/templates/static/js
 ```
+
+The stage chooses the storage on start: `STAGE=Local` the SQLite file, on AWS Lambda (detected by itself) DynamoDB.
+`pipenv run` and `pipenv shell` load `.env` (git-ignored); IDE run configurations need it as their env file. Without
+`STAGE` outside Lambda, with an unknown value, or with `WORK_TRACKER_AUTH=off` on Lambda, the app stops on start and
+says what to change. Tests choose their database themselves.
 
 The compiled JavaScript is not committed; build it after checking out or changing TypeScript (`npm run watch` rebuilds
 on every change).
@@ -88,6 +94,8 @@ These documentation routes are listed in the spec as well, under the Maintenance
 `$WORK_TRACKER_HOST` and `$WORK_TRACKER_PORT` change the address of the development server.
 
 ## Run in a container (e.g. on a NAS)
+
+Not working for now: the container sets no `STAGE`, so the app stops on start (to be fixed or removed).
 
 `Dockerfile` and `compose.yaml` build the frontend and run the app with gunicorn on port 8000. The database lives in
 `./data` (or `$WORK_TRACKER_DATA`); "today" of the reports follows the time zone `TZ` (Europe/Berlin).
@@ -178,7 +186,7 @@ runs through `npx` with its own TypeScript 5, as it does not support the project
 | `src/lib`                    | Calculation rules: durations, breaks, holidays, targets, overtime, PTO                                                                                                                                                                                                                                                                                                                                                        |
 | `src/models`                 | Pydantic models                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `src/modules`                | Features: auth (login, registration), admin, teams, dashboard, storage, import, days, entries, tickets, catalog, settings, setup, work schedules, PTO years, reports, review, pages                                                                                                                                                                                                                                           |
-| `src/utils`                  | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types; `openapi`: spec file for the frontend types                                                                                                                                                                                                                                                                                          |
+| `src/utils`                  | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types; `openapi`: spec file for the frontend types; `stages`: the stage (Local or AWS Lambda) and its storage                                                                                                                                                                                                                               |
 | `src/defaultresources`       | Default resource at `/health` (plain-text status)                                                                                                                                                                                                                                                                                                                                                                             |
 | `src/templates`              | Frontend: `frame.html` (shared page frame), `pages/` (page content), `static/` (served at `/static`: `css/main.css` with the UI style variables (light and dark), Inter font with its OFL license in `fonts/`), TypeScript in `ts/` (`main.ts` loads the page code, e.g. `week.ts`; `api.ts`: typed API client, `api-types.ts`: generated) compiled to `static/js/` (git-ignored), `openapi.json`, frontend tests in `tests/` |
 | `Dockerfile`, `compose.yaml` | Container image and its start (see "Run in a container")                                                                                                                                                                                                                                                                                                                                                                      |
