@@ -1,7 +1,6 @@
 """API schemas for task entries and their history (formats: see src.utils.api)."""
 
 import datetime as dt
-import sqlite3
 from collections import defaultdict
 from collections.abc import Iterable
 from typing import Literal, Self
@@ -13,9 +12,7 @@ from src.models.catalog import TicketKey
 from src.models.entries import ActivityEntry, Entry, TicketEntry
 from src.models.history import HistoryAction
 from src.models.review import FlagReason
-from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository
-from src.modules.storage.entries import EntryRepository
-from src.modules.storage.tickets import TicketRepository
+from src.modules.storage.store import Store
 from src.utils.api import DurationText, check_domain
 
 
@@ -109,11 +106,11 @@ class ChangeView(BaseModel):
 class EntryViewer:
     """Builds entry views with service, activity type, flags and the changed marker (one lookup per list)."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: str) -> None:
-        self._entries = EntryRepository(conn, user_id)
-        self._ticket_services = {ticket.key: ticket.service_id for ticket in TicketRepository(conn, user_id).all()}
-        self._services = {service.id: service.short_name for service in ServiceRepository(conn, user_id).choices()}
-        self._activity_types = {activity.id: activity.name for activity in ActivityTypeRepository(conn, user_id).all()}
+    def __init__(self, store: Store, user_id: str) -> None:
+        self._entries = store.entries(user_id)
+        self._ticket_services = {ticket.key: ticket.service_id for ticket in store.tickets(user_id).all()}
+        self._services = {service.id: service.short_name for service in store.services(user_id).choices()}
+        self._activity_types = {activity.id: activity.name for activity in store.activity_types(user_id).all()}
 
     def views(self, entries: Iterable[Entry]) -> list[EntryView]:
         entries = list(entries)

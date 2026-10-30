@@ -6,7 +6,6 @@ account are running figures.
 """
 
 import datetime as dt
-import sqlite3
 from itertools import accumulate
 
 from pydantic import BaseModel, Field
@@ -17,9 +16,7 @@ from src.lib.durations import format_duration, parse_duration
 from src.lib.public_holidays import holiday_on
 from src.modules.reports.schemas import CodingWork, PeriodTotals, PtoView, Reports, VisibleFrom
 from src.modules.review.schemas import review
-from src.modules.storage.days import DayRepository
-from src.modules.storage.schedules import ScheduleRepository
-from src.modules.storage.settings import load_settings
+from src.modules.storage.store import Store
 
 COMING_UP_DAYS = 60
 _HOLIDAYS = {DayType.PUBLIC_HOLIDAY, DayType.COMPANY_HALF_DAY}
@@ -81,19 +78,19 @@ class DashboardView(BaseModel):
 
 
 class Dashboard:
-    """Builds the dashboard within the transaction of the given connection."""
+    """Builds the dashboard within the transaction of the given store."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: str, today: dt.date, visible_from: dt.date | None = None) -> None:
-        self._conn = conn
+    def __init__(self, store: Store, user_id: str, today: dt.date, visible_from: dt.date | None = None) -> None:
+        self._store = store
         self._user = user_id
         self._today = today
         self._visible_from = visible_from
-        self._settings = load_settings(conn, user_id)
+        self._settings = store.load_settings(user_id)
         self._first = max(self._settings.balance_start, visible_from or dt.date.min)
-        self._schedules = ScheduleRepository(conn, user_id).schedules()
+        self._schedules = store.schedules(user_id).schedules()
         last = today + dt.timedelta(days=COMING_UP_DAYS)
-        self._records = DayRepository(conn, user_id).records(self._settings.balance_start, last)
-        self._reports = Reports(conn, user_id, today, visible_from)
+        self._records = store.days(user_id).records(self._settings.balance_start, last)
+        self._reports = Reports(store, user_id, today, visible_from)
         self._balances = self._daily_balances()
 
     def view(self) -> DashboardView:
@@ -111,7 +108,7 @@ class Dashboard:
             this_week=self._reports.week(week, monday).totals,
             week_target=format_duration(sum(day.target for day in self._summaries(max(monday, self._first),
                                                                                   monday + dt.timedelta(days=6)))),
-            review_open=0 if self._visible_from else sum(review(self._conn, self._user).counts.model_dump().values()),
+            review_open=0 if self._visible_from else sum(review(self._store, self._user).counts.model_dump().values()),
             balance_series=self._series(),
             coming_up=self._coming_up(),
             this_year=self._year_figures(year.days_worked, year.average_per_day_worked, year.days_off),
@@ -168,7 +165,7 @@ class Dashboard:
     def _year_figures(self, days_worked: int, average: str, days_off: dict[DayType, int]) -> YearFigures:
         year = self._today.year
         first = max(dt.date(year, 1, 1), self._visible_from or dt.date.min)
-        coding = CodingWork(self._conn, self._user).by_service(first, dt.date(year, 12, 31))
+        coding = CodingWork(self._store, self._user).by_service(first, dt.date(year, 12, 31))
         top = sorted(coding, key=lambda work: parse_duration(work.duration), reverse=True)[:3]
         return YearFigures(
             year=year, days_worked=days_worked, average_per_day_worked=average,

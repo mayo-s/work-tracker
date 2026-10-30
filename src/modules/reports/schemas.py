@@ -7,7 +7,6 @@ team; the balance and the PTO account are running figures and cover the whole ti
 
 import calendar
 import datetime as dt
-import sqlite3
 from collections import Counter, defaultdict
 from typing import Annotated
 
@@ -17,13 +16,7 @@ from src.lib.balances import DayRecord, overtime_balance, pto_accounts, summariz
 from src.lib.daytypes import DaySummary, DayType
 from src.lib.durations import format_duration, parse_duration
 from src.models.entries import TicketEntry
-from src.modules.storage.catalog import ServiceRepository
-from src.modules.storage.days import DayRepository
-from src.modules.storage.entries import EntryRepository
-from src.modules.storage.pto_years import PtoYearRepository
-from src.modules.storage.schedules import ScheduleRepository
-from src.modules.storage.settings import load_settings
-from src.modules.storage.tickets import TicketRepository
+from src.modules.storage.store import Store
 
 Records = dict[dt.date, DayRecord]
 VisibleFrom = Annotated[dt.date | None, Field(description='Team view: the first day shown (the member joined the team)')]
@@ -101,18 +94,18 @@ class YearReport(BaseModel):
 
 
 class Reports:
-    """Builds a user's reports within the transaction of the given connection; with `visible_from` (team view), period
+    """Builds a user's reports within the transaction of the given store; with `visible_from` (team view), period
     figures start on that day."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: str, today: dt.date, visible_from: dt.date | None = None) -> None:
-        self._conn = conn
+    def __init__(self, store: Store, user_id: str, today: dt.date, visible_from: dt.date | None = None) -> None:
+        self._store = store
         self._user = user_id
         self._today = today
         self._visible_from = visible_from
-        self._settings = load_settings(conn, user_id)
+        self._settings = store.load_settings(user_id)
         self._first = max(self._settings.balance_start, visible_from or dt.date.min)
-        self._pto_terms = PtoYearRepository(conn, user_id).terms()
-        self._schedules = ScheduleRepository(conn, user_id).schedules()
+        self._pto_terms = store.pto_years(user_id).terms()
+        self._schedules = store.schedules(user_id).schedules()
 
     def week(self, week: str, monday: dt.date) -> WeekReport:
         sunday = monday + dt.timedelta(days=6)
@@ -123,7 +116,7 @@ class Reports:
     def month(self, year: int, month: int) -> MonthReport:
         start, end = _month_bounds(year, month)
         records = self._records(end)
-        coding = CodingWork(self._conn, self._user).by_service(max(start, self._visible_from or start), end)
+        coding = CodingWork(self._store, self._user).by_service(max(start, self._visible_from or start), end)
         return MonthReport(
             month=f'{year}-{month:02d}',
             totals=self._totals(records, start, end),
@@ -151,7 +144,7 @@ class Reports:
         )
 
     def _records(self, end: dt.date) -> Records:
-        return DayRepository(self._conn, self._user).records(self._settings.balance_start, end)
+        return self._store.days(self._user).records(self._settings.balance_start, end)
 
     def _period_days(self, records: Records, start: dt.date, end: dt.date) -> list[DaySummary]:
         """Days of the period from the balance start on (days before it are ignored; in the team view also those before
@@ -209,10 +202,10 @@ class Reports:
 class CodingWork:
     """A user's coding entries of a period, grouped by the service of their ticket and by ticket."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: str) -> None:
-        self._entries = EntryRepository(conn, user_id)
-        self._ticket_services = {ticket.key: ticket.service_id for ticket in TicketRepository(conn, user_id).all()}
-        self._services = {service.id: service.short_name for service in ServiceRepository(conn, user_id).choices()}
+    def __init__(self, store: Store, user_id: str) -> None:
+        self._entries = store.entries(user_id)
+        self._ticket_services = {ticket.key: ticket.service_id for ticket in store.tickets(user_id).all()}
+        self._services = {service.id: service.short_name for service in store.services(user_id).choices()}
 
     def by_service(self, start: dt.date, end: dt.date) -> list[ServiceWork]:
         grouped = defaultdict(lambda: defaultdict(list))

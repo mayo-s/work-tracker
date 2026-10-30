@@ -2,11 +2,10 @@
 
 import datetime as dt
 import sqlite3
-from typing import Literal, get_args
+from typing import get_args
 
 from src.models.settings import Settings
-
-Theme = Literal['system', 'light', 'dark']
+from src.modules.storage.store import Theme
 
 
 def _values(conn: sqlite3.Connection, user_id: str) -> dict[str, str]:

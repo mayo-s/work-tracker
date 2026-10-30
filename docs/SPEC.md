@@ -439,9 +439,10 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 ### 7.2 Storage
 
 - Both backends implement the same repository interfaces (days, entries with history, review flags, tickets, services,
-  activity types, schedules, PTO years, settings, users, sessions, teams, invitations, report views). Resources, reports
-  and the importer use only these interfaces and a backend-neutral transaction, never SQL. The same contract tests run
-  against both backends (DynamoDB through `moto` in the tests).
+  activity types, schedules, PTO years, settings, users, sessions, teams, invitations, report views). Resources and
+  reports use only these interfaces and a backend-neutral transaction, never SQL; the importer and the command line
+  tools work on SQLite only (7.1). The same contract tests run against both backends (DynamoDB through `moto` in the
+  tests).
 - SQLite: as before, migrated on start.
 - DynamoDB: one table in `eu-central-1` (Frankfurt), on-demand capacity, point-in-time recovery on; a command creates it.
   - Composite key `PK` / `SK`. A user's records live in their own partition `PK = USER#<user id>` (e.g.

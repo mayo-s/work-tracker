@@ -1,14 +1,11 @@
 """Frontend pages: the shared frame (src/templates/frame.html) around a page's content (src/templates/pages)."""
 
-import sqlite3
 from pathlib import Path
 
 import falcon
 
-from src.modules.storage.database import Database
 from src.modules.storage.owners import NO_OWNER
-from src.modules.storage.settings import load_theme, registration_open, setup_done
-from src.modules.storage.users import UserRepository
+from src.modules.storage.store import Storage, Store
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / 'templates'
 STATIC_DIR = TEMPLATES_DIR / 'static'
@@ -50,14 +47,14 @@ class StartPage(Page):
 class RegisterPage(Page):
     """`/register`, only while registration is on (and the login, since only then are there users to register)."""
 
-    def __init__(self, database: Database, enabled: bool) -> None:
+    def __init__(self, storage: Storage, enabled: bool) -> None:
         super().__init__('register', 'Register')
-        self._database = database
+        self._storage = storage
         self._enabled = enabled
 
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
-        with self._database.transaction() as conn:
-            if not (self._enabled and registration_open(conn)):
+        with self._storage.transaction() as store:
+            if not (self._enabled and store.registration_open()):
                 raise falcon.HTTPNotFound(description='Registration is switched off')
         super().on_get(req, resp)
 
@@ -66,26 +63,26 @@ class PageSettings:
     """Middleware for pages: the color theme for the frame; until the database is set up, pages forward to /setup,
     and /setup forwards to the week once it is."""
 
-    def __init__(self, database: Database) -> None:
-        self._database = database
+    def __init__(self, storage: Storage) -> None:
+        self._storage = storage
 
     def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict) -> None:
         if not isinstance(resource, Page):
             return
         user_id = req.context.get('user_id')
-        with self._database.transaction() as conn:
-            done = _set_up(conn, user_id)
-            req.context.theme = load_theme(conn, NO_OWNER if user_id is None else user_id)
+        with self._storage.transaction() as store:
+            done = _set_up(store, user_id)
+            req.context.theme = store.load_theme(NO_OWNER if user_id is None else user_id)
         if done == (resource.name == 'setup'):
             raise falcon.HTTPSeeOther('/' if done else '/setup')
 
 
-def _set_up(conn: sqlite3.Connection, user_id: str | None) -> bool:
+def _set_up(store: Store, user_id: str | None) -> bool:
     """The user's setup state; not logged in, only a database without users is set up first (the login handles the
     rest)."""
     if user_id is not None:
-        return setup_done(conn, user_id)
-    return bool(UserRepository(conn).count()) or setup_done(conn, NO_OWNER)
+        return store.setup_done(user_id)
+    return bool(store.users().count()) or store.setup_done(NO_OWNER)
 
 
 class Redirect:

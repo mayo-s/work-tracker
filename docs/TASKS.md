@@ -184,8 +184,9 @@ and ends with passing tests and the flake8 check.
     report and when
 - [ ] **L.11** AWS Lambda deployment with DynamoDB (SPEC 7.1–7.4), in steps:
   - [x] **L.11a** Python 3.14: Pipfile, lock file, README, Dockerfile; tests and flake8 pass on 3.14
-  - [ ] **L.11b** Storage interfaces: repository protocols and a backend-neutral transaction; resources, reports and
-    the importer no longer touch `sqlite3`, which stays inside the SQLite backend. A refactoring only, tests unchanged
+  - [x] **L.11b** Storage interfaces: repository protocols and a backend-neutral transaction; resources and reports
+    no longer touch `sqlite3`, which stays inside the SQLite backend (and the SQLite-only importer). A refactoring
+    only, tests unchanged
   - [ ] **L.11c** Stages: `.env.example` with `STAGE=Local`, Lambda detection, the startup errors of 7.1
   - [ ] **L.11d** Export of the own data as JSON, download on the settings page (SPEC 5.8)
   - [ ] **L.11e** Import of an export file in the setup, for a user without days and entries; removed again on failure;

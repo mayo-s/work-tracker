@@ -3,14 +3,13 @@ a member of the team admin's team (team view, logged for the member)."""
 
 import datetime as dt
 import re
-import sqlite3
 from collections.abc import Callable
 
 import falcon
 from spectree import Response
 
 from src.modules.reports.schemas import MonthReport, Reports, WeekReport, YearReport
-from src.modules.storage.database import Database
+from src.modules.storage.store import Storage, Store
 from src.modules.teams.view import MemberQuery, viewing
 from src.utils.spec import spec
 
@@ -22,17 +21,17 @@ Today = Callable[[], dt.date]
 
 class _Report:
     def __init__(
-        self, database: Database, today: Today = dt.date.today, clock: Callable[[], dt.datetime] = dt.datetime.now,
+        self, storage: Storage, today: Today = dt.date.today, clock: Callable[[], dt.datetime] = dt.datetime.now,
     ) -> None:
-        self._database = database
+        self._storage = storage
         self._today = today
         self._clock = clock
 
-    def _reports(self, req: falcon.Request, conn: sqlite3.Connection, query: MemberQuery, report: str, period: str) -> Reports:
+    def _reports(self, req: falcon.Request, store: Store, query: MemberQuery, report: str, period: str) -> Reports:
         """The reports of the user, or in the team view of the member (logged for them)."""
-        view = viewing(req, conn, query.member)
-        view.log(conn, report, period, self._clock())
-        return Reports(conn, view.user_id, self._today(), view.visible_from)
+        view = viewing(req, store, query.member)
+        view.log(store, report, period, self._clock())
+        return Reports(store, view.user_id, self._today(), view.visible_from)
 
 
 class WeekReportResource(_Report):
@@ -41,8 +40,8 @@ class WeekReportResource(_Report):
     def on_get(self, req: falcon.Request, resp: falcon.Response, week: str, query: MemberQuery) -> None:
         """Totals of a week (Monday to Sunday) and the overtime balance before and after it."""
         monday = _monday_of(week)
-        with self._database.transaction() as conn:
-            resp.media = self._reports(req, conn, query, 'week', week).week(week, monday)
+        with self._storage.transaction() as store:
+            resp.media = self._reports(req, store, query, 'week', week).week(week, monday)
 
 
 class MonthReportResource(_Report):
@@ -50,8 +49,8 @@ class MonthReportResource(_Report):
                    path_parameter_descriptions={'month': 'Month, e.g. 2026-10'})
     def on_get(self, req: falcon.Request, resp: falcon.Response, month: dt.datetime, query: MemberQuery) -> None:
         """Totals of a month and the monthly work report: coding work by service and ticket."""
-        with self._database.transaction() as conn:
-            reports = self._reports(req, conn, query, 'month', f'{month.year}-{month.month:02d}')
+        with self._storage.transaction() as store:
+            reports = self._reports(req, store, query, 'month', f'{month.year}-{month.month:02d}')
             resp.media = reports.month(month.year, month.month)
 
 
@@ -60,8 +59,8 @@ class YearReportResource(_Report):
                    path_parameter_descriptions={'year': 'Year, e.g. 2026'})
     def on_get(self, req: falcon.Request, resp: falcon.Response, year: int, query: MemberQuery) -> None:
         """Totals of a year, per month, and the PTO account (replaces the spreadsheet dashboard)."""
-        with self._database.transaction() as conn:
-            resp.media = self._reports(req, conn, query, 'year', str(year)).year(year)
+        with self._storage.transaction() as store:
+            resp.media = self._reports(req, store, query, 'year', str(year)).year(year)
 
 
 def _monday_of(week: str) -> dt.date:

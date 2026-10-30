@@ -6,7 +6,6 @@ skipped or booked too (keeping their times and entries).
 """
 
 import datetime as dt
-import sqlite3
 from collections import Counter
 from typing import Literal, Self
 
@@ -18,10 +17,8 @@ from src.lib.durations import format_duration
 from src.lib.public_holidays import HolidayKind, holiday_on
 from src.lib.schedules import WEEKDAYS, Schedules
 from src.models.days import Day
-from src.modules.storage.days import DayRepository
-from src.modules.storage.entries import EntryRepository
 from src.modules.storage.errors import ConflictError
-from src.modules.storage.schedules import ScheduleRepository
+from src.modules.storage.store import Days, Store
 from src.utils.api import MAX_DAYS
 
 RangeDayType = Literal[DayType.PTO, DayType.SICK, DayType.UNPAID_LEAVE, DayType.OVERTIME_OFF]
@@ -72,10 +69,10 @@ class DayRangeResult(BaseModel):
 class _Plan:
     """The days of the range sorted into free work days, conflicts and days left out."""
 
-    def __init__(self, conn: sqlite3.Connection, user_id: str, data: DayRangeInput) -> None:
-        self.schedules: Schedules = ScheduleRepository(conn, user_id).schedules()
-        self.recorded = {day.date: day for day in DayRepository(conn, user_id).between(data.start, data.end)}
-        self.entries = Counter(entry.date for entry in EntryRepository(conn, user_id).between(data.start, data.end))
+    def __init__(self, store: Store, user_id: str, data: DayRangeInput) -> None:
+        self.schedules: Schedules = store.schedules(user_id).schedules()
+        self.recorded = {day.date: day for day in store.days(user_id).between(data.start, data.end)}
+        self.entries = Counter(entry.date for entry in store.entries(user_id).between(data.start, data.end))
         self.free: list[dt.date] = []
         self.conflicts: list[RecordedDay] = []
         self.left_out: list[LeftOutDay] = []
@@ -125,18 +122,18 @@ def _weekday(date: dt.date) -> str:
     return WEEKDAYS[date.weekday()]
 
 
-def book_range(conn: sqlite3.Connection, user_id: str, data: DayRangeInput) -> DayRangeResult:
+def book_range(store: Store, user_id: str, data: DayRangeInput) -> DayRangeResult:
     """Book the day type on the work days of the range, or only preview it; refused conflicts raise a ConflictError."""
-    plan = _Plan(conn, user_id, data)
+    plan = _Plan(store, user_id, data)
     plan.check(data)
     booked = plan.booked(data.conflicts)
     if not data.preview:
-        _save(DayRepository(conn, user_id), plan, booked, data)
+        _save(store.days(user_id), plan, booked, data)
     return DayRangeResult(saved=not data.preview, days=booked, conflicts=plan.conflicts, left_out=plan.left_out,
                           pto_days=plan.pto_days(booked, data.day_type))
 
 
-def _save(days: DayRepository, plan: _Plan, booked: list[dt.date], data: DayRangeInput) -> None:
+def _save(days: Days, plan: _Plan, booked: list[dt.date], data: DayRangeInput) -> None:
     """The type on each booked day; recorded days keep their times and note (the range's note fills an empty one)."""
     for date in booked:
         day = plan.recorded.get(date) or Day(date=date)
