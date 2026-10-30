@@ -34,6 +34,7 @@ from src.modules.teams.resources import (
     TeamMemberItem, TeamServiceCollection, TeamServiceItem,
 )
 from src.modules.tickets.resources import TicketCollection, TicketItem, TicketRenaming, TicketServiceAssignment
+from src.modules.userdata.resources import ExportResource
 from src.utils.spec import spec
 from src.utils.stages import stage_storage
 
@@ -87,6 +88,7 @@ def create_app(
     app.add_route('/api/reports/years/{year:int(4)}', YearReportResource(storage, today, clock))
     app.add_route('/api/settings', SettingsResource(storage))
     app.add_route('/api/theme', ThemeResource(storage))
+    app.add_route('/api/export', ExportResource(storage, clock))
     app.add_route('/api/setup', SetupResource(storage, clock))
     app.add_route('/api/auth/status', AuthStatusResource(storage, clock, enabled))
     app.add_route('/api/auth/login', LoginResource(storage, clock))

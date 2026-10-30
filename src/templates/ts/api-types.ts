@@ -321,6 +321,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All of your own records as a file to download, e.g. `work-tracker-klara-2026-10-30.json`: settings, work schedules, PTO years, services, activity types, tickets, days, entries with their history and review flags.
+         * @description Not in it: password, sessions, users, teams and the log of the team view.
+         */
+        get: operations["get__api_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/setup": {
         parameters: {
             query?: never;
@@ -2097,6 +2117,56 @@ export interface components {
              */
             moved: number;
         };
+        /** UserData */
+        UserData: {
+            /**
+             * Format
+             * @default work-tracker
+             * @constant
+             */
+            format?: "work-tracker";
+            /**
+             * Version
+             * @description Format version; a newer one cannot be imported
+             * @default 1
+             */
+            version?: number;
+            /**
+             * Exported At
+             * Format: date-time
+             */
+            exported_at: string;
+            settings: components["schemas"]["Settings"];
+            /**
+             * Theme
+             * @enum {string}
+             */
+            theme: "system" | "light" | "dark";
+            /** Work Schedules */
+            work_schedules: components["schemas"]["Schedule"][];
+            /** Pto Years */
+            pto_years: components["schemas"]["PtoYear"][];
+            /**
+             * Services
+             * @description Personal services, and team services (`team`) the tickets use
+             */
+            services: components["schemas"]["ServiceChoice"][];
+            /** Activity Types */
+            activity_types: components["schemas"]["ActivityType"][];
+            /** Tickets */
+            tickets: components["schemas"]["Ticket"][];
+            /** Days */
+            days: components["schemas"]["Day"][];
+            /** Entries */
+            entries: (components["schemas"]["TicketEntry"] | components["schemas"]["ActivityEntry"])[];
+            /**
+             * History
+             * @description All history lines, also of deleted entries, in written order
+             */
+            history: components["schemas"]["EntryChange"][];
+            /** Review Flags */
+            review_flags: components["schemas"]["ReviewFlag"][];
+        };
         /**
          * ValidationErrorElement
          * @description Model of a validation error response element.
@@ -2584,6 +2654,231 @@ export interface components {
              * @default null
              */
             team?: string | null;
+        };
+        /** ActivityEntry */
+        ActivityEntry: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "activity";
+            /**
+             * Id
+             * @default null
+             */
+            id?: number | null;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Activity Type Id */
+            activity_type_id: number;
+            /**
+             * Duration
+             * @description Minutes, in quarter hours
+             */
+            duration: number;
+            /**
+             * Note
+             * @default
+             */
+            note?: string;
+        };
+        /** Day */
+        Day: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * @description None: automatic (work or holiday)
+             * @default null
+             */
+            day_type?: components["schemas"]["DayType"] | null;
+            /**
+             * Start
+             * @default null
+             */
+            start?: number | null;
+            /**
+             * End
+             * @default null
+             */
+            end?: number | null;
+            /**
+             * Break Minutes
+             * @description None: legal minimum break
+             * @default null
+             */
+            break_minutes?: number | null;
+            /**
+             * Note
+             * @default
+             */
+            note?: string;
+        };
+        /**
+         * EntryChange
+         * @description One line of an entry's history; `changes` maps each changed field to (old, new).
+         */
+        EntryChange: {
+            /**
+             * Id
+             * @default null
+             */
+            id?: number | null;
+            /** Entry Id */
+            entry_id: number;
+            /**
+             * Changed At
+             * Format: date-time
+             */
+            changed_at: string;
+            action: components["schemas"]["HistoryAction"];
+            /** Changes */
+            changes?: {
+                [key: string]: [
+                    components["schemas"]["JsonValue"],
+                    components["schemas"]["JsonValue"]
+                ];
+            };
+            /**
+             * Detail
+             * @description e.g. the original spreadsheet line
+             * @default
+             */
+            detail?: string;
+        };
+        /** ReviewFlag */
+        ReviewFlag: {
+            /**
+             * Id
+             * @default null
+             */
+            id?: number | null;
+            /**
+             * Entry Id
+             * @default null
+             */
+            entry_id?: number | null;
+            /**
+             * Date
+             * @description Set for flags on a day
+             * @default null
+             */
+            date?: string | null;
+            reason: components["schemas"]["FlagReason"];
+            /**
+             * Detail
+             * @description e.g. the original spreadsheet text
+             * @default
+             */
+            detail?: string;
+        };
+        /** Schedule */
+        Schedule: {
+            /**
+             * Id
+             * @default null
+             */
+            id?: number | null;
+            /**
+             * Valid From
+             * Format: date
+             * @description First day the schedule applies to
+             */
+            valid_from: string;
+            /** Weekly Minutes */
+            weekly_minutes: number;
+            /**
+             * Work Days
+             * @description ISO weekdays: 1 = Monday … 7 = Sunday
+             */
+            work_days: number[];
+            /**
+             * State
+             * @description German federal state whose public holidays apply, e.g. BE
+             * @default BE
+             */
+            state?: string;
+            /**
+             * Company Half Days
+             * @description 24.12. and 31.12. are half PTO, half free
+             * @default true
+             */
+            company_half_days?: boolean;
+        };
+        /** Settings */
+        Settings: {
+            /**
+             * Balance Start
+             * Format: date
+             * @description First day counted in the overtime balance
+             */
+            balance_start: string;
+            /**
+             * Opening Balance
+             * @description Overtime in minutes before balance_start
+             * @default 0
+             */
+            opening_balance?: number;
+        };
+        /**
+         * Ticket
+         * @description A ticket remembers its service; all entries of the ticket share it.
+         */
+        Ticket: {
+            /**
+             * Key
+             * @description Ticket key, e.g. ENGINE-461
+             */
+            key: string;
+            /**
+             * Service Id
+             * @default null
+             */
+            service_id?: number | null;
+        };
+        /** TicketEntry */
+        TicketEntry: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "ticket";
+            /**
+             * Id
+             * @default null
+             */
+            id?: number | null;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Ticket Key
+             * @description None only for imported entries awaiting review
+             * @default null
+             */
+            ticket_key?: string | null;
+            /**
+             * Duration
+             * @description Minutes, in quarter hours
+             */
+            duration: number;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
+            /**
+             * Coding
+             * @default false
+             */
+            coding?: boolean;
         };
     };
     responses: never;
@@ -3606,6 +3901,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ThemeView"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserData"];
                 };
             };
             /** @description Unprocessable Content */

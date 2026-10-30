@@ -323,9 +323,10 @@ corners, one accent color. Warnings are the only loud element.
 ### 5.8 Export and import (own data)
 
 - Export: "Export my data" on the settings page downloads one JSON file of the user's own records: days, entries with
-  their history, review flags, tickets, services, activity types, work schedules, PTO years and settings. It starts
-  with `{"format": "work-tracker", "version": 1, "exported_at": …}`; references inside the file use the file's own ids.
-  Team services the tickets use are included by short name and name.
+  their history (also of deleted entries), review flags, tickets, services, activity types, work schedules, PTO years,
+  settings and theme. It starts with `{"format": "work-tracker", "version": 1, "exported_at": …}`; every record has a
+  file id (1, 2, …), and references inside the file use them, also in history lines. Team services the tickets use are
+  included by short name, name and team.
 - Not in the file: password, sessions, users, teams, memberships, invitations and the report view log.
 - Import: in `/setup`, a user without days and entries may upload such a file instead of entering the setup data.
   Settings, work schedules and PTO years come from the file, its activity types replace the four defaults, team
@@ -333,7 +334,8 @@ corners, one accent color. Warnings are the only loud element.
   type.
 - A file of an unknown format or a newer version is refused. If the import fails, everything it wrote is removed again
   and the setup stays open.
-- Exporting, importing into a new user and exporting again gives the same file (apart from `exported_at`).
+- Exporting, importing into a new user and exporting again gives the same file (apart from `exported_at`, and team
+  services, which come back as personal ones).
 
 ## 6. Import (spreadsheet CSV)
 

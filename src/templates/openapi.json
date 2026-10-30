@@ -25,6 +25,9 @@
       "name": "Settings"
     },
     {
+      "name": "Export and import"
+    },
+    {
       "name": "Setup"
     },
     {
@@ -1444,6 +1447,39 @@
             }
           },
           "required": true
+        }
+      }
+    },
+    "/api/export": {
+      "get": {
+        "summary": "All of your own records as a file to download, e.g. `work-tracker-klara-2026-10-30.json`: settings, work schedules, PTO years, services, activity types, tickets, days, entries with their history and review flags.",
+        "operationId": "get__api_export",
+        "description": "Not in it: password, sessions, users, teams and the log of the team view.",
+        "tags": [
+          "Export and import"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserData"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -6154,6 +6190,135 @@
         "title": "RenameView",
         "type": "object"
       },
+      "UserData": {
+        "additionalProperties": false,
+        "properties": {
+          "format": {
+            "const": "work-tracker",
+            "default": "work-tracker",
+            "title": "Format",
+            "type": "string"
+          },
+          "version": {
+            "default": 1,
+            "description": "Format version; a newer one cannot be imported",
+            "title": "Version",
+            "type": "integer"
+          },
+          "exported_at": {
+            "format": "date-time",
+            "title": "Exported At",
+            "type": "string"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/Settings"
+          },
+          "theme": {
+            "enum": [
+              "system",
+              "light",
+              "dark"
+            ],
+            "title": "Theme",
+            "type": "string"
+          },
+          "work_schedules": {
+            "items": {
+              "$ref": "#/components/schemas/Schedule"
+            },
+            "title": "Work Schedules",
+            "type": "array"
+          },
+          "pto_years": {
+            "items": {
+              "$ref": "#/components/schemas/PtoYear"
+            },
+            "title": "Pto Years",
+            "type": "array"
+          },
+          "services": {
+            "description": "Personal services, and team services (`team`) the tickets use",
+            "items": {
+              "$ref": "#/components/schemas/ServiceChoice"
+            },
+            "title": "Services",
+            "type": "array"
+          },
+          "activity_types": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityType"
+            },
+            "title": "Activity Types",
+            "type": "array"
+          },
+          "tickets": {
+            "items": {
+              "$ref": "#/components/schemas/Ticket"
+            },
+            "title": "Tickets",
+            "type": "array"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/Day"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "entries": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "activity": "#/components/schemas/ActivityEntry",
+                  "ticket": "#/components/schemas/TicketEntry"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/TicketEntry"
+                },
+                {
+                  "$ref": "#/components/schemas/ActivityEntry"
+                }
+              ]
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "history": {
+            "description": "All history lines, also of deleted entries, in written order",
+            "items": {
+              "$ref": "#/components/schemas/EntryChange"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "review_flags": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewFlag"
+            },
+            "title": "Review Flags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "exported_at",
+          "settings",
+          "theme",
+          "work_schedules",
+          "pto_years",
+          "services",
+          "activity_types",
+          "tickets",
+          "days",
+          "entries",
+          "history",
+          "review_flags"
+        ],
+        "title": "UserData",
+        "type": "object"
+      },
       "ValidationErrorElement": {
         "description": "Model of a validation error response element.",
         "properties": {
@@ -7164,6 +7329,431 @@
           "short_name"
         ],
         "title": "ServiceChoice",
+        "type": "object"
+      },
+      "ActivityEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "activity",
+            "default": "activity",
+            "title": "Kind",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "activity_type_id": {
+            "title": "Activity Type Id",
+            "type": "integer"
+          },
+          "duration": {
+            "description": "Minutes, in quarter hours",
+            "maximum": 1440,
+            "minimum": 0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "activity_type_id",
+          "duration"
+        ],
+        "title": "ActivityEntry",
+        "type": "object"
+      },
+      "Day": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "day_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DayType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "None: automatic (work or holiday)"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "description": "Minutes since midnight",
+                "exclusiveMaximum": 1440,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "description": "Minutes since midnight",
+                "exclusiveMaximum": 1440,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "End"
+          },
+          "break_minutes": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "None: legal minimum break",
+            "title": "Break Minutes"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "Day",
+        "type": "object"
+      },
+      "EntryChange": {
+        "additionalProperties": false,
+        "description": "One line of an entry's history; `changes` maps each changed field to (old, new).",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "entry_id": {
+            "title": "Entry Id",
+            "type": "integer"
+          },
+          "changed_at": {
+            "format": "date-time",
+            "title": "Changed At",
+            "type": "string"
+          },
+          "action": {
+            "$ref": "#/components/schemas/HistoryAction"
+          },
+          "changes": {
+            "additionalProperties": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                {
+                  "$ref": "#/components/schemas/JsonValue"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Changes",
+            "type": "object"
+          },
+          "detail": {
+            "default": "",
+            "description": "e.g. the original spreadsheet line",
+            "maxLength": 500,
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id",
+          "changed_at",
+          "action"
+        ],
+        "title": "EntryChange",
+        "type": "object"
+      },
+      "ReviewFlag": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "entry_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Entry Id"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Set for flags on a day",
+            "title": "Date"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/FlagReason"
+          },
+          "detail": {
+            "default": "",
+            "description": "e.g. the original spreadsheet text",
+            "maxLength": 500,
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ReviewFlag",
+        "type": "object"
+      },
+      "Schedule": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "valid_from": {
+            "description": "First day the schedule applies to",
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "weekly_minutes": {
+            "maximum": 10080,
+            "minimum": 0,
+            "title": "Weekly Minutes",
+            "type": "integer"
+          },
+          "work_days": {
+            "description": "ISO weekdays: 1 = Monday … 7 = Sunday",
+            "items": {
+              "maximum": 7,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "minItems": 1,
+            "title": "Work Days",
+            "type": "array"
+          },
+          "state": {
+            "default": "BE",
+            "description": "German federal state whose public holidays apply, e.g. BE",
+            "title": "State",
+            "type": "string"
+          },
+          "company_half_days": {
+            "default": true,
+            "description": "24.12. and 31.12. are half PTO, half free",
+            "title": "Company Half Days",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid_from",
+          "weekly_minutes",
+          "work_days"
+        ],
+        "title": "Schedule",
+        "type": "object"
+      },
+      "Settings": {
+        "additionalProperties": false,
+        "properties": {
+          "balance_start": {
+            "description": "First day counted in the overtime balance",
+            "format": "date",
+            "title": "Balance Start",
+            "type": "string"
+          },
+          "opening_balance": {
+            "default": 0,
+            "description": "Overtime in minutes before balance_start",
+            "title": "Opening Balance",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "balance_start"
+        ],
+        "title": "Settings",
+        "type": "object"
+      },
+      "Ticket": {
+        "additionalProperties": false,
+        "description": "A ticket remembers its service; all entries of the ticket share it.",
+        "properties": {
+          "key": {
+            "description": "Ticket key, e.g. ENGINE-461",
+            "pattern": "^[A-Z][A-Z0-9]*-[1-9]\\d*$",
+            "title": "Key",
+            "type": "string"
+          },
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Service Id"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "title": "Ticket",
+        "type": "object"
+      },
+      "TicketEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "ticket",
+            "default": "ticket",
+            "title": "Kind",
+            "type": "string"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "ticket_key": {
+            "anyOf": [
+              {
+                "description": "Ticket key, e.g. ENGINE-461",
+                "pattern": "^[A-Z][A-Z0-9]*-[1-9]\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "None only for imported entries awaiting review",
+            "title": "Ticket Key"
+          },
+          "duration": {
+            "description": "Minutes, in quarter hours",
+            "maximum": 1440,
+            "minimum": 0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Description",
+            "type": "string"
+          },
+          "coding": {
+            "default": false,
+            "title": "Coding",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "date",
+          "duration"
+        ],
+        "title": "TicketEntry",
         "type": "object"
       }
     }
