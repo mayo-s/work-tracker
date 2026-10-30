@@ -2,8 +2,9 @@
 
 Status: **agreed** (21.05.2026)
 
-A small local web app that replaces the Google Sheet used to track working time and
-task entries. It consists of a REST API (Falcon) and a simple browser frontend.
+A small web app that replaces the Google Sheet used to track working time and
+task entries. It consists of a REST API (Falcon) and a simple browser frontend, and runs locally (SQLite) or on
+AWS Lambda (DynamoDB), see 7.
 
 ## 1. Goals
 
@@ -12,7 +13,7 @@ task entries. It consists of a REST API (Falcon) and a simple browser frontend.
 - Produce the **monthly work report**: coding work grouped by service.
 - Import the existing spreadsheet data (2024, 2025, 2026).
 
-Out of scope for now: export, hosting.
+Out of scope for now: export.
 
 ## 2. Conventions
 
@@ -281,8 +282,10 @@ corners, one accent color. Warnings are the only loud element.
   minute.
 - Every page and the API need a login (pages forward to `/login?next=…`, the API answers 401); `/login`, `/register`,
   `/health`, the API docs and the static files stay open. A new database creates the first user in the setup, an
-  existing one once on `/login`. A command on the computer running the app resets a forgotten password.
-- `WORK_TRACKER_AUTH=off` switches the login off for local development; the app then works on the first user's data.
+  existing one once on `/login`; on AWS Lambda only with the setup token (7.4). Locally, a command resets a forgotten password; on AWS Lambda, where nobody has a
+  shell, the admin sets a one-time password for the user, who changes it at the next login.
+- `WORK_TRACKER_AUTH=off` switches the login off for local development (`STAGE=Local` only, see 7.1); the app then
+  works on the first user's data.
 
 ### 5.7 Data per user
 
@@ -316,6 +319,21 @@ corners, one accent color. Warnings are the only loud element.
   descriptions and notes are shown, day notes and the review are not; the overtime balance and PTO left are running
   figures over the whole time. Admins get no such view unless they are team admin of that team; former members drop
   out. Members see in their settings which team admins can look, and a log of who looked at which report and when.
+
+### 5.8 Export and import (own data)
+
+- Export: "Export my data" on the settings page downloads one JSON file of the user's own records: days, entries with
+  their history, review flags, tickets, services, activity types, work schedules, PTO years and settings. It starts
+  with `{"format": "work-tracker", "version": 1, "exported_at": …}`; references inside the file use the file's own ids.
+  Team services the tickets use are included by short name and name.
+- Not in the file: password, sessions, users, teams, memberships, invitations and the report view log.
+- Import: in `/setup`, a user without days and entries may upload such a file instead of entering the setup data.
+  Settings, work schedules and PTO years come from the file, its activity types replace the four defaults, team
+  services become personal services (as on leaving a team), and the setup is done. A summary shows the counts per
+  type.
+- A file of an unknown format or a newer version is refused. If the import fails, everything it wrote is removed again
+  and the setup stays open.
+- Exporting, importing into a new user and exporting again gives the same file (apart from `exported_at`).
 
 ## 6. Import (spreadsheet CSV)
 
@@ -398,16 +416,80 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 
 ## 7. Technical
 
-- Python 3.15, Falcon (WSGI), spectree + pydantic for validation and OpenAPI docs.
-- SQLite file database; storage behind a repository interface so it can be replaced for a
-  later AWS Lambda deployment via zappa (SQLite does not persist there).
+- Python 3.14 (the newest Python runtime on AWS Lambda), Falcon (WSGI), spectree + pydantic for validation and
+  OpenAPI docs.
 - Frontend: static HTML / CSS served by the app, TypeScript compiled locally to JavaScript (`npm run build`).
 - Runs locally with a single command.
 - Tests with pytest; code quality checked with flake8 (radon max CC 6, max line length 127).
 
+### 7.1 Stages
+
+- The stage chooses the storage backend once, on start:
+  - `STAGE=Local`: the SQLite file `$WORK_TRACKER_DB` (default `work_tracker.db`). `STAGE` comes from `.env`, which
+    pipenv loads; `.env` is git-ignored, `.env.example` (`STAGE=Local`) is committed and copied once.
+  - On AWS Lambda, recognized by `AWS_LAMBDA_FUNCTION_NAME` (set by Lambda itself): always the DynamoDB table
+    `$WORK_TRACKER_TABLE`; `STAGE` is not needed there.
+  - Anything else stops the app on start with a clear message: no `STAGE` outside Lambda (e.g. `STAGE is not set: put
+    STAGE=Local into .env to run locally; on AWS Lambda the stage is detected`), an unknown value, `STAGE=Local` on
+    Lambda, or `WORK_TRACKER_AUTH=off` on Lambda. The container (`Dockerfile`, `compose.yaml`) stops too, until it is
+    fixed or removed.
+- The command line tools (importer, `set-password`) work on the local SQLite database only. Tests choose their backend
+  themselves and do not depend on `STAGE`.
+
+### 7.2 Storage
+
+- Both backends implement the same repository interfaces (days, entries with history, review flags, tickets, services,
+  activity types, schedules, PTO years, settings, users, sessions, teams, invitations, report views). Resources, reports
+  and the importer use only these interfaces and a backend-neutral transaction, never SQL. The same contract tests run
+  against both backends (DynamoDB through `moto` in the tests).
+- SQLite: as before, migrated on start.
+- DynamoDB: one table in `eu-central-1` (Frankfurt), on-demand capacity, point-in-time recovery on; a command creates it.
+  - Composite key `PK` / `SK`. A user's records live in their own partition `PK = USER#<user id>` (e.g.
+    `SK = DAY#2026-10-30`, `ENTRY#…`, `TICKET#TNG-5213`). App-wide records (users, teams, memberships, invitations,
+    sessions, failed logins, app settings) have their own key prefixes; unique usernames and e-mail addresses are kept
+    by conditional writes on `USERNAME#…` / `EMAIL#…` items.
+  - Sessions and failed logins also expire through DynamoDB's time to live; the app still checks the expiry on reading,
+    since the deletion can come late.
+  - A schema version item takes the place of `PRAGMA user_version`: the app refuses a table written by a newer
+    version, and later data changes are numbered scripts like the SQLite migrations.
+  - A change touching at most 100 items is atomic, as in SQLite (DynamoDB's transaction limit). Larger changes
+    (renaming or merging a ticket, assigning a service to many tickets, leaving a team) are written in atomic chunks,
+    e.g. an entry together with its history line, and end with the step that closes them (deleting the old ticket,
+    ending the membership). Repeating a change that stopped halfway completes it.
+  - Lists are read in full; DynamoDB's paging stays inside the repositories.
+- One table holds all users. Data reaches it through the export and import of 5.8, e.g. a local database: import the
+  spreadsheets locally, export, then import the file in the setup on AWS.
+
+### 7.3 Access to data
+
+- The rules of 5.7 hold on both backends and are enforced by the app: the user id comes from the session only, never
+  from the request, and every repository of personal records is bound to that user id (`user_id = ?` in SQLite, the
+  partition `USER#<user id>` in DynamoDB). A team admin reads a member's data only through the team view's check
+  (current member of their team, from the day they joined); the admin gets users and teams, never time data.
+- Tests on both backends: another user's id answers 404 for every repository and API resource.
+- AWS: the Lambda's IAM role may read and write only this one table and its indexes, and read only the setup token
+  parameter (7.4); the app hands out no AWS credentials.
+
+### 7.4 Deployment (AWS Lambda via zappa)
+
+- zappa deploys the app as a Lambda function behind API Gateway (HTTPS) in `eu-central-1`, runtime `python3.14`, from
+  `zappa_settings.json` (committed; it holds no secrets), with `TZ=Europe/Berlin` ("today" follows it; Lambda runs in
+  UTC), `WORK_TRACKER_TABLE` and `WORK_TRACKER_SETUP_TOKEN_PARAMETER` (default `/work-tracker/setup-token`).
+- Setup token: the URL is public, so on Lambda the first user (the admin) is created only with the setup token. It is
+  a `SecureString` in the SSM Parameter Store of `eu-central-1`, created once by hand and never in the repository:
+  `aws ssm put-parameter --name /work-tracker/setup-token --type SecureString --value "$(python -c "import secrets;
+  print(secrets.token_urlsafe(32))")"` (at least 32 characters).
+  - While no user exists, `/setup` asks for it; the app reads the parameter only then, not on every start. A wrong
+    token is refused and counts as a failed login (5 per minute, 5.6), and the comparison takes the same time for
+    every token. Without the parameter, `/setup` creates no user and says so.
+  - Once the first user exists, the token no longer matters and the parameter can be deleted. Registration stays off
+    until the admin switches it on, so nobody else gets an account. Locally (`STAGE=Local`), no token is needed.
+- The package leaves out `examples/` (the real spreadsheet data), `*.db`, `.env`, the tests, `node_modules` and
+  `.venv`; the compiled JavaScript is built before deploying (`npm run build`).
+- Expected costs for a single user: a few cents per month (Lambda and DynamoDB on demand, no VPC, no NAT gateway).
+
 ## 8. Future ideas
 
 - Export (CSV / spreadsheet format).
-- Deployment as AWS Lambda (zappa) with a persistent storage backend and authentication.
 - Settings page with overtime balance, PTO years, work schedules and holiday rules is done (TASKS.md, L.1a–L.1c).
 - Initial setup of a new database on `/setup` is done (TASKS.md, L.3).
