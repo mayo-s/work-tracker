@@ -44,6 +44,11 @@ def attributes(item: Item) -> Item:
     return {name: value for name, value in item.items() if name not in ('PK', 'SK')}
 
 
+def _enough(items: list[Item], newest: int | None) -> bool:
+    """Whether a query for the newest items has found that many (a query for all reads every page)."""
+    return newest is not None and len(items) >= newest
+
+
 def key(pk: str, sk: str) -> dict[str, Any]:
     return to_dynamo({'PK': pk, 'SK': sk})
 
@@ -59,19 +64,24 @@ class Table:
         response = self.client.get_item(TableName=self.name, Key=key(pk, sk), ConsistentRead=True)
         return from_dynamo(response['Item']) if 'Item' in response else None
 
-    def query(self, pk: str, low: str, high: str) -> list[Item]:
-        """The items of a partition with a sort key from low to high (both included), in sort key order; all pages."""
-        request = {
-            'TableName': self.name, 'ConsistentRead': True, 'KeyConditionExpression': 'PK = :pk AND SK BETWEEN :low AND :high',
-            'ExpressionAttributeValues': to_dynamo({':pk': pk, ':low': low, ':high': high}),
-        }
+    def query(self, pk: str, low: str, high: str, newest: int | None = None) -> list[Item]:
+        """The items of a partition with a sort key from low to high (both included), in sort key order; all pages.
+        With `newest`, only that many of the last ones, last first."""
+        request = self._query(pk, low, high, newest)
         items = []
         while True:
             response = self.client.query(**request)
             items += [from_dynamo(item) for item in response['Items']]
-            if 'LastEvaluatedKey' not in response:
-                return items
+            if 'LastEvaluatedKey' not in response or _enough(items, newest):
+                return items[:newest] if newest else items
             request['ExclusiveStartKey'] = response['LastEvaluatedKey']
+
+    def _query(self, pk: str, low: str, high: str, newest: int | None) -> dict[str, Any]:
+        request = {
+            'TableName': self.name, 'ConsistentRead': True, 'KeyConditionExpression': 'PK = :pk AND SK BETWEEN :low AND :high',
+            'ExpressionAttributeValues': to_dynamo({':pk': pk, ':low': low, ':high': high}),
+        }
+        return request | ({'ScanIndexForward': False, 'Limit': newest} if newest else {})
 
     def transact(self, operations: list[dict[str, Any]]) -> None:
         """Write all or nothing (at most 100 operations, each on another item)."""

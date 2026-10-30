@@ -1,10 +1,11 @@
-"""Managed lists in a user's partition, as the SQLite repositories (catalog.py): services (`SERVICE#<id>`) and
-activity types (`ACTIVITY_TYPE#<id>`). Names are unique per user, ignoring case, by `SERVICE_NAME#<lower case>` and
-`ACTIVITY_TYPE_NAME#<lower case>` items. Team services and the team's choices follow with the teams."""
+"""Managed lists, as the SQLite repositories (catalog.py): services (`SERVICE#<id>`) of a user or a team (in its
+partition) and activity types (`ACTIVITY_TYPE#<id>`) of a user. Names are unique per owner, ignoring case, by
+`SERVICE_NAME#<lower case>` and `ACTIVITY_TYPE_NAME#<lower case>` items."""
 
 from src.models.base import DomainModel
 from src.models.catalog import ActivityType, Service, ServiceChoice
 from src.modules.storage.dynamodb.keys import user_partition
+from src.modules.storage.dynamodb.memberships import current_membership, team_item, team_partition
 from src.modules.storage.dynamodb.table import Item, attributes
 from src.modules.storage.dynamodb.unit import Unit
 from src.modules.storage.errors import ConflictError, NotFoundError
@@ -86,24 +87,58 @@ class DynamoServices(_DynamoCatalog[Service]):
 
     model, label, prefix, counter, name = Service, 'service', SERVICE, 'service', 'short_name'
 
+    def __init__(self, unit: Unit, user_id: str) -> None:
+        super().__init__(unit, user_partition(user_id))
+        self._user = user_id
+
     def all(self) -> list[Service]:
         return sorted(super().all(), key=lambda service: service.short_name.lower())
 
+    def by_short_name(self, short_name: str) -> int | None:
+        """The id of the service with this short name (ignoring case), if there is one."""
+        item = self._unit.get(self._pk, self._name_key(short_name))
+        return item['id'] if item else None
+
     def choices(self) -> list[ServiceChoice]:
-        """The services the user can assign: their personal ones (the team's follow with the teams)."""
-        return [ServiceChoice(**service.model_dump()) for service in self.all()]
+        """The services the user can assign: their team's (while in one) and their personal ones."""
+        personal = [ServiceChoice(**service.model_dump()) for service in self.all()]
+        membership = current_membership(self._unit, self._user)
+        if membership is None:
+            return personal
+        team = team_item(self._unit, membership['team_id'])['name']
+        shared = DynamoTeamServices(self._unit, membership['team_id']).all()
+        return [ServiceChoice(**service.model_dump(), team=team) for service in shared] + personal
 
     def _before_delete(self, item_id: int) -> None:
-        for ticket in self._unit.query_prefix(self._pk, 'TICKET#'):
-            if ticket['service_id'] == item_id:
-                self._unit.make_room(2)  # the ticket now, the service with its name at the end
-                self._unit.put(ticket | {'service_id': None})
+        unassign(self._unit, self._pk, item_id)
+
+
+class DynamoTeamServices(DynamoServices):
+    """A team's services, which its members choose; deleting one unassigns the members' tickets."""
+
+    def __init__(self, unit: Unit, team_id: int) -> None:
+        _DynamoCatalog.__init__(self, unit, team_partition(team_id))  # the team's partition: no user of its own
+
+    def _before_delete(self, item_id: int) -> None:
+        for member in self._unit.query_prefix(self._pk, 'MEMBER#'):
+            unassign(self._unit, user_partition(member['user_id']), item_id)
+
+
+def unassign(unit: Unit, pk: str, service_id: int) -> None:
+    """The service no longer on the tickets of a user's partition (in chunks, before the service itself goes)."""
+    for ticket in unit.query_prefix(pk, 'TICKET#'):
+        if ticket['service_id'] == service_id:
+            unit.make_room(2)  # the ticket now, the service with its name at the end
+            unit.put(ticket | {'service_id': None})
 
 
 class DynamoActivityTypes(_DynamoCatalog[ActivityType]):
     """Activity types in the order they were created; one used by entries cannot be deleted."""
 
     model, label, prefix, counter, name = ActivityType, 'activity type', ACTIVITY_TYPE, 'activity_type', 'name'
+
+    def __init__(self, unit: Unit, user_id: str) -> None:
+        super().__init__(unit, user_partition(user_id))
 
     def _before_delete(self, item_id: int) -> None:
         if any(entry.get('activity_type_id') == item_id for entry in self._unit.query_prefix(self._pk, 'ENTRY#')):
@@ -112,6 +147,6 @@ class DynamoActivityTypes(_DynamoCatalog[ActivityType]):
 
 def add_default_activity_types(unit: Unit, user_id: str) -> None:
     """A new user starts with the four default activity types."""
-    activity_types = DynamoActivityTypes(unit, user_partition(user_id))
+    activity_types = DynamoActivityTypes(unit, user_id)
     for name in DEFAULT_ACTIVITY_TYPES:
         activity_types.add(ActivityType(name=name))

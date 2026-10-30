@@ -1,17 +1,18 @@
-"""The DynamoDB backend of the storage interfaces (store.py), used on AWS Lambda; so far users, sessions, login attempts,
-settings, days, entries, tickets, services and activity types; schedules, PTO years and teams follow."""
+"""The DynamoDB backend of the storage interfaces (store.py), used on AWS Lambda; where the items are: keys.py."""
 
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
 from src.models.settings import Settings
 from src.modules.storage.dynamodb import settings as stored_settings
-from src.modules.storage.dynamodb.catalog import DynamoActivityTypes, DynamoServices
+from src.modules.storage.dynamodb.catalog import DynamoActivityTypes, DynamoServices, DynamoTeamServices
 from src.modules.storage.dynamodb.days import DynamoDays
 from src.modules.storage.dynamodb.entries import DynamoEntries
-from src.modules.storage.dynamodb.keys import META, SCHEMA, user_partition
+from src.modules.storage.dynamodb.keys import META, SCHEMA
 from src.modules.storage.dynamodb.renames import rename_ticket
+from src.modules.storage.dynamodb.schedules import DynamoPtoYears, DynamoSchedules
 from src.modules.storage.dynamodb.table import Table
+from src.modules.storage.dynamodb.teams import DynamoInvitations, DynamoReportViews, DynamoTeams
 from src.modules.storage.dynamodb.tickets import DynamoTickets
 from src.modules.storage.dynamodb.unit import Unit
 from src.modules.storage.dynamodb.users import DynamoAttempts, DynamoSessions, DynamoUsers
@@ -39,10 +40,19 @@ class DynamoStore:
         return DynamoTickets(self._unit, user_id)
 
     def services(self, user_id: str) -> DynamoServices:
-        return DynamoServices(self._unit, user_partition(user_id))
+        return DynamoServices(self._unit, user_id)
+
+    def team_services(self, team_id: int) -> DynamoTeamServices:
+        return DynamoTeamServices(self._unit, team_id)
 
     def activity_types(self, user_id: str) -> DynamoActivityTypes:
-        return DynamoActivityTypes(self._unit, user_partition(user_id))
+        return DynamoActivityTypes(self._unit, user_id)
+
+    def schedules(self, user_id: str) -> DynamoSchedules:
+        return DynamoSchedules(self._unit, user_id)
+
+    def pto_years(self, user_id: str) -> DynamoPtoYears:
+        return DynamoPtoYears(self._unit, user_id)
 
     def users(self, clock: Clock | None = None) -> DynamoUsers:
         return DynamoUsers(self._unit, clock)
@@ -52,6 +62,15 @@ class DynamoStore:
 
     def attempts(self) -> DynamoAttempts:
         return DynamoAttempts(self._unit)
+
+    def teams(self, clock: Clock | None = None) -> DynamoTeams:
+        return DynamoTeams(self._unit, clock)
+
+    def invitations(self, clock: Clock | None = None) -> DynamoInvitations:
+        return DynamoInvitations(self._unit, clock)
+
+    def report_views(self) -> DynamoReportViews:
+        return DynamoReportViews(self._unit)
 
     def rename_ticket(self, user_id: str, old_key: str, new_key: str, clock: Clock | None = None) -> RenameResult:
         return rename_ticket(self._unit, user_id, old_key, new_key, clock)

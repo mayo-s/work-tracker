@@ -113,6 +113,15 @@ def test_a_unique_item_written_meanwhile_fails_the_whole_transaction(dynamo_tabl
     assert dynamo_table.get(USER, 'DAY#2026-10-26') is None
 
 
+def test_a_unique_item_deleted_and_written_again_in_one_transaction(dynamo_table):
+    put_all(dynamo_table, CLAIM)
+    unit = Unit(dynamo_table)
+    unit.delete(CLAIM['PK'], CLAIM['SK'])
+    unit.put(CLAIM | {'user_id': 'other'}, unique='The username klara is taken')
+    unit.flush()
+    assert dynamo_table.get(CLAIM['PK'], CLAIM['SK'])['user_id'] == 'other'
+
+
 def test_ids_count_up_and_are_never_given_twice(dynamo_table):
     assert [dynamo_table.next_id('entry') for _ in range(3)] == [1, 2, 3]
     assert dynamo_table.next_id('service') == 1
