@@ -194,8 +194,8 @@ and ends with passing tests and the flake8 check.
   - [x] **L.11f** DynamoDB base: `boto3`, `moto` for the tests, table command (keys, on-demand, time to live,
     point-in-time recovery), schema version item, transactions up to 100 items and resumable atomic chunks beyond;
     contract tests run on both backends
-  - [ ] **L.11g** DynamoDB repositories: users, sessions, failed logins, user settings (the app settings came with
-    L.11f)
+  - [x] **L.11g** DynamoDB repositories: users, sessions, failed logins, user settings (the app settings came with
+    L.11f); their tests are contract tests now, on both backends
   - [ ] **L.11h** DynamoDB repositories: days, entries with history, review flags
   - [ ] **L.11i** DynamoDB repositories: tickets, services, activity types, rename and merge tickets
   - [ ] **L.11j** DynamoDB repositories: work schedules, PTO years, teams, memberships, invitations, report views

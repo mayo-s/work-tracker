@@ -6,6 +6,8 @@ import pytest
 from src.modules.storage import store
 from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository, TeamServiceRepository
 from src.modules.storage.days import DayRepository
+from src.modules.storage.dynamodb.storage import DynamoStorage, DynamoStore
+from src.modules.storage.dynamodb.users import DynamoAttempts, DynamoSessions, DynamoUsers
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.pto_years import PtoYearRepository
 from src.modules.storage.schedules import ScheduleRepository
@@ -23,6 +25,10 @@ IMPLEMENTATIONS = [
     (store.Invitations, InvitationRepository), (store.ReportViews, ReportViewLog), (store.Store, SqliteStore),
     (store.Storage, SqliteStorage),
 ]
+DYNAMODB = [
+    (store.Users, DynamoUsers), (store.Sessions, DynamoSessions), (store.Attempts, DynamoAttempts),
+    (store.Storage, DynamoStorage),
+]
 
 
 def _methods(protocol: type[Protocol]) -> list[str]:
@@ -38,6 +44,19 @@ def _parameters(function: object) -> list[tuple[str, object, object]]:
 def test_sqlite_backend_implements_the_interfaces(protocol, implementation):
     for name in _methods(protocol):
         assert _parameters(getattr(implementation, name)) == _parameters(getattr(protocol, name)), name
+
+
+@pytest.mark.parametrize('protocol, implementation', DYNAMODB)
+def test_dynamodb_backend_implements_the_interfaces(protocol, implementation):
+    for name in _methods(protocol):
+        assert _parameters(getattr(implementation, name)) == _parameters(getattr(protocol, name)), name
+
+
+def test_the_dynamodb_store_matches_the_interface_so_far():
+    built = [name for name in _methods(store.Store) if hasattr(DynamoStore, name)]
+    assert 'users' in built
+    for name in built:
+        assert _parameters(getattr(DynamoStore, name)) == _parameters(getattr(store.Store, name)), name
 
 
 def test_the_sqlite_store_hands_out_repositories_of_its_transaction(database):

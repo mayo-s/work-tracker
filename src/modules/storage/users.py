@@ -113,24 +113,24 @@ class SessionRepository:
         """A new session (at a login, a registration or a password change), recorded as the user's last login."""
         token = secrets.token_urlsafe(32)
         self._conn.execute('INSERT INTO sessions (token_hash, user_id, expires_at, renewed_at) VALUES (?, ?, ?, ?)',
-                           (_hash(token), user_id, (now + SESSION_LIFETIME).isoformat(), now.isoformat()))
+                           (token_hash(token), user_id, (now + SESSION_LIFETIME).isoformat(), now.isoformat()))
         self._conn.execute('UPDATE users SET last_login_at = ? WHERE id = ?', (now.isoformat(), user_id))
         return token
 
     def user_id(self, token: str, now: dt.datetime) -> tuple[str | None, bool]:
         """The user of a valid session and whether it was renewed now (the cookie then gets renewed too)."""
         row = self._conn.execute('SELECT user_id, expires_at, renewed_at FROM sessions JOIN users ON users.id = user_id'
-                                 ' WHERE token_hash = ? AND active', (_hash(token),)).fetchone()
+                                 ' WHERE token_hash = ? AND active', (token_hash(token),)).fetchone()
         if row is None or dt.datetime.fromisoformat(row['expires_at']) <= now:
             return None, False
         if now - dt.datetime.fromisoformat(row['renewed_at']) < SESSION_RENEWAL:
             return row['user_id'], False
         self._conn.execute('UPDATE sessions SET expires_at = ?, renewed_at = ? WHERE token_hash = ?',
-                           ((now + SESSION_LIFETIME).isoformat(), now.isoformat(), _hash(token)))
+                           ((now + SESSION_LIFETIME).isoformat(), now.isoformat(), token_hash(token)))
         return row['user_id'], True
 
     def end(self, token: str) -> None:
-        self._conn.execute('DELETE FROM sessions WHERE token_hash = ?', (_hash(token),))
+        self._conn.execute('DELETE FROM sessions WHERE token_hash = ?', (token_hash(token),))
 
     def end_expired(self, now: dt.datetime) -> None:
         self._conn.execute('DELETE FROM sessions WHERE expires_at <= ?', (now.isoformat(),))
@@ -152,14 +152,15 @@ class LoginAttempts:
         self._conn.execute('INSERT INTO login_attempts (at, kind) VALUES (?, ?)', (now.isoformat(), kind))
         self._conn.execute('DELETE FROM login_attempts WHERE at <= ?', ((now - ATTEMPT_PAUSE).isoformat(),))
 
-    def clear_failed(self) -> None:
-        """After a successful login, the failed logins no longer count; registrations still do."""
-        self._conn.execute("DELETE FROM login_attempts WHERE kind = 'failed_login'")
+    def clear_failed(self, now: dt.datetime) -> None:
+        """After a successful login, the failed logins up to now no longer count; registrations still do."""
+        self._conn.execute("DELETE FROM login_attempts WHERE kind = 'failed_login' AND at <= ?", (now.isoformat(),))
 
 
 def _profile(user: User) -> tuple:
     return user.username, user.email, user.first_name, user.last_name
 
 
-def _hash(token: str) -> str:
+def token_hash(token: str) -> str:
+    """How a session token is stored: its SHA-256, never the token itself."""
     return hashlib.sha256(token.encode()).hexdigest()

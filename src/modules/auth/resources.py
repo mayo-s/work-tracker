@@ -87,7 +87,7 @@ class LoginResource(_AuthResource):
             return None
         if not user.active:
             raise falcon.HTTPForbidden(description='This account is deactivated; ask an admin')
-        attempts.clear_failed()
+        attempts.clear_failed(now)
         return user
 
 
