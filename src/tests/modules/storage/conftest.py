@@ -1,5 +1,6 @@
 import pytest
 
+from src.models.catalog import Service
 from src.modules.storage.database import Database
 from src.modules.storage.dynamodb.storage import DynamoStorage
 from src.modules.storage.sqlite import SqliteStorage
@@ -43,3 +44,13 @@ class PerCall:
 def per_call(storage):
     """`per_call(lambda store: store.days(user_id))`: the repository, each call in its own transaction."""
     return lambda repository: PerCall(storage, repository)
+
+
+@pytest.fixture
+def service_ids(storage, klara_id):
+    """Klara's services of the original setup, by short name."""
+    services = [('O365', 'office-integration-service'), ('MSB', 'microsoft-bookings-service'), ('ImmoDrop', ''),
+                ('HiS', 'history-service'), ('TTS', 'text-transformation-service')]
+    with storage.transaction() as store:
+        return {short_name: store.services(klara_id).add(Service(short_name=short_name, name=name)).id
+                for short_name, name in services}

@@ -12,13 +12,14 @@ def _key(key: str) -> str:
     return Ticket(key=key).key
 
 
-def _sort_key(ticket: Ticket) -> tuple[str, int]:
+def ticket_order(ticket: Ticket) -> tuple[str, int]:
+    """By prefix, then by number: TNG-999 before TNG-5214."""
     prefix, number = ticket.key.rsplit('-', 1)
     return prefix, int(number)
 
 
 def _to_tickets(rows: Iterable[sqlite3.Row]) -> list[Ticket]:
-    return sorted((Ticket(key=row['key'], service_id=row['service_id']) for row in rows), key=_sort_key)
+    return sorted((Ticket(key=row['key'], service_id=row['service_id']) for row in rows), key=ticket_order)
 
 
 class TicketRepository:

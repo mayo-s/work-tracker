@@ -1,3 +1,5 @@
+"""Renaming and merging tickets: the same behaviour on SQLite and on DynamoDB (moto)."""
+
 import datetime as dt
 
 import pytest
@@ -5,43 +7,37 @@ from pydantic import ValidationError
 
 from src.models.entries import ActivityEntry, TicketEntry
 from src.models.history import HistoryAction
-from src.modules.storage.catalog import ServiceRepository
-from src.modules.storage.entries import EntryRepository
 from src.modules.storage.errors import ConflictError, NotFoundError
-from src.modules.storage.renames import rename_ticket
-from src.modules.storage.tickets import TicketRepository
-from src.tests.users import USER
 
 NOW = dt.datetime(2026, 10, 28, 15, 30)
 
 
 @pytest.fixture
-def entries(conn):
-    return EntryRepository(conn, USER,  clock=lambda: NOW)
+def entries(per_call, klara_id):
+    return per_call(lambda store: store.entries(klara_id, clock=lambda: NOW))
 
 
 @pytest.fixture
-def tickets(conn):
-    return TicketRepository(conn, USER)
+def tickets(per_call, klara_id):
+    return per_call(lambda store: store.tickets(klara_id))
 
 
 @pytest.fixture
-def service_ids(conn):
-    return {service.short_name: service.id for service in ServiceRepository(conn, USER).all()}
+def rename(storage, klara_id):
+    def rename(old_key, new_key):
+        with storage.transaction() as store:
+            return store.rename_ticket(klara_id, old_key, new_key, clock=lambda: NOW)
+    return rename
 
 
 def ticket_entry(key, day=1):
     return TicketEntry(date=dt.date(2026, 3, day), ticket_key=key, duration=60, description=f'work on {key}')
 
 
-def rename(conn, old_key, new_key):
-    return rename_ticket(conn, USER, old_key, new_key, clock=lambda: NOW)
-
-
-def test_rename_moves_entries_and_keeps_service(conn, entries, tickets, service_ids):
+def test_rename_moves_entries_and_keeps_service(rename, entries, tickets, service_ids):
     first, second = entries.create(ticket_entry('TNG-2035')), entries.create(ticket_entry('TNG-2035', 2))
     tickets.set_service('TNG-2035', service_ids['ImmoDrop'])
-    result = rename(conn, 'TNG-2035', 'KP-2035')
+    result = rename('TNG-2035', 'KP-2035')
     assert result.action is HistoryAction.RENAMED
     assert result.moved == 2
     assert result.ticket.service_id == service_ids['ImmoDrop']
@@ -49,9 +45,9 @@ def test_rename_moves_entries_and_keeps_service(conn, entries, tickets, service_
     assert [entries.get(entry.id).ticket_key for entry in (first, second)] == ['KP-2035', 'KP-2035']
 
 
-def test_rename_writes_history_line_per_entry(conn, entries):
+def test_rename_writes_history_line_per_entry(rename, entries):
     created = entries.create(ticket_entry('TNG-2035'))
-    rename(conn, 'TNG-2035', 'KP-2035')
+    rename('TNG-2035', 'KP-2035')
     change = entries.history(created.id)[-1]
     assert change.action is HistoryAction.RENAMED
     assert change.changed_at == NOW
@@ -59,39 +55,39 @@ def test_rename_writes_history_line_per_entry(conn, entries):
     assert entries.changed([created.id]) == {created.id}
 
 
-def test_rename_keeps_other_fields(conn, entries):
+def test_rename_keeps_other_fields(rename, entries):
     created = entries.create(ticket_entry('TNG-2035'))
-    rename(conn, 'TNG-2035', 'KP-2035')
+    rename('TNG-2035', 'KP-2035')
     assert entries.get(created.id) == created.model_copy(update={'ticket_key': 'KP-2035'})
 
 
-def test_rename_ticket_without_entries(conn, tickets):
+def test_rename_ticket_without_entries(rename, tickets):
     tickets.ensure('TNG-4138')
-    result = rename(conn, 'TNG-4138', 'KP-4138')
+    result = rename('TNG-4138', 'KP-4138')
     assert (result.ticket.key, result.moved) == ('KP-4138', 0)
 
 
-def test_rename_normalizes_keys(conn, entries):
+def test_rename_normalizes_keys(rename, entries):
     entries.create(ticket_entry('TNG-2035'))
-    assert rename(conn, ' tng-2035', 'kp-2035 ').ticket.key == 'KP-2035'
+    assert rename(' tng-2035', 'kp-2035 ').ticket.key == 'KP-2035'
 
 
-def test_rename_leaves_other_entries_untouched(conn, entries):
+def test_rename_leaves_other_entries_untouched(rename, entries):
     other = entries.create(ticket_entry('TNG-5214'))
     activity = entries.create(ActivityEntry(date=dt.date(2026, 3, 1), activity_type_id=1, duration=60))
     entries.create(ticket_entry('TNG-2035'))
-    rename(conn, 'TNG-2035', 'KP-2035')
+    rename('TNG-2035', 'KP-2035')
     assert entries.get(other.id) == other
     assert entries.get(activity.id) == activity
     assert len(entries.history(other.id)) == 1
 
 
-def test_merge_into_existing_ticket_keeps_its_service(conn, entries, tickets, service_ids):
+def test_merge_into_existing_ticket_keeps_its_service(rename, entries, tickets, service_ids):
     moved = entries.create(ticket_entry('TNG-4347'))
     existing = entries.create(ticket_entry('KP-1482', 2))
     tickets.set_service('TNG-4347', service_ids['MSB'])
     tickets.set_service('KP-1482', service_ids['HiS'])
-    result = rename(conn, 'TNG-4347', 'KP-1482')
+    result = rename('TNG-4347', 'KP-1482')
     assert result.action is HistoryAction.MERGED
     assert result.moved == 1
     assert result.ticket.service_id == service_ids['HiS']
@@ -100,25 +96,33 @@ def test_merge_into_existing_ticket_keeps_its_service(conn, entries, tickets, se
     assert len(entries.history(existing.id)) == 1
 
 
-def test_merge_takes_service_when_existing_ticket_has_none(conn, entries, tickets, service_ids):
+def test_merge_takes_service_when_existing_ticket_has_none(rename, entries, tickets, service_ids):
     entries.create(ticket_entry('TNG-4347'))
     tickets.ensure('KP-1482')
     tickets.set_service('TNG-4347', service_ids['MSB'])
-    assert rename(conn, 'TNG-4347', 'KP-1482').ticket.service_id == service_ids['MSB']
+    assert rename('TNG-4347', 'KP-1482').ticket.service_id == service_ids['MSB']
 
 
-def test_rename_unknown_ticket(conn):
+def test_rename_unknown_ticket(rename):
     with pytest.raises(NotFoundError):
-        rename(conn, 'TNG-404', 'KP-404')
+        rename('TNG-404', 'KP-404')
 
 
-def test_rename_to_itself(conn, tickets):
+def test_rename_to_itself(rename, tickets):
     tickets.ensure('KP-2035')
     with pytest.raises(ConflictError):
-        rename(conn, 'KP-2035', 'kp-2035')
+        rename('KP-2035', 'kp-2035')
 
 
-def test_rename_to_invalid_key(conn, tickets):
+def test_rename_to_invalid_key(rename, tickets):
     tickets.ensure('TNG-2035')
     with pytest.raises(ValidationError):
-        rename(conn, 'TNG-2035', 'TNG-2035ff')
+        rename('TNG-2035', 'TNG-2035ff')
+
+
+def test_renaming_a_ticket_with_more_entries_than_one_transaction_holds(rename, entries, tickets):
+    for day in range(1, 41):  # 40 entries, three items each: more than 100 items to change
+        entries.create(ticket_entry('TNG-2035', day % 28 + 1))
+    assert rename('TNG-2035', 'KP-2035').moved == 40
+    assert tickets.get('TNG-2035') is None
+    assert {entry.ticket_key for entry in entries.between(dt.date(2026, 3, 1), dt.date(2026, 3, 31))} == {'KP-2035'}

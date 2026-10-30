@@ -12,8 +12,9 @@
 | `USER#<user id>` | e.g. `DAY#2026-10-30`   | a user's records: one partition per user, so only their own data  |
 
 In a user's partition: `SETTINGS` (balance, setup, theme), `SESSION#<hash>` (to end all their sessions),
-`ACTIVITY_TYPE#<id>`, `TICKET#<key>`, `DAY#<date>`, `ENTRY#<date>#<id>` with `ENTRY_ID#<id>` (its date),
-`HISTORY#<entry id>#<id>` and `FLAG#<id>`. Ids in sort keys have ten digits, so they sort in the order of creation.
+`SERVICE#<id>` and `ACTIVITY_TYPE#<id>` (names unique by `SERVICE_NAME#…` / `ACTIVITY_TYPE_NAME#<lower case>`),
+`TICKET#<key>`, `DAY#<date>`, `ENTRY#<date>#<id>` with `ENTRY_ID#<id>` (its date), `HISTORY#<entry id>#<id>` and
+`FLAG#<id>`. Ids in sort keys have ten digits, so they sort in the order of creation.
 """
 
 META, SCHEMA = 'META', 'SCHEMA'
