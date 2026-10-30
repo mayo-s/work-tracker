@@ -215,3 +215,6 @@ and ends with passing tests and the flake8 check.
     (1:30)?" (use it or cancel)
   - Entries stay in quarter hours: `1.1` (1:06) opens a popup with "1:00", "1:15" or cancel; breaks and hours per
     week need no quarter hours. The API refuses non-quarter-hour entries and durations over the limit
+- [x] **L.13** Validation errors are logged with their locations and error types only (e.g.
+  `data.history.3.changed_at (datetime_parsing)`), never with the input or the message: a refused import or export
+  would otherwise put a user's whole data into the log (on Lambda: CloudWatch); the answer still names the problem
