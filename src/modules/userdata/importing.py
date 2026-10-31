@@ -26,9 +26,9 @@ class _Import:
         self._store = store
         self._user = user_id
         self._data = data
-        self._services: dict[int, int] = {}  # file id → database id
-        self._activity_types: dict[int, int] = {}
-        self._entries: dict[int, int] = {}
+        self._services: dict[str, str] = {}  # file id (as text) → record id
+        self._activity_types: dict[str, str] = {}
+        self._entries: dict[str, str] = {}
 
     def run(self) -> ImportSummary:
         self._check_empty()
@@ -108,21 +108,25 @@ class _Import:
                 'detail': self._detail(entries, change),
             }))
 
-    def _entry_id(self, entries: Entries, file_id: int) -> int:
+    def _entry_id(self, entries: Entries, file_id: str) -> str:
         if file_id not in self._entries:
             self._entries[file_id] = entries.reserve_id()
         return self._entries[file_id]
 
     def _changes(self, changes: Changes) -> Changes:
-        """Activity types named in a change by database id (None if the file does not hold them)."""
+        """Activity types named in a change by record id (None if the file does not hold them)."""
         if 'activity_type_id' not in changes:
             return changes
         old, new = changes['activity_type_id']
-        return changes | {'activity_type_id': (self._activity_types.get(old), self._activity_types.get(new))}
+        return changes | {'activity_type_id': (self._activity_type(old), self._activity_type(new))}
+
+    def _activity_type(self, file_id: object) -> str | None:
+        """An activity type named in a history line (the file has its id as a number), None if it does not hold it."""
+        return self._activity_types.get(str(file_id)) if file_id is not None else None
 
     def _detail(self, entries: Entries, change: EntryChange) -> str:
         match = SPLIT_FROM.fullmatch(change.detail) if change.action == HistoryAction.SPLIT else None
-        return f'Split from entry {self._entry_id(entries, int(match[1]))}' if match else change.detail
+        return f'Split from entry {self._entry_id(entries, match[1])}' if match else change.detail
 
     def _flags(self) -> None:
         days, entries = self._store.days(self._user), self._store.entries(self._user)
@@ -133,7 +137,7 @@ class _Import:
                 entries.add_flag(_known(self._entries, flag.entry_id, 'entry'), flag.reason, flag.detail)
 
 
-def _known(ids: dict[int, int], file_id: int, label: str) -> int:
+def _known(ids: dict[str, str], file_id: str, label: str) -> str:
     if file_id not in ids:
         raise ConflictError(f'The file refers to {label} {file_id}, which it does not hold')
     return ids[file_id]

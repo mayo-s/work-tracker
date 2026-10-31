@@ -122,11 +122,6 @@ def test_a_unique_item_deleted_and_written_again_in_one_transaction(dynamo_table
     assert dynamo_table.get(CLAIM['PK'], CLAIM['SK'])['user_id'] == 'other'
 
 
-def test_ids_count_up_and_are_never_given_twice(dynamo_table):
-    assert [dynamo_table.next_id('entry') for _ in range(3)] == [1, 2, 3]
-    assert dynamo_table.next_id('service') == 1
-
-
 def test_a_new_table_gets_the_latest_schema_version(dynamo_table):
     assert DynamoStorage(dynamo_table).migrate() == LATEST
     assert dynamo_table.get(META, SCHEMA)['version'] == LATEST

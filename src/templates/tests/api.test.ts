@@ -56,9 +56,9 @@ describe('requests', () => {
   });
 
   test('creating an entry returns the created entry', async () => {
-    respond(201, { id: 7, kind: 'ticket' });
+    respond(201, { id: 'e7', kind: 'ticket' });
     const entry = await api.createEntry({ kind: 'ticket', date: '2026-10-28', duration: '1:30', ticket_key: 'TNG-5882' });
-    assert.equal(entry.id, 7);
+    assert.equal(entry.id, 'e7');
     assert.equal(calls[0]?.method, 'POST');
   });
 
@@ -73,9 +73,9 @@ describe('requests', () => {
 
   test('assigning and unassigning services', async () => {
     respond(200, {});
-    await api.assignService(['AGA-39', 'AGA-40'], 4);
+    await api.assignService(['AGA-39', 'AGA-40'], 's4');
     await api.setTicketService('AGA-39', null);
-    assert.deepEqual(calls[0]?.body, { keys: ['AGA-39', 'AGA-40'], service_id: 4 });
+    assert.deepEqual(calls[0]?.body, { keys: ['AGA-39', 'AGA-40'], service_id: 's4' });
     assert.deepEqual(calls[1]?.body, { service_id: null });
   });
 

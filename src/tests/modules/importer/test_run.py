@@ -12,6 +12,7 @@ from src.modules.importer.sheet import parse_sheet
 from src.modules.storage.catalog import ActivityTypeRepository
 from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
+from src.modules.storage.catalog import ServiceRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.errors import ConflictError
 from src.modules.storage.owners import NO_OWNER
@@ -120,7 +121,8 @@ def test_second_import_is_refused(conn):
 def test_replace_imports_again_and_keeps_ticket_services(conn):
     run(conn)
     tickets = TicketRepository(conn, USER)
-    tickets.set_service('KP-2039', 3)
+    service = next(service for service in ServiceRepository(conn, USER).all() if service.short_name == 'ImmoDrop')
+    tickets.set_service('KP-2039', service.id)
     old_ids = {entry.id for entry in EntryRepository(conn, USER).between(dt.date(2026, 1, 1), dt.date(2026, 12, 31))}
     summary = run(conn, replace=True)
     entries = EntryRepository(conn, USER)
@@ -130,7 +132,7 @@ def test_replace_imports_again_and_keeps_ticket_services(conn):
     assert old_ids.isdisjoint(entry.id for entry in new)
     assert all(entries.history(entry_id) == [] for entry_id in old_ids)
     assert len(entries.entry_flags()) == 1
-    assert tickets.get('KP-2039').service_id == 3
+    assert tickets.get('KP-2039').service_id == service.id
 
 
 def test_replace_keeps_other_years(conn):

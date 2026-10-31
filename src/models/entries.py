@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, Field
 
 from src.lib.durations import MINUTES_PER_DAY, is_quarter_hour
-from src.models.base import DomainModel
+from src.models.base import DomainModel, RecordId
 from src.models.catalog import TicketKey
 
 
@@ -25,7 +25,7 @@ Duration = Annotated[
 
 class TicketEntry(DomainModel):
     kind: Literal['ticket'] = 'ticket'
-    id: int | None = None
+    id: RecordId | None = None
     date: dt.date
     ticket_key: TicketKey | None = Field(default=None, description='None only for imported entries awaiting review')
     duration: Duration
@@ -35,9 +35,9 @@ class TicketEntry(DomainModel):
 
 class ActivityEntry(DomainModel):
     kind: Literal['activity'] = 'activity'
-    id: int | None = None
+    id: RecordId | None = None
     date: dt.date
-    activity_type_id: int
+    activity_type_id: RecordId
     duration: Duration
     note: str = Field(default='', max_length=1000)
 

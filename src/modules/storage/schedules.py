@@ -3,6 +3,7 @@
 import sqlite3
 
 from src.lib.schedules import STANDARD, Schedules
+from src.models.base import new_id
 from src.models.schedules import Schedule
 from src.modules.storage.errors import ConflictError, NotFoundError
 
@@ -21,7 +22,7 @@ class ScheduleRepository:
         rows = self._conn.execute(sql, (self._user,))
         return [_schedule(row) for row in rows]
 
-    def get(self, schedule_id: int) -> Schedule:
+    def get(self, schedule_id: str) -> Schedule:
         row = self._conn.execute(f'SELECT {_COLUMNS} FROM work_schedules WHERE id = ? AND user_id = ?',
                                  (schedule_id, self._user)).fetchone()
         if row is None:
@@ -29,10 +30,11 @@ class ScheduleRepository:
         return _schedule(row)
 
     def add(self, schedule: Schedule) -> Schedule:
-        sql = ('INSERT INTO work_schedules (user_id, valid_from, weekly_minutes, work_days, state, company_half_days)'
-               ' VALUES (?, ?, ?, ?, ?, ?)')
-        cursor = self._write(sql, (self._user, *_values(schedule)), schedule)
-        return schedule.model_copy(update={'id': cursor.lastrowid})
+        sql = ('INSERT INTO work_schedules (id, user_id, valid_from, weekly_minutes, work_days, state, company_half_days)'
+               ' VALUES (?, ?, ?, ?, ?, ?, ?)')
+        added = schedule.model_copy(update={'id': new_id()})
+        self._write(sql, (added.id, self._user, *_values(schedule)), schedule)
+        return added
 
     def update(self, schedule: Schedule) -> Schedule:
         sql = ('UPDATE work_schedules SET valid_from = ?, weekly_minutes = ?, work_days = ?, state = ?, company_half_days = ?'
@@ -41,7 +43,7 @@ class ScheduleRepository:
             raise NotFoundError(f'No work schedule with id {schedule.id}')
         return schedule
 
-    def delete(self, schedule_id: int) -> None:
+    def delete(self, schedule_id: str) -> None:
         self.get(schedule_id)
         if len(self.all()) == 1:
             raise ConflictError('The only work schedule cannot be deleted')

@@ -5,6 +5,7 @@ import secrets
 from collections.abc import Callable
 
 from src.lib.passwords import hash_password, verify_password
+from src.models.base import new_id as new_record_id
 from src.models.users import Role, User
 from src.modules.storage.dynamodb.catalog import add_default_activity_types
 from src.modules.storage.dynamodb.keys import ATTEMPTS, LOGIN, USERS, user_partition
@@ -61,7 +62,7 @@ class DynamoUsers:
                                 | ({'role': 'admin'} if first else {}))
         for field in ('username', 'email'):
             self._claim(field, getattr(added, field), added.id)
-        self._unit.put({'PK': USERS, 'SK': _profile_key(added.id), 'number': self._unit.next_id('user'),
+        self._unit.put({'PK': USERS, 'SK': _profile_key(added.id), 'order': new_record_id(),
                         'password_hash': hash_password(password)} | _values(added))
         add_default_activity_types(self._unit, added.id)
         return added
@@ -113,7 +114,7 @@ class DynamoUsers:
         end_sessions(self._unit, user_id)
 
     def _profiles(self) -> list[Item]:
-        return sorted(self._unit.query_prefix(USERS, 'USER#'), key=lambda item: item['number'])
+        return sorted(self._unit.query_prefix(USERS, 'USER#'), key=lambda item: item['order'])
 
     def _profile(self, user_id: str) -> Item:
         item = self._unit.get(USERS, _profile_key(user_id))

@@ -156,7 +156,7 @@ function ptoYearsTable(years: PtoYear[]): EditableTable {
       { name: 'note', label: 'Note', required: false, maxLength: 200 },
     ],
     items: years.map((year) => ({
-      id: year.year,
+      id: String(year.year),  // the year is the item's id
       label: String(year.year),
       values: {
         year: String(year.year), allowance: days(year.allowance), extra_days: days(year.extra_days),
@@ -164,13 +164,13 @@ function ptoYearsTable(years: PtoYear[]): EditableTable {
       },
     })),
     save: (id, values) => {
-      const year = id ?? Number(values['year']);
+      const year = Number(id ?? values['year']);
       if (id === null && entered.has(year)) {
         return Promise.reject(new ApiError(409, `${year} is already entered; edit it in the table`, null));
       }
       return api.savePtoYear(year, ptoYearInput(values));
     },
-    remove: (id) => api.deletePtoYear(id),
+    remove: (id) => api.deletePtoYear(Number(id)),
     deleteQuestion: (item) => `Delete the PTO days of ${item.label}? The year then has no PTO account.`,
   };
 }

@@ -55,9 +55,9 @@ export function editFromSearch(search: string, week: string): IsoDate | null {
   return date && /^\d{4}-\d{2}-\d{2}$/.test(date) && isoWeek(date) === week ? date : null;
 }
 
-/** The entry to open for editing from `?entry=129`, if it is an entry of the shown week. */
+/** The entry to open for editing from `?entry=<id>`, if it is an entry of the shown week. */
 export function entryFromSearch(search: string, entries: Map<IsoDate, EntryView[]>): Editing {
-  const id = Number(new URLSearchParams(search).get('entry'));
+  const id = new URLSearchParams(search).get('entry');
   const entry = [...entries.values()].flat().find((item) => item.id === id);
   return entry ? { kind: 'entry', date: entry.date, id: entry.id } : null;
 }
@@ -103,13 +103,13 @@ type WeekData = {
   activityTypes: ActivityType[];
 };
 /** What is open: the form of a day, of an entry (id) or of a new entry (null) on a date, or nothing. */
-export type Editing = { kind: 'day'; date: IsoDate } | { kind: 'entry'; date: IsoDate; id: number | null } | null;
+export type Editing = { kind: 'day'; date: IsoDate } | { kind: 'entry'; date: IsoDate; id: string | null } | null;
 /** `readOnly`: the team view of a member's week (no editing, no history). */
 type View = {
-  data: WeekData; today: IsoDate; editing: Editing; history: number | null; actions: Actions; readOnly: boolean;
+  data: WeekData; today: IsoDate; editing: Editing; history: string | null; actions: Actions; readOnly: boolean;
 };
 type Actions = {
-  edit: (editing: Editing) => void; cancel: () => void; changed: () => void; toggleHistory: (entryId: number) => void;
+  edit: (editing: Editing) => void; cancel: () => void; changed: () => void; toggleHistory: (entryId: string) => void;
 };
 
 const COLUMNS = 8;
@@ -163,7 +163,7 @@ function entryItem(entry: EntryView, view: View): HTMLElement {
   if (view.readOnly) {
     return el('li', {}, el('div', { class: 'entry' }, ...entryContent(entry)));
   }
-  const activityNames = new Map(view.data.activityTypes.map((activity) => [activity.id ?? 0, activity.name]));
+  const activityNames = new Map(view.data.activityTypes.map((activity) => [activity.id ?? '', activity.name]));
   const historyOpen = view.history === entry.id;
   return el('li', {},
     el('div', { class: 'entry' }, ...entryContent(entry),
@@ -298,7 +298,7 @@ export async function renderWeekPage(doc: Document): Promise<void> {
   let data: WeekData | null = null;
   const initialDay = member ? null : editFromSearch(doc.location.search, week);
   let editing: Editing = initialDay ? { kind: 'day', date: initialDay } : null;
-  let history: number | null = null;
+  let history: string | null = null;
   let returnFocus: { key: string | null; date: IsoDate } | null = null;  // the opener of the form that just closed
 
   const draw = (): void => {

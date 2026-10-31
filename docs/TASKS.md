@@ -201,6 +201,13 @@ and ends with passing tests and the flake8 check.
     resumable chunks); their tests are contract tests now
   - [x] **L.11j** DynamoDB repositories: work schedules, PTO years, teams, memberships, invitations, report views;
     team services and the team's service choices (deleting one unassigns the members' tickets); contract tests
+  - [x] **L.11i2** UUIDv7 ids for records (SPEC 7.2a), before the DynamoDB table is in use; one task, since the
+    app only works with ids changed everywhere at once:
+    - Models and storage interfaces: ids are UUID strings; new ids from `uuid.uuid7()`
+    - SQLite: a migration to UUIDv7 ids in the order of the old ones, with all references (also in history lines)
+    - DynamoDB: no counters; sort keys with the ids
+    - API paths and schemas with string ids, OpenAPI file and TypeScript types; frontend code and tests
+    - Export and import: file ids stay 1, 2, …; the import gives new ids
   - [ ] **L.11j2** Import on DynamoDB: an export file holds thousands of items, far more than one transaction's 100,
     so the import writes atomic chunks and, if it fails, removes what it wrote (SPEC 5.8)
   - [ ] **L.11k** Access tests on both backends: another user's id answers 404 for every repository and API resource

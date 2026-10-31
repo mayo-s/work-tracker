@@ -556,8 +556,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the entry"
           }
@@ -594,8 +593,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the entry"
           }
@@ -639,8 +637,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the entry"
           }
@@ -699,8 +696,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the entry"
           }
@@ -743,8 +739,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the entry"
           }
@@ -2215,8 +2210,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the team"
           }
@@ -2259,8 +2253,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the team"
           }
@@ -2322,8 +2315,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the team"
           }
@@ -2372,8 +2364,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the team"
           }
@@ -2432,8 +2423,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the team"
           },
@@ -2442,8 +2432,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the invitation"
           }
@@ -2485,8 +2474,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the team"
           },
@@ -2537,8 +2525,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the team"
           }
@@ -2585,8 +2572,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the team"
           }
@@ -2648,8 +2634,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the team"
           },
@@ -2658,8 +2643,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the service"
           }
@@ -2699,8 +2683,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the team"
           },
@@ -2709,8 +2692,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the service"
           }
@@ -2829,8 +2811,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the invitation"
           }
@@ -2869,8 +2850,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the invitation"
           }
@@ -2993,8 +2973,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the work schedule"
           }
@@ -3034,8 +3013,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the work schedule"
           }
@@ -3079,8 +3057,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the work schedule"
           }
@@ -3342,8 +3319,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the flag"
           }
@@ -3459,8 +3435,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the record"
           }
@@ -3500,8 +3475,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the record"
           }
@@ -3545,8 +3519,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the record"
           }
@@ -3715,8 +3688,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the record"
           }
@@ -3756,8 +3728,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the record"
           }
@@ -3801,8 +3772,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int32"
+              "type": "string"
             },
             "description": "Id of the record"
           }
@@ -4079,7 +4049,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "name": {
             "title": "Name",
@@ -4405,7 +4375,8 @@
           "id": {
             "anyOf": [
               {
-                "type": "integer"
+                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -4467,7 +4438,8 @@
           "id": {
             "anyOf": [
               {
-                "type": "integer"
+                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5037,7 +5009,7 @@
           "service_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5060,7 +5032,7 @@
           "activity_type_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5087,7 +5059,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "kind": {
             "enum": [
@@ -5121,7 +5093,7 @@
           "service_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5163,7 +5135,7 @@
           "activity_type_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -5766,7 +5738,7 @@
           },
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "daily_target": {
             "description": "Hours per week split evenly over the work days, h:mm",
@@ -6015,7 +5987,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "name": {
             "title": "Name",
@@ -6160,7 +6132,7 @@
           "service_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -6201,7 +6173,7 @@
           "service_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -6239,7 +6211,7 @@
           "service_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -6491,7 +6463,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "name": {
             "title": "Name",
@@ -6831,7 +6803,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "reason": {
             "$ref": "#/components/schemas/FlagReason"
@@ -6938,7 +6910,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "reason": {
             "$ref": "#/components/schemas/FlagReason"
@@ -6960,7 +6932,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "changed_at": {
             "format": "date-time",
@@ -7022,7 +6994,7 @@
           "service_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7299,7 +7271,8 @@
           "id": {
             "anyOf": [
               {
-                "type": "integer"
+                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7314,8 +7287,9 @@
             "type": "string"
           },
           "activity_type_id": {
+            "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
             "title": "Activity Type Id",
-            "type": "integer"
+            "type": "string"
           },
           "duration": {
             "description": "Minutes, in quarter hours",
@@ -7423,7 +7397,8 @@
           "id": {
             "anyOf": [
               {
-                "type": "integer"
+                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7433,8 +7408,9 @@
             "title": "Id"
           },
           "entry_id": {
+            "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
             "title": "Entry Id",
-            "type": "integer"
+            "type": "string"
           },
           "changed_at": {
             "format": "date-time",
@@ -7483,7 +7459,8 @@
           "id": {
             "anyOf": [
               {
-                "type": "integer"
+                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7495,7 +7472,8 @@
           "entry_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7541,7 +7519,8 @@
           "id": {
             "anyOf": [
               {
-                "type": "integer"
+                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7601,7 +7580,8 @@
           "id": {
             "anyOf": [
               {
-                "type": "integer"
+                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7678,7 +7658,8 @@
           "service_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7706,7 +7687,8 @@
           "id": {
             "anyOf": [
               {
-                "type": "integer"
+                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -7765,7 +7747,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "email": {
             "title": "Email",
@@ -7838,7 +7820,7 @@
         "properties": {
           "id": {
             "title": "Id",
-            "type": "integer"
+            "type": "string"
           },
           "team_name": {
             "title": "Team Name",

@@ -7,13 +7,13 @@ from pydantic import Field, field_validator
 
 from src.lib.public_holidays import STATES, HolidayRules
 from src.lib.schedules import MINUTES_PER_WEEK, WorkSchedule
-from src.models.base import DomainModel
+from src.models.base import DomainModel, RecordId
 
 IsoWeekday = Annotated[int, Field(ge=1, le=7)]
 
 
 class Schedule(DomainModel):
-    id: int | None = None
+    id: RecordId | None = None
     valid_from: dt.date = Field(description='First day the schedule applies to')
     weekly_minutes: int = Field(ge=0, le=MINUTES_PER_WEEK)
     work_days: list[IsoWeekday] = Field(min_length=1, description='ISO weekdays: 1 = Monday … 7 = Sunday')

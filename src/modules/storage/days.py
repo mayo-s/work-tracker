@@ -4,6 +4,7 @@ import datetime as dt
 import sqlite3
 
 from src.lib.balances import DayRecord
+from src.models.base import new_id
 from src.models.days import Day
 from src.models.review import FlagReason, ReviewFlag
 from src.modules.storage.errors import NotFoundError
@@ -67,12 +68,12 @@ class DayRepository:
         self._conn.execute('DELETE FROM review_flags WHERE user_id = ? AND date = ?', (self._user, date.isoformat()))
 
     def add_flag(self, date: dt.date, reason: FlagReason, detail: str = '') -> ReviewFlag:
-        flag = ReviewFlag(date=date, reason=reason, detail=detail)
-        cursor = self._conn.execute(
-            'INSERT INTO review_flags (user_id, date, reason, detail) VALUES (?, ?, ?, ?)',
-            (self._user, date.isoformat(), flag.reason, flag.detail),
+        flag = ReviewFlag(id=new_id(), date=date, reason=reason, detail=detail)
+        self._conn.execute(
+            'INSERT INTO review_flags (id, user_id, date, reason, detail) VALUES (?, ?, ?, ?, ?)',
+            (flag.id, self._user, date.isoformat(), flag.reason, flag.detail),
         )
-        return flag.model_copy(update={'id': cursor.lastrowid})
+        return flag
 
     def flags_on(self, date: dt.date) -> list[ReviewFlag]:
         rows = self._conn.execute(f'SELECT {_FLAG_COLUMNS} FROM review_flags WHERE user_id = ? AND date = ? ORDER BY id',
@@ -85,7 +86,7 @@ class DayRepository:
         rows = self._conn.execute(sql, (self._user,))
         return [_to_flag(row) for row in rows]
 
-    def clear_flag(self, flag_id: int) -> None:
+    def clear_flag(self, flag_id: str) -> None:
         sql = 'DELETE FROM review_flags WHERE id = ? AND user_id = ? AND date IS NOT NULL'
         if not self._conn.execute(sql, (flag_id, self._user)).rowcount:
             raise NotFoundError(f'No day flag with id {flag_id}')

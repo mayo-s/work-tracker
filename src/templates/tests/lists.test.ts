@@ -6,13 +6,13 @@ import { test } from 'node:test';
 import type { ServiceChoice, TicketView } from '../ts/api.ts';
 import { deleteServiceQuestion, serviceGroups, ticketCounts } from '../ts/lists.ts';
 
-function ticket(key: string, serviceId: number | null): TicketView {
+function ticket(key: string, serviceId: string | null): TicketView {
   return { key, service_id: serviceId, service: null, entries: 1 };
 }
 
 test('tickets per service, without unassigned tickets', () => {
-  const counts = ticketCounts([ticket('TNG-1', 2), ticket('TNG-2', 2), ticket('KP-3', 5), ticket('AGA-4', null)]);
-  assert.deepEqual([...counts], [[2, 2], [5, 1]]);
+  const counts = ticketCounts([ticket('TNG-1', 's2'), ticket('TNG-2', 's2'), ticket('KP-3', 's5'), ticket('AGA-4', null)]);
+  assert.deepEqual([...counts], [['s2', 2], ['s5', 1]]);
 });
 
 test('delete question names the tickets that lose their service', () => {
@@ -21,8 +21,8 @@ test('delete question names the tickets that lose their service', () => {
   assert.equal(deleteServiceQuestion('TTS', 0), 'Delete TTS? No ticket uses it.');
 });
 
-const AUTH: ServiceChoice = { id: 1, short_name: 'AUTH', name: '', team: 'Platform' };
-const MSB: ServiceChoice = { id: 2, short_name: 'MSB', name: '', team: null };
+const AUTH: ServiceChoice = { id: 's1', short_name: 'AUTH', name: '', team: 'Platform' };
+const MSB: ServiceChoice = { id: 's2', short_name: 'MSB', name: '', team: null };
 
 test('services to choose: the team first, then the personal ones', () => {
   assert.deepEqual(serviceGroups([AUTH, MSB]), [['Team Platform', [AUTH]], ['Personal', [MSB]]]);

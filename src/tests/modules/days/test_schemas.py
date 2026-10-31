@@ -7,6 +7,7 @@ from src.lib.daytypes import DayType
 from src.models.days import Day
 from src.models.review import FlagReason, ReviewFlag
 from src.modules.days.schemas import DayInput, day_view
+from src.tests.ids import FIRST
 
 
 def test_day_input_to_day():
@@ -50,7 +51,7 @@ def test_view_of_holiday_and_half_pto():
 
 
 def test_view_with_flags():
-    flag = ReviewFlag(id=7, date=dt.date(2025, 12, 6), reason=FlagReason.WEEKEND_HOURS, detail='3,5 ABREISE Lübeck')
+    flag = ReviewFlag(id=FIRST, date=dt.date(2025, 12, 6), reason=FlagReason.WEEKEND_HOURS, detail='3,5 ABREISE Lübeck')
     view = day_view(dt.date(2025, 12, 6), None, [flag])
-    expected = [(7, FlagReason.WEEKEND_HOURS, '3,5 ABREISE Lübeck')]
+    expected = [(FIRST, FlagReason.WEEKEND_HOURS, '3,5 ABREISE Lübeck')]
     assert [(item.id, item.reason, item.detail) for item in view.flags] == expected

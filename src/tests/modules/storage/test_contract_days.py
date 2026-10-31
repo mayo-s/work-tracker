@@ -83,9 +83,9 @@ def test_add_and_list_flags(days):
     assert [found.date for found in days.day_flags()] == [dt.date(2024, 1, 6), saturday]
 
 
-def test_day_flags_ignore_entry_flags(days, per_call, klara_id):
+def test_day_flags_ignore_entry_flags(days, per_call, klara_id, activity_type_ids):
     entries = per_call(lambda store: store.entries(klara_id))
-    entry = entries.create(ActivityEntry(date=MONDAY, activity_type_id=1, duration=0))
+    entry = entries.create(ActivityEntry(date=MONDAY, activity_type_id=activity_type_ids['Meeting'], duration=0))
     entries.add_flag(entry.id, FlagReason.UNCERTAIN_TICKET)
     assert days.day_flags() == []
 

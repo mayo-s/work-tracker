@@ -4,6 +4,7 @@ from falcon import testing
 from moto import mock_aws
 
 from src.app import create_app
+from src.models.base import new_id
 from src.modules.storage.database import Database
 from src.modules.storage.dynamodb.table import REGION, Table, create_table
 from src.modules.storage.users import UserRepository
@@ -12,12 +13,12 @@ from src.tests.users import KLARA, PASSWORD, USER
 # The original setup's services and PTO years, which a new database no longer brings along (migration 6), for the
 # first user, who takes over the new database's seeds (activity types, settings, work schedule)
 ORIGINAL_SETUP = f"""
-    INSERT INTO services (user_id, short_name, name) VALUES
-        ('{USER}', 'O365', 'office-integration-service'),
-        ('{USER}', 'MSB', 'microsoft-bookings-service'),
-        ('{USER}', 'ImmoDrop', ''),
-        ('{USER}', 'HiS', 'history-service'),
-        ('{USER}', 'TTS', 'text-transformation-service');
+    INSERT INTO services (id, user_id, short_name, name) VALUES
+        ('{new_id()}', '{USER}', 'O365', 'office-integration-service'),
+        ('{new_id()}', '{USER}', 'MSB', 'microsoft-bookings-service'),
+        ('{new_id()}', '{USER}', 'ImmoDrop', ''),
+        ('{new_id()}', '{USER}', 'HiS', 'history-service'),
+        ('{new_id()}', '{USER}', 'TTS', 'text-transformation-service');
     INSERT INTO pto_years (user_id, year, allowance)
         VALUES ('{USER}', 2024, '17.5'), ('{USER}', 2025, '31'), ('{USER}', 2026, '31'), ('{USER}', 2027, '30');
     UPDATE user_settings SET value = '1' WHERE user_id = '{USER}' AND key = 'setup_done';

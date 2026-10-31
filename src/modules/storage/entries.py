@@ -8,6 +8,7 @@ from collections.abc import Callable, Iterable, Sequence
 from pydantic import JsonValue
 
 from src.lib.durations import MINUTES_PER_DAY, format_clock, format_duration, split_evenly
+from src.models.base import new_id
 from src.models.catalog import Ticket
 from src.models.entries import ActivityEntry, Entry, TicketEntry
 from src.models.history import EntryChange, HistoryAction
@@ -70,7 +71,7 @@ class EntryRepository:
         self._clock = clock or history_time
         self._tickets = TicketRepository(conn, user_id)
 
-    def get(self, entry_id: int) -> Entry:
+    def get(self, entry_id: str) -> Entry:
         row = self._conn.execute(f'SELECT {_ENTRY_COLUMNS} FROM entries WHERE id = ? AND user_id = ?',
                                  (entry_id, self._user)).fetchone()
         if row is None:
@@ -85,7 +86,7 @@ class EntryRepository:
         )
         return [_to_entry(row) for row in rows]
 
-    def imported_together(self, entry_id: int) -> list[Entry]:
+    def imported_together(self, entry_id: str) -> list[Entry]:
         """Entries imported from the same spreadsheet line as this one (same date and original line), itself included.
 
         Empty if the entry was not imported.
@@ -131,7 +132,7 @@ class EntryRepository:
             self.add_history(entry.id, action, changes, detail)
         return entry
 
-    def split(self, entry_id: int, ticket_keys: Sequence[str]) -> list[Entry]:
+    def split(self, entry_id: str, ticket_keys: Sequence[str]) -> list[Entry]:
         """Divide a ticket entry among several tickets, the hours split evenly in quarter hours.
 
         The entry itself gets the first ticket; the others become new entries with the same date and description.
@@ -152,7 +153,7 @@ class EntryRepository:
         ]
         return [first, *others]
 
-    def delete(self, entry_id: int) -> None:
+    def delete(self, entry_id: str) -> None:
         """Delete an entry and its review flags; its history is kept."""
         old = self.get(entry_id)
         self._conn.execute('DELETE FROM entries WHERE id = ? AND user_id = ?', (entry_id, self._user))
@@ -162,34 +163,34 @@ class EntryRepository:
         """Store an entry without a history line (its history comes along, e.g. from an export file); its ticket is
         created if needed."""
         self._check_references(entry)
-        cursor = self._write(
-            'INSERT INTO entries (user_id, date, kind, ticket_key, activity_type_id, duration, text, coding) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            (self._user, *_to_values(entry)),
+        restored = entry.model_copy(update={'id': new_id()})
+        self._write(
+            'INSERT INTO entries (id, user_id, date, kind, ticket_key, activity_type_id, duration, text, coding) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            (restored.id, self._user, *_to_values(entry)),
         )
-        return entry.model_copy(update={'id': cursor.lastrowid})
+        return restored
 
-    def reserve_id(self) -> int:
+    def reserve_id(self) -> str:
         """An id no entry will get, for an entry known only from its history (deleted before an export)."""
-        cursor = self._conn.execute(
-            "INSERT INTO entries (user_id, date, kind, duration) VALUES (?, '0001-01-01', 'ticket', 0)", (self._user,))
-        self._conn.execute('DELETE FROM entries WHERE id = ?', (cursor.lastrowid,))  # ids are never reused
-        return cursor.lastrowid
+        return new_id()
 
     def restore_history(self, change: EntryChange) -> EntryChange:
         """Store a history line as it was, with its own time."""
-        cursor = self._conn.execute(
-            'INSERT INTO entry_history (user_id, entry_id, changed_at, action, changes, detail) VALUES (?, ?, ?, ?, ?, ?)',
-            (self._user, change.entry_id, change.changed_at.isoformat(), change.action, json.dumps(change.changes),
-             change.detail),
+        stored = change.model_copy(update={'id': new_id()})
+        self._conn.execute(
+            'INSERT INTO entry_history (id, user_id, entry_id, changed_at, action, changes, detail)'
+            ' VALUES (?, ?, ?, ?, ?, ?, ?)',
+            (stored.id, self._user, change.entry_id, change.changed_at.isoformat(), change.action,
+             json.dumps(change.changes), change.detail),
         )
-        return change.model_copy(update={'id': cursor.lastrowid})
+        return stored
 
-    def add_history(self, entry_id: int, action: HistoryAction, changes: Changes, detail: str = '') -> EntryChange:
+    def add_history(self, entry_id: str, action: HistoryAction, changes: Changes, detail: str = '') -> EntryChange:
         return self.restore_history(
             EntryChange(entry_id=entry_id, changed_at=self._clock(), action=action, changes=changes, detail=detail))
 
-    def history(self, entry_id: int) -> list[EntryChange]:
+    def history(self, entry_id: str) -> list[EntryChange]:
         sql = f'SELECT {_HISTORY_COLUMNS} FROM entry_history WHERE entry_id = ? AND user_id = ? ORDER BY id'
         rows = self._conn.execute(sql, (entry_id, self._user))
         return [_to_change(row) for row in rows]
@@ -199,7 +200,7 @@ class EntryRepository:
         rows = self._conn.execute(f'SELECT {_HISTORY_COLUMNS} FROM entry_history WHERE user_id = ? ORDER BY id', (self._user,))
         return [_to_change(row) for row in rows]
 
-    def changed(self, entry_ids: Iterable[int]) -> set[int]:
+    def changed(self, entry_ids: Iterable[str]) -> set[str]:
         """Those of the given entries that changed after they were created or imported (for the UI marker)."""
         ids = list(entry_ids)
         placeholders = ', '.join('?' for _ in ids)
@@ -210,15 +211,16 @@ class EntryRepository:
         )
         return {row['entry_id'] for row in rows}
 
-    def add_flag(self, entry_id: int, reason: FlagReason, detail: str = '') -> ReviewFlag:
+    def add_flag(self, entry_id: str, reason: FlagReason, detail: str = '') -> ReviewFlag:
         flag = ReviewFlag(entry_id=entry_id, reason=reason, detail=detail)
         if not self._owned('entries', entry_id):
             raise ConflictError(f'Cannot flag entry {entry_id}: no such entry')
-        cursor = self._write('INSERT INTO review_flags (user_id, entry_id, reason, detail) VALUES (?, ?, ?, ?)',
-                             (self._user, entry_id, flag.reason, flag.detail))
-        return flag.model_copy(update={'id': cursor.lastrowid})
+        added = flag.model_copy(update={'id': new_id()})
+        self._write('INSERT INTO review_flags (id, user_id, entry_id, reason, detail) VALUES (?, ?, ?, ?, ?)',
+                    (added.id, self._user, entry_id, flag.reason, flag.detail))
+        return added
 
-    def flags_of(self, entry_id: int) -> list[ReviewFlag]:
+    def flags_of(self, entry_id: str) -> list[ReviewFlag]:
         rows = self._conn.execute(f'SELECT {_FLAG_COLUMNS} FROM review_flags WHERE entry_id = ? AND user_id = ? ORDER BY id',
                                   (entry_id, self._user))
         return [_to_flag(row) for row in rows]
@@ -229,7 +231,7 @@ class EntryRepository:
         rows = self._conn.execute(sql, (self._user,))
         return [_to_flag(row) for row in rows]
 
-    def clear_flag(self, flag_id: int) -> None:
+    def clear_flag(self, flag_id: str) -> None:
         sql = 'DELETE FROM review_flags WHERE id = ? AND user_id = ? AND entry_id IS NOT NULL'
         if not self._conn.execute(sql, (flag_id, self._user)).rowcount:
             raise NotFoundError(f'No entry flag with id {flag_id}')
@@ -247,7 +249,7 @@ class EntryRepository:
         if isinstance(entry, ActivityEntry) and not self._owned('activity_types', entry.activity_type_id):
             raise ConflictError(f'Cannot save entry: unknown activity type {entry.activity_type_id}')
 
-    def _owned(self, table: str, row_id: int) -> bool:
+    def _owned(self, table: str, row_id: str) -> bool:
         row = self._conn.execute(f'SELECT 1 FROM {table} WHERE id = ? AND user_id = ?', (row_id, self._user)).fetchone()
         return row is not None
 

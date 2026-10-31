@@ -18,7 +18,7 @@ function day(date: string, weekday: string, changes: Partial<DayView> = {}): Day
 }
 
 function entry(date: string): EntryView {
-  return { id: 1, kind: 'ticket', date, duration: '1:00', ticket_key: 'TNG-5882', changed: false, flags: [] } as EntryView;
+  return { id: 'e1', kind: 'ticket', date, duration: '1:00', ticket_key: 'TNG-5882', changed: false, flags: [] } as EntryView;
 }
 
 test('overtime with a sign', () => {
@@ -77,9 +77,9 @@ test('shown days include a day off being edited', () => {
 });
 
 test('entry to edit from the address, only within the shown week', () => {
-  const entries = entriesByDate([{ ...entry('2026-10-27'), id: 129 }]);
-  assert.deepEqual(entryFromSearch('?week=2026-W44&entry=129', entries), { kind: 'entry', date: '2026-10-27', id: 129 });
-  assert.equal(entryFromSearch('?entry=7', entries), null);
+  const entries = entriesByDate([{ ...entry('2026-10-27'), id: 'e129' }]);
+  assert.deepEqual(entryFromSearch('?week=2026-W44&entry=e129', entries), { kind: 'entry', date: '2026-10-27', id: 'e129' });
+  assert.equal(entryFromSearch('?entry=e7', entries), null);
   assert.equal(entryFromSearch('', entries), null);
 });
 
@@ -92,7 +92,7 @@ test('a work day of the schedule may be any weekday', () => {
 
 test('the key of the button that opened a form', () => {
   assert.equal(openerKey({ kind: 'day', date: '2026-10-28' }), 'day-2026-10-28');
-  assert.equal(openerKey({ kind: 'entry', date: '2026-10-28', id: 129 }), 'entry-129');
+  assert.equal(openerKey({ kind: 'entry', date: '2026-10-28', id: 'e129' }), 'entry-e129');
   assert.equal(openerKey({ kind: 'entry', date: '2026-10-28', id: null }), 'add-2026-10-28');
   assert.equal(openerKey(null), null);
 });

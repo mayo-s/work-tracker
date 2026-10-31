@@ -38,7 +38,7 @@ def test_file_header_and_settings(store):
     assert (data.format, data.version, data.exported_at) == ('work-tracker', 1, NOW.replace(microsecond=0))
     assert (data.settings.balance_start, data.theme) == (dt.date(2024, 6, 1), 'dark')
     assert [year.year for year in data.pto_years] == [2024, 2025, 2026, 2027]
-    assert [(schedule.id, schedule.weekly_minutes) for schedule in data.work_schedules] == [(1, 2400)]
+    assert [(schedule.id, schedule.weekly_minutes) for schedule in data.work_schedules] == [('1', 2400)]
 
 
 def test_references_use_file_ids(store):
@@ -52,9 +52,9 @@ def test_references_use_file_ids(store):
     data = export(store)
     services = {service.short_name: service.id for service in data.services}
     kinds = {kind.name: kind.id for kind in data.activity_types}
-    assert sorted(services.values()) == [1, 2, 3, 4, 5] and kinds == {'Meeting': 1, 'Travel': 2, 'Other': 3}
+    assert sorted(services.values()) == ['1', '2', '3', '4', '5'] and kinds == {'Meeting': '1', 'Travel': '2', 'Other': '3'}
     assert next(ticket for ticket in data.tickets if ticket.key == 'TNG-5213').service_id == services['MSB']
-    assert [(entry.id, entry.kind) for entry in data.entries] == [(1, 'ticket'), (2, 'activity')]
+    assert [(entry.id, entry.kind) for entry in data.entries] == [('1', 'ticket'), ('2', 'activity')]
     assert data.entries[1].activity_type_id == kinds['Meeting']
 
 
@@ -66,7 +66,7 @@ def test_deleted_entries_keep_their_history_after_the_entries(store):
     data = export(store)
     assert [entry.ticket_key for entry in data.entries] == ['TNG-2']
     lines = [(line.id, line.entry_id, line.action) for line in data.history]
-    assert lines == [(1, 2, HistoryAction.CREATED), (2, 1, HistoryAction.CREATED), (3, 2, HistoryAction.DELETED)]
+    assert lines == [('1', '2', HistoryAction.CREATED), ('2', '1', HistoryAction.CREATED), ('3', '2', HistoryAction.DELETED)]
 
 
 def test_history_names_activity_types_and_split_entries_by_file_id(store):
@@ -79,11 +79,11 @@ def test_history_names_activity_types_and_split_entries_by_file_id(store):
     ticket = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-2', duration=60))
     entries.split(ticket.id, ['TNG-2', 'TNG-3'])
     data = export(store)
-    assert [(entry.id, entry.kind) for entry in data.entries] == [(1, 'activity'), (2, 'ticket'), (3, 'ticket')]
+    assert [(entry.id, entry.kind) for entry in data.entries] == [('1', 'activity'), ('2', 'ticket'), ('3', 'ticket')]
     updated = next(line for line in data.history if line.action == HistoryAction.UPDATED)
-    assert updated.changes['activity_type_id'] == (None, 1)  # Tool Management is gone, Meeting is the first type
+    assert updated.changes['activity_type_id'] == (None, '1')  # Tool Management is gone, Meeting is the first type
     split_off = next(line for line in data.history if line.detail.startswith('Split from'))
-    assert (split_off.entry_id, split_off.detail) == (3, 'Split from entry 2')
+    assert (split_off.entry_id, split_off.detail) == ('3', 'Split from entry 2')
 
 
 def test_review_flags_on_days_and_entries(store):
@@ -96,7 +96,7 @@ def test_review_flags_on_days_and_entries(store):
     data = export(store)
     assert [day.date for day in data.days] == [MONDAY]
     flags = [(flag.id, flag.date, flag.entry_id, flag.detail) for flag in data.review_flags]
-    assert flags == [(1, MONDAY, None, 'Sa 2:00'), (2, None, 1, '#2')]
+    assert flags == [('1', MONDAY, None, 'Sa 2:00'), ('2', None, '1', '#2')]
 
 
 def test_team_services_in_use_are_included_with_the_team(store):

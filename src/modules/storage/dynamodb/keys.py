@@ -3,9 +3,8 @@
 | PK               | SK                      | Item                                                              |
 |------------------|-------------------------|-------------------------------------------------------------------|
 | `META`           | `SCHEMA`                | the schema version (`version`)                                    |
-| `COUNTER`        | the kind, e.g. `entry`  | the last id given to that kind of record (`value`), never reused  |
 | `APP`            | `SETTINGS`              | app-wide settings, e.g. `registration`                            |
-| `USERS`          | `USER#<user id>`        | a user's profile, role, password hash and registration `number`   |
+| `USERS`          | `USER#<user id>`        | a user's profile, role, password hash and registration `order`    |
 | `LOGIN`          | `USERNAME#<lower case>` | the user id of a username, kept unique (also `EMAIL#…`)           |
 | `SESSION#<hash>` | `SESSION`               | a session by the hash of its token (time to live `expires_at`)    |
 | `ATTEMPTS`       | `AT#<time>#<random>`    | a failed login or registration; `CLEARED`: failed ones up to then |
@@ -18,12 +17,11 @@ In a user's partition: `SETTINGS` (balance, setup, theme), `SESSION#<hash>` (to 
 `SERVICE#<id>` and `ACTIVITY_TYPE#<id>` (names unique by `SERVICE_NAME#…` / `ACTIVITY_TYPE_NAME#<lower case>`),
 `TICKET#<key>`, `DAY#<date>`, `ENTRY#<date>#<id>` with `ENTRY_ID#<id>` (its date), `HISTORY#<entry id>#<id>`,
 `FLAG#<id>`, `SCHEDULE#<id>` (one per day by `SCHEDULE_FROM#<date>`), `PTO#<year>`, `MEMBERSHIP#<id>` (the teams they
-were in) and `VIEW#<time>#<id>` (who looked at their reports). Ids in sort keys have ten digits, so they sort in the
-order of creation.
+were in) and `VIEW#<time>#<id>` (who looked at their reports). Ids are UUIDv7s (SPEC 7.2a), so sort keys holding them
+keep the order of creation.
 """
 
 META, SCHEMA = 'META', 'SCHEMA'
-COUNTER = 'COUNTER'
 APP, SETTINGS = 'APP', 'SETTINGS'
 USERS, LOGIN, ATTEMPTS = 'USERS', 'LOGIN', 'ATTEMPTS'
 

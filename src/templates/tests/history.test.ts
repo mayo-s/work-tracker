@@ -6,17 +6,17 @@ import { test } from 'node:test';
 import type { ChangeView } from '../ts/api.ts';
 import { describeChanges, formatTimestamp, formatValue } from '../ts/history.ts';
 
-const ACTIVITIES = new Map([[1, 'Tool Management']]);
+const ACTIVITIES = new Map([['0190a3c4-0001', 'Tool Management']]);
 
 function change(action: ChangeView['action'], changes: ChangeView['changes']): ChangeView {
-  return { id: 1, changed_at: '2026-10-28T16:47:11', action, changes, detail: '' };
+  return { id: 'h1', changed_at: '2026-10-28T16:47:11', action, changes, detail: '' };
 }
 
 test('values: durations, dates, activity names, booleans and empty values', () => {
   assert.equal(formatValue('duration', 90, ACTIVITIES), '1:30');
   assert.equal(formatValue('date', '2026-10-28', ACTIVITIES), '28.10.2026');
-  assert.equal(formatValue('activity_type_id', 1, ACTIVITIES), 'Tool Management');
-  assert.equal(formatValue('activity_type_id', 9, ACTIVITIES), '#9');
+  assert.equal(formatValue('activity_type_id', '0190a3c4-0001', ACTIVITIES), 'Tool Management');
+  assert.equal(formatValue('activity_type_id', '0190a3c4-0009', ACTIVITIES), 'deleted activity type');
   assert.equal(formatValue('coding', true, ACTIVITIES), 'yes');
   assert.equal(formatValue('description', '', ACTIVITIES), '—');
   assert.equal(formatValue('ticket_key', null, ACTIVITIES), '—');

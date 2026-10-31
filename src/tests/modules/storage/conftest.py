@@ -75,3 +75,10 @@ def klara_pto_years(storage, klara_id):
     with storage.transaction() as store:
         store.pto_years(klara_id).replace_all([PtoYear(year=year, allowance=Decimal(days)) for year, days in (
             (2024, '17.5'), (2025, '31'), (2026, '31'), (2027, '30'))])
+
+
+@pytest.fixture
+def activity_type_ids(storage, klara_id):
+    """Klara's default activity types by name."""
+    with storage.transaction() as store:
+        return {kind.name: kind.id for kind in store.activity_types(klara_id).all()}

@@ -47,7 +47,7 @@ class DayInput(BaseModel):
 
 
 class DayFlagView(BaseModel):
-    id: int
+    id: str
     reason: FlagReason
     detail: str
 

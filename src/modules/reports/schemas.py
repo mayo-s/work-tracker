@@ -47,7 +47,7 @@ class TicketWork(BaseModel):
 
 
 class ServiceWork(BaseModel):
-    service_id: int | None = Field(description='Null for tickets without service')
+    service_id: str | None = Field(description='Null for tickets without service')
     service: str | None
     duration: str
     tickets: list[TicketWork]
@@ -215,7 +215,7 @@ class CodingWork:
         services = sorted(grouped, key=lambda service_id: (service_id is None, (self._services.get(service_id) or '').lower()))
         return [self._service_work(service_id, grouped[service_id]) for service_id in services]
 
-    def _service_work(self, service_id: int | None, tickets: dict[str | None, list[TicketEntry]]) -> ServiceWork:
+    def _service_work(self, service_id: str | None, tickets: dict[str | None, list[TicketEntry]]) -> ServiceWork:
         work = [_ticket_work(key, tickets[key]) for key in sorted(tickets, key=_ticket_order)]
         return ServiceWork(
             service_id=service_id,

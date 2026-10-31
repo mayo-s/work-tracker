@@ -66,10 +66,16 @@ class Database:
         return latest
 
 
-def _apply(conn: sqlite3.Connection, script: str, number: int) -> None:
-    """One migration in one transaction; rolled back if it fails or leaves a broken reference."""
+def _apply(conn: sqlite3.Connection, migration: migrations.Migration, number: int) -> None:
+    """One migration (a script, or a function for what SQL cannot do) in one transaction; rolled back if it fails or
+    leaves a broken reference."""
     try:
-        conn.executescript(f'BEGIN;\n{script}\nPRAGMA user_version = {number};')
+        if callable(migration):
+            conn.execute('BEGIN')
+            migration(conn)
+            conn.execute(f'PRAGMA user_version = {number}')
+        else:
+            conn.executescript(f'BEGIN;\n{migration}\nPRAGMA user_version = {number};')
         if broken := conn.execute('PRAGMA foreign_key_check').fetchall():
             raise sqlite3.IntegrityError(f'Migration {number} leaves broken references: {[tuple(row) for row in broken]}')
         conn.execute('COMMIT')

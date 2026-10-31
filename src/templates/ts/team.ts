@@ -9,9 +9,8 @@ import { field, submit } from './forms.ts';
 const ROLE_LABELS: Record<MemberView['role'], string> = { admin: 'Admin', team_admin: 'Team admin', user: 'Member' };
 
 /** The team to show: `?team=` (the admin opens any team from the admin page), otherwise the user's own. */
-export function teamId(search: string, own: number | null): number | null {
-  const requested = Number(new URLSearchParams(search).get('team'));
-  return Number.isInteger(requested) && requested > 0 ? requested : own;
+export function teamId(search: string, own: string | null): string | null {
+  return new URLSearchParams(search).get('team') || own;
 }
 
 function membersSection(team: TeamPageView, me: string | undefined, page: Page): HTMLElement {
@@ -73,7 +72,7 @@ function invitationsSection(team: TeamPageView, page: Page): HTMLElement {
     inviteForm(team, page));
 }
 
-function servicesTable(teamId: number, services: Service[]): EditableTable {
+function servicesTable(teamId: string, services: Service[]): EditableTable {
   return {
     id: 'team-services',
     title: 'Team services',

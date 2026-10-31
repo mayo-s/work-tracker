@@ -60,20 +60,20 @@ def catalog_resources(
             self._storage = storage
 
         @spec.validate(resp=Response('HTTP_404', HTTP_200=model), tags=tags, path_parameter_descriptions=id_parameter)
-        def on_get(self, req: falcon.Request, resp: falcon.Response, item_id: int) -> None:
+        def on_get(self, req: falcon.Request, resp: falcon.Response, item_id: str) -> None:
             """One record."""
             with self._storage.transaction() as store:
                 resp.media = repository(store, current_user(req)).get(item_id)
 
         @spec.validate(json=input_model, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=model), tags=tags,
                        path_parameter_descriptions=id_parameter)
-        def on_put(self, req: falcon.Request, resp: falcon.Response, item_id: int, json: input_model) -> None:
+        def on_put(self, req: falcon.Request, resp: falcon.Response, item_id: str, json: input_model) -> None:
             """Change a record."""
             with self._storage.transaction() as store:
                 resp.media = repository(store, current_user(req)).update(model(id=item_id, **json.model_dump()))
 
         @spec.validate(resp=Response('HTTP_204', 'HTTP_404', 'HTTP_409'), tags=tags, path_parameter_descriptions=id_parameter)
-        def on_delete(self, req: falcon.Request, resp: falcon.Response, item_id: int) -> None:
+        def on_delete(self, req: falcon.Request, resp: falcon.Response, item_id: str) -> None:
             """Delete a record."""
             with self._storage.transaction() as store:
                 repository(store, current_user(req)).delete(item_id)

@@ -40,7 +40,7 @@ class AdminSettings(BaseModel):
 
 
 class AdminTeamView(BaseModel):
-    id: int
+    id: str
     name: str
     members: int = Field(description='Number of current members')
     team_admins: list[str] = Field(description='Usernames of the team admins')

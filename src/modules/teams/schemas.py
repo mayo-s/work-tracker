@@ -14,7 +14,7 @@ class TeamInput(BaseModel):
 
     name: str = Field(min_length=1, max_length=50, examples=['Platform'])
 
-    def to_team(self, team_id: int | None = None) -> Team:
+    def to_team(self, team_id: str | None = None) -> Team:
         return Team(id=team_id, name=self.name)
 
 
@@ -33,7 +33,7 @@ class MemberView(BaseModel):
 
 
 class InvitationView(BaseModel):
-    id: int
+    id: str
     email: str
     invited_at: dt.datetime
 
@@ -45,7 +45,7 @@ class InvitationView(BaseModel):
 class TeamPageView(BaseModel):
     """A team as its admins see it: members and open invitations."""
 
-    id: int
+    id: str
     name: str
     members: list[MemberView]
     invitations: list[InvitationView]
@@ -62,7 +62,7 @@ class InvitationSent(BaseModel):
 
 
 class TeamRef(BaseModel):
-    id: int
+    id: str
     name: str
     joined_on: dt.date
 
@@ -72,7 +72,7 @@ class TeamRef(BaseModel):
 
 
 class MyInvitationView(BaseModel):
-    id: int
+    id: str
     team_name: str
     invited_at: dt.datetime
     invited_by: str = Field(description='Name of the inviting admin')

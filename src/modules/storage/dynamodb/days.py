@@ -59,7 +59,7 @@ class DynamoDays:
         flags = [flag for flag in all_flags(self._unit, self._pk) if flag.date is not None]
         return sorted(flags, key=lambda flag: (flag.date, flag.id))
 
-    def clear_flag(self, flag_id: int) -> None:
+    def clear_flag(self, flag_id: str) -> None:
         item = self._unit.get(self._pk, flag_key(flag_id))
         if item is None or item['date'] is None:
             raise NotFoundError(f'No day flag with id {flag_id}')

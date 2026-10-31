@@ -3,6 +3,7 @@ import pytest
 
 from src.modules.storage.catalog import ServiceRepository
 from src.tests.users import USER
+from src.tests.ids import UNKNOWN
 
 
 @pytest.fixture
@@ -42,7 +43,7 @@ def test_set_and_unassign_service(client, service_ids):
 
 @pytest.mark.parametrize('key, body, status', [
     ('TNG-404', {'service_id': None}, falcon.HTTP_404),
-    ('TNG-5214', {'service_id': 404}, falcon.HTTP_409),
+    ('TNG-5214', {'service_id': UNKNOWN}, falcon.HTTP_409),
 ])
 def test_set_service_errors(client, key, body, status):
     add_entry(client, 'TNG-5214')

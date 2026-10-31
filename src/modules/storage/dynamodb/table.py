@@ -9,8 +9,6 @@ from typing import Any
 
 from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
 
-from src.modules.storage.dynamodb.keys import COUNTER
-
 REGION = 'eu-central-1'  # Frankfurt
 TTL_ATTRIBUTE = 'expires_at'  # epoch seconds: DynamoDB deletes the item some time after (e.g. sessions)
 
@@ -54,7 +52,7 @@ def key(pk: str, sk: str) -> dict[str, Any]:
 
 
 class Table:
-    """Reads (strongly consistent), atomic writes and id counters on one table."""
+    """Reads (strongly consistent) and atomic writes on one table."""
 
     def __init__(self, client: Any, name: str) -> None:
         self.client = client
@@ -86,15 +84,6 @@ class Table:
     def transact(self, operations: list[dict[str, Any]]) -> None:
         """Write all or nothing (at most 100 operations, each on another item)."""
         self.client.transact_write_items(TransactItems=operations)
-
-    def next_id(self, kind: str) -> int:
-        """A new id for a kind of record: 1, 2, …, never given twice (an atomic counter, outside any transaction)."""
-        response = self.client.update_item(
-            TableName=self.name, Key=key(COUNTER, kind), UpdateExpression='ADD #value :one',
-            ExpressionAttributeNames={'#value': 'value'}, ExpressionAttributeValues=to_dynamo({':one': 1}),
-            ReturnValues='UPDATED_NEW',
-        )
-        return int(_deserializer.deserialize(response['Attributes']['value']))
 
 
 def create_table(client: Any, name: str) -> None:

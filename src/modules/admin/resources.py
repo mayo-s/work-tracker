@@ -94,7 +94,7 @@ class AdminTeamItem:
 
     @spec.validate(json=TeamInput, resp=Response('HTTP_403', 'HTTP_404', 'HTTP_409', HTTP_200=AdminTeamView), tags=TAGS,
                    path_parameter_descriptions=TEAM_PARAMETER)
-    def on_put(self, req: falcon.Request, resp: falcon.Response, team_id: int, json: TeamInput) -> None:
+    def on_put(self, req: falcon.Request, resp: falcon.Response, team_id: str, json: TeamInput) -> None:
         """Rename a team."""
         with self._storage.transaction() as store:
             _admin(req, store)
@@ -103,7 +103,7 @@ class AdminTeamItem:
 
     @spec.validate(resp=Response('HTTP_204', 'HTTP_403', 'HTTP_404', 'HTTP_409'), tags=TAGS,
                    path_parameter_descriptions=TEAM_PARAMETER)
-    def on_delete(self, req: falcon.Request, resp: falcon.Response, team_id: int) -> None:
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, team_id: str) -> None:
         """Delete a team without members (409 otherwise); its invitations and services go with it, the membership
         history keeps it."""
         with self._storage.transaction() as store:
@@ -137,6 +137,6 @@ def _view(store: Store, user_id: str) -> AdminUserView:
     return AdminUserView.of(store.users().get(user_id), membership.team_name if membership else None)
 
 
-def _team_view(store: Store, team_id: int) -> AdminTeamView:
+def _team_view(store: Store, team_id: str) -> AdminTeamView:
     teams = store.teams()
     return AdminTeamView.of(teams.get(team_id), [(member.username, member.role) for member in teams.members(team_id)])

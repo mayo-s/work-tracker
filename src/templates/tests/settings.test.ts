@@ -40,7 +40,7 @@ test('a chosen theme is set on the root element, system removes it', () => {
 });
 
 test('accepting an invitation tells which team is left', () => {
-  const invitation = { id: 1, team_name: 'Billing', invited_at: '2026-11-02T09:00:00', invited_by: 'Klara Himmel' };
+  const invitation = { id: 'i1', team_name: 'Billing', invited_at: '2026-11-02T09:00:00', invited_by: 'Klara Himmel' };
   assert.equal(acceptQuestion(invitation, null), 'Join Billing?');
   assert.equal(acceptQuestion(invitation, 'Platform'),
     'Join Billing? You leave Platform; the services of Platform your tickets use become personal services.');

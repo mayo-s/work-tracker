@@ -11,7 +11,7 @@ from src.modules.storage.store import Store
 
 class TicketView(BaseModel):
     key: str = Field(examples=['ENGINE-461'])
-    service_id: int | None
+    service_id: str | None
     service: str | None = Field(description='Short name of the service')
     entries: int = Field(description='Number of entries of the ticket')
 
@@ -23,14 +23,14 @@ class TicketQuery(BaseModel):
 class TicketServiceInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
-    service_id: int | None = Field(description='The service, or null to unassign it')
+    service_id: str | None = Field(description='The service, or null to unassign it')
 
 
 class ServiceAssignment(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     keys: list[TicketKey] = Field(min_length=1, examples=[['AGA-39', 'AGA-40']])
-    service_id: int | None = Field(description='The service, or null to unassign it')
+    service_id: str | None = Field(description='The service, or null to unassign it')
 
 
 class AssignmentResult(BaseModel):

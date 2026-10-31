@@ -5,8 +5,8 @@ import { el } from './dom.ts';
 import type { EditableTable } from './editable-table.ts';
 
 /** Number of tickets per service id. */
-export function ticketCounts(tickets: TicketView[]): Map<number, number> {
-  const counts = new Map<number, number>();
+export function ticketCounts(tickets: TicketView[]): Map<string, number> {
+  const counts = new Map<string, number>();
   for (const ticket of tickets) {
     if (ticket.service_id !== null) {
       counts.set(ticket.service_id, (counts.get(ticket.service_id) ?? 0) + 1);

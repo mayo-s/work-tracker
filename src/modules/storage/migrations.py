@@ -1,9 +1,16 @@
-"""Schema migrations. Each script runs once, in order; the database tracks the count in PRAGMA user_version.
+"""Schema migrations. Each runs once, in order; the database tracks the count in PRAGMA user_version.
 
-Never change a released script: add a new one instead.
+A migration is a SQL script, or a function for what SQL cannot do. Never change a released one: add a new one instead.
 """
 
-MIGRATIONS = (
+import sqlite3
+from collections.abc import Callable
+
+from src.modules.storage.record_ids import to_record_ids
+
+Migration = str | Callable[[sqlite3.Connection], None]
+
+MIGRATIONS: tuple[Migration, ...] = (
     # 1: initial schema and seed data
     """
     CREATE TABLE settings (
@@ -520,4 +527,6 @@ MIGRATIONS = (
     );
     CREATE INDEX report_views_by_member ON report_views (member_id, viewed_at);
     """,
+    # 13: UUIDv7 ids for records instead of integers counting up (SPEC 7.2a, TASKS.md L.11i2)
+    to_record_ids,
 )

@@ -4,6 +4,7 @@ import datetime as dt
 
 import pytest
 
+from src.models.base import new_id
 from src.models.entries import ActivityEntry, TicketEntry
 from src.models.history import EntryChange, HistoryAction
 from src.models.review import FlagReason
@@ -29,8 +30,9 @@ def ticket_entry():
 
 
 @pytest.fixture
-def activity_entry():
-    return ActivityEntry(date=MONDAY, activity_type_id=1, duration=120, note='GCC Tactical')
+def activity_entry(activity_type_ids):
+    return ActivityEntry(date=MONDAY, activity_type_id=activity_type_ids['Tool Management'], duration=120,
+                         note='GCC Tactical')
 
 
 def test_create_and_get_ticket_entry(entries, ticket_entry):
@@ -50,7 +52,7 @@ def test_create_and_get_activity_entry(entries, activity_entry):
 
 
 def test_create_with_unknown_activity_type(entries):
-    unknown = ActivityEntry(date=MONDAY, activity_type_id=404, duration=60)
+    unknown = ActivityEntry(date=MONDAY, activity_type_id=new_id(), duration=60)
     with pytest.raises(ConflictError):
         entries.create(unknown)
 
@@ -108,9 +110,9 @@ def test_update_without_changes_records_nothing(entries, ticket_entry):
     assert len(entries.history(created.id)) == 1
 
 
-def test_update_cannot_change_kind(entries, ticket_entry):
+def test_update_cannot_change_kind(entries, ticket_entry, activity_type_ids):
     created = entries.create(ticket_entry)
-    activity = ActivityEntry(id=created.id, date=MONDAY, activity_type_id=1, duration=90)
+    activity = ActivityEntry(id=created.id, date=MONDAY, activity_type_id=activity_type_ids['Meeting'], duration=90)
     with pytest.raises(ConflictError):
         entries.update(activity)
 

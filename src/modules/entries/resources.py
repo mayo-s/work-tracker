@@ -44,7 +44,7 @@ class EntryItem:
         self._storage = storage
 
     @spec.validate(resp=Response('HTTP_404', HTTP_200=EntryView), tags=TAGS, path_parameter_descriptions=ID_PARAMETER)
-    def on_get(self, req: falcon.Request, resp: falcon.Response, entry_id: int) -> None:
+    def on_get(self, req: falcon.Request, resp: falcon.Response, entry_id: str) -> None:
         """One entry."""
         with self._storage.transaction() as store:
             user_id = current_user(req)
@@ -52,13 +52,13 @@ class EntryItem:
 
     @spec.validate(json=EntryInput, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=EntryView), tags=TAGS,
                    path_parameter_descriptions=ID_PARAMETER)
-    def on_put(self, req: falcon.Request, resp: falcon.Response, entry_id: int, json: EntryInput) -> None:
+    def on_put(self, req: falcon.Request, resp: falcon.Response, entry_id: str, json: EntryInput) -> None:
         """Change an entry; only changed fields are written to its history. The kind cannot change."""
         with self._storage.transaction() as store:
             resp.media = _save(store, current_user(req), json, entry_id)
 
     @spec.validate(resp=Response('HTTP_204', 'HTTP_404'), tags=TAGS, path_parameter_descriptions=ID_PARAMETER)
-    def on_delete(self, req: falcon.Request, resp: falcon.Response, entry_id: int) -> None:
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, entry_id: str) -> None:
         """Delete an entry and its review flags; its history is kept."""
         with self._storage.transaction() as store:
             store.entries(current_user(req)).delete(entry_id)
@@ -71,7 +71,7 @@ class EntrySplit:
 
     @spec.validate(json=EntrySplitInput, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=list[EntryView]), tags=TAGS,
                    path_parameter_descriptions=ID_PARAMETER)
-    def on_post(self, req: falcon.Request, resp: falcon.Response, entry_id: int, json: EntrySplitInput) -> None:
+    def on_post(self, req: falcon.Request, resp: falcon.Response, entry_id: str, json: EntrySplitInput) -> None:
         """Divide a ticket entry among several tickets (e.g. an alias like #4347 aka #1482), hours split evenly."""
         with self._storage.transaction() as store:
             user_id = current_user(req)
@@ -83,14 +83,14 @@ class EntryHistory:
         self._storage = storage
 
     @spec.validate(resp=Response(HTTP_200=list[ChangeView]), tags=TAGS, path_parameter_descriptions=ID_PARAMETER)
-    def on_get(self, req: falcon.Request, resp: falcon.Response, entry_id: int) -> None:
+    def on_get(self, req: falcon.Request, resp: falcon.Response, entry_id: str) -> None:
         """The history of an entry, oldest first; also available after the entry was deleted."""
         with self._storage.transaction() as store:
             changes = store.entries(current_user(req)).history(entry_id)
             resp.media = [ChangeView(**change.model_dump()) for change in changes]
 
 
-def _save(store: Store, user_id: str, json: EntryInput, entry_id: int | None = None) -> EntryView:
+def _save(store: Store, user_id: str, json: EntryInput, entry_id: str | None = None) -> EntryView:
     entries = store.entries(user_id)
     entries.check_fits_day(json.to_entry(entry_id))
     entry = entries.create(json.to_entry()) if entry_id is None else entries.update(json.to_entry(entry_id))

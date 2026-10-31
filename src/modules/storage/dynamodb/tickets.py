@@ -52,11 +52,11 @@ class DynamoTickets:
         """The ticket with this key, created without a service if it does not exist yet."""
         return ensure_ticket(self._unit, self._pk, key)
 
-    def set_service(self, key: str, service_id: int | None) -> Ticket:
+    def set_service(self, key: str, service_id: str | None) -> Ticket:
         self.assign_service([key], service_id)
         return self.get(key)
 
-    def assign_service(self, keys: Iterable[str], service_id: int | None) -> int:
+    def assign_service(self, keys: Iterable[str], service_id: str | None) -> int:
         """Assign one service (or none) to several tickets at once; all tickets must exist. Returns the count.
 
         More than fit into one transaction are written in chunks; each ticket on its own is right after each chunk.
@@ -69,7 +69,7 @@ class DynamoTickets:
             self._unit.put({'PK': self._pk, 'SK': TICKET + ticket.key, **ticket.model_dump(), 'service_id': service_id})
         return len(tickets)
 
-    def _own_service(self, service_id: int) -> bool:
+    def _own_service(self, service_id: str) -> bool:
         """Only the user's personal services and those of their team can be assigned (not another user's or team's,
         though the id exists)."""
         if self._unit.get(self._pk, service_key(service_id)):

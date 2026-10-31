@@ -54,11 +54,11 @@ class TicketRepository:
                            (self._user, _key(key)))
         return self.get(key)
 
-    def set_service(self, key: str, service_id: int | None) -> Ticket:
+    def set_service(self, key: str, service_id: str | None) -> Ticket:
         self.assign_service([key], service_id)
         return self.get(key)
 
-    def assign_service(self, keys: Iterable[str], service_id: int | None) -> int:
+    def assign_service(self, keys: Iterable[str], service_id: str | None) -> int:
         """Assign one service (or none) to several tickets at once; all tickets must exist. Returns the count."""
         unique = self._existing_keys(keys)
         if service_id is not None and not self._own_service(service_id):
@@ -68,7 +68,7 @@ class TicketRepository:
                            (service_id, self._user, *unique))
         return len(unique)
 
-    def _own_service(self, service_id: int) -> bool:
+    def _own_service(self, service_id: str) -> bool:
         """Only the user's personal services and those of their team can be assigned (not another user's or team's,
         though the id exists)."""
         row = self._conn.execute(

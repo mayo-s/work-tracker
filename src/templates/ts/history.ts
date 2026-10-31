@@ -17,7 +17,7 @@ function minutes(value: number): string {
 }
 
 /** A stored value as text: durations in h:mm, dates as DD.MM.YYYY, activity type names instead of ids. */
-export function formatValue(field: string, value: unknown, activityNames: Map<number, string>): string {
+export function formatValue(field: string, value: unknown, activityNames: Map<string, string>): string {
   if (value === null || value === undefined || value === '') {
     return '—';
   }
@@ -27,8 +27,8 @@ export function formatValue(field: string, value: unknown, activityNames: Map<nu
   if (field === 'date' && typeof value === 'string') {
     return value.split('-').reverse().join('.');
   }
-  if (field === 'activity_type_id' && typeof value === 'number') {
-    return activityNames.get(value) ?? `#${value}`;
+  if (field === 'activity_type_id' && typeof value === 'string') {
+    return activityNames.get(value) ?? 'deleted activity type';
   }
   if (typeof value === 'boolean') {
     return value ? 'yes' : 'no';
@@ -37,7 +37,7 @@ export function formatValue(field: string, value: unknown, activityNames: Map<nu
 }
 
 /** The changed fields of a history line: `old → new`, or only the value for created, imported and deleted. */
-export function describeChanges(change: ChangeView, activityNames: Map<number, string>): string[] {
+export function describeChanges(change: ChangeView, activityNames: Map<string, string>): string[] {
   const values = Object.values(change.changes);
   const onlyValue = ['created', 'imported', 'deleted'].includes(change.action)
     || (values.length > 0 && values.every(([before]) => before === null));  // e.g. an entry created by a split
@@ -56,7 +56,7 @@ export function formatTimestamp(value: string): string {
   return `${date.split('-').reverse().join('.')} ${time.slice(0, 5)}`;
 }
 
-function historyItem(change: ChangeView, activityNames: Map<number, string>): HTMLElement {
+function historyItem(change: ChangeView, activityNames: Map<string, string>): HTMLElement {
   return el('li', {},
     el('span', { class: 'num muted' }, formatTimestamp(change.changed_at)), ' ',
     el('strong', {}, ACTION_LABELS[change.action] ?? change.action), ' ',
@@ -66,7 +66,7 @@ function historyItem(change: ChangeView, activityNames: Map<number, string>): HT
 }
 
 /** Loads and shows the history of an entry, oldest first. */
-export function historyPanel(entryId: number, activityNames: Map<number, string>): HTMLElement {
+export function historyPanel(entryId: string, activityNames: Map<string, string>): HTMLElement {
   const panel = el('div', { class: 'history' }, el('p', { class: 'muted' }, 'Loading history…'));
   api.entryHistory(entryId).then(
     (changes) => panel.replaceChildren(el('ol', { class: 'history-list' }, ...changes.map((item) => historyItem(item, activityNames)))),
