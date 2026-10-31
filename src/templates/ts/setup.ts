@@ -23,6 +23,7 @@ export type SetupState = {
   firstYearChanged: boolean;
   services: Service[];
   account: AccountValues | null;  // the first user; null if the database already has one
+  setupToken: string | null;  // on AWS Lambda for the first user; null where none is needed
 };
 
 export type Step = 'Login' | 'Start' | 'Work schedule' | 'PTO' | 'Services' | 'Summary';
@@ -49,14 +50,15 @@ export function initialState(today: IsoDate): SetupState {
   return {
     start: today, opening: '0:00', weeklyHours: '40:00', workDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], state: 'BE',
     companyHalfDays: true, perYear: '30', firstYear: String(proRata(30, today)), firstYearChanged: false, services: [],
-    account: emptyAccount(),
+    account: emptyAccount(), setupToken: null,
   };
 }
 
 /** The problem that keeps a step from going on, or null. */
 export function stepError(state: SetupState, step: Step): string | null {
   const checks: Partial<Record<Step, () => string | null>> = {
-    'Login': () => (state.account ? accountError(state.account, true) : null),
+    'Login': () => (state.account ? accountError(state.account, true) : null)
+      ?? (state.setupToken !== null && !state.setupToken.trim() ? 'Enter the setup token.' : null),
     'Start': () => (!state.start ? 'Enter the first day.'
       : checkDuration(state.opening, OPENING).kind === 'ok' ? null
         : 'Enter the opening balance, e.g. 0:00, 12:30, -1:45 or 1.5.'),
@@ -82,6 +84,7 @@ export function setupInput(state: SetupState): SetupInput {
     services: state.services.filter((service) => service.short_name.trim())
       .map((service) => ({ short_name: service.short_name.trim(), name: service.name.trim() })),
     user: newUser(state),
+    setup_token: state.setupToken?.trim() || null,
   };
 }
 
@@ -169,7 +172,10 @@ function fileImport(onImport: (file: File | undefined) => void): HTMLElement {
 function loginStep(state: SetupState): HTMLElement[] {
   return [
     el('p', {}, 'Your login for the app: log in with the username or the e-mail address.'),
-    el('div', { class: 'setup-fields' }, ...accountFields('setup-user', state.account!, true)),
+    el('div', { class: 'setup-fields' }, ...accountFields('setup-user', state.account!, true),
+      state.setupToken === null ? null : field('Setup token', input('setup-token', state.setupToken,
+        (value) => (state.setupToken = value), { type: 'password', autocomplete: 'off' }),
+      'The token from the AWS Parameter Store (README, deployment): only with it the first user is created.')),
   ];
 }
 
@@ -295,7 +301,9 @@ export async function renderSetupPage(doc: Document): Promise<void> {
     return;
   }
   const state = initialState(isoDate(new Date()));
-  state.account = (await api.authStatus()).has_users ? null : state.account;  // a database with a user keeps it
+  const status = await api.authStatus();
+  state.account = status.has_users ? null : state.account;  // a database with a user keeps it
+  state.setupToken = status.setup_token ? '' : null;
   const names = steps(state);
   let step = 0;
   const error = el('p', { class: 'field-error', role: 'alert', hidden: true });
@@ -334,7 +342,8 @@ export async function renderSetupPage(doc: Document): Promise<void> {
     file.text().then((text) => {
       const parsed = parseExportFile(text);
       return 'problem' in parsed ? fail(parsed.problem)
-        : api.importSetup({ data: parsed.data, user: newUser(state) }).then(imported);
+        : api.importSetup({ data: parsed.data, user: newUser(state), setup_token: state.setupToken?.trim() || null })
+          .then(imported);
     }).catch((failure: unknown) => fail(failure instanceof ApiError ? failure.message : 'The file could not be imported.'));
   };
   const draw = (): void => {

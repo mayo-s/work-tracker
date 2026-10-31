@@ -127,7 +127,8 @@ load`, and on the NAS `docker compose up -d` (without `--build`).
 ## Login
 
 Every page and the API need a login; `/login`, `/register`, `/health`, the API docs and the static files stay open. A new database
-creates the first user in the setup, an existing one asks for it once on the next visit. Log in with the username or
+creates the first user in the setup (on AWS Lambda only with the setup token from the SSM Parameter Store, which
+the setup asks for), an existing one asks for it once on the next visit. Log in with the username or
 the e-mail address; a login stays valid for 24 hours since the last activity, "Log out" ends it, and the settings page
 changes the profile and the password. Each user has their own data (days, entries, tickets, services, activity
 types, schedules, PTO years, settings); nobody sees another user's. The first user is admin and takes over the data

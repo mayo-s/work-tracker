@@ -353,7 +353,7 @@ export interface paths {
         put?: never;
         /**
          * Set up the user's data at once: start day, opening balance, work schedule, PTO years and services. On a new database, it first creates the first user (`user`), who takes over its data and is logged in.
-         * @description The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything.
+         * @description The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything. On AWS Lambda the first user needs the setup token (403).
          */
         post: operations["post__api_setup"];
         delete?: never;
@@ -373,7 +373,7 @@ export interface paths {
         put?: never;
         /**
          * Set up the user's data from an export file instead of the setup steps; answers how many records of each type it wrote. On a new database, it first creates the first user (`user`), who is logged in.
-         * @description Only for a user who is not set up and has no days or entries (409 otherwise). Everything is written or nothing: another format, a newer version (422) or a file referring to records it does not hold (409) leave no trace.
+         * @description Only for a user who is not set up and has no days or entries (409 otherwise). Everything is written or nothing: another format, a newer version (422) or a file referring to records it does not hold (409) leave no trace. On AWS Lambda the first user needs the setup token (403).
          */
         post: operations["post__api_setup_import"];
         delete?: never;
@@ -445,7 +445,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create the first user of a database that has none, and log in; refused (409) once a user exists. */
+        /** Create the first user of a database that has none, and log in; refused (409) once a user exists. On AWS Lambda only with the setup token (403 if wrong; wrong tokens count as failed logins). */
         post: operations["post__api_auth_first-user"];
         delete?: never;
         options?: never;
@@ -1183,6 +1183,12 @@ export interface components {
              * @default 0
              */
             invitations?: number;
+            /**
+             * Setup Token
+             * @description True while the first user needs the setup token (AWS Lambda)
+             * @default false
+             */
+            setup_token?: boolean;
         };
         /** LoginInput */
         LoginInput: {
@@ -1221,6 +1227,38 @@ export interface components {
              * @default false
              */
             must_change_password?: boolean;
+        };
+        /** FirstUserInput */
+        FirstUserInput: {
+            /**
+             * Username
+             * @description 3 to 30 letters, digits, dots, dashes or underscores
+             * @example mario
+             */
+            username: string;
+            /**
+             * Email
+             * @example mario@example.com
+             */
+            email: string;
+            /** First Name */
+            first_name: string;
+            /**
+             * Last Name
+             * @default
+             */
+            last_name?: string;
+            /**
+             * Password
+             * @description At least 12 characters with letters, digits and a special character
+             */
+            password: string;
+            /**
+             * Setup Token
+             * @description Only on AWS Lambda, for the first user: the setup token
+             * @default null
+             */
+            setup_token?: string | null;
         };
         /** NewUserInput */
         NewUserInput: {
@@ -2013,6 +2051,12 @@ export interface components {
              * @default null
              */
             user?: components["schemas"]["NewUserInput"] | null;
+            /**
+             * Setup Token
+             * @description Only on AWS Lambda, for the first user: the setup token
+             * @default null
+             */
+            setup_token?: string | null;
         };
         /** SetupImportInput */
         SetupImportInput: {
@@ -2023,6 +2067,12 @@ export interface components {
              * @default null
              */
             user?: components["schemas"]["NewUserInput"] | null;
+            /**
+             * Setup Token
+             * @description Only on AWS Lambda, for the first user: the setup token
+             * @default null
+             */
+            setup_token?: string | null;
         };
         /**
          * ImportSummary
@@ -4286,7 +4336,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["NewUserInput"];
+                "application/json": components["schemas"]["FirstUserInput"];
             };
         };
         responses: {
@@ -4298,6 +4348,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserView"];
                 };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Conflict */
             409: {
@@ -4314,6 +4371,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ValidationError"];
                 };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

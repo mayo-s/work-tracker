@@ -7,8 +7,12 @@ Lambda sets itself. Anything else stops the app on start with a StageError sayin
 import os
 from enum import StrEnum
 
+import boto3
+
 from src.modules.auth.sessions import auth_enabled
+from src.modules.auth.setup_token import DEFAULT_PARAMETER, SetupToken
 from src.modules.storage.database import Database, database_path
+from src.modules.storage.dynamodb.table import REGION
 from src.modules.storage.sqlite import SqliteStorage
 from src.modules.storage.store import Storage
 
@@ -45,3 +49,12 @@ def stage_storage() -> Storage:
     if not auth_enabled():
         raise StageError('WORK_TRACKER_AUTH=off is for local development only, not on AWS Lambda')
     raise StageError('The DynamoDB storage for AWS Lambda is not built yet')
+
+
+def stage_setup_token() -> SetupToken | None:
+    """The token the first user needs: on AWS Lambda from the SSM parameter $WORK_TRACKER_SETUP_TOKEN_PARAMETER (default
+    /work-tracker/setup-token), locally none."""
+    if current_stage() is Stage.LOCAL:
+        return None
+    parameter = os.environ.get('WORK_TRACKER_SETUP_TOKEN_PARAMETER', DEFAULT_PARAMETER)
+    return SetupToken(boto3.client('ssm', region_name=REGION), parameter)
