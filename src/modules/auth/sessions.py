@@ -3,6 +3,7 @@
 import datetime as dt
 import os
 from collections.abc import Callable
+from typing import NamedTuple
 from urllib.parse import quote
 
 import falcon
@@ -17,6 +18,8 @@ OPEN_PATHS = {
     '/api/auth/register',
 }
 OPEN_PREFIXES = ('/static/', '/apidoc')
+# After a one-time password, until the user chose their own: only this page, its API and what every page needs
+NEW_PASSWORD_PATHS = {'/password', '/api/auth/me/password'}
 
 
 def auth_enabled() -> bool:
@@ -45,7 +48,8 @@ def clear_session_cookie(resp: falcon.Response) -> None:
 class Authentication:
     """Middleware: `req.context.user_id` for a valid session (renewing the cookie with the session); without one,
     pages forward to `/login?next=…` and the API answers 401. Until the first user exists, a new database is set up
-    on /setup (which creates it), an existing one gets it on /login."""
+    on /setup (which creates it), an existing one gets it on /login. After a one-time password, pages forward to
+    /password and the API answers 403 until the user chose their own."""
 
     def __init__(self, storage: Storage, clock: Callable[[], dt.datetime]) -> None:
         self._storage = storage
@@ -55,13 +59,27 @@ class Authentication:
         token = req.cookies.get(COOKIE)
         with self._storage.transaction() as store:
             user_id, renewed = store.sessions().user_id(token, self._clock()) if token else (None, False)
-            first_user_missing = not store.users().count()
-            set_up = store.setup_done(NO_OWNER)
+            access = _Access(user_id, not store.users().count(), store.setup_done(NO_OWNER),
+                             user_id is not None and store.users().get(user_id).must_change_password)
         req.context.user_id = user_id
         if renewed:
             set_session_cookie(req, resp, token)
-        if user_id is None and not _open(req.path, first_user_missing, set_up):
-            _refuse(req)
+        _check(req, access)
+
+
+class _Access(NamedTuple):
+    user_id: str | None
+    first_user_missing: bool
+    set_up: bool  # the database (not logged in) or the user
+    new_password: bool  # a one-time password, still to replace
+
+
+def _check(req: falcon.Request, access: _Access) -> None:
+    """Without a session, only what is open; after a one-time password, only the page to choose a new one."""
+    if access.user_id is None and not _open(req.path, access.first_user_missing, access.set_up):
+        _refuse(req)
+    if access.new_password and not _open_until_new_password(req.path):
+        _ask_for_new_password(req)
 
 
 def _open(path: str, first_user_missing: bool, set_up: bool) -> bool:
@@ -70,6 +88,16 @@ def _open(path: str, first_user_missing: bool, set_up: bool) -> bool:
     if first_user_missing and not set_up:  # the setup creates the first user
         return not path.startswith('/api/') or path in ('/api/setup', '/api/setup/import')
     return False
+
+
+def _open_until_new_password(path: str) -> bool:
+    return path in OPEN_PATHS | NEW_PASSWORD_PATHS or path.startswith(OPEN_PREFIXES)
+
+
+def _ask_for_new_password(req: falcon.Request) -> None:
+    if req.path.startswith('/api/'):
+        raise falcon.HTTPForbidden(description='Choose your own password first, on /password')
+    raise falcon.HTTPSeeOther('/password')
 
 
 def _refuse(req: falcon.Request) -> None:

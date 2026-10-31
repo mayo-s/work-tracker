@@ -545,6 +545,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users/{user_id}/one-time-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set a one-time password for a user who forgot theirs, shown only in this answer: their sessions end, and at the next login they choose their own password before anything else.
+         * @description Not for the own account (409): that password is changed in the settings.
+         */
+        post: operations["post__api_admin_users_{user_id}_one-time-password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/settings": {
         parameters: {
             query?: never;
@@ -1083,6 +1103,20 @@ export interface components {
              * @description Name of the team the user is in
              */
             team: string | null;
+            /**
+             * Must Change Password
+             * @description A one-time password is set; the user has not chosen their own yet
+             */
+            must_change_password: boolean;
+        };
+        /** OneTimePasswordView */
+        OneTimePasswordView: {
+            /**
+             * Password
+             * @description Shown only now: the admin gives it to the user, who chooses their own at the next login
+             * @example k7Qm-3xTp-9wLs-Rf2c
+             */
+            password: string;
         };
         /** AdminTeamViewList */
         AdminTeamViewList: components["schemas"]["AdminTeamView"][];
@@ -1181,6 +1215,12 @@ export interface components {
              * @enum {string}
              */
             role: "admin" | "team_admin" | "user";
+            /**
+             * Must Change Password
+             * @description True after a one-time password, until the user chose their own
+             * @default false
+             */
+            must_change_password?: boolean;
         };
         /** NewUserInput */
         NewUserInput: {
@@ -4518,6 +4558,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUserView"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_admin_users_{user_id}_one-time-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id (UUID) of the user */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OneTimePasswordView"];
                 };
             };
             /** @description Forbidden */

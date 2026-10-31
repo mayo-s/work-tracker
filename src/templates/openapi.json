@@ -2036,6 +2036,58 @@
         }
       }
     },
+    "/api/admin/users/{user_id}/one-time-password": {
+      "post": {
+        "summary": "Set a one-time password for a user who forgot theirs, shown only in this answer: their sessions end, and at the next login they choose their own password before anything else.",
+        "operationId": "post__api_admin_users_{user_id}_one-time-password",
+        "description": "Not for the own account (409): that password is changed in the settings.",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id (UUID) of the user"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OneTimePasswordView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/settings": {
       "get": {
         "summary": "App-wide settings: whether new users can register.",
@@ -4005,6 +4057,11 @@
             ],
             "description": "Name of the team the user is in",
             "title": "Team"
+          },
+          "must_change_password": {
+            "description": "A one-time password is set; the user has not chosen their own yet",
+            "title": "Must Change Password",
+            "type": "boolean"
           }
         },
         "required": [
@@ -4017,9 +4074,27 @@
           "active",
           "registered_at",
           "last_login_at",
-          "team"
+          "team",
+          "must_change_password"
         ],
         "title": "AdminUserView",
+        "type": "object"
+      },
+      "OneTimePasswordView": {
+        "properties": {
+          "password": {
+            "description": "Shown only now: the admin gives it to the user, who chooses their own at the next login",
+            "examples": [
+              "k7Qm-3xTp-9wLs-Rf2c"
+            ],
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "OneTimePasswordView",
         "type": "object"
       },
       "AdminTeamViewList": {
@@ -4208,6 +4283,12 @@
             ],
             "title": "Role",
             "type": "string"
+          },
+          "must_change_password": {
+            "default": false,
+            "description": "True after a one-time password, until the user chose their own",
+            "title": "Must Change Password",
+            "type": "boolean"
           }
         },
         "required": [

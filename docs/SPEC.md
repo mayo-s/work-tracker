@@ -284,8 +284,14 @@ corners, one accent color. Warnings are the only loud element.
   minute.
 - Every page and the API need a login (pages forward to `/login?next=…`, the API answers 401); `/login`, `/register`,
   `/health`, the API docs and the static files stay open. A new database creates the first user in the setup, an
-  existing one once on `/login`; on AWS Lambda only with the setup token (7.4). Locally, a command resets a forgotten password; on AWS Lambda, where nobody has a
-  shell, the admin sets a one-time password for the user, who changes it at the next login.
+  existing one once on `/login`; on AWS Lambda only with the setup token (7.4). Locally, a command resets a forgotten
+  password; on AWS Lambda, where nobody has a shell, the admin sets a one-time password for the user, who changes it at
+  the next login:
+  - The app makes it (four groups of four letters and digits, e.g. `k7Qm-3xTp-9wLs-Rf2c`) and shows it to the admin
+    only once, to pass on. The user's sessions end and their password no longer works.
+  - After logging in with it, every page forwards to `/password` and the API answers 403, until the user chose their
+    own password there. The admin page shows "One-time password" as the user's status until then.
+  - Not for the own account (409): that password is changed in the settings. It stays valid until it is used.
 - `WORK_TRACKER_AUTH=off` switches the login off for local development (`STAGE=Local` only, see 7.1); the app then
   works on the first user's data.
 

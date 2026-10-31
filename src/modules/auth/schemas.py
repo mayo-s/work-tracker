@@ -25,6 +25,8 @@ class UserView(BaseModel):
     first_name: str
     last_name: str
     role: Role = Field(description='admin, team_admin or user')
+    must_change_password: bool = Field(default=False, description='True after a one-time password, until the user chose '
+                                                                  'their own')
 
     @classmethod
     def of(cls, user: User) -> Self:

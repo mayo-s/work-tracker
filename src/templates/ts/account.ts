@@ -210,13 +210,14 @@ function profileForm(user: UserView, reload: (message: string) => void): HTMLFor
   return form;
 }
 
-function passwordForm(reload: (message: string) => void): HTMLFormElement {
+/** The form to change the password; `currentLabel` names the password to give, e.g. the one-time password. */
+export function passwordForm(done: (message: string) => void, currentLabel = 'Current password'): HTMLFormElement {
   const current = el('input', { id: 'password-current', type: 'password', autocomplete: 'current-password' });
   const values = emptyAccount();
   const fresh = input('password', 'password', values, { type: 'password', autocomplete: 'new-password' });
   const repeat = input('password', 'repeat', values, { type: 'password', autocomplete: 'new-password' });
   const form = el('form', { class: 'balance-form', novalidate: true },
-    field('password', 'current', 'Current password', current),
+    field('password', 'current', currentLabel, current),
     field('password', 'password', 'New password', fresh,
       `${PASSWORD_HINT} Logs out everywhere else.`),
     field('password', 'repeat', 'Repeat the new password', repeat),
@@ -227,7 +228,7 @@ function passwordForm(reload: (message: string) => void): HTMLFormElement {
     const problem = passwordError(values.password, values.repeat);
     void submit(form, 'password', ['current', 'password', 'repeat'],
       () => problem ? Promise.reject(new ApiError(422, problem, null)) : api.changePassword(current.value, values.password),
-      () => reload('Changed the password; other sessions are logged out'));
+      () => done('Changed the password; other sessions are logged out'));
   });
   return form;
 }

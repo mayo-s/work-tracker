@@ -73,7 +73,7 @@ class PageSettings:
         with self._storage.transaction() as store:
             done = _set_up(store, user_id)
             req.context.theme = store.load_theme(NO_OWNER if user_id is None else user_id)
-        if done == (resource.name == 'setup'):
+        if resource.name != 'password' and done == (resource.name == 'setup'):  # a new password comes before the setup
             raise falcon.HTTPSeeOther('/' if done else '/setup')
 
 

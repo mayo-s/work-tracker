@@ -213,7 +213,7 @@ and ends with passing tests and the flake8 check.
     stopped halfway is replaced by the next one (SPEC 5.8)
   - [x] **L.11k** Access tests on both backends: another user's id answers 404 for every repository and API resource
     (7.3)
-  - [ ] **L.11l** One-time password: the admin sets it for a user who forgot theirs (changed at the next login)
+  - [x] **L.11l** One-time password: the admin sets it for a user who forgot theirs (changed at the next login)
   - [ ] **L.11m** Setup token on Lambda: the first user only with the token from the SSM parameter (SPEC 7.4; `moto`
     in the tests)
   - [ ] **L.11n** zappa: the Lambda stage uses the DynamoDB table (`stages.py`, after the setup token of L.11m);

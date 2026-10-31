@@ -1345,8 +1345,16 @@ button.button-danger {
 
 body:has(main[data-page='login']) .app-nav,
 body:has(main[data-page='register']) .app-nav,
-body:has(main[data-page='setup']) .app-nav {
+body:has(main[data-page='setup']) .app-nav,
+body:has(main[data-page='password']) .app-nav {
   display: none;
+}
+
+.one-time-password {
+  font-family: ui-monospace, monospace;  /* every character easy to tell apart */
+  font-size: var(--font-size-large);
+  letter-spacing: 0.05em;
+  user-select: all;  /* one click selects it for copying */
 }
 
 .login {

@@ -529,4 +529,8 @@ MIGRATIONS: tuple[Migration, ...] = (
     """,
     # 13: UUIDv7 ids for records instead of integers counting up (SPEC 7.2a, TASKS.md L.11i2)
     to_record_ids,
+    # 14: one-time passwords set by an admin (TASKS.md L.11l): the user chooses their own at the next login
+    """
+    ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0 CHECK (must_change_password IN (0, 1));
+    """,
 )

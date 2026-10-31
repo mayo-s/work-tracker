@@ -153,8 +153,9 @@ team (earlier days: "Not in this team"), with entry descriptions but without day
 left are running figures. Members see in their settings who can look, and a log of who looked at which report.
 
 New passwords (registration, first user, password change, the command below) need at least 12 characters with
-letters, digits and a special character; existing passwords keep working. A forgotten password is reset on the
-computer running the app:
+letters, digits and a special character; existing passwords keep working. A forgotten password: an admin sets a
+one-time password on `/admin` ("One-time password", shown once to pass on), and the user chooses their own at the next
+login on `/password`. Or, on the computer running the app:
 
 ```shell
 pipenv run python -m src.modules.auth set-password klara  # username or e-mail address; asks for the new password

@@ -7,7 +7,7 @@ import falcon
 
 from src.defaultresources.default import Default
 from src.modules.admin.resources import (
-    AdminSettingsResource, AdminTeamCollection, AdminTeamItem, AdminUserCollection, AdminUserItem,
+    AdminOneTimePassword, AdminSettingsResource, AdminTeamCollection, AdminTeamItem, AdminUserCollection, AdminUserItem,
 )
 from src.modules.auth.resources import (
     AuthStatusResource, FirstUserResource, LoginResource, LogoutResource, MeResource, PasswordResource, RegisterResource,
@@ -66,6 +66,7 @@ def create_app(
     app.add_route('/lists', Redirect('/settings#services'))
     app.add_route('/settings', Page('settings', 'Settings'))
     app.add_route('/setup', Page('setup', 'Setup'))
+    app.add_route('/password', Page('password', 'New password'))
     app.add_route('/login', Page('login', 'Log in'))
     app.add_route('/register', RegisterPage(storage, enabled))
     app.add_route('/admin', Page('admin', 'Admin'))
@@ -102,6 +103,7 @@ def create_app(
     app.add_route('/api/auth/me/password', PasswordResource(storage, clock))
     app.add_route('/api/admin/users', AdminUserCollection(storage))
     app.add_route('/api/admin/users/{user_id}', AdminUserItem(storage))
+    app.add_route('/api/admin/users/{user_id}/one-time-password', AdminOneTimePassword(storage))
     app.add_route('/api/admin/settings', AdminSettingsResource(storage))
     app.add_route('/api/admin/teams', AdminTeamCollection(storage))
     app.add_route('/api/admin/teams/{team_id}', AdminTeamItem(storage, clock))
