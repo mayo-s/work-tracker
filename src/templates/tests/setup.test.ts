@@ -68,8 +68,16 @@ test('setup input leaves out empty services and trims', () => {
       username: 'pascal', email: 'turbo.pascal@example.com', first_name: 'Pascal', last_name: '',
       password: 'correct horse battery 9!',
     },
+    setup_token: null,
   });
   assert.equal(setupInput({ ...state, account: null }).user, null);
+});
+
+test('the setup token, where the first user needs one', () => {
+  const state = { ...initialState('2027-03-01'), account: PASCAL };
+  assert.equal(stepError({ ...state, setupToken: ' ' }, 'Login'), 'Enter the setup token.');
+  assert.equal(stepError({ ...state, setupToken: 'the token' }, 'Login'), null);
+  assert.equal(setupInput({ ...state, setupToken: ' the token ' }).setup_token, 'the token');
 });
 
 test('summary of all steps', () => {

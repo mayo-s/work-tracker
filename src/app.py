@@ -13,6 +13,7 @@ from src.modules.auth.resources import (
     AuthStatusResource, FirstUserResource, LoginResource, LogoutResource, MeResource, PasswordResource, RegisterResource,
 )
 from src.modules.auth.sessions import Authentication, LocalUser, auth_enabled
+from src.modules.auth.setup_token import SetupToken
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
 from src.modules.dashboard.resources import DashboardResource
 from src.modules.days.resources import DayCollection, DayItem, DayRange
@@ -37,21 +38,24 @@ from src.modules.teams.resources import (
 from src.modules.tickets.resources import TicketCollection, TicketItem, TicketRenaming, TicketServiceAssignment
 from src.modules.userdata.resources import ExportResource
 from src.utils.spec import spec
-from src.utils.stages import stage_storage
+from src.utils.stages import stage_setup_token, stage_storage
 
 
 def create_app(
     database: Database | None = None, today: Callable[[], dt.date] = dt.date.today, auth: bool | None = None,
     clock: Callable[[], dt.datetime] = dt.datetime.now, storage: Storage | None = None,
+    setup_token: SetupToken | None = None,
 ) -> falcon.App:
     """The app on the given storage or SQLite database, or by default on the storage of the stage it runs in
     (stages.py), migrated on start; a wrong stage raises a StageError.
 
-    `today` decides up to which day reports count, `clock` the time of sessions (both replaceable for tests).
+    `today` decides up to which day reports count, `clock` the time of sessions (both replaceable for tests). The
+    first user needs `setup_token` if one is given, and by default the stage's (only on AWS Lambda).
     The login is on unless `auth` is False or, by default, WORK_TRACKER_AUTH=off.
     """
-    if storage is None:
-        storage = stage_storage() if database is None else SqliteStorage(database)
+    if storage is None and database is None:
+        storage, setup_token = stage_storage(), stage_setup_token()
+    storage = storage or SqliteStorage(database)
     storage.migrate()
     enabled = auth_enabled() if auth is None else auth
     login = [Authentication(storage, clock)] if enabled else [LocalUser(storage)]
@@ -92,12 +96,12 @@ def create_app(
     app.add_route('/api/settings', SettingsResource(storage))
     app.add_route('/api/theme', ThemeResource(storage))
     app.add_route('/api/export', ExportResource(storage, clock))
-    app.add_route('/api/setup', SetupResource(storage, clock))
-    app.add_route('/api/setup/import', SetupImportResource(storage, clock))
-    app.add_route('/api/auth/status', AuthStatusResource(storage, clock, enabled))
+    app.add_route('/api/setup', SetupResource(storage, clock, setup_token))
+    app.add_route('/api/setup/import', SetupImportResource(storage, clock, setup_token))
+    app.add_route('/api/auth/status', AuthStatusResource(storage, clock, enabled, setup_token))
     app.add_route('/api/auth/login', LoginResource(storage, clock))
     app.add_route('/api/auth/logout', LogoutResource(storage, clock))
-    app.add_route('/api/auth/first-user', FirstUserResource(storage, clock))
+    app.add_route('/api/auth/first-user', FirstUserResource(storage, clock, setup_token=setup_token))
     app.add_route('/api/auth/register', RegisterResource(storage, clock, enabled))
     app.add_route('/api/auth/me', MeResource(storage, clock))
     app.add_route('/api/auth/me/password', PasswordResource(storage, clock))

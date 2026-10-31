@@ -7,23 +7,27 @@ import falcon
 from spectree import Response
 
 from src.models.users import User
-from src.modules.auth.schemas import AuthStatus, LoginInput, NewUserInput, PasswordInput, ProfileInput, UserView
+from src.modules.auth.schemas import (
+    AuthStatus, FirstUserInput, LoginInput, NewUserInput, PasswordInput, ProfileInput, UserView,
+)
 from src.modules.teams.schemas import TeamRef
-from src.modules.auth.sessions import COOKIE, clear_session_cookie, set_session_cookie
+from src.modules.auth.sessions import COOKIE, PAUSED, clear_session_cookie, set_session_cookie
+from src.modules.auth.setup_token import SetupToken, check_setup_token
 from src.modules.storage.errors import ConflictError
 from src.modules.storage.store import Storage, Store
 from src.utils.spec import spec
 
 TAGS = ['Login']
 WRONG_LOGIN = 'Wrong username, e-mail address or password'
-PAUSED = 'Too many attempts; try again in a minute'
 
 
 class _AuthResource:
-    def __init__(self, storage: Storage, clock: Callable[[], dt.datetime], enabled: bool = True) -> None:
+    def __init__(self, storage: Storage, clock: Callable[[], dt.datetime], enabled: bool = True,
+                 setup_token: SetupToken | None = None) -> None:
         self._storage = storage
         self._clock = clock
         self._enabled = enabled
+        self._setup_token = setup_token
 
     def _log_in(self, req: falcon.Request, resp: falcon.Response, store: Store, user: User) -> None:
         set_session_cookie(req, resp, store.sessions().start(user.id, self._clock()))
@@ -50,15 +54,19 @@ class AuthStatusResource(_AuthResource):
         invitations), and whether new users can register."""
         user_id = req.context.get('user_id') if self._enabled else None  # with the login off, nobody is logged in
         with self._storage.transaction() as store:
-            users = store.users()
-            status = AuthStatus(enabled=self._enabled, has_users=users.count() > 0, user=None,
-                                registration=self._enabled and store.registration_open())
-            if user_id is not None:
-                membership = store.teams().membership(user_id)
-                status.user = UserView.of(users.get(user_id))
-                status.team = TeamRef.of(membership) if membership else None
-                status.invitations = len(store.invitations().of_user(user_id))
-            resp.media = status
+            has_users = store.users().count() > 0
+            status = AuthStatus(enabled=self._enabled, has_users=has_users, user=None,
+                                registration=self._enabled and store.registration_open(),
+                                setup_token=self._setup_token is not None and not has_users)
+            resp.media = _with_user(status, store, user_id) if user_id is not None else status
+
+
+def _with_user(status: AuthStatus, store: Store, user_id: str) -> AuthStatus:
+    """The logged-in user, with their team and number of open invitations."""
+    membership = store.teams().membership(user_id)
+    return status.model_copy(update={'user': UserView.of(store.users().get(user_id)),
+                                     'team': TeamRef.of(membership) if membership else None,
+                                     'invitations': len(store.invitations().of_user(user_id))})
 
 
 class LoginResource(_AuthResource):
@@ -104,9 +112,11 @@ class LogoutResource(_AuthResource):
 
 
 class FirstUserResource(_AuthResource):
-    @spec.validate(json=NewUserInput, resp=Response('HTTP_409', HTTP_201=UserView), tags=TAGS)
-    def on_post(self, req: falcon.Request, resp: falcon.Response, json: NewUserInput) -> None:
-        """Create the first user of a database that has none, and log in; refused (409) once a user exists."""
+    @spec.validate(json=FirstUserInput, resp=Response('HTTP_403', 'HTTP_409', 'HTTP_429', HTTP_201=UserView), tags=TAGS)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, json: FirstUserInput) -> None:
+        """Create the first user of a database that has none, and log in; refused (409) once a user exists. On AWS
+        Lambda only with the setup token (403 if wrong; wrong tokens count as failed logins)."""
+        check_setup_token(self._storage, self._setup_token, json.setup_token, self._clock)
         with self._storage.transaction() as store:
             if store.users().count():
                 raise ConflictError('A user exists already; log in instead')

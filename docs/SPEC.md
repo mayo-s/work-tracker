@@ -514,7 +514,8 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
   a `SecureString` in the SSM Parameter Store of `eu-central-1`, created once by hand and never in the repository:
   `aws ssm put-parameter --name /work-tracker/setup-token --type SecureString --value "$(python -c "import secrets;
   print(secrets.token_urlsafe(32))")"` (at least 32 characters).
-  - While no user exists, `/setup` asks for it; the app reads the parameter only then, not on every start. A wrong
+  - While no user exists, `/setup` asks for it (also for an import); the app reads the parameter only then, not on
+    every start, and creating the first user in any way (setup, import, `/api/auth/first-user`) needs it. A wrong
     token is refused and counts as a failed login (5 per minute, 5.6), and the comparison takes the same time for
     every token. Without the parameter, `/setup` creates no user and says so.
   - Once the first user exists, the token no longer matters and the parameter can be deleted. Registration stays off

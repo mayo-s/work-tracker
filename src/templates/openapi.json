@@ -1516,7 +1516,7 @@
       "post": {
         "summary": "Set up the user's data at once: start day, opening balance, work schedule, PTO years and services. On a new database, it first creates the first user (`user`), who takes over its data and is logged in.",
         "operationId": "post__api_setup",
-        "description": "The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything.",
+        "description": "The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything. On AWS Lambda the first user needs the setup token (403).",
         "tags": [
           "Setup"
         ],
@@ -1562,7 +1562,7 @@
       "post": {
         "summary": "Set up the user's data from an export file instead of the setup steps; answers how many records of each type it wrote. On a new database, it first creates the first user (`user`), who is logged in.",
         "operationId": "post__api_setup_import",
-        "description": "Only for a user who is not set up and has no days or entries (409 otherwise). Everything is written or nothing: another format, a newer version (422) or a file referring to records it does not hold (409) leave no trace.",
+        "description": "Only for a user who is not set up and has no days or entries (409 otherwise). Everything is written or nothing: another format, a newer version (422) or a file referring to records it does not hold (409) leave no trace. On AWS Lambda the first user needs the setup token (403).",
         "tags": [
           "Setup"
         ],
@@ -1717,7 +1717,7 @@
     },
     "/api/auth/first-user": {
       "post": {
-        "summary": "Create the first user of a database that has none, and log in; refused (409) once a user exists.",
+        "summary": "Create the first user of a database that has none, and log in; refused (409) once a user exists. On AWS Lambda only with the setup token (403 if wrong; wrong tokens count as failed logins).",
         "operationId": "post__api_auth_first-user",
         "description": "",
         "tags": [
@@ -1725,8 +1725,14 @@
         ],
         "parameters": [],
         "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
           "409": {
             "description": "Conflict"
+          },
+          "429": {
+            "description": "Too Many Requests"
           },
           "201": {
             "description": "Created",
@@ -1753,7 +1759,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewUserInput"
+                "$ref": "#/components/schemas/FirstUserInput"
               }
             }
           },
@@ -4216,6 +4222,12 @@
             "description": "Open team invitations of the logged-in user",
             "title": "Invitations",
             "type": "integer"
+          },
+          "setup_token": {
+            "default": false,
+            "description": "True while the first user needs the setup token (AWS Lambda)",
+            "title": "Setup Token",
+            "type": "boolean"
           }
         },
         "required": [
@@ -4300,6 +4312,69 @@
           "role"
         ],
         "title": "UserView",
+        "type": "object"
+      },
+      "FirstUserInput": {
+        "additionalProperties": false,
+        "properties": {
+          "username": {
+            "description": "3 to 30 letters, digits, dots, dashes or underscores",
+            "examples": [
+              "mario"
+            ],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,29}$",
+            "title": "Username",
+            "type": "string"
+          },
+          "email": {
+            "examples": [
+              "mario@example.com"
+            ],
+            "maxLength": 200,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "default": "",
+            "maxLength": 50,
+            "title": "Last Name",
+            "type": "string"
+          },
+          "password": {
+            "description": "At least 12 characters with letters, digits and a special character",
+            "maxLength": 200,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string"
+          },
+          "setup_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Only on AWS Lambda, for the first user: the setup token",
+            "title": "Setup Token"
+          }
+        },
+        "required": [
+          "username",
+          "email",
+          "first_name",
+          "password"
+        ],
+        "title": "FirstUserInput",
         "type": "object"
       },
       "NewUserInput": {
@@ -5927,6 +6002,19 @@
             ],
             "default": null,
             "description": "The first user, who is logged in afterwards"
+          },
+          "setup_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Only on AWS Lambda, for the first user: the setup token",
+            "title": "Setup Token"
           }
         },
         "required": [
@@ -5955,6 +6043,19 @@
             ],
             "default": null,
             "description": "The first user, who is logged in afterwards"
+          },
+          "setup_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Only on AWS Lambda, for the first user: the setup token",
+            "title": "Setup Token"
           }
         },
         "required": [

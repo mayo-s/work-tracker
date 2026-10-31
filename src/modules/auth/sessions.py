@@ -13,6 +13,7 @@ from src.modules.storage.store import Storage
 from src.modules.storage.users import SESSION_LIFETIME
 
 COOKIE = 'wt_session'
+PAUSED = 'Too many attempts; try again in a minute'
 OPEN_PATHS = {
     '/login', '/register', '/health', '/api/auth/status', '/api/auth/login', '/api/auth/logout', '/api/auth/first-user',
     '/api/auth/register',

@@ -214,7 +214,7 @@ and ends with passing tests and the flake8 check.
   - [x] **L.11k** Access tests on both backends: another user's id answers 404 for every repository and API resource
     (7.3)
   - [x] **L.11l** One-time password: the admin sets it for a user who forgot theirs (changed at the next login)
-  - [ ] **L.11m** Setup token on Lambda: the first user only with the token from the SSM parameter (SPEC 7.4; `moto`
+  - [x] **L.11m** Setup token on Lambda: the first user only with the token from the SSM parameter (SPEC 7.4; `moto`
     in the tests)
   - [ ] **L.11n** zappa: the Lambda stage uses the DynamoDB table (`stages.py`, after the setup token of L.11m);
     `zappa_settings.json` (`eu-central-1`, `python3.14`, `TZ`, table, parameter name), WSGI module, package excludes, IAM policy for the one table and the one parameter, README deployment steps (including

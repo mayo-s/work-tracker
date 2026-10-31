@@ -50,6 +50,10 @@ class NewUserInput(ProfileInput):
     password: NewPassword
 
 
+class FirstUserInput(NewUserInput):
+    setup_token: str | None = Field(default=None, description='Only on AWS Lambda, for the first user: the setup token')
+
+
 class LoginInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
@@ -71,3 +75,4 @@ class AuthStatus(BaseModel):
     registration: bool = Field(description='True while new users can register on /register')
     team: TeamRef | None = Field(default=None, description='The team of the logged-in user')
     invitations: int = Field(default=0, description='Open team invitations of the logged-in user')
+    setup_token: bool = Field(default=False, description='True while the first user needs the setup token (AWS Lambda)')
