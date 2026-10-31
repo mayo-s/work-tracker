@@ -208,8 +208,9 @@ and ends with passing tests and the flake8 check.
     - DynamoDB: no counters; sort keys with the ids
     - API paths and schemas with string ids, OpenAPI file and TypeScript types; frontend code and tests
     - Export and import: file ids stay 1, 2, …; the import gives new ids
-  - [ ] **L.11j2** Import on DynamoDB: an export file holds thousands of items, far more than one transaction's 100,
-    so the import writes atomic chunks and, if it fails, removes what it wrote (SPEC 5.8)
+  - [x] **L.11j2** Import on DynamoDB: an export file holds thousands of items, far more than one transaction's 100,
+    so the import writes atomic chunks; references are checked before anything is written, and an import that
+    stopped halfway is replaced by the next one (SPEC 5.8)
   - [ ] **L.11k** Access tests on both backends: another user's id answers 404 for every repository and API resource
     (7.3)
   - [ ] **L.11l** One-time password: the admin sets it for a user who forgot theirs (changed at the next login)

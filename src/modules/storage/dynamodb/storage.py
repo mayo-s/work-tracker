@@ -8,7 +8,7 @@ from src.modules.storage.dynamodb import settings as stored_settings
 from src.modules.storage.dynamodb.catalog import DynamoActivityTypes, DynamoServices, DynamoTeamServices
 from src.modules.storage.dynamodb.days import DynamoDays
 from src.modules.storage.dynamodb.entries import DynamoEntries
-from src.modules.storage.dynamodb.keys import META, SCHEMA
+from src.modules.storage.dynamodb.keys import META, SCHEMA, user_partition
 from src.modules.storage.dynamodb.renames import rename_ticket
 from src.modules.storage.dynamodb.schedules import DynamoPtoYears, DynamoSchedules
 from src.modules.storage.dynamodb.table import Table
@@ -22,6 +22,9 @@ from src.modules.storage.store import Clock, RenameResult, Theme
 # Changes of the item layout, applied once in order: MIGRATIONS[0] brings a table from version 1 to 2, and so on
 MIGRATIONS: list[Callable[[Table], None]] = []
 LATEST = 1 + len(MIGRATIONS)
+# The kinds of a user's own records in their partition (not their settings, sessions, memberships or report views)
+RECORDS = ('DAY#', 'ENTRY#', 'ENTRY_ID#', 'HISTORY#', 'FLAG#', 'TICKET#', 'SERVICE#', 'SERVICE_NAME#', 'ACTIVITY_TYPE#',
+           'ACTIVITY_TYPE_NAME#', 'SCHEDULE#', 'SCHEDULE_FROM#', 'PTO#')
 
 
 class DynamoStore:
@@ -86,6 +89,23 @@ class DynamoStore:
 
     def finish_setup(self, user_id: str) -> None:
         stored_settings.finish_setup(self._unit, user_id)
+
+    def start_import(self, user_id: str) -> None:
+        stored_settings.start_import(self._unit, user_id)
+
+    def import_unfinished(self, user_id: str) -> bool:
+        return stored_settings.import_unfinished(self._unit, user_id)
+
+    def clear_records(self, user_id: str) -> None:
+        """The user's own records go (in chunks), their account and settings stay."""
+        pk = user_partition(user_id)
+        for prefix in RECORDS:
+            for item in self._unit.query_prefix(pk, prefix):
+                self._unit.make_room(1)
+                self._unit.delete(pk, item['SK'])
+
+    def make_room(self, items: int) -> None:
+        self._unit.make_room(items)
 
     def load_theme(self, user_id: str) -> Theme:
         return stored_settings.load_theme(self._unit, user_id)

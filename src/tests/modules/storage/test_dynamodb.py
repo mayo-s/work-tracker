@@ -65,6 +65,18 @@ def test_reads_see_the_own_writes_and_deletes(dynamo_table):
     assert [item['SK'] for item in unit.query(USER, 'DAY#2026-10-27', 'DAY#2026-10-27')] == ['DAY#2026-10-27']
 
 
+def test_a_transaction_reads_each_item_once(dynamo_table, monkeypatch):
+    put_all(dynamo_table, day('2026-10-26', note='stored'))
+    reads, get_item = [], dynamo_table.client.get_item
+    monkeypatch.setattr(dynamo_table.client, 'get_item', lambda **request: reads.append(request) or get_item(**request))
+    unit = Unit(dynamo_table)
+    assert unit.get(USER, 'DAY#2026-10-26')['note'] == unit.get(USER, 'DAY#2026-10-26')['note'] == 'stored'
+    unit.put(day('2026-10-26', note='changed'))
+    unit.flush()  # a chunk written: the transaction knows it without reading again
+    assert unit.get(USER, 'DAY#2026-10-26')['note'] == 'changed'
+    assert len(reads) == 1
+
+
 def test_a_query_reads_every_page(dynamo_table, monkeypatch):
     note = 'x' * 50_000  # 25 items of 50 KB are more than the 1 MB of one page
     for start in range(0, 25, 5):

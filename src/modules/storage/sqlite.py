@@ -9,11 +9,13 @@ from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepositor
 from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
+from src.modules.storage.owners import clear_records
 from src.modules.storage.pto_years import PtoYearRepository
 from src.modules.storage.renames import rename_ticket
 from src.modules.storage.schedules import ScheduleRepository
 from src.modules.storage.settings import (
-    finish_setup, load_settings, load_theme, registration_open, save_settings, save_theme, set_registration, setup_done,
+    finish_setup, import_unfinished, load_settings, load_theme, registration_open, save_settings, save_theme,
+    set_registration, setup_done, start_import,
 )
 from src.modules.storage.store import Clock, RenameResult, Theme
 from src.modules.storage.teams import InvitationRepository, ReportViewLog, TeamRepository
@@ -83,6 +85,18 @@ class SqliteStore:
 
     def finish_setup(self, user_id: str) -> None:
         finish_setup(self._conn, user_id)
+
+    def start_import(self, user_id: str) -> None:
+        start_import(self._conn, user_id)
+
+    def import_unfinished(self, user_id: str) -> bool:
+        return import_unfinished(self._conn, user_id)
+
+    def clear_records(self, user_id: str) -> None:
+        clear_records(self._conn, user_id)
+
+    def make_room(self, items: int) -> None:
+        """Nothing to do: one SQLite transaction holds any number of changes."""
 
     def load_theme(self, user_id: str) -> Theme:
         return load_theme(self._conn, user_id)

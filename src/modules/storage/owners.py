@@ -17,6 +17,14 @@ def take_over_unowned(conn: sqlite3.Connection, user_id: str) -> None:
         conn.execute(f'UPDATE {table} SET user_id = ? WHERE user_id = ?', (user_id, NO_OWNER))
 
 
+def clear_records(conn: sqlite3.Connection, user_id: str) -> None:
+    """The user's own records go (days, entries with history and flags, tickets, services, activity types, work
+    schedules, PTO years); their account and settings stay."""
+    for table in ('review_flags', 'entry_history', 'entries', 'days', 'tickets', 'services', 'activity_types', 'pto_years',
+                  'work_schedules'):
+        conn.execute(f'DELETE FROM {table} WHERE user_id = ?', (user_id,))
+
+
 def start_with_defaults(conn: sqlite3.Connection, user_id: str) -> None:
     """A user without activity types gets the defaults; without settings, the setup is still to do."""
     if not conn.execute('SELECT 1 FROM activity_types WHERE user_id = ?', (user_id,)).fetchone():

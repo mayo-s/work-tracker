@@ -1,3 +1,6 @@
+"""The import of an export file: on SQLite all or nothing, on DynamoDB (moto) in atomic chunks; the HTTP tests run on
+SQLite."""
+
 import datetime as dt
 
 import falcon
@@ -11,8 +14,10 @@ from src.models.entries import ActivityEntry, TicketEntry
 from src.models.review import FlagReason
 from src.models.schedules import Schedule
 from src.models.teams import Team
+from src.modules.storage.dynamodb.storage import DynamoStorage
 from src.modules.storage.errors import ConflictError
 from src.modules.storage.sqlite import SqliteStore
+from src.modules.userdata import importing
 from src.modules.userdata.export import export_data
 from src.modules.userdata.importing import import_data
 from src.tests.users import HANS, PASSWORD, USER
@@ -23,8 +28,10 @@ LATER = dt.datetime(2026, 11, 2, 9, 0)
 
 
 @pytest.fixture
-def store(conn):
-    return SqliteStore(conn)
+def store(storage, klara_id, service_ids):
+    """One transaction on each backend; Klara has her original services."""
+    with storage.transaction() as store:
+        yield store
 
 
 @pytest.fixture
@@ -33,93 +40,169 @@ def hans(store):
     return store.users().add(HANS, PASSWORD).id
 
 
-def kind_id(store, name, user_id=USER):
+def kind_id(store, name, user_id):
     return next(kind.id for kind in store.activity_types(user_id).all() if kind.name == name)
 
 
-def record_klaras_work(store):
+def record_klaras_work(store, klara):
     """Something of every kind, also what an export renumbers: deleted entries and activity types, a split, flags."""
-    store.save_theme(USER, 'dark')
-    store.schedules(USER).add(Schedule(valid_from=dt.date(2027, 1, 1), weekly_minutes=1920, work_days=[1, 2, 3, 4]))
-    days, entries = store.days(USER), store.entries(USER, clock=lambda: NOW)
+    store.save_theme(klara, 'dark')
+    store.schedules(klara).add(Schedule(valid_from=dt.date(2027, 1, 1), weekly_minutes=1920, work_days=[1, 2, 3, 4]))
+    days, entries = store.days(klara), store.entries(klara, clock=lambda: NOW)
     days.save(Day(date=MONDAY, day_type='work', start=480, end=990, note='release'))
     days.add_flag(MONDAY, FlagReason.WEEKEND_HOURS, 'Sa 2:00')
     entries.delete(entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-1', duration=15)).id)
-    tool, meeting = kind_id(store, 'Tool Management'), kind_id(store, 'Meeting')
+    tool, meeting = kind_id(store, 'Tool Management', klara), kind_id(store, 'Meeting', klara)
     activity = entries.create(ActivityEntry(date=MONDAY, activity_type_id=tool, duration=60, note='retro'))
     entries.update(activity.model_copy(update={'activity_type_id': meeting}))
-    store.activity_types(USER).delete(tool)
+    store.activity_types(klara).delete(tool)
     ticket = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-5213', duration=120, description='bookings'))
     entries.split(ticket.id, ['TNG-5213', 'TNG-5214'])
     entries.add_flag(ticket.id, FlagReason.UNCERTAIN_TICKET, '#5213')
-    msb = next(service for service in store.services(USER).all() if service.short_name == 'MSB')
-    store.tickets(USER).set_service('TNG-5213', msb.id)
+    msb = next(service for service in store.services(klara).all() if service.short_name == 'MSB')
+    store.tickets(klara).set_service('TNG-5213', msb.id)
 
 
-def test_export_import_and_export_again_gives_the_same_file(store, hans):
-    record_klaras_work(store)
-    exported = export_data(store, USER, NOW)
+def test_export_import_and_export_again_gives_the_same_file(store, hans, klara_id):
+    record_klaras_work(store, klara_id)
+    exported = export_data(store, klara_id, NOW)
     summary = import_data(store, hans, exported)
     assert (summary.entries, summary.history, summary.review_flags, summary.services) == (3, 7, 2, 5)
     assert export_data(store, hans, LATER).model_dump(exclude={'exported_at'}) == exported.model_dump(exclude={'exported_at'})
 
 
-def test_imported_records_belong_to_the_importing_user(store, hans):
-    record_klaras_work(store)
-    import_data(store, hans, export_data(store, USER, NOW))
+def test_imported_records_belong_to_the_importing_user(store, hans, klara_id):
+    record_klaras_work(store, klara_id)
+    import_data(store, hans, export_data(store, klara_id, NOW))
     entries = store.entries(hans).between(MONDAY, MONDAY)
     assert [entry.ticket_key for entry in entries if entry.kind == 'ticket'] == ['TNG-5213', 'TNG-5214']
     assert entries[0].activity_type_id == kind_id(store, 'Meeting', hans)
     assert [line.action for line in store.entries(hans).history(entries[1].id)] == ['created', 'split']
     assert store.days(hans).get(MONDAY).note == 'release'
     assert store.load_theme(hans) == 'dark'
-    assert len(store.entries(USER).between(MONDAY, MONDAY)) == 3  # Klara's stay as they are
+    assert len(store.entries(klara_id).between(MONDAY, MONDAY)) == 3  # Klara's stay as they are
 
 
-def test_activity_types_of_the_file_replace_the_defaults(store, hans):
-    store.activity_types(USER).add(store.activity_types(USER).get(kind_id(store, 'Other')).model_copy(
+def test_activity_types_of_the_file_replace_the_defaults(store, hans, klara_id):
+    store.activity_types(klara_id).add(store.activity_types(klara_id).get(kind_id(store, 'Other', klara_id)).model_copy(
         update={'id': None, 'name': 'Hackathon'}))
-    import_data(store, hans, export_data(store, USER, NOW))
+    import_data(store, hans, export_data(store, klara_id, NOW))
     assert [kind.name for kind in store.activity_types(hans).all()] == [
-        kind.name for kind in store.activity_types(USER).all()]
+        kind.name for kind in store.activity_types(klara_id).all()]
 
 
-def test_team_services_become_personal_ones(store, hans):
+def test_team_services_become_personal_ones(store, hans, klara_id):
     platform = store.teams().add(Team(name='Platform'))
     auth, mail = (store.team_services(platform.id).add(Service(short_name=name, name=f'{name} team'))
                   for name in ('AUTH', 'MAIL'))
-    store.teams().join(USER, platform.id)
-    store.services(USER).add(Service(short_name='mail', name='own'))
-    tickets = store.tickets(USER)
+    store.teams().join(klara_id, platform.id)
+    store.services(klara_id).add(Service(short_name='mail', name='own'))
+    tickets = store.tickets(klara_id)
     for key, service in (('TNG-1', auth), ('TNG-2', mail)):
         tickets.ensure(key)
         tickets.set_service(key, service.id)
-    import_data(store, hans, export_data(store, USER, NOW))
+    import_data(store, hans, export_data(store, klara_id, NOW))
     personal = {service.short_name: service for service in store.services(hans).all()}
     assert (personal['AUTH'].name, 'MAIL' in personal) == ('AUTH team', False)  # an own service with the short name
     tickets = store.tickets(hans)
     assert (tickets.get('TNG-1').service_id, tickets.get('TNG-2').service_id) == (personal['AUTH'].id, personal['mail'].id)
 
 
-def test_import_needs_a_user_without_days_and_entries(store, hans):
-    data = export_data(store, USER, NOW)
+def test_import_needs_a_user_without_days_and_entries(store, hans, klara_id):
+    data = export_data(store, klara_id, NOW)
     store.days(hans).save(Day(date=MONDAY, day_type='pto'))
     with pytest.raises(ConflictError, match='without days and entries'):
         import_data(store, hans, data)
 
 
-def test_a_file_referring_to_records_it_does_not_hold_is_refused(store, hans):
-    store.tickets(USER).ensure('TNG-1')
-    data = export_data(store, USER, NOW)
-    broken = data.model_copy(update={'tickets': [data.tickets[0].model_copy(update={'service_id': 99})]})
+def test_a_file_referring_to_records_it_does_not_hold_is_refused(store, hans, klara_id):
+    store.tickets(klara_id).ensure('TNG-1')
+    data = export_data(store, klara_id, NOW)
+    broken = data.model_copy(update={'tickets': [data.tickets[0].model_copy(update={'service_id': '99'})]})
     with pytest.raises(ConflictError, match='refers to service 99'):
         import_data(store, hans, broken)
+
+
+def add_entries(storage, user_id, count):
+    """Klara's entries, in transactions of a few at a time (one DynamoDB transaction holds at most 100 items)."""
+    for start in range(0, count, 20):
+        with storage.transaction() as store:
+            entries = store.entries(user_id, clock=lambda: NOW)
+            for number in range(start, min(start + 20, count)):
+                day = MONDAY - dt.timedelta(days=number)
+                entries.create(TicketEntry(date=day, ticket_key=f'TNG-{number + 1}', duration=60))
+
+
+def import_file(storage, user_id, data):
+    with storage.transaction() as store:
+        return import_data(store, user_id, data)
+
+
+@pytest.fixture
+def large_file(storage, klara_id, service_ids):
+    """40 entries with their history and tickets: about 160 items, more than one DynamoDB transaction holds."""
+    add_entries(storage, klara_id, 40)
+    with storage.transaction() as store:
+        return export_data(store, klara_id, NOW)
+
+
+@pytest.fixture
+def new_user(storage, klara_id):
+    with storage.transaction() as store:
+        return store.users().add(HANS, PASSWORD).id
+
+
+def test_a_large_import(storage, large_file, new_user):
+    summary = import_file(storage, new_user, large_file)
+    assert (summary.entries, summary.history, summary.tickets) == (40, 40, 40)
+    with storage.transaction() as store:
+        assert export_data(store, new_user, LATER).model_dump(exclude={'exported_at'}) == large_file.model_dump(
+            exclude={'exported_at'})
+
+
+def stop_at_the_flags(monkeypatch):
+    def stop(self):
+        raise RuntimeError('the connection is gone')
+    monkeypatch.setattr(importing._Import, '_flags', stop)
+
+
+def test_an_import_that_stopped_halfway_is_replaced_by_the_next(storage, large_file, new_user, monkeypatch):
+    stop_at_the_flags(monkeypatch)
+    with pytest.raises(RuntimeError, match='the connection is gone'):
+        import_file(storage, new_user, large_file)
+    with storage.transaction() as store:  # SQLite wrote nothing; DynamoDB wrote chunks and marked the account
+        written = store.entries(new_user).between(dt.date.min, dt.date.max)
+        assert store.import_unfinished(new_user) == bool(written) == isinstance(storage, DynamoStorage)
+    monkeypatch.undo()
+    assert import_file(storage, new_user, large_file).entries == 40
+    with storage.transaction() as store:
+        assert len(store.entries(new_user).between(dt.date.min, dt.date.max)) == 40  # none twice
+        assert store.import_unfinished(new_user)  # until the setup is done
+        store.finish_setup(new_user)
+    with storage.transaction() as store:
+        assert (store.import_unfinished(new_user), store.setup_done(new_user)) == (False, True)
+
+
+def test_a_broken_file_writes_nothing(storage, large_file, new_user):
+    broken = large_file.model_copy(update={'tickets': [large_file.tickets[0].model_copy(update={'service_id': '99'})]})
+    with pytest.raises(ConflictError, match='refers to service 99'):
+        import_file(storage, new_user, broken)
+    with storage.transaction() as store:
+        assert store.entries(new_user).between(dt.date.min, dt.date.max) == []
+        assert not store.import_unfinished(new_user)
+
+
+def test_an_account_with_its_own_days_is_still_refused_after_a_stopped_import(storage, large_file, new_user):
+    with storage.transaction() as store:
+        store.days(new_user).save(Day(date=MONDAY, day_type='pto'))
+    with pytest.raises(ConflictError, match='without days and entries'):
+        import_file(storage, new_user, large_file)
 
 
 @pytest.fixture
 def klaras_file(database):
     with database.transaction() as conn:
-        record_klaras_work(SqliteStore(conn))
+        record_klaras_work(SqliteStore(conn), USER)
         return export_data(SqliteStore(conn), USER, NOW).model_dump(mode='json')
 
 

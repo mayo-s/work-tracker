@@ -1,6 +1,7 @@
 """Import of an export file (SPEC 5.8) for a user without days and entries, e.g. in the setup on another installation."""
 
 import datetime as dt
+from collections.abc import Iterable
 
 from src.models.catalog import ActivityType, Service
 from src.models.entries import ActivityEntry
@@ -10,13 +11,16 @@ from src.modules.storage.store import Changes, Entries, Store
 from src.modules.userdata.export import SPLIT_FROM
 from src.modules.userdata.schemas import ImportSummary, UserData
 
+ROOM = 4  # the most items one record of the file takes, e.g. an entry with its pointer and its new ticket on DynamoDB
+
 
 def import_data(store: Store, user_id: str, data: UserData) -> ImportSummary:
-    """Write the file's records for the user, with database ids in place of the file's. Team services become personal
+    """Write the file's records for the user, with new record ids in place of the file's. Team services become personal
     ones (an own service with the same short name is used instead), and the file's activity types replace the user's.
 
-    Refused (ConflictError) for a user who has days or entries, and for a file referring to records it does not hold.
-    It runs in the caller's transaction, so a failure leaves nothing behind.
+    Refused (ConflictError) for a user who has days or entries, and for a file referring to records it does not hold
+    (checked before anything is written). On SQLite it runs in the caller's transaction, all or nothing; on DynamoDB
+    it writes atomic chunks, and an import that stopped halfway (the setup is still open) is replaced by the next one.
     """
     return _Import(store, user_id, data).run()
 
@@ -31,13 +35,15 @@ class _Import:
         self._entries: dict[str, str] = {}
 
     def run(self) -> ImportSummary:
-        self._check_empty()
+        _check_references(self._data)
+        self._start()
         self._settings()
         self._services_of_file()
         self._activity_types_of_file()
         self._tickets()
         days = self._store.days(self._user)
         for day in self._data.days:
+            self._store.make_room(ROOM)
             days.save(day)
         self._entries_of_file()
         self._history()
@@ -49,10 +55,17 @@ class _Import:
             entries=len(data.entries), history=len(data.history), review_flags=len(data.review_flags),
         )
 
-    def _check_empty(self) -> None:
-        entries = self._store.entries(self._user)
-        if self._store.days(self._user).between(dt.date.min, dt.date.max) or entries.all_history():
+    def _start(self) -> None:
+        """Only into an account without days and entries, or one whose import stopped halfway: that one goes first."""
+        if self._store.import_unfinished(self._user):
+            self._store.clear_records(self._user)
+        elif self._has_records():
             raise ConflictError('Only an account without days and entries can import a file; this one has some')
+        self._store.start_import(self._user)
+
+    def _has_records(self) -> bool:
+        return bool(self._store.days(self._user).between(dt.date.min, dt.date.max)
+                    or self._store.entries(self._user).all_history())
 
     def _settings(self) -> None:
         self._store.save_settings(self._user, self._data.settings)
@@ -62,7 +75,9 @@ class _Import:
             first, *later = self._data.work_schedules
             schedules.replace_all(first)
             for schedule in later:
+                self._store.make_room(ROOM)
                 schedules.add(schedule)
+        self._store.make_room(ROOM + len(self._data.pto_years))
         self._store.pto_years(self._user).replace_all(self._data.pto_years)
 
     def _services_of_file(self) -> None:
@@ -72,6 +87,7 @@ class _Import:
         for service in sorted(self._data.services, key=lambda service: service.team is not None):
             name = service.short_name.casefold()
             if name not in by_name:
+                self._store.make_room(ROOM)
                 by_name[name] = services.add(Service(short_name=service.short_name, name=service.name)).id
             self._services[service.id] = by_name[name]
 
@@ -79,23 +95,27 @@ class _Import:
         """The file's activity types replace the user's (the defaults; without entries none is in use)."""
         kinds = self._store.activity_types(self._user)
         for kind in kinds.all():
+            self._store.make_room(ROOM)
             kinds.delete(kind.id)
         for kind in self._data.activity_types:
+            self._store.make_room(ROOM)
             self._activity_types[kind.id] = kinds.add(ActivityType(name=kind.name)).id
 
     def _tickets(self) -> None:
         tickets = self._store.tickets(self._user)
         for ticket in self._data.tickets:
+            self._store.make_room(ROOM)
             tickets.ensure(ticket.key)
             if ticket.service_id is not None:
-                tickets.set_service(ticket.key, _known(self._services, ticket.service_id, 'service'))
+                tickets.set_service(ticket.key, self._services[ticket.service_id])
 
     def _entries_of_file(self) -> None:
         entries = self._store.entries(self._user)
         for entry in self._data.entries:
             update: dict = {'id': None}
             if isinstance(entry, ActivityEntry):
-                update['activity_type_id'] = _known(self._activity_types, entry.activity_type_id, 'activity type')
+                update['activity_type_id'] = self._activity_types[entry.activity_type_id]
+            self._store.make_room(ROOM)
             self._entries[entry.id] = entries.restore(entry.model_copy(update=update)).id
 
     def _history(self) -> None:
@@ -103,6 +123,7 @@ class _Import:
         entries = self._store.entries(self._user)
         for change in self._data.history:
             entry_id = self._entry_id(entries, change.entry_id)
+            self._store.make_room(ROOM)
             entries.restore_history(change.model_copy(update={
                 'id': None, 'entry_id': entry_id, 'changes': self._changes(change.changes),
                 'detail': self._detail(entries, change),
@@ -131,13 +152,30 @@ class _Import:
     def _flags(self) -> None:
         days, entries = self._store.days(self._user), self._store.entries(self._user)
         for flag in self._data.review_flags:
+            self._store.make_room(ROOM)
             if flag.date is not None:
                 days.add_flag(flag.date, flag.reason, flag.detail)
             else:
-                entries.add_flag(_known(self._entries, flag.entry_id, 'entry'), flag.reason, flag.detail)
+                entries.add_flag(self._entries[flag.entry_id], flag.reason, flag.detail)
 
 
-def _known(ids: dict[str, str], file_id: str, label: str) -> str:
-    if file_id not in ids:
-        raise ConflictError(f'The file refers to {label} {file_id}, which it does not hold')
-    return ids[file_id]
+def _check_references(data: UserData) -> None:
+    """Every service, activity type and entry the file refers to is in it (before anything is written)."""
+    activity_entries = [entry for entry in data.entries if isinstance(entry, ActivityEntry)]
+    for references, held, label in (
+        (_ids(data.tickets, 'service_id'), _ids(data.services, 'id'), 'service'),
+        (_ids(activity_entries, 'activity_type_id'), _ids(data.activity_types, 'id'), 'activity type'),
+        (_ids(data.review_flags, 'entry_id'), _ids(data.entries, 'id'), 'entry'),
+    ):
+        _known(references, held, label)
+
+
+def _ids(records: Iterable[object], field: str) -> list[str | None]:
+    return [getattr(record, field) for record in records]
+
+
+def _known(references: Iterable[str | None], held: Iterable[str], label: str) -> None:
+    """Empty references are fine (e.g. a ticket without service, a flag on a day)."""
+    ids = set(held)
+    if missing := next((file_id for file_id in references if file_id is not None and file_id not in ids), None):
+        raise ConflictError(f'The file refers to {label} {missing}, which it does not hold')

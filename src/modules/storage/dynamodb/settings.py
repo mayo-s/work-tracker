@@ -36,7 +36,17 @@ def setup_done(unit: Unit, user_id: str) -> bool:
 
 
 def finish_setup(unit: Unit, user_id: str) -> None:
-    _save(unit, user_partition(user_id), setup_done=True)
+    """The setup is done, also an import that was started for it."""
+    _save(unit, user_partition(user_id), setup_done=True, import_unfinished=False)
+
+
+def start_import(unit: Unit, user_id: str) -> None:
+    """An import of an export file has started; until the setup is done, importing again replaces what it wrote."""
+    _save(unit, user_partition(user_id), import_unfinished=True)
+
+
+def import_unfinished(unit: Unit, user_id: str) -> bool:
+    return bool(_values(unit, user_partition(user_id)).get('import_unfinished'))
 
 
 def load_theme(unit: Unit, user_id: str) -> Theme:
