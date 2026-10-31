@@ -7,7 +7,8 @@ from collections.abc import Callable
 import falcon
 from spectree import Response
 
-from src.modules.admin.schemas import AdminSettings, AdminTeamView, AdminUserInput, AdminUserView
+from src.lib.passwords import one_time_password
+from src.modules.admin.schemas import AdminSettings, AdminTeamView, AdminUserInput, AdminUserView, OneTimePasswordView
 from src.modules.auth.sessions import current_user
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.store import Storage, Store
@@ -65,6 +66,27 @@ class AdminUserItem:
             users.set_role(user_id, json.role)
             users.set_active(user_id, json.active)
             resp.media = _view(store, user_id)
+
+
+class AdminOneTimePassword:
+    def __init__(self, storage: Storage) -> None:
+        self._storage = storage
+
+    @spec.validate(resp=Response('HTTP_403', 'HTTP_404', 'HTTP_409', HTTP_201=OneTimePasswordView), tags=TAGS,
+                   path_parameter_descriptions=ID_PARAMETER)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, user_id: str) -> None:
+        """Set a one-time password for a user who forgot theirs, shown only in this answer: their sessions end, and at
+        the next login they choose their own password before anything else.
+
+        Not for the own account (409): that password is changed in the settings.
+        """
+        with self._storage.transaction() as store:
+            if user_id == _admin(req, store):
+                raise ConflictError('Change your own password in your settings')
+            password = one_time_password()
+            store.users().set_one_time_password(user_id, password)
+        resp.status = falcon.HTTP_201
+        resp.media = OneTimePasswordView(password=password)
 
 
 class AdminTeamCollection:

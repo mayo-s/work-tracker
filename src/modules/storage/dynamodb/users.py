@@ -31,7 +31,8 @@ def _login_key(field: str, value: str) -> str:
 
 def _user(item: Item) -> User:
     return User(id=item['id'], **{field: item[field] for field in _PROFILE}, role=item['role'], active=item['active'],
-                registered_at=item.get('registered_at'), last_login_at=item.get('last_login_at'))
+                registered_at=item.get('registered_at'), last_login_at=item.get('last_login_at'),
+                must_change_password=item.get('must_change_password', False))
 
 
 def _epoch(moment: dt.datetime) -> int:
@@ -110,7 +111,12 @@ class DynamoUsers:
 
     def set_password(self, user_id: str, password: str) -> None:
         """A new password ends all sessions of the user."""
-        self._change(user_id, password_hash=hash_password(password))
+        self._change(user_id, password_hash=hash_password(password), must_change_password=False)
+        end_sessions(self._unit, user_id)
+
+    def set_one_time_password(self, user_id: str, password: str) -> None:
+        """A password from an admin: it ends all sessions, and the user chooses their own at the next login."""
+        self._change(user_id, password_hash=hash_password(password), must_change_password=True)
         end_sessions(self._unit, user_id)
 
     def _profiles(self) -> list[Item]:

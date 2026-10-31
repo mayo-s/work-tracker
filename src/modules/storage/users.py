@@ -16,7 +16,7 @@ SESSION_LIFETIME = dt.timedelta(hours=24)
 SESSION_RENEWAL = dt.timedelta(minutes=30)  # the stored expiry is renewed at most this often
 ATTEMPTS_ALLOWED = 5  # failed logins and registrations together
 ATTEMPT_PAUSE = dt.timedelta(minutes=1)
-_COLUMNS = 'id, username, email, first_name, last_name, role, active, registered_at, last_login_at'
+_COLUMNS = 'id, username, email, first_name, last_name, role, active, registered_at, last_login_at, must_change_password'
 
 
 def random_id() -> str:
@@ -92,7 +92,16 @@ class UserRepository:
 
     def set_password(self, user_id: str, password: str) -> None:
         """A new password ends all sessions of the user."""
-        self._conn.execute('UPDATE users SET password_hash = ? WHERE id = ?', (hash_password(password), user_id))
+        self._set_password(user_id, password, must_change=False)
+
+    def set_one_time_password(self, user_id: str, password: str) -> None:
+        """A password from an admin: it ends all sessions, and the user chooses their own at the next login."""
+        self.get(user_id)
+        self._set_password(user_id, password, must_change=True)
+
+    def _set_password(self, user_id: str, password: str, must_change: bool) -> None:
+        self._conn.execute('UPDATE users SET password_hash = ?, must_change_password = ? WHERE id = ?',
+                           (hash_password(password), int(must_change), user_id))
         self._conn.execute('DELETE FROM sessions WHERE user_id = ?', (user_id,))
 
     def _write(self, sql: str, params: tuple) -> sqlite3.Cursor:

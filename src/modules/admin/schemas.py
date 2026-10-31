@@ -20,6 +20,7 @@ class AdminUserView(BaseModel):
     registered_at: dt.datetime | None = Field(description='Null for users registered before it was recorded')
     last_login_at: dt.datetime | None
     team: str | None = Field(description='Name of the team the user is in')
+    must_change_password: bool = Field(description='A one-time password is set; the user has not chosen their own yet')
 
     @classmethod
     def of(cls, user: User, team: str | None) -> Self:
@@ -50,3 +51,8 @@ class AdminTeamView(BaseModel):
         """`members`: username and role of each current member."""
         return cls(id=team.id, name=team.name, members=len(members),
                    team_admins=[username for username, role in members if role == 'team_admin'])
+
+
+class OneTimePasswordView(BaseModel):
+    password: str = Field(description='Shown only now: the admin gives it to the user, who chooses their own at the next '
+                                      'login', examples=['k7Qm-3xTp-9wLs-Rf2c'])

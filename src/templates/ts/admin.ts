@@ -2,6 +2,7 @@
 
 import { api, type AdminTeamView, type AdminUserInput, type AdminUserView } from './api.ts';
 import { formatTimestamp } from './dates.ts';
+import { ask } from './dialog.ts';
 import { el } from './dom.ts';
 import { button, renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 
@@ -58,6 +59,31 @@ function activeToggle(user: AdminUserView, page: Page): HTMLButtonElement {
   });
 }
 
+/** Sets a one-time password for a user who forgot theirs and shows it once, to pass on. */
+function oneTimePasswordButton(user: AdminUserView, page: Page): HTMLButtonElement {
+  return button('One-time password', async () => {
+    const go = await ask(`One-time password for ${user.username}`, [
+      `${user.username} is logged out, the current password stops working, and at the next login ${user.username} `
+      + 'chooses a new one with the one-time password.'], [{ label: 'Set one-time password', value: true, primary: true }]);
+    if (!go) {
+      return;
+    }
+    api.oneTimePassword(user.id).then(async ({ password }) => {
+      await ask(`One-time password for ${user.username}`, [
+        el('p', {}, el('code', { class: 'one-time-password' }, password)),
+        `Give it to ${user.username} in person or by phone. It is shown only now.`], [{ label: 'Done', value: true, primary: true }]);
+      page.reload(`Set a one-time password for ${user.username}`);
+    }, page.fail);
+  });
+}
+
+function status(user: AdminUserView): HTMLElement | string {
+  if (!user.active) {
+    return el('span', { class: 'badge warning' }, 'Deactivated');
+  }
+  return user.must_change_password ? el('span', { class: 'badge' }, 'One-time password') : 'Active';
+}
+
 function userRow(user: AdminUserView, me: string | undefined, page: Page): HTMLTableRowElement {
   const self = user.id === me;
   return el('tr', {},
@@ -66,10 +92,10 @@ function userRow(user: AdminUserView, me: string | undefined, page: Page): HTMLT
     el('td', {}, user.email),
     el('td', {}, user.team ?? el('span', { class: 'muted' }, '—')),
     el('td', {}, roleSelect(user, self, page)),
-    el('td', {}, user.active ? 'Active' : el('span', { class: 'badge warning' }, 'Deactivated')),
+    el('td', {}, status(user)),
     timestampCell(user.registered_at),
     timestampCell(user.last_login_at),
-    el('td', { class: 'row-actions' }, self ? '' : activeToggle(user, page)));
+    el('td', { class: 'row-actions' }, ...(self ? [] : [oneTimePasswordButton(user, page), activeToggle(user, page)])));
 }
 
 function usersSection(users: AdminUserView[], me: string | undefined, page: Page): HTMLElement {

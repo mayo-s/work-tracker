@@ -27,6 +27,7 @@ class User(DomainModel):
     active: bool = True  # a deactivated user cannot log in
     registered_at: dt.datetime | None = None  # None: registered before it was recorded
     last_login_at: dt.datetime | None = None
+    must_change_password: bool = False  # after a one-time password from an admin, until the user chose their own
 
 
 def password_problem(password: str) -> str | None:
