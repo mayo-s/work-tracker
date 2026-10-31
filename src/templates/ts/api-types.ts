@@ -121,7 +121,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The history of an entry, oldest first; also available after the entry was deleted. */
+        /** The history of an entry, oldest first; also available after the entry was deleted. An entry the user never had (unknown, or another user's) answers 404. */
         get: operations["get__api_entries_{entry_id}_history"];
         put?: never;
         post?: never;
@@ -3406,6 +3406,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ChangeViewList"];
                 };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Unprocessable Content */
             422: {

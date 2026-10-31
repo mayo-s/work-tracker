@@ -494,7 +494,8 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
   from the request, and every repository of personal records is bound to that user id (`user_id = ?` in SQLite, the
   partition `USER#<user id>` in DynamoDB). A team admin reads a member's data only through the team view's check
   (current member of their team, from the day they joined); the admin gets users and teams, never time data.
-- Tests on both backends: another user's id answers 404 for every repository and API resource.
+- Tests on both backends: another user's id answers 404 for every repository and API resource (team and admin routes
+  403); the API tests run the whole app on each backend.
 - AWS: the Lambda's IAM role may read and write only this one table and its indexes, and read only the setup token
   parameter (7.4); the app hands out no AWS credentials.
 

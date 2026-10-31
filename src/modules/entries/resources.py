@@ -6,6 +6,7 @@ from spectree import Response
 
 from src.modules.entries.schemas import ChangeView, EntryInput, EntrySplitInput, EntryView, EntryViewer
 from src.modules.auth.sessions import current_user
+from src.modules.storage.errors import NotFoundError
 from src.modules.storage.store import Storage, Store
 from src.modules.teams.view import MemberPeriodQuery, viewing
 from src.utils.spec import spec
@@ -82,12 +83,15 @@ class EntryHistory:
     def __init__(self, storage: Storage) -> None:
         self._storage = storage
 
-    @spec.validate(resp=Response(HTTP_200=list[ChangeView]), tags=TAGS, path_parameter_descriptions=ID_PARAMETER)
+    @spec.validate(resp=Response('HTTP_404', HTTP_200=list[ChangeView]), tags=TAGS, path_parameter_descriptions=ID_PARAMETER)
     def on_get(self, req: falcon.Request, resp: falcon.Response, entry_id: str) -> None:
-        """The history of an entry, oldest first; also available after the entry was deleted."""
+        """The history of an entry, oldest first; also available after the entry was deleted. An entry the user never
+        had (unknown, or another user's) answers 404."""
         with self._storage.transaction() as store:
             changes = store.entries(current_user(req)).history(entry_id)
-            resp.media = [ChangeView(**change.model_dump()) for change in changes]
+        if not changes:
+            raise NotFoundError(f'No entry with id {entry_id}')
+        resp.media = [ChangeView(**change.model_dump()) for change in changes]
 
 
 def _save(store: Store, user_id: str, json: EntryInput, entry_id: str | None = None) -> EntryView:

@@ -29,6 +29,7 @@ from src.modules.settings.resources import SettingsResource, ThemeResource
 from src.modules.storage.database import Database
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.sqlite import SqliteStorage
+from src.modules.storage.store import Storage
 from src.modules.teams.resources import (
     MyInvitationAcceptance, MyInvitationItem, MyTeam, ServiceChoices, TeamInvitationItem, TeamInvitations, TeamItem,
     TeamMemberItem, TeamServiceCollection, TeamServiceItem,
@@ -41,15 +42,16 @@ from src.utils.stages import stage_storage
 
 def create_app(
     database: Database | None = None, today: Callable[[], dt.date] = dt.date.today, auth: bool | None = None,
-    clock: Callable[[], dt.datetime] = dt.datetime.now,
+    clock: Callable[[], dt.datetime] = dt.datetime.now, storage: Storage | None = None,
 ) -> falcon.App:
-    """The app on the given database, or by default on the storage of the stage it runs in (stages.py), migrated
-    on start; a wrong stage raises a StageError.
+    """The app on the given storage or SQLite database, or by default on the storage of the stage it runs in
+    (stages.py), migrated on start; a wrong stage raises a StageError.
 
     `today` decides up to which day reports count, `clock` the time of sessions (both replaceable for tests).
     The login is on unless `auth` is False or, by default, WORK_TRACKER_AUTH=off.
     """
-    storage = stage_storage() if database is None else SqliteStorage(database)
+    if storage is None:
+        storage = stage_storage() if database is None else SqliteStorage(database)
     storage.migrate()
     enabled = auth_enabled() if auth is None else auth
     login = [Authentication(storage, clock)] if enabled else [LocalUser(storage)]
