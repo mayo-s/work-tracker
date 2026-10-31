@@ -1,24 +1,42 @@
-"""Every user works on their own data: nobody sees or changes another user's records, not even by a known id."""
+"""Every user works on their own data: nobody sees or changes another user's records, not even by a known id (SPEC 5.7,
+7.3). The whole app runs on SQLite and on DynamoDB (moto)."""
 
 import datetime as dt
+from decimal import Decimal
 
 import falcon
 import pytest
 from falcon import testing
 
 from src.app import create_app
+from src.models.catalog import Service
 from src.models.entries import TicketEntry
+from src.models.pto import PtoYear
 from src.models.review import FlagReason
-from src.modules.storage.entries import EntryRepository
-from src.modules.storage.users import UserRepository
-from src.tests.users import HANS, PASSWORD, USER
+from src.models.schedules import Schedule
+from src.models.settings import Settings
+from src.tests.users import HANS, KLARA, PASSWORD
 
 
 @pytest.fixture
-def app(database):
-    with database.transaction() as conn:
-        UserRepository(conn).add(HANS, PASSWORD)
-    return testing.TestClient(create_app(database, auth=True))
+def klara_id(storage):
+    """Klara, set up as in the original setup (services, schedule, PTO years), and Hans, a new user."""
+    with storage.transaction() as store:
+        klara = store.users().add(KLARA, PASSWORD).id
+        store.users().add(HANS, PASSWORD)
+        for short_name in ('O365', 'MSB', 'ImmoDrop', 'HiS', 'TTS'):
+            store.services(klara).add(Service(short_name=short_name))
+        store.schedules(klara).replace_all(
+            Schedule(valid_from=dt.date(2024, 6, 1), weekly_minutes=2400, work_days=[1, 2, 3, 4, 5]))
+        store.pto_years(klara).replace_all([PtoYear(year=2026, allowance=Decimal(31))])
+        store.save_settings(klara, Settings(balance_start=dt.date(2024, 6, 1)))
+        store.finish_setup(klara)
+    return klara
+
+
+@pytest.fixture
+def app(storage, klara_id):
+    return testing.TestClient(create_app(storage=storage, auth=True))
 
 
 def logged_in(app, name):
@@ -46,24 +64,12 @@ def test_days_are_per_user(app, klara, hans):
     assert app.simulate_get('/api/days/2026-10-28', cookies=hans).json['recorded'] is False
     app.simulate_put('/api/days/2026-10-28', cookies=hans, json={'start': '08:00', 'end': '16:30'})
     assert app.simulate_get('/api/days/2026-10-28', cookies=klara).json['day_type'] == 'pto'
-
-
-def test_entries_of_others_are_unknown(app, klara, hans):
-    body = {'kind': 'ticket', 'date': '2026-10-28', 'duration': '1:00', 'ticket_key': 'TNG-1', 'description': 'secret'}
-    entry = app.simulate_post('/api/entries', cookies=klara, json=body).json
-    path = f'/api/entries/{entry["id"]}'
-    assert app.simulate_get(path, cookies=hans).status == falcon.HTTP_404
-    assert app.simulate_put(path, cookies=hans, json=body | {'description': 'changed'}).status == falcon.HTTP_404
-    assert app.simulate_delete(path, cookies=hans).status == falcon.HTTP_404
-    assert app.simulate_get(f'{path}/history', cookies=hans).json == []
-    assert app.simulate_get('/api/entries', cookies=hans, params={'week': '2026-W44'}).json == []
-    assert app.simulate_get(path, cookies=klara).json['description'] == 'secret'
+    assert app.simulate_delete('/api/days/2026-10-29', cookies=hans).status == falcon.HTTP_404
 
 
 def test_lists_are_per_user(app, klara, hans):
     assert app.simulate_get('/api/services', cookies=hans).json == []
     assert len(app.simulate_get('/api/services', cookies=klara).json) == 5
-    assert app.simulate_get(f'/api/services/{service_id(app, klara, "MSB")}', cookies=hans).status == falcon.HTTP_404
     assert app.simulate_post('/api/services', cookies=hans, json={'short_name': 'MSB'}).status == falcon.HTTP_201  # own list
 
 
@@ -76,14 +82,12 @@ def test_others_services_and_activity_types_cannot_be_used(app, klara, hans):
     assert app.simulate_post('/api/entries', cookies=hans, json=activity).status == falcon.HTTP_409
 
 
-def test_tickets_and_review_are_per_user(app, database, klara, hans):
-    with database.transaction() as conn:
-        entries = EntryRepository(conn, USER)
-        created = entries.create(TicketEntry(date=dt.date(2026, 10, 28), ticket_key='TNG-4138', duration=60))
-        flag = entries.add_flag(created.id, FlagReason.UNCERTAIN_TICKET, '#4138')
-    assert app.simulate_get('/api/tickets/TNG-4138', cookies=hans).status == falcon.HTTP_404
+def test_review_is_per_user(app, storage, klara_id, klara, hans):
+    with storage.transaction() as store:
+        entries = store.entries(klara_id)
+        entries.add_flag(entries.create(TicketEntry(date=dt.date(2026, 10, 28), ticket_key='TNG-4138', duration=60)).id,
+                         FlagReason.UNCERTAIN_TICKET, '#4138')
     assert set(app.simulate_get('/api/review', cookies=hans).json['counts'].values()) == {0}
-    assert app.simulate_delete(f'/api/review/flags/{flag.id}', cookies=hans).status == falcon.HTTP_404
     assert app.simulate_get('/api/review', cookies=klara).json['counts']['entries'] == 1
 
 
@@ -106,6 +110,99 @@ def test_a_new_user_is_set_up_first(app, hans):
     assert app.simulate_get('/api/settings', cookies=hans).json['balance_start'] == '2026-11-02'
 
 
-def test_login_off_works_on_the_first_users_data(database):
-    app = testing.TestClient(create_app(database, auth=False))
+def test_login_off_works_on_the_first_users_data(storage, klara_id):
+    app = testing.TestClient(create_app(storage=storage, auth=False))
     assert len(app.simulate_get('/api/services').json) == 5
+
+
+@pytest.fixture
+def klaras_records(app, storage, klara_id, klara):
+    """One record of every kind with an id, all Klara's; Klara is admin and team admin of Platform."""
+    entry = app.simulate_post('/api/entries', cookies=klara, json={
+        'kind': 'ticket', 'date': '2026-10-28', 'duration': '1:00', 'ticket_key': 'TNG-4138', 'description': 'secret'}).json
+    with storage.transaction() as store:
+        flag = store.entries(klara_id).add_flag(entry['id'], FlagReason.UNCERTAIN_TICKET, '#4138')
+    team = app.simulate_post('/api/admin/teams', cookies=klara, json={'name': 'Platform'}).json
+    app.simulate_put(f'/api/admin/users/{klara_id}', cookies=klara, json={'role': 'admin', 'active': True})
+    with storage.transaction() as store:
+        store.teams().join(klara_id, team['id'])
+        store.users().set_role(klara_id, 'team_admin')
+    app.simulate_post(f'/api/teams/{team["id"]}/invitations', cookies=klara, json={'email': 'rainer.zufall@example.com'})
+    with storage.transaction() as store:
+        invitation = store.invitations().of_team(team['id'])[0]
+    records = {
+        'entry': entry['id'], 'flag': flag.id, 'service': service_id(app, klara, 'MSB'), 'team': team['id'],
+        'activity_type': app.simulate_get('/api/activity-types', cookies=klara).json[0]['id'],
+        'schedule': app.simulate_get('/api/work-schedules', cookies=klara).json[0]['id'],
+        'team_service': app.simulate_post(f'/api/teams/{team["id"]}/services', cookies=klara,
+                                          json={'short_name': 'AUTH'}).json['id'],
+        'invitation': invitation.id, 'klara': klara_id,
+    }
+    return records
+
+
+SERVICE = {'short_name': 'MSB', 'name': 'changed'}
+ENTRY = {'kind': 'ticket', 'date': '2026-10-28', 'duration': '2:00', 'ticket_key': 'TNG-4138'}
+SCHEDULE = {'valid_from': '2027-01-01', 'weekly_hours': '20:00', 'work_days': ['Mon']}
+
+# Hans tries every route with an id of one of Klara's records: each is unknown to Hans (404) or not Hans's to manage (403)
+ATTEMPTS = [
+    ('GET', '/api/entries/{entry}', None, falcon.HTTP_404),
+    ('PUT', '/api/entries/{entry}', ENTRY, falcon.HTTP_404),
+    ('DELETE', '/api/entries/{entry}', None, falcon.HTTP_404),
+    ('GET', '/api/entries/{entry}/history', None, falcon.HTTP_404),
+    ('POST', '/api/entries/{entry}/split', {'ticket_keys': ['TNG-1', 'TNG-2']}, falcon.HTTP_404),
+    ('GET', '/api/tickets/TNG-4138', None, falcon.HTTP_404),
+    ('PUT', '/api/tickets/TNG-4138', {'service_id': None}, falcon.HTTP_404),
+    ('POST', '/api/tickets/TNG-4138/rename', {'new_key': 'KP-4138'}, falcon.HTTP_404),
+    ('DELETE', '/api/review/flags/{flag}', None, falcon.HTTP_404),
+    ('GET', '/api/services/{service}', None, falcon.HTTP_404),
+    ('PUT', '/api/services/{service}', SERVICE, falcon.HTTP_404),
+    ('DELETE', '/api/services/{service}', None, falcon.HTTP_404),
+    ('GET', '/api/activity-types/{activity_type}', None, falcon.HTTP_404),
+    ('PUT', '/api/activity-types/{activity_type}', {'name': 'changed'}, falcon.HTTP_404),
+    ('DELETE', '/api/activity-types/{activity_type}', None, falcon.HTTP_404),
+    ('GET', '/api/work-schedules/{schedule}', None, falcon.HTTP_404),
+    ('PUT', '/api/work-schedules/{schedule}', SCHEDULE, falcon.HTTP_404),
+    ('DELETE', '/api/work-schedules/{schedule}', None, falcon.HTTP_404),
+    ('GET', '/api/pto-years/2026', None, falcon.HTTP_404),
+    ('DELETE', '/api/pto-years/2026', None, falcon.HTTP_404),
+    ('DELETE', '/api/team/invitations/{invitation}', None, falcon.HTTP_404),
+    ('POST', '/api/team/invitations/{invitation}/accept', None, falcon.HTTP_404),
+    ('GET', '/api/teams/{team}', None, falcon.HTTP_403),
+    ('POST', '/api/teams/{team}/invitations', {'email': 'hans.dampf@example.com'}, falcon.HTTP_403),
+    ('DELETE', '/api/teams/{team}/invitations/{invitation}', None, falcon.HTTP_403),
+    ('DELETE', '/api/teams/{team}/members/{klara}', None, falcon.HTTP_403),
+    ('GET', '/api/teams/{team}/services', None, falcon.HTTP_403),
+    ('POST', '/api/teams/{team}/services', SERVICE, falcon.HTTP_403),
+    ('PUT', '/api/teams/{team}/services/{team_service}', SERVICE, falcon.HTTP_403),
+    ('DELETE', '/api/teams/{team}/services/{team_service}', None, falcon.HTTP_403),
+    ('PUT', '/api/admin/teams/{team}', {'name': 'Taken'}, falcon.HTTP_403),
+    ('DELETE', '/api/admin/teams/{team}', None, falcon.HTTP_403),
+    ('PUT', '/api/admin/users/{klara}', {'role': 'user', 'active': False}, falcon.HTTP_403),
+    ('GET', '/api/dashboard?member={klara}', None, falcon.HTTP_403),
+    ('GET', '/api/reports/years/2026?member={klara}', None, falcon.HTTP_403),
+    ('GET', '/api/days?week=2026-W44&member={klara}', None, falcon.HTTP_403),
+]
+
+
+@pytest.mark.parametrize('method, path, body, status', ATTEMPTS)
+def test_records_of_others_are_unknown_or_not_to_manage(app, klaras_records, hans, method, path, body, status):
+    url = path.format(**klaras_records)
+    route, _, query = url.partition('?')
+    result = app.simulate_request(method, route, query_string=query, cookies=hans, json=body)
+    assert result.status == status
+
+
+def test_klaras_records_stay_as_they_were(app, klaras_records, klara, hans):
+    for method, path, body, _ in ATTEMPTS:
+        route, _, query = path.format(**klaras_records).partition('?')
+        app.simulate_request(method, route, query_string=query, cookies=hans, json=body)
+    records = klaras_records
+    assert app.simulate_get(f'/api/entries/{records["entry"]}', cookies=klara).json['description'] == 'secret'
+    assert app.simulate_get(f'/api/services/{records["service"]}', cookies=klara).json['name'] == ''
+    assert app.simulate_get(f'/api/work-schedules/{records["schedule"]}', cookies=klara).status == falcon.HTTP_200
+    assert app.simulate_get('/api/pto-years/2026', cookies=klara).json['allowance'] == 31.0
+    assert app.simulate_get(f'/api/teams/{records["team"]}', cookies=klara).json['name'] == 'Platform'
+    assert len(app.simulate_get('/api/review', cookies=klara).json['entries']) == 1
+    assert app.simulate_get('/api/auth/me', cookies=klara).json['role'] == 'team_admin'

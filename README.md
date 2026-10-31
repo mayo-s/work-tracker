@@ -175,7 +175,8 @@ npm test           # frontend tests (Node runs the TypeScript tests directly)
 ```
 
 The DynamoDB tests run on a table simulated by moto, without AWS account or network. Contract tests
-(`test_contract.py`) run once per backend.
+(`test_contract_*.py`) run once per backend, and the isolation tests (`test_isolation.py`) run the whole app on both:
+another user's ids answer 404, team and admin routes 403.
 
 ## API types for the frontend
 
@@ -227,7 +228,7 @@ Reports count worked time, target and overtime up to today (today included); pla
 | `/api/entries/{id}`                                                                | GET                    | One entry                                                                                                                                                                                                                      |
 | `/api/entries/{id}`                                                                | PUT                    | Change an entry (same kind); a given `service_id` applies to all entries of the ticket                                                                                                                                         |
 | `/api/entries/{id}`                                                                | DELETE                 | Delete an entry and its flags; the history is kept                                                                                                                                                                             |
-| `/api/entries/{id}/history`                                                        | GET                    | Change history of an entry (also after deletion)                                                                                                                                                                               |
+| `/api/entries/{id}/history`                                                        | GET                    | Change history of an entry (also after deletion); 404 for an entry the user never had                                                                                                                                          |
 | `/api/entries/{id}/split`                                                          | POST                   | Divide a ticket entry among several tickets (`ticket_keys`), hours split evenly; recorded in the history                                                                                                                       |
 | `/api/tickets`                                                                     | GET                    | All tickets with service and number of entries; `?without_service=true` for review                                                                                                                                             |
 | `/api/tickets/{key}`                                                               | GET                    | A known ticket with its remembered service (pre-fill)                                                                                                                                                                          |

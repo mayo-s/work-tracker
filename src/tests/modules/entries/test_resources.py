@@ -126,8 +126,15 @@ def test_entry_shows_its_flags(client, database):
     assert (flag['reason'], flag['detail']) == ('uncertain_ticket', '#4138')
 
 
-def test_history_of_unknown_entry_is_empty(client):
-    assert client.simulate_get('/api/entries/404/history').json == []
+def test_history_of_unknown_entry_is_unknown(client):
+    assert client.simulate_get(f'/api/entries/{UNKNOWN}/history').status == falcon.HTTP_404
+
+
+def test_history_of_a_deleted_entry_stays(client):
+    created = create(client, TICKET)
+    client.simulate_delete(f'/api/entries/{created["id"]}')
+    history = client.simulate_get(f'/api/entries/{created["id"]}/history').json
+    assert [change['action'] for change in history] == ['created', 'deleted']
 
 
 def test_imported_entry_without_ticket_must_get_one_when_changed(client, database):

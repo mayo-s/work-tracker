@@ -211,7 +211,7 @@ and ends with passing tests and the flake8 check.
   - [x] **L.11j2** Import on DynamoDB: an export file holds thousands of items, far more than one transaction's 100,
     so the import writes atomic chunks; references are checked before anything is written, and an import that
     stopped halfway is replaced by the next one (SPEC 5.8)
-  - [ ] **L.11k** Access tests on both backends: another user's id answers 404 for every repository and API resource
+  - [x] **L.11k** Access tests on both backends: another user's id answers 404 for every repository and API resource
     (7.3)
   - [ ] **L.11l** One-time password: the admin sets it for a user who forgot theirs (changed at the next login)
   - [ ] **L.11m** Setup token on Lambda: the first user only with the token from the SSM parameter (SPEC 7.4; `moto`

@@ -684,7 +684,7 @@
     },
     "/api/entries/{entry_id}/history": {
       "get": {
-        "summary": "The history of an entry, oldest first; also available after the entry was deleted.",
+        "summary": "The history of an entry, oldest first; also available after the entry was deleted. An entry the user never had (unknown, or another user's) answers 404.",
         "operationId": "get__api_entries_{entry_id}_history",
         "description": "",
         "tags": [
@@ -702,6 +702,9 @@
           }
         ],
         "responses": {
+          "404": {
+            "description": "Not Found"
+          },
           "200": {
             "description": "OK",
             "content": {
