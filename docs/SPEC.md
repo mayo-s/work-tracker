@@ -335,8 +335,11 @@ corners, one accent color. Warnings are the only loud element.
   Settings, work schedules and PTO years come from the file, its activity types replace the four defaults, team
   services become personal services (as on leaving a team), and the setup is done. A summary shows the counts per
   type.
-- A file of an unknown format or a newer version is refused. If the import fails, everything it wrote is removed again
-  and the setup stays open.
+- A file of an unknown format or a newer version is refused, and so is a file referring to records it does not hold;
+  both are checked before anything is written, so nothing is.
+- SQLite imports in one transaction: if it fails, nothing stays. DynamoDB writes atomic chunks; an import that stops
+  halfway (e.g. a timeout on AWS) marks the account, the setup stays open, and importing the file again first removes
+  what the unfinished import wrote. Finishing the setup is the last step and clears the mark.
 - Exporting, importing into a new user and exporting again gives the same file (apart from `exported_at`, and team
   services, which come back as personal ones).
 

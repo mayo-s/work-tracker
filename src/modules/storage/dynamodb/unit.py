@@ -26,11 +26,14 @@ class Unit:
     def __init__(self, table: Table) -> None:
         self._table = table
         self._pending: dict[tuple[str, str], _Write] = {}
+        self._read: dict[tuple[str, str], Item | None] = {}  # items read or written before, so each is read once
 
     def get(self, pk: str, sk: str) -> Item | None:
         if (pk, sk) in self._pending:
             return copy.deepcopy(self._pending[pk, sk].item)
-        return self._table.get(pk, sk)
+        if (pk, sk) not in self._read:
+            self._read[pk, sk] = self._table.get(pk, sk)
+        return copy.deepcopy(self._read[pk, sk])
 
     def query(self, pk: str, low: str, high: str) -> list[Item]:
         """The items of a partition with a sort key from low to high (both included), in sort key order."""
@@ -85,6 +88,7 @@ class Unit:
         if len(writes) > MAX_ITEMS:
             raise TooManyChangesError(f'This change touches {len(writes)} records; at most {MAX_ITEMS} are saved together')
         self._transact(writes)
+        self._read |= {key: write.item for key, write in writes}
         self._pending.clear()
 
     def _transact(self, writes: list[tuple[tuple[str, str], _Write]]) -> None:

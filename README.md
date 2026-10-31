@@ -51,7 +51,8 @@ its full target as missing until its times are entered (today included).
 Moving from another Work Tracker (e.g. from the local one to AWS): "Export my data" on its settings page, then on the
 first step of `/setup` (after the login of a new database) "Import" that file instead of the steps. It sets up
 everything at once and shows how many records of each type it wrote; only for a user without days and entries, and
-nothing is written if the file does not fit.
+nothing is written if the file does not fit. On AWS the import writes in chunks; if it stops halfway, importing the
+file again replaces what it wrote.
 
 ## Import the spreadsheet
 

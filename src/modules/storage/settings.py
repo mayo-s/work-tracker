@@ -39,7 +39,18 @@ def setup_done(conn: sqlite3.Connection, user_id: str) -> bool:
 
 
 def finish_setup(conn: sqlite3.Connection, user_id: str) -> None:
+    """The setup is done, also an import that was started for it."""
     _save(conn, user_id, {'setup_done': '1'})
+    conn.execute("DELETE FROM user_settings WHERE user_id = ? AND key = 'import_unfinished'", (user_id,))
+
+
+def start_import(conn: sqlite3.Connection, user_id: str) -> None:
+    """An import of an export file has started; until the setup is done, importing again replaces what it wrote."""
+    _save(conn, user_id, {'import_unfinished': '1'})
+
+
+def import_unfinished(conn: sqlite3.Connection, user_id: str) -> bool:
+    return _values(conn, user_id).get('import_unfinished') == '1'
 
 
 def load_theme(conn: sqlite3.Connection, user_id: str) -> Theme:
