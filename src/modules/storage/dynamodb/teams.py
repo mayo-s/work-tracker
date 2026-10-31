@@ -9,6 +9,7 @@ A member's report views are in their partition (`VIEW#<time>#<id>`).
 import datetime as dt
 from collections.abc import Callable
 
+from src.models.base import new_id
 from src.models.catalog import Service
 from src.models.teams import Invitation, Member, Membership, ReportView, Team
 from src.modules.storage.dynamodb.catalog import DynamoServices, DynamoTeamServices
@@ -43,14 +44,14 @@ class DynamoTeams:
                  if item['deleted_at'] is None]
         return sorted(teams, key=lambda team: team.name.lower())
 
-    def get(self, team_id: int) -> Team:
+    def get(self, team_id: str) -> Team:
         item = team_item(self._unit, team_id)
         if item is None or item['deleted_at'] is not None:
             raise NotFoundError(f'No team with id {team_id}')
         return Team(id=item['id'], name=item['name'])
 
     def add(self, team: Team) -> Team:
-        added = team.model_copy(update={'id': self._unit.next_id('team')})
+        added = team.model_copy(update={'id': new_id()})
         self._claim(added.name, added.id)
         self._unit.put({'PK': TEAMS, 'SK': team_key(added.id), 'id': added.id, 'name': added.name, 'deleted_at': None})
         return added
@@ -63,7 +64,7 @@ class DynamoTeams:
         self._unit.put(team_item(self._unit, team.id) | {'name': team.name})
         return team
 
-    def delete(self, team_id: int) -> None:
+    def delete(self, team_id: str) -> None:
         """Only a team without members; its open invitations and services go with it, its history stays."""
         stored = self.get(team_id)
         if self.members(team_id):
@@ -76,7 +77,7 @@ class DynamoTeams:
         self._unit.delete(TEAMS, _name_key(stored.name))
         self._unit.put(team_item(self._unit, team_id) | {'deleted_at': self._clock().isoformat()})
 
-    def members(self, team_id: int) -> list[Member]:
+    def members(self, team_id: str) -> list[Member]:
         members = []
         for item in self._unit.query_prefix(team_partition(team_id), 'MEMBER#'):
             profile = _profile(self._unit, item['user_id'])
@@ -93,13 +94,13 @@ class DynamoTeams:
         """All teams the user was in, oldest first."""
         return [_membership(self._unit, item) for item in self._unit.query_prefix(user_partition(user_id), MEMBERSHIP)]
 
-    def join(self, user_id: str, team_id: int) -> Membership:
+    def join(self, user_id: str, team_id: str) -> Membership:
         """The user joins the team today, leaving their current team first."""
         team = self.get(team_id)
         self.leave(user_id)
         today = self._clock().date().isoformat()
-        membership_id = self._unit.next_id('membership')
-        self._unit.put({'PK': user_partition(user_id), 'SK': f'{MEMBERSHIP}{membership_id:010d}', 'team_id': team_id,
+        membership_id = new_id()
+        self._unit.put({'PK': user_partition(user_id), 'SK': f'{MEMBERSHIP}{membership_id}', 'team_id': team_id,
                         'user_id': user_id, 'joined_on': today, 'left_on': None})
         self._unit.put({'PK': team_partition(team_id), 'SK': f'MEMBER#{user_id}', 'user_id': user_id, 'joined_on': today})
         return Membership(team_id=team_id, team_name=team.name, user_id=user_id, joined_on=today)
@@ -118,7 +119,7 @@ class DynamoTeams:
         if profile and profile['role'] == 'team_admin':
             self._unit.put(profile | {'role': 'user'})
 
-    def _keep_services(self, user_id: str, team_id: int) -> None:
+    def _keep_services(self, user_id: str, team_id: str) -> None:
         team_services = {service.id: service for service in DynamoTeamServices(self._unit, team_id).all()}
         personal, copies = DynamoServices(self._unit, user_id), {}
         for ticket in self._unit.query_prefix(user_partition(user_id), 'TICKET#'):
@@ -129,7 +130,7 @@ class DynamoTeams:
                 self._unit.make_room(1)
                 self._unit.put(ticket | {'service_id': copies[service.id]})
 
-    def _claim(self, name: str, team_id: int) -> None:
+    def _claim(self, name: str, team_id: str) -> None:
         self._unit.put({'PK': TEAMS, 'SK': _name_key(name), 'id': team_id}, unique=f'A team named "{name}" already exists')
 
 
@@ -143,7 +144,7 @@ def _invites_partition(email: str) -> str:
 
 def _delete_invitation(unit: Unit, item: Item) -> None:
     """Both copies of an invitation (`item` is either)."""
-    unit.delete(team_partition(item['team_id']), f'INVITE#{item["id"]:010d}')
+    unit.delete(team_partition(item['team_id']), f'INVITE#{item["id"]}')
     unit.delete(_invites_partition(item['email']), team_key(item['team_id']))
 
 
@@ -154,7 +155,7 @@ class DynamoInvitations:
         self._unit = unit
         self._clock = clock or dt.datetime.now
 
-    def invite(self, team_id: int, email: str, invited_by: str) -> None:
+    def invite(self, team_id: str, email: str, invited_by: str) -> None:
         """Invite whoever has this e-mail address (ignoring case); nothing tells whether such a user exists. Members
         of the team and users already invited are left as they are."""
         email = email.strip()
@@ -162,17 +163,17 @@ class DynamoInvitations:
         if any(member.email.lower() == email.lower() for member in members) or self._unit.get(
                 _invites_partition(email), team_key(team_id)):
             return
-        invitation = Invitation(id=self._unit.next_id('invitation'), team_id=team_id, email=email, invited_by=invited_by,
+        invitation = Invitation(id=new_id(), team_id=team_id, email=email, invited_by=invited_by,
                                 invited_at=self._clock())
         values = invitation.model_dump(mode='json', exclude={'team_name'})
-        self._unit.put({'PK': team_partition(team_id), 'SK': f'INVITE#{invitation.id:010d}', **values})
+        self._unit.put({'PK': team_partition(team_id), 'SK': f'INVITE#{invitation.id}', **values})
         self._unit.put({'PK': _invites_partition(email), 'SK': team_key(team_id), **values})
 
-    def of_team(self, team_id: int) -> list[Invitation]:
+    def of_team(self, team_id: str) -> list[Invitation]:
         return self._invitations(self._unit.query_prefix(team_partition(team_id), 'INVITE#'))
 
-    def withdraw(self, team_id: int, invitation_id: int) -> None:
-        item = self._unit.get(team_partition(team_id), f'INVITE#{invitation_id:010d}')
+    def withdraw(self, team_id: str, invitation_id: str) -> None:
+        item = self._unit.get(team_partition(team_id), f'INVITE#{invitation_id}')
         if item is None:
             raise NotFoundError(f'No open invitation with id {invitation_id}')
         _delete_invitation(self._unit, item)
@@ -183,7 +184,7 @@ class DynamoInvitations:
         items = self._unit.query_prefix(_invites_partition(profile['email']), 'TEAM#') if profile else []
         return self._invitations(item for item in items if team_item(self._unit, item['team_id'])['deleted_at'] is None)
 
-    def accept(self, user_id: str, invitation_id: int, teams: Teams) -> Membership:
+    def accept(self, user_id: str, invitation_id: str, teams: Teams) -> Membership:
         """The user joins the team (leaving their current one); their other invitations are declined."""
         invitation = self._own(user_id, invitation_id)
         membership = teams.join(user_id, invitation.team_id)
@@ -191,11 +192,11 @@ class DynamoInvitations:
             _delete_invitation(self._unit, item)
         return membership
 
-    def decline(self, user_id: str, invitation_id: int) -> None:
+    def decline(self, user_id: str, invitation_id: str) -> None:
         invitation = self._own(user_id, invitation_id)
         _delete_invitation(self._unit, invitation.model_dump())
 
-    def _own(self, user_id: str, invitation_id: int) -> Invitation:
+    def _own(self, user_id: str, invitation_id: str) -> Invitation:
         """One of the user's open invitations; another user's is unknown (404)."""
         for invitation in self.of_user(user_id):
             if invitation.id == invitation_id:
@@ -215,8 +216,8 @@ class DynamoReportViews:
         self._unit = unit
 
     def add(self, view: ReportView) -> None:
-        view_id = self._unit.next_id('report_view')
-        sort_key = f'VIEW#{view.viewed_at:%Y-%m-%dT%H:%M:%S.%f}#{view_id:010d}'  # in time order
+        view_id = new_id()
+        sort_key = f'VIEW#{view.viewed_at:%Y-%m-%dT%H:%M:%S.%f}#{view_id}'  # in time order
         self._unit.put({'PK': user_partition(view.member_id), 'SK': sort_key,
                         **view.model_dump(mode='json', exclude={'viewer_name'})})
 

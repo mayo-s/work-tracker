@@ -468,6 +468,23 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 - One table holds all users. Data reaches it through the export and import of 5.8, e.g. a local database: import the
   spreadsheets locally, export, then import the file in the setup on AWS.
 
+### 7.2a Ids
+
+- Records get a UUIDv7 as id: entries, history lines, review flags, services, activity types, work schedules, teams,
+  memberships, invitations and report views. Its start is the time of creation, so ids sort in the order the records
+  were created; the rest is random, so an id neither can be guessed nor tells how many records the app holds (integer
+  ids counting up would show other users' activity to anyone who creates a record now and then).
+- Users keep their random UUID (version 4); tickets, days and PTO years keep their natural keys (ticket key, date,
+  year), sessions the hash of their token.
+- The API takes and gives these ids as strings, e.g. `/api/entries/0190a3c4-…`.
+- A migration gives the records of an existing SQLite database UUIDv7 ids in the order of their old ids, also where
+  they are referred to: tickets (service), entries (activity type), history lines (entry; activity types in the changes,
+  "Split from entry …"), review flags, team services, memberships, invitations and report views.
+- DynamoDB needs no id counters any more; sort keys hold the ids, which keep the order of creation.
+- The export file keeps its own ids (1, 2, …, now written as text; numbers are read too) and its version 1; the import
+  gives the records new UUIDv7 ids.
+- The history shows an activity type that was deleted since as "deleted activity type".
+
 ### 7.3 Access to data
 
 - The rules of 5.7 hold on both backends and are enforced by the app: the user id comes from the session only, never

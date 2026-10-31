@@ -31,7 +31,7 @@ export type Field = {
 /** A record as text values by field name; `label` names it in messages, `usage` fills the optional usage column, `link`
  * leads to a page of the record (e.g. a team's). */
 export type Item = {
-  id: number; label: string; values: Record<string, string>; usage?: string; link?: { href: string; label: string };
+  id: string; label: string; values: Record<string, string>; usage?: string; link?: { href: string; label: string };
 };
 
 /** One editable table: its records and how to save and delete them. */
@@ -43,8 +43,8 @@ export type EditableTable = {
   fields: Field[];
   usageLabel?: string;
   items: Item[];
-  save: (id: number | null, values: Record<string, string>) => Promise<unknown>;
-  remove: (id: number) => Promise<unknown>;
+  save: (id: string | null, values: Record<string, string>) => Promise<unknown>;
+  remove: (id: string) => Promise<unknown>;
   deleteQuestion: (item: Item) => string;
 };
 

@@ -9,6 +9,7 @@ from collections.abc import Callable, Iterable, Sequence
 
 from pydantic import TypeAdapter
 
+from src.models.base import new_id
 from src.lib.durations import split_evenly
 from src.models.catalog import Ticket
 from src.models.entries import ActivityEntry, Entry, TicketEntry
@@ -29,16 +30,16 @@ _ENTRY = TypeAdapter(Entry)
 _LAST = '\U0010ffff'  # sorts after every other character, as the end of a sort key range
 
 
-def _entry_key(date: dt.date | str, entry_id: int) -> str:
-    return f'ENTRY#{date}#{entry_id:010d}'
+def _entry_key(date: dt.date | str, entry_id: str) -> str:
+    return f'ENTRY#{date}#{entry_id}'
 
 
-def _id_key(entry_id: int) -> str:
-    return f'ENTRY_ID#{entry_id:010d}'
+def _id_key(entry_id: str) -> str:
+    return f'ENTRY_ID#{entry_id}'
 
 
-def _history_key(entry_id: int, change_id: int) -> str:
-    return f'HISTORY#{entry_id:010d}#{change_id:010d}'
+def _history_key(entry_id: str, change_id: str) -> str:
+    return f'HISTORY#{entry_id}#{change_id}'
 
 
 def _entry(item: Item) -> Entry:
@@ -59,7 +60,7 @@ class DynamoEntries:
         self._pk = user_partition(user_id)
         self._clock = clock or history_time
 
-    def get(self, entry_id: int) -> Entry:
+    def get(self, entry_id: str) -> Entry:
         pointer = self._unit.get(self._pk, _id_key(entry_id))
         item = pointer and self._unit.get(self._pk, _entry_key(pointer['date'], entry_id))
         if not item:
@@ -71,7 +72,7 @@ class DynamoEntries:
         items = self._unit.query(self._pk, f'ENTRY#{start.isoformat()}', f'ENTRY#{end.isoformat()}#{_LAST}')
         return [_entry(item) for item in items]
 
-    def imported_together(self, entry_id: int) -> list[Entry]:
+    def imported_together(self, entry_id: str) -> list[Entry]:
         """Entries imported from the same spreadsheet line as this one (same date and original line), itself included.
 
         Empty if the entry was not imported.
@@ -105,7 +106,7 @@ class DynamoEntries:
             self.add_history(entry.id, action, changes, detail)
         return entry
 
-    def split(self, entry_id: int, ticket_keys: Sequence[str]) -> list[Entry]:
+    def split(self, entry_id: str, ticket_keys: Sequence[str]) -> list[Entry]:
         """Divide a ticket entry among several tickets, the hours split evenly in quarter hours.
 
         The entry itself gets the first ticket; the others become new entries with the same date and description.
@@ -126,7 +127,7 @@ class DynamoEntries:
         ]
         return [first, *others]
 
-    def delete(self, entry_id: int) -> None:
+    def delete(self, entry_id: str) -> None:
         """Delete an entry and its review flags; its history is kept."""
         old = self.get(entry_id)
         self._unit.delete(self._pk, _entry_key(old.date.isoformat(), entry_id))
@@ -138,55 +139,55 @@ class DynamoEntries:
         """Store an entry without a history line (its history comes along, e.g. from an export file); its ticket is
         created if needed."""
         self._check_references(entry)
-        restored = entry.model_copy(update={'id': self._unit.next_id('entry')})
+        restored = entry.model_copy(update={'id': new_id()})
         self._save(restored)
         return restored
 
     def reserve_id(self) -> int:
         """An id no entry will get, for an entry known only from its history (deleted before an export)."""
-        return self._unit.next_id('entry')
+        return new_id()
 
     def restore_history(self, change: EntryChange) -> EntryChange:
         """Store a history line as it was, with its own time."""
-        stored = change.model_copy(update={'id': self._unit.next_id('history')})
+        stored = change.model_copy(update={'id': new_id()})
         self._unit.put({'PK': self._pk, 'SK': _history_key(stored.entry_id, stored.id), **stored.model_dump(mode='json')})
         return stored
 
-    def add_history(self, entry_id: int, action: HistoryAction, changes: Changes, detail: str = '') -> EntryChange:
+    def add_history(self, entry_id: str, action: HistoryAction, changes: Changes, detail: str = '') -> EntryChange:
         return self.restore_history(
             EntryChange(entry_id=entry_id, changed_at=self._clock(), action=action, changes=changes, detail=detail))
 
-    def history(self, entry_id: int) -> list[EntryChange]:
-        return [EntryChange(**attributes(item)) for item in self._unit.query_prefix(self._pk, f'HISTORY#{entry_id:010d}#')]
+    def history(self, entry_id: str) -> list[EntryChange]:
+        return [EntryChange(**attributes(item)) for item in self._unit.query_prefix(self._pk, f'HISTORY#{entry_id}#')]
 
     def all_history(self) -> list[EntryChange]:
         """The history of all the user's entries, deleted ones included, in the order it was written."""
         changes = [EntryChange(**attributes(item)) for item in self._unit.query_prefix(self._pk, 'HISTORY#')]
         return sorted(changes, key=lambda change: change.id)
 
-    def changed(self, entry_ids: Iterable[int]) -> set[int]:
+    def changed(self, entry_ids: Iterable[str]) -> set[str]:
         """Those of the given entries that changed after they were created or imported (for the UI marker)."""
         ids = set(entry_ids)
         if not ids:
             return set()
-        lines = self._unit.query(self._pk, f'HISTORY#{min(ids):010d}#', f'HISTORY#{max(ids):010d}#{_LAST}')
+        lines = self._unit.query(self._pk, f'HISTORY#{min(ids)}#', f'HISTORY#{max(ids)}#{_LAST}')
         return {line['entry_id'] for line in lines if line['entry_id'] in ids
                 and line['action'] not in (HistoryAction.CREATED, HistoryAction.IMPORTED)}
 
-    def add_flag(self, entry_id: int, reason: FlagReason, detail: str = '') -> ReviewFlag:
+    def add_flag(self, entry_id: str, reason: FlagReason, detail: str = '') -> ReviewFlag:
         flag = ReviewFlag(entry_id=entry_id, reason=reason, detail=detail)
         if self._unit.get(self._pk, _id_key(entry_id)) is None:
             raise ConflictError(f'Cannot flag entry {entry_id}: no such entry')
         return add_flag(self._unit, self._pk, flag)
 
-    def flags_of(self, entry_id: int) -> list[ReviewFlag]:
+    def flags_of(self, entry_id: str) -> list[ReviewFlag]:
         return [flag for flag in all_flags(self._unit, self._pk) if flag.entry_id == entry_id]
 
     def entry_flags(self) -> list[ReviewFlag]:
         """All flags on entries, in the order they were added."""
         return [flag for flag in all_flags(self._unit, self._pk) if flag.entry_id is not None]
 
-    def clear_flag(self, flag_id: int) -> None:
+    def clear_flag(self, flag_id: str) -> None:
         item = self._unit.get(self._pk, flag_key(flag_id))
         if item is None or item['entry_id'] is None:
             raise NotFoundError(f'No entry flag with id {flag_id}')
@@ -197,7 +198,7 @@ class DynamoEntries:
         day = self._unit.get(self._pk, day_key(entry.date))
         check_fits(entry, day['start'] if day else None)
 
-    def _imported_line(self, entry_id: int) -> str | None:
+    def _imported_line(self, entry_id: str) -> str | None:
         return next((change.detail for change in self.history(entry_id) if change.action == HistoryAction.IMPORTED), None)
 
     def _check_references(self, entry: Entry) -> None:

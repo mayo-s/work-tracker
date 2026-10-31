@@ -34,7 +34,7 @@ export type GuessedTicket = {
   key: string;
   entries: ReviewEntry['entry'][];
   originals: string[];
-  flagIds: number[];
+  flagIds: string[];
   /** Per original line: all entries the import made from it, if it named several tickets. */
   splits: Record<string, ReviewEntry['split_on_import']>;
 };
@@ -104,12 +104,12 @@ function act(page: Page, action: () => Promise<unknown>, message: string): void 
   action().then(() => page.reload(message), page.fail);
 }
 
-function clearFlags(flagIds: number[]): Promise<unknown> {
+function clearFlags(flagIds: string[]): Promise<unknown> {
   return Promise.all(flagIds.map((id) => api.clearFlag(id)));
 }
 
 /** An inline form to rename a ticket, or merge it into an existing one; `flagIds` are cleared afterwards. */
-function renameForm(key: string, page: Page, onCancel: () => void, flagIds: number[] = []): HTMLElement {
+function renameForm(key: string, page: Page, onCancel: () => void, flagIds: string[] = []): HTMLElement {
   const input = el('input', { value: key, 'aria-label': `New key for ${key}`, autocomplete: 'off', class: 'rename-input' });
   const form = el('form', { class: 'rename-form' }, input,
     el('button', { type: 'submit', class: 'button-small primary' }, 'Rename'), button('Cancel', onCancel));
@@ -139,7 +139,7 @@ function openInCell(cell: HTMLElement, opener: HTMLElement, form: (cancel: () =>
   }));
 }
 
-function renameAction(key: string, page: Page, cell: HTMLElement, flagIds: number[] = []): HTMLButtonElement {
+function renameAction(key: string, page: Page, cell: HTMLElement, flagIds: string[] = []): HTMLButtonElement {
   const rename: HTMLButtonElement = button('Rename',
     () => openInCell(cell, rename, (cancel) => renameForm(key, page, cancel, flagIds)));
   return rename;
@@ -195,7 +195,7 @@ function ticketsSection(page: Page): HTMLElement {
   });
   assign.addEventListener('click', () => {
     const service = page.services.find((item) => String(item.id) === services.value);
-    act(page, () => api.assignService([...selected], Number(services.value)),
+    act(page, () => api.assignService([...selected], services.value),
       `${service?.short_name ?? 'Service'} assigned to ${selected.size} ${selected.size === 1 ? 'ticket' : 'tickets'}`);
   });
   return el('section', { class: 'review-section', id: 'tickets' },
@@ -211,7 +211,7 @@ function ticketsSection(page: Page): HTMLElement {
   );
 }
 
-function flagActions(flags: { id: number }[], page: Page): HTMLElement[] {
+function flagActions(flags: { id: string }[], page: Page): HTMLElement[] {
   return flags.map((flag) => button('Done', () => act(page, () => api.clearFlag(flag.id), 'Flag cleared')));
 }
 

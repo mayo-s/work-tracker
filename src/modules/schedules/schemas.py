@@ -37,7 +37,7 @@ class ScheduleInput(ScheduleTerms):
         check_domain(self.to_schedule)
         return self
 
-    def to_schedule(self, schedule_id: int | None = None) -> Schedule:
+    def to_schedule(self, schedule_id: str | None = None) -> Schedule:
         return Schedule(
             id=schedule_id, valid_from=self.valid_from, weekly_minutes=parse_duration(self.weekly_hours),
             work_days=[WEEKDAYS.index(day) + 1 for day in self.work_days], state=self.state,
@@ -46,7 +46,7 @@ class ScheduleInput(ScheduleTerms):
 
 
 class ScheduleView(ScheduleInput):
-    id: int
+    id: str
     daily_target: str = Field(description='Hours per week split evenly over the work days, h:mm', examples=['8:00'])
 
     @classmethod

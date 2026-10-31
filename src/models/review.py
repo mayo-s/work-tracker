@@ -10,7 +10,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from src.models.base import DomainModel
+from src.models.base import DomainModel, RecordId
 
 
 class FlagReason(StrEnum):
@@ -19,8 +19,8 @@ class FlagReason(StrEnum):
 
 
 class ReviewFlag(DomainModel):
-    id: int | None = None
-    entry_id: int | None = None
+    id: RecordId | None = None
+    entry_id: RecordId | None = None
     date: dt.date | None = Field(default=None, description='Set for flags on a day')
     reason: FlagReason
     detail: str = Field(default='', max_length=500, description='e.g. the original spreadsheet text')

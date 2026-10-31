@@ -42,7 +42,7 @@ class DynamoStore:
     def services(self, user_id: str) -> DynamoServices:
         return DynamoServices(self._unit, user_id)
 
-    def team_services(self, team_id: int) -> DynamoTeamServices:
+    def team_services(self, team_id: str) -> DynamoTeamServices:
         return DynamoTeamServices(self._unit, team_id)
 
     def activity_types(self, user_id: str) -> DynamoActivityTypes:

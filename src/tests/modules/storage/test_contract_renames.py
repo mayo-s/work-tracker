@@ -72,9 +72,10 @@ def test_rename_normalizes_keys(rename, entries):
     assert rename(' tng-2035', 'kp-2035 ').ticket.key == 'KP-2035'
 
 
-def test_rename_leaves_other_entries_untouched(rename, entries):
+def test_rename_leaves_other_entries_untouched(rename, entries, activity_type_ids):
     other = entries.create(ticket_entry('TNG-5214'))
-    activity = entries.create(ActivityEntry(date=dt.date(2026, 3, 1), activity_type_id=1, duration=60))
+    activity = entries.create(ActivityEntry(date=dt.date(2026, 3, 1), activity_type_id=activity_type_ids['Meeting'],
+                                            duration=60))
     entries.create(ticket_entry('TNG-2035'))
     rename('TNG-2035', 'KP-2035')
     assert entries.get(other.id) == other

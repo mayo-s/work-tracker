@@ -8,6 +8,7 @@ from src.models.review import FlagReason
 from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository
 from src.modules.storage.entries import EntryRepository
 from src.tests.users import USER
+from src.tests.ids import UNKNOWN
 
 TICKET = {'kind': 'ticket', 'date': '2026-10-27', 'duration': '0:30', 'ticket_key': 'TNG-5882', 'description': 'PR Review',
           'coding': True}
@@ -56,12 +57,12 @@ def test_changing_the_service_applies_to_all_entries_of_the_ticket(client, ids):
 
 
 def test_unknown_service_rolls_back_the_entry(client):
-    assert client.simulate_post('/api/entries', json=TICKET | {'service_id': 404}).status == falcon.HTTP_409
+    assert client.simulate_post('/api/entries', json=TICKET | {'service_id': UNKNOWN}).status == falcon.HTTP_409
     assert client.simulate_get('/api/entries', params={'week': '2026-W44'}).json == []
 
 
 def test_unknown_activity_type(client):
-    body = {'kind': 'activity', 'date': '2026-10-28', 'duration': '1:00', 'activity_type_id': 404}
+    body = {'kind': 'activity', 'date': '2026-10-28', 'duration': '1:00', 'activity_type_id': UNKNOWN}
     assert client.simulate_post('/api/entries', json=body).status == falcon.HTTP_409
 
 
@@ -150,7 +151,7 @@ def test_split_entry(client):
 
 
 @pytest.mark.parametrize('entry_id, body, status', [
-    (404, {'ticket_keys': ['TNG-1', 'TNG-2']}, 404),
+    (UNKNOWN, {'ticket_keys': ['TNG-1', 'TNG-2']}, 404),
     (None, {'ticket_keys': ['TNG-4347']}, 422),
     (None, {'ticket_keys': ['TNG-4347', '#1482']}, 422),
     (None, {'ticket_keys': ['TNG-4347', 'tng-4347']}, 409),

@@ -5,19 +5,19 @@ from typing import Literal
 
 from pydantic import Field
 
-from src.models.base import DomainModel
+from src.models.base import DomainModel, RecordId
 from src.models.users import Role
 
 
 class Team(DomainModel):
-    id: int | None = None
+    id: RecordId | None = None
     name: str = Field(min_length=1, max_length=50, description='e.g. Platform')
 
 
 class Membership(DomainModel):
     """A user in a team from `joined_on` until the day before `left_on` (None: still a member)."""
 
-    team_id: int
+    team_id: RecordId
     team_name: str
     user_id: str
     joined_on: dt.date
@@ -39,8 +39,8 @@ class Member(DomainModel):
 class Invitation(DomainModel):
     """An invitation to the user with this e-mail address, whether such a user exists or not."""
 
-    id: int | None = None
-    team_id: int
+    id: RecordId | None = None
+    team_id: RecordId
     team_name: str = ''
     email: str
     invited_by: str

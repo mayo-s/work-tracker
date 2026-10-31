@@ -71,9 +71,6 @@ class Unit:
     def delete(self, pk: str, sk: str) -> None:
         self._pending[pk, sk] = _Write(None)
 
-    def next_id(self, kind: str) -> int:
-        return self._table.next_id(kind)
-
     def make_room(self, items: int) -> None:
         """Write the pending changes now, as an atomic chunk, if `items` more would not fit into one transaction: for a
         larger change that ends with the step closing it, so repeating it completes it (SPEC 7.2)."""

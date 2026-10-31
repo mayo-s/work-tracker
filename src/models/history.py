@@ -5,7 +5,7 @@ from enum import StrEnum
 
 from pydantic import Field, JsonValue
 
-from src.models.base import DomainModel
+from src.models.base import DomainModel, RecordId
 
 
 class HistoryAction(StrEnum):
@@ -21,8 +21,8 @@ class HistoryAction(StrEnum):
 class EntryChange(DomainModel):
     """One line of an entry's history; `changes` maps each changed field to (old, new)."""
 
-    id: int | None = None
-    entry_id: int
+    id: RecordId | None = None
+    entry_id: RecordId
     changed_at: dt.datetime
     action: HistoryAction
     changes: dict[str, tuple[JsonValue, JsonValue]] = Field(default_factory=dict)

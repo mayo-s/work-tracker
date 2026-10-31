@@ -44,7 +44,7 @@ def new_key_for(source: Ticket | None, old_key: str, new_key: str) -> str:
     return new
 
 
-def kept_service(source: Ticket, target: Ticket | None) -> int | None:
+def kept_service(source: Ticket, target: Ticket | None) -> str | None:
     """An existing ticket keeps its service; it takes the old ticket's service only if it has none."""
     if target and target.service_id is not None:
         return target.service_id

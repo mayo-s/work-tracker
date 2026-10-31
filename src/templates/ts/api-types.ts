@@ -1097,7 +1097,7 @@ export interface components {
         /** AdminTeamView */
         AdminTeamView: {
             /** Id */
-            id: number;
+            id: string;
             /** Name */
             name: string;
             /**
@@ -1261,7 +1261,7 @@ export interface components {
              * Id
              * @default null
              */
-            id?: number | null;
+            id?: string | null;
             /**
              * Short Name
              * @description e.g. MSB
@@ -1290,7 +1290,7 @@ export interface components {
              * Id
              * @default null
              */
-            id?: number | null;
+            id?: string | null;
             /**
              * Name
              * @description e.g. Tool Management
@@ -1579,7 +1579,7 @@ export interface components {
              * @description Ticket entries: set the ticket's service (applies to all its entries); omit to keep it
              * @default null
              */
-            service_id?: number | null;
+            service_id?: string | null;
             /**
              * Description
              * @default
@@ -1594,7 +1594,7 @@ export interface components {
              * Activity Type Id
              * @default null
              */
-            activity_type_id?: number | null;
+            activity_type_id?: string | null;
             /**
              * Note
              * @default
@@ -1604,7 +1604,7 @@ export interface components {
         /** EntryView */
         EntryView: {
             /** Id */
-            id: number;
+            id: string;
             /**
              * Kind
              * @enum {string}
@@ -1626,7 +1626,7 @@ export interface components {
              * Service Id
              * @default null
              */
-            service_id?: number | null;
+            service_id?: string | null;
             /**
              * Service
              * @description Short name of the ticket's service
@@ -1647,7 +1647,7 @@ export interface components {
              * Activity Type Id
              * @default null
              */
-            activity_type_id?: number | null;
+            activity_type_id?: string | null;
             /**
              * Activity Type
              * @default null
@@ -1917,7 +1917,7 @@ export interface components {
              */
             valid_from: string;
             /** Id */
-            id: number;
+            id: string;
             /**
              * Daily Target
              * @description Hours per week split evenly over the work days, h:mm
@@ -2040,7 +2040,7 @@ export interface components {
          */
         TeamPageView: {
             /** Id */
-            id: number;
+            id: string;
             /** Name */
             name: string;
             /** Members */
@@ -2104,7 +2104,7 @@ export interface components {
              */
             key: string;
             /** Service Id */
-            service_id: number | null;
+            service_id: string | null;
             /**
              * Service
              * @description Short name of the service
@@ -2122,7 +2122,7 @@ export interface components {
              * Service Id
              * @description The service, or null to unassign it
              */
-            service_id: number | null;
+            service_id: string | null;
         };
         /** ServiceAssignment */
         ServiceAssignment: {
@@ -2138,7 +2138,7 @@ export interface components {
              * Service Id
              * @description The service, or null to unassign it
              */
-            service_id: number | null;
+            service_id: string | null;
         };
         /** AssignmentResult */
         AssignmentResult: {
@@ -2241,7 +2241,7 @@ export interface components {
         /** TeamRef */
         TeamRef: {
             /** Id */
-            id: number;
+            id: string;
             /** Name */
             name: string;
             /**
@@ -2424,7 +2424,7 @@ export interface components {
         /** DayFlagView */
         DayFlagView: {
             /** Id */
-            id: number;
+            id: string;
             reason: components["schemas"]["FlagReason"];
             /** Detail */
             detail: string;
@@ -2476,7 +2476,7 @@ export interface components {
         /** EntryFlagView */
         EntryFlagView: {
             /** Id */
-            id: number;
+            id: string;
             reason: components["schemas"]["FlagReason"];
             /** Detail */
             detail: string;
@@ -2484,7 +2484,7 @@ export interface components {
         /** ChangeView */
         ChangeView: {
             /** Id */
-            id: number;
+            id: string;
             /**
              * Changed At
              * Format: date-time
@@ -2516,7 +2516,7 @@ export interface components {
              * Service Id
              * @description Null for tickets without service
              */
-            service_id: number | null;
+            service_id: string | null;
             /** Service */
             service: string | null;
             /** Duration */
@@ -2626,14 +2626,17 @@ export interface components {
              * Id
              * @default null
              */
-            id?: number | null;
+            id?: string | null;
             /**
              * Date
              * Format: date
              */
             date: string;
-            /** Activity Type Id */
-            activity_type_id: number;
+            /**
+             * Activity Type Id
+             * @description A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…
+             */
+            activity_type_id: string;
             /**
              * Duration
              * @description Minutes, in quarter hours
@@ -2688,9 +2691,12 @@ export interface components {
              * Id
              * @default null
              */
-            id?: number | null;
-            /** Entry Id */
-            entry_id: number;
+            id?: string | null;
+            /**
+             * Entry Id
+             * @description A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…
+             */
+            entry_id: string;
             /**
              * Changed At
              * Format: date-time
@@ -2717,12 +2723,12 @@ export interface components {
              * Id
              * @default null
              */
-            id?: number | null;
+            id?: string | null;
             /**
              * Entry Id
              * @default null
              */
-            entry_id?: number | null;
+            entry_id?: string | null;
             /**
              * Date
              * @description Set for flags on a day
@@ -2743,7 +2749,7 @@ export interface components {
              * Id
              * @default null
              */
-            id?: number | null;
+            id?: string | null;
             /**
              * Valid From
              * Format: date
@@ -2779,7 +2785,7 @@ export interface components {
              * Id
              * @default null
              */
-            id?: number | null;
+            id?: string | null;
             /**
              * Short Name
              * @description e.g. MSB
@@ -2826,7 +2832,7 @@ export interface components {
              * Service Id
              * @default null
              */
-            service_id?: number | null;
+            service_id?: string | null;
         };
         /** TicketEntry */
         TicketEntry: {
@@ -2839,7 +2845,7 @@ export interface components {
              * Id
              * @default null
              */
-            id?: number | null;
+            id?: string | null;
             /**
              * Date
              * Format: date
@@ -2870,7 +2876,7 @@ export interface components {
         /** InvitationView */
         InvitationView: {
             /** Id */
-            id: number;
+            id: string;
             /** Email */
             email: string;
             /**
@@ -2905,7 +2911,7 @@ export interface components {
         /** MyInvitationView */
         MyInvitationView: {
             /** Id */
-            id: number;
+            id: string;
             /** Team Name */
             team_name: string;
             /**
@@ -3260,7 +3266,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the entry */
-                entry_id: number;
+                entry_id: string;
             };
             cookie?: never;
         };
@@ -3299,7 +3305,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the entry */
-                entry_id: number;
+                entry_id: string;
             };
             cookie?: never;
         };
@@ -3349,7 +3355,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the entry */
-                entry_id: number;
+                entry_id: string;
             };
             cookie?: never;
         };
@@ -3386,7 +3392,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the entry */
-                entry_id: number;
+                entry_id: string;
             };
             cookie?: never;
         };
@@ -3418,7 +3424,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the entry */
-                entry_id: number;
+                entry_id: string;
             };
             cookie?: never;
         };
@@ -4704,7 +4710,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the team */
-                team_id: number;
+                team_id: string;
             };
             cookie?: never;
         };
@@ -4761,7 +4767,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the team */
-                team_id: number;
+                team_id: string;
             };
             cookie?: never;
         };
@@ -4812,7 +4818,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the team */
-                team_id: number;
+                team_id: string;
             };
             cookie?: never;
         };
@@ -4858,7 +4864,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the team */
-                team_id: number;
+                team_id: string;
             };
             cookie?: never;
         };
@@ -4908,9 +4914,9 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the team */
-                team_id: number;
+                team_id: string;
                 /** @description Id of the invitation */
-                invitation_id: number;
+                invitation_id: string;
             };
             cookie?: never;
         };
@@ -4954,7 +4960,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the team */
-                team_id: number;
+                team_id: string;
                 /** @description Id (UUID) of the member */
                 user_id: string;
             };
@@ -5000,7 +5006,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the team */
-                team_id: number;
+                team_id: string;
             };
             cookie?: never;
         };
@@ -5046,7 +5052,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the team */
-                team_id: number;
+                team_id: string;
             };
             cookie?: never;
         };
@@ -5103,9 +5109,9 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the team */
-                team_id: number;
+                team_id: string;
                 /** @description Id of the service */
-                service_id: number;
+                service_id: string;
             };
             cookie?: never;
         };
@@ -5162,9 +5168,9 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the team */
-                team_id: number;
+                team_id: string;
                 /** @description Id of the service */
-                service_id: number;
+                service_id: string;
             };
             cookie?: never;
         };
@@ -5264,7 +5270,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the invitation */
-                invitation_id: number;
+                invitation_id: string;
             };
             cookie?: never;
         };
@@ -5301,7 +5307,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the invitation */
-                invitation_id: number;
+                invitation_id: string;
             };
             cookie?: never;
         };
@@ -5409,7 +5415,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the work schedule */
-                schedule_id: number;
+                schedule_id: string;
             };
             cookie?: never;
         };
@@ -5448,7 +5454,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the work schedule */
-                schedule_id: number;
+                schedule_id: string;
             };
             cookie?: never;
         };
@@ -5498,7 +5504,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the work schedule */
-                schedule_id: number;
+                schedule_id: string;
             };
             cookie?: never;
         };
@@ -5712,7 +5718,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the flag */
-                flag_id: number;
+                flag_id: string;
             };
             cookie?: never;
         };
@@ -5818,7 +5824,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the record */
-                item_id: number;
+                item_id: string;
             };
             cookie?: never;
         };
@@ -5857,7 +5863,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the record */
-                item_id: number;
+                item_id: string;
             };
             cookie?: never;
         };
@@ -5907,7 +5913,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the record */
-                item_id: number;
+                item_id: string;
             };
             cookie?: never;
         };
@@ -6049,7 +6055,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the record */
-                item_id: number;
+                item_id: string;
             };
             cookie?: never;
         };
@@ -6088,7 +6094,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the record */
-                item_id: number;
+                item_id: string;
             };
             cookie?: never;
         };
@@ -6138,7 +6144,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description Id of the record */
-                item_id: number;
+                item_id: string;
             };
             cookie?: never;
         };

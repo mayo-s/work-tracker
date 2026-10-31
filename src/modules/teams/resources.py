@@ -24,7 +24,7 @@ TEAM_PARAMETER = {'team_id': 'Id of the team'}
 INVITED = 'If a user with this e-mail address exists, they find the invitation in their settings'
 
 
-def team_admin_of(req: falcon.Request, store: Store, team_id: int) -> str:
+def team_admin_of(req: falcon.Request, store: Store, team_id: str) -> str:
     """The current user if they may manage the team: the admin, or an admin of this team; 403 otherwise."""
     user_id = current_user(req)
     try:
@@ -48,7 +48,7 @@ class _TeamResource:
 class TeamItem(_TeamResource):
     @spec.validate(resp=Response('HTTP_403', 'HTTP_404', HTTP_200=TeamPageView), tags=TAGS,
                    path_parameter_descriptions=TEAM_PARAMETER)
-    def on_get(self, req: falcon.Request, resp: falcon.Response, team_id: int) -> None:
+    def on_get(self, req: falcon.Request, resp: falcon.Response, team_id: str) -> None:
         """The team with its members (accounts only) and open invitations."""
         with self._storage.transaction() as store:
             team_admin_of(req, store, team_id)
@@ -62,7 +62,7 @@ class TeamItem(_TeamResource):
 class TeamInvitations(_TeamResource):
     @spec.validate(json=InvitationInput, resp=Response('HTTP_403', 'HTTP_404', HTTP_202=InvitationSent), tags=TAGS,
                    path_parameter_descriptions=TEAM_PARAMETER)
-    def on_post(self, req: falcon.Request, resp: falcon.Response, team_id: int, json: InvitationInput) -> None:
+    def on_post(self, req: falcon.Request, resp: falcon.Response, team_id: str, json: InvitationInput) -> None:
         """Invite the user with this exact e-mail address (ignoring case); the answer does not tell whether they exist."""
         with self._storage.transaction() as store:
             store.invitations(self._clock).invite(team_id, json.email, team_admin_of(req, store, team_id))
@@ -73,7 +73,7 @@ class TeamInvitations(_TeamResource):
 class TeamInvitationItem(_TeamResource):
     @spec.validate(resp=Response('HTTP_204', 'HTTP_403', 'HTTP_404'), tags=TAGS,
                    path_parameter_descriptions=TEAM_PARAMETER | {'invitation_id': 'Id of the invitation'})
-    def on_delete(self, req: falcon.Request, resp: falcon.Response, team_id: int, invitation_id: int) -> None:
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, team_id: str, invitation_id: str) -> None:
         """Withdraw an open invitation."""
         with self._storage.transaction() as store:
             team_admin_of(req, store, team_id)
@@ -84,7 +84,7 @@ class TeamInvitationItem(_TeamResource):
 class TeamMemberItem(_TeamResource):
     @spec.validate(resp=Response('HTTP_204', 'HTTP_403', 'HTTP_404'), tags=TAGS,
                    path_parameter_descriptions=TEAM_PARAMETER | {'user_id': 'Id (UUID) of the member'})
-    def on_delete(self, req: falcon.Request, resp: falcon.Response, team_id: int, user_id: str) -> None:
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, team_id: str, user_id: str) -> None:
         """Remove a member: the team services their tickets use become personal services; a team admin becomes a user."""
         with self._storage.transaction() as store:
             team_admin_of(req, store, team_id)
@@ -98,7 +98,7 @@ class TeamMemberItem(_TeamResource):
 class TeamServiceCollection(_TeamResource):
     @spec.validate(resp=Response('HTTP_403', 'HTTP_404', HTTP_200=list[Service]), tags=TAGS,
                    path_parameter_descriptions=TEAM_PARAMETER)
-    def on_get(self, req: falcon.Request, resp: falcon.Response, team_id: int) -> None:
+    def on_get(self, req: falcon.Request, resp: falcon.Response, team_id: str) -> None:
         """The team's services, which its members choose in entries."""
         with self._storage.transaction() as store:
             team_admin_of(req, store, team_id)
@@ -106,7 +106,7 @@ class TeamServiceCollection(_TeamResource):
 
     @spec.validate(json=ServiceInput, resp=Response('HTTP_403', 'HTTP_404', 'HTTP_409', HTTP_201=Service), tags=TAGS,
                    path_parameter_descriptions=TEAM_PARAMETER)
-    def on_post(self, req: falcon.Request, resp: falcon.Response, team_id: int, json: ServiceInput) -> None:
+    def on_post(self, req: falcon.Request, resp: falcon.Response, team_id: str, json: ServiceInput) -> None:
         """Add a team service."""
         with self._storage.transaction() as store:
             team_admin_of(req, store, team_id)
@@ -119,14 +119,14 @@ class TeamServiceItem(_TeamResource):
 
     @spec.validate(json=ServiceInput, resp=Response('HTTP_403', 'HTTP_404', 'HTTP_409', HTTP_200=Service), tags=TAGS,
                    path_parameter_descriptions=_parameters)
-    def on_put(self, req: falcon.Request, resp: falcon.Response, team_id: int, service_id: int, json: ServiceInput) -> None:
+    def on_put(self, req: falcon.Request, resp: falcon.Response, team_id: str, service_id: str, json: ServiceInput) -> None:
         """Change a team service."""
         with self._storage.transaction() as store:
             team_admin_of(req, store, team_id)
             resp.media = store.team_services(team_id).update(Service(id=service_id, **json.model_dump()))
 
     @spec.validate(resp=Response('HTTP_204', 'HTTP_403', 'HTTP_404'), tags=TAGS, path_parameter_descriptions=_parameters)
-    def on_delete(self, req: falcon.Request, resp: falcon.Response, team_id: int, service_id: int) -> None:
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, team_id: str, service_id: str) -> None:
         """Delete a team service; the members' tickets with it become "without service"."""
         with self._storage.transaction() as store:
             team_admin_of(req, store, team_id)
@@ -152,7 +152,7 @@ class MyTeam(_TeamResource):
 class MyInvitationAcceptance(_TeamResource):
     @spec.validate(resp=Response('HTTP_404', HTTP_200=MyTeamView), tags=TAGS,
                    path_parameter_descriptions={'invitation_id': 'Id of the invitation'})
-    def on_post(self, req: falcon.Request, resp: falcon.Response, invitation_id: int) -> None:
+    def on_post(self, req: falcon.Request, resp: falcon.Response, invitation_id: str) -> None:
         """Accept an invitation: join the team (leaving the current one); the other invitations are declined."""
         with self._storage.transaction() as store:
             user_id = current_user(req)
@@ -163,7 +163,7 @@ class MyInvitationAcceptance(_TeamResource):
 class MyInvitationItem(_TeamResource):
     @spec.validate(resp=Response('HTTP_204', 'HTTP_404'), tags=TAGS,
                    path_parameter_descriptions={'invitation_id': 'Id of the invitation'})
-    def on_delete(self, req: falcon.Request, resp: falcon.Response, invitation_id: int) -> None:
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, invitation_id: str) -> None:
         """Decline an invitation."""
         with self._storage.transaction() as store:
             store.invitations().decline(current_user(req), invitation_id)

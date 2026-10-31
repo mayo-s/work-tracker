@@ -11,19 +11,19 @@ from src.models.schedules import Schedule
 from src.modules.storage.store import Changes, Store
 from src.modules.userdata.schemas import FORMAT, VERSION, UserData
 
-SPLIT_FROM = re.compile(r'Split from entry (\d+)')  # the detail of an entry split off another one
+SPLIT_FROM = re.compile(r'Split from entry (\S+)')  # the detail of an entry split off another one (its id)
 
 
 class FileIds:
-    """File ids 1, 2, … for database ids, in the order they are first asked for."""
+    """File ids '1', '2', … for record ids, in the order they are first asked for."""
 
     def __init__(self) -> None:
-        self._ids: dict[int, int] = {}
+        self._ids: dict[str, str] = {}
 
-    def __call__(self, db_id: int) -> int:
-        return self._ids.setdefault(db_id, len(self._ids) + 1)
+    def __call__(self, db_id: str) -> str:
+        return self._ids.setdefault(db_id, str(len(self._ids) + 1))
 
-    def known(self, db_id: int | None) -> int | None:
+    def known(self, db_id: str | None) -> str | None:
         """The file id of a record in the file; None for one that is not (e.g. a deleted activity type)."""
         return self._ids.get(db_id)
 
@@ -65,7 +65,7 @@ class _Export:
 
     def _schedules(self) -> list[Schedule]:
         schedules = self._store.schedules(self._user).all()
-        return [schedule.model_copy(update={'id': number}) for number, schedule in enumerate(schedules, 1)]
+        return [schedule.model_copy(update={'id': str(number)}) for number, schedule in enumerate(schedules, 1)]
 
     def _entries_list(self) -> list[Entry]:
         return [self._entry(entry) for entry in self._store.entries(self._user).between(dt.date.min, dt.date.max)]
@@ -79,7 +79,7 @@ class _Export:
     def _history(self) -> list[EntryChange]:
         """Deleted entries are only in the history; they get the file ids after the entries'."""
         return [
-            change.model_copy(update={'id': number, 'entry_id': self._entries(change.entry_id),
+            change.model_copy(update={'id': str(number), 'entry_id': self._entries(change.entry_id),
                                       'changes': self._changes(change.changes), 'detail': self._detail(change)})
             for number, change in enumerate(self._store.entries(self._user).all_history(), 1)
         ]
@@ -93,10 +93,10 @@ class _Export:
 
     def _detail(self, change: EntryChange) -> str:
         match = SPLIT_FROM.fullmatch(change.detail) if change.action == HistoryAction.SPLIT else None
-        return f'Split from entry {self._entries(int(match[1]))}' if match else change.detail
+        return f'Split from entry {self._entries(match[1])}' if match else change.detail
 
     def _flags(self) -> list[ReviewFlag]:
         days, entries = self._store.days(self._user), self._store.entries(self._user)
         flags = [*days.day_flags(), *(flag.model_copy(update={'entry_id': self._entries(flag.entry_id)})
                                       for flag in entries.entry_flags())]
-        return [flag.model_copy(update={'id': number}) for number, flag in enumerate(flags, 1)]
+        return [flag.model_copy(update={'id': str(number)}) for number, flag in enumerate(flags, 1)]

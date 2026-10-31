@@ -1,6 +1,7 @@
 """Work schedules (`SCHEDULE#<id>`, at most one per day by `SCHEDULE_FROM#<date>`) and PTO years (`PTO#<year>`) in the
 user's partition, as the SQLite repositories (schedules.py, pto_years.py)."""
 
+from src.models.base import new_id
 from src.lib.balances import PtoTerms
 from src.lib.schedules import STANDARD, Schedules
 from src.models.pto import PtoYear
@@ -24,14 +25,14 @@ class DynamoSchedules:
         schedules = [Schedule(**attributes(item)) for item in self._unit.query_prefix(self._pk, SCHEDULE)]
         return sorted(schedules, key=lambda schedule: schedule.valid_from)
 
-    def get(self, schedule_id: int) -> Schedule:
+    def get(self, schedule_id: str) -> Schedule:
         item = self._unit.get(self._pk, _key(schedule_id))
         if item is None:
             raise NotFoundError(f'No work schedule with id {schedule_id}')
         return Schedule(**attributes(item))
 
     def add(self, schedule: Schedule) -> Schedule:
-        added = schedule.model_copy(update={'id': self._unit.next_id('schedule')})
+        added = schedule.model_copy(update={'id': new_id()})
         self._claim(added)
         self._save(added)
         return added
@@ -44,7 +45,7 @@ class DynamoSchedules:
         self._save(schedule)
         return schedule
 
-    def delete(self, schedule_id: int) -> None:
+    def delete(self, schedule_id: str) -> None:
         stored = self.get(schedule_id)
         if len(self.all()) == 1:
             raise ConflictError('The only work schedule cannot be deleted')
@@ -71,8 +72,8 @@ class DynamoSchedules:
         self._unit.put({'PK': self._pk, 'SK': _key(schedule.id), **schedule.model_dump(mode='json')})
 
 
-def _key(schedule_id: int) -> str:
-    return f'{SCHEDULE}{schedule_id:010d}'
+def _key(schedule_id: str) -> str:
+    return f'{SCHEDULE}{schedule_id}'
 
 
 def _from_key(schedule: Schedule) -> str:

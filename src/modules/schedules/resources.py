@@ -37,20 +37,20 @@ class ScheduleItem:
         self._storage = storage
 
     @spec.validate(resp=Response('HTTP_404', HTTP_200=ScheduleView), tags=TAGS, path_parameter_descriptions=ID_PARAMETER)
-    def on_get(self, req: falcon.Request, resp: falcon.Response, schedule_id: int) -> None:
+    def on_get(self, req: falcon.Request, resp: falcon.Response, schedule_id: str) -> None:
         """One work schedule."""
         with self._storage.transaction() as store:
             resp.media = ScheduleView.of(store.schedules(current_user(req)).get(schedule_id))
 
     @spec.validate(json=ScheduleInput, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=ScheduleView), tags=TAGS,
                    path_parameter_descriptions=ID_PARAMETER)
-    def on_put(self, req: falcon.Request, resp: falcon.Response, schedule_id: int, json: ScheduleInput) -> None:
+    def on_put(self, req: falcon.Request, resp: falcon.Response, schedule_id: str, json: ScheduleInput) -> None:
         """Change a work schedule; the days it applies to are counted again."""
         with self._storage.transaction() as store:
             resp.media = ScheduleView.of(store.schedules(current_user(req)).update(json.to_schedule(schedule_id)))
 
     @spec.validate(resp=Response('HTTP_204', 'HTTP_404', 'HTTP_409'), tags=TAGS, path_parameter_descriptions=ID_PARAMETER)
-    def on_delete(self, req: falcon.Request, resp: falcon.Response, schedule_id: int) -> None:
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, schedule_id: str) -> None:
         """Delete a work schedule (not the only one); its days then follow the schedule before it."""
         with self._storage.transaction() as store:
             store.schedules(current_user(req)).delete(schedule_id)

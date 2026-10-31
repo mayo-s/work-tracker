@@ -25,12 +25,12 @@ class EntryInput(BaseModel):
     date: dt.date
     duration: DurationText = Field(description='In quarter hours, e.g. 1:30, 1.5, 1,5, 1h30m or 90m; answered as h:mm')
     ticket_key: str | None = Field(default=None, examples=['ENGINE-461'])
-    service_id: int | None = Field(
+    service_id: str | None = Field(
         default=None, description="Ticket entries: set the ticket's service (applies to all its entries); omit to keep it"
     )
     description: str = ''
     coding: bool = False
-    activity_type_id: int | None = None
+    activity_type_id: str | None = None
     note: str = ''
 
     @model_validator(mode='after')
@@ -58,7 +58,7 @@ class EntryInput(BaseModel):
     def sets_service(self) -> bool:
         return self.kind == 'ticket' and 'service_id' in self.model_fields_set
 
-    def to_entry(self, entry_id: int | None = None) -> Entry:
+    def to_entry(self, entry_id: str | None = None) -> Entry:
         common = {'id': entry_id, 'date': self.date, 'duration': parse_duration(self.duration)}
         if self.kind == 'ticket':
             return TicketEntry(**common, ticket_key=self.ticket_key, description=self.description, coding=self.coding)
@@ -73,22 +73,22 @@ class EntrySplitInput(BaseModel):
 
 
 class EntryFlagView(BaseModel):
-    id: int
+    id: str
     reason: FlagReason
     detail: str
 
 
 class EntryView(BaseModel):
-    id: int
+    id: str
     kind: Literal['ticket', 'activity']
     date: dt.date
     duration: str
     ticket_key: str | None = None
-    service_id: int | None = None
+    service_id: str | None = None
     service: str | None = Field(default=None, description="Short name of the ticket's service")
     description: str | None = None
     coding: bool = False
-    activity_type_id: int | None = None
+    activity_type_id: str | None = None
     activity_type: str | None = None
     note: str | None = None
     changed: bool = Field(description='Changed after it was created or imported (see its history)')
@@ -96,7 +96,7 @@ class EntryView(BaseModel):
 
 
 class ChangeView(BaseModel):
-    id: int
+    id: str
     changed_at: dt.datetime
     action: HistoryAction
     changes: dict[str, tuple[JsonValue, JsonValue]] = Field(description='Changed fields: [old, new]; durations in minutes')

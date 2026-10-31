@@ -4,7 +4,7 @@ from typing import Annotated
 
 from pydantic import BeforeValidator, Field
 
-from src.models.base import DomainModel
+from src.models.base import DomainModel, RecordId
 
 TICKET_KEY_PATTERN = r'^[A-Z][A-Z0-9]*-[1-9]\d*$'
 
@@ -16,7 +16,7 @@ TicketKey = Annotated[
 
 
 class Service(DomainModel):
-    id: int | None = None
+    id: RecordId | None = None
     short_name: str = Field(min_length=1, max_length=30, description='e.g. MSB')
     name: str = Field(default='', max_length=100, description='e.g. microsoft-bookings-service')
 
@@ -28,7 +28,7 @@ class ServiceChoice(Service):
 
 
 class ActivityType(DomainModel):
-    id: int | None = None
+    id: RecordId | None = None
     name: str = Field(min_length=1, max_length=50, description='e.g. Tool Management')
 
 
@@ -36,4 +36,4 @@ class Ticket(DomainModel):
     """A ticket remembers its service; all entries of the ticket share it."""
 
     key: TicketKey
-    service_id: int | None = None
+    service_id: RecordId | None = None

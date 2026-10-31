@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 
+from src.models.base import new_id
 from src.models.review import ReviewFlag
 from src.modules.storage.dynamodb.table import attributes
 from src.modules.storage.dynamodb.unit import Unit
@@ -9,12 +10,12 @@ from src.modules.storage.dynamodb.unit import Unit
 FLAG = 'FLAG#'
 
 
-def flag_key(flag_id: int) -> str:
-    return f'{FLAG}{flag_id:010d}'  # zero-padded, so the flags come in the order they were added
+def flag_key(flag_id: str) -> str:
+    return f'{FLAG}{flag_id}'  # a UUIDv7: the flags come in the order they were added
 
 
 def add_flag(unit: Unit, pk: str, flag: ReviewFlag) -> ReviewFlag:
-    added = flag.model_copy(update={'id': unit.next_id('flag')})
+    added = flag.model_copy(update={'id': new_id()})
     unit.put({'PK': pk, 'SK': flag_key(added.id), **added.model_dump(mode='json')})
     return added
 

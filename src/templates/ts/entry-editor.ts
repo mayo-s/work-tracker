@@ -48,7 +48,7 @@ export function entryInput(values: EntryFormValues, date: string, serviceChanged
   const duration = values.duration.trim();
   if (values.kind === 'activity') {
     return {
-      kind: 'activity', date, duration, activity_type_id: values.activity_type_id ? Number(values.activity_type_id) : null,
+      kind: 'activity', date, duration, activity_type_id: values.activity_type_id || null,
       note: values.note.trim(),
     };
   }
@@ -57,12 +57,12 @@ export function entryInput(values: EntryFormValues, date: string, serviceChanged
     description: values.description.trim(), coding: values.coding,
   };
   if (serviceChanged) {
-    input.service_id = values.service_id ? Number(values.service_id) : null;
+    input.service_id = values.service_id || null;
   }
   return input;
 }
 
-function select(name: string, value: string, empty: string, options: [number, string][] | HTMLElement[]): HTMLSelectElement {
+function select(name: string, value: string, empty: string, options: [string, string][] | HTMLElement[]): HTMLSelectElement {
   const children = options.map((option) => (option instanceof HTMLElement ? option
     : el('option', { value: option[0] }, option[1])));
   const element = el('select', { id: `${PREFIX}-${name}`, name, 'aria-describedby': `${PREFIX}-${name}-error` },
@@ -121,7 +121,7 @@ function onlyFor(kind: EntryKind, element: HTMLElement): HTMLElement {
 
 function fields(initial: EntryFormValues, options: EntryEditorOptions): HTMLElement {
   const services = serviceOptions(options.services, (service) => service.short_name);
-  const activities = options.activityTypes.map((activity): [number, string] => [activity.id ?? 0, activity.name]);
+  const activities = options.activityTypes.map((activity): [string, string] => [activity.id ?? '', activity.name]);
   return el('div', {},
     kindToggle(initial.kind, options.entry !== null),
     el('div', { class: 'entry-editor-fields' },

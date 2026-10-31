@@ -28,7 +28,7 @@ class ReviewFlagItem:
         self._storage = storage
 
     @spec.validate(resp=Response('HTTP_204', 'HTTP_404'), tags=TAGS, path_parameter_descriptions={'flag_id': 'Id of the flag'})
-    def on_delete(self, req: falcon.Request, resp: falcon.Response, flag_id: int) -> None:
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, flag_id: str) -> None:
         """Clear a review flag of an entry or a day (e.g. after checking a guessed ticket key)."""
         with self._storage.transaction() as store:
             try:

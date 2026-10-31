@@ -63,14 +63,6 @@ def test_migrations_give_everything_to_the_only_user_who_becomes_admin(before_us
     assert owners == {table: {user_id} for table in owners} | {'entry_history': set()}
 
 
-def test_migrations_keep_deleted_entry_ids_unused(before_users):
-    with before_users.transaction() as conn:
-        user_id = conn.execute('SELECT id FROM users').fetchone()[0]
-        new_id = conn.execute("INSERT INTO entries (user_id, date, kind, ticket_key, duration) "
-                              "VALUES (?, '2026-10-29', 'ticket', 'TNG-1', 60)", (user_id,)).lastrowid
-    assert new_id == 4
-
-
 def test_migrations_without_users_leave_the_records_without_owner(tmp_path, monkeypatch):
     db = Database(tmp_path / 'seven.db')
     monkeypatch.setattr(migrations, 'MIGRATIONS', migrations.MIGRATIONS[:7])

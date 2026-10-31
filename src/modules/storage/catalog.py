@@ -2,7 +2,7 @@
 
 import sqlite3
 
-from src.models.base import DomainModel
+from src.models.base import DomainModel, new_id
 from src.models.catalog import ActivityType, Service, ServiceChoice
 from src.modules.storage.errors import ConflictError, NotFoundError
 
@@ -18,7 +18,7 @@ class _CatalogRepository[M: DomainModel]:
     order: str
     owner: str = 'user_id'
 
-    def __init__(self, conn: sqlite3.Connection, owner_id: str | int) -> None:
+    def __init__(self, conn: sqlite3.Connection, owner_id: str) -> None:
         self._conn = conn
         self._owner = owner_id
 
@@ -31,7 +31,7 @@ class _CatalogRepository[M: DomainModel]:
                                   (self._owner,))
         return [self.model(**dict(row)) for row in rows]
 
-    def get(self, item_id: int) -> M:
+    def get(self, item_id: str) -> M:
         row = self._conn.execute(f'SELECT id, {self._columns} FROM {self.table} WHERE id = ? AND {self.owner} = ?',
                                  (item_id, self._owner)).fetchone()
         if row is None:
@@ -40,9 +40,10 @@ class _CatalogRepository[M: DomainModel]:
 
     def add(self, item: M) -> M:
         placeholders = ', '.join('?' for _ in self.fields)
-        sql = f'INSERT INTO {self.table} ({self.owner}, {self._columns}) VALUES (?, {placeholders})'
-        cursor = self._write(sql, (self._owner, *self._values(item)), self._duplicate(item))
-        return item.model_copy(update={'id': cursor.lastrowid})
+        sql = f'INSERT INTO {self.table} (id, {self.owner}, {self._columns}) VALUES (?, ?, {placeholders})'
+        added = item.model_copy(update={'id': new_id()})
+        self._write(sql, (added.id, self._owner, *self._values(item)), self._duplicate(item))
+        return added
 
     def update(self, item: M) -> M:
         assignments = ', '.join(f'{field} = ?' for field in self.fields)
@@ -52,7 +53,7 @@ class _CatalogRepository[M: DomainModel]:
             raise NotFoundError(f'No {self.label} with id {item.id}')
         return item
 
-    def delete(self, item_id: int) -> None:
+    def delete(self, item_id: str) -> None:
         in_use = f'The {self.label} is used by entries and cannot be deleted'
         sql = f'DELETE FROM {self.table} WHERE id = ? AND {self.owner} = ?'
         if not self._write(sql, (item_id, self._owner), in_use).rowcount:

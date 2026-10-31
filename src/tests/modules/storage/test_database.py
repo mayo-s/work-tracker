@@ -2,6 +2,7 @@ import sqlite3
 
 import pytest
 
+from src.models.base import new_id
 from src.modules.storage import migrations
 from src.modules.storage.database import Database, SchemaVersionError
 from src.modules.storage.owners import NO_OWNER
@@ -78,14 +79,14 @@ def test_failed_migration_is_rolled_back(database, monkeypatch):
 
 def test_transaction_commits(database):
     with database.transaction() as conn:
-        conn.execute("INSERT INTO activity_types (user_id, name) VALUES (?, 'Incident')", (USER,))
+        conn.execute("INSERT INTO activity_types (id, user_id, name) VALUES (?, ?, 'Incident')", (new_id(), USER))
     with database.transaction() as conn:
         assert conn.execute("SELECT COUNT(*) FROM activity_types WHERE name = 'Incident'").fetchone()[0] == 1
 
 
 def insert_then_fail(db):
     with db.transaction() as conn:
-        conn.execute("INSERT INTO activity_types (user_id, name) VALUES (?, 'Incident')", (USER,))
+        conn.execute("INSERT INTO activity_types (id, user_id, name) VALUES (?, ?, 'Incident')", (new_id(), USER))
         raise RuntimeError('abort')
 
 
@@ -109,12 +110,3 @@ def test_constraints(database, statement):
     with database.transaction() as conn:
         with pytest.raises(sqlite3.IntegrityError):
             conn.execute(statement, (USER,))
-
-
-def test_deleted_entry_ids_are_not_reused(database):
-    insert = ("INSERT INTO entries (user_id, date, kind, activity_type_id, duration)"
-              f" VALUES ('{USER}', '2026-10-26', 'activity', 1, 60)")
-    with database.transaction() as conn:
-        deleted_id = conn.execute(insert).lastrowid
-        conn.execute('DELETE FROM entries WHERE id = ?', (deleted_id,))
-        assert conn.execute(insert).lastrowid > deleted_id

@@ -8,17 +8,17 @@ from src.modules.storage.dynamodb.unit import Unit
 TEAMS, MEMBERSHIP = 'TEAMS', 'MEMBERSHIP#'
 
 
-def team_key(team_id: int) -> str:
+def team_key(team_id: str) -> str:
     """A team's item in the `TEAMS` partition."""
-    return f'TEAM#{team_id:010d}'
+    return f'TEAM#{team_id}'
 
 
-def team_partition(team_id: int) -> str:
+def team_partition(team_id: str) -> str:
     """The partition of a team's members, invitations and services."""
     return f'TEAM#{team_id}'
 
 
-def team_item(unit: Unit, team_id: int) -> Item | None:
+def team_item(unit: Unit, team_id: str) -> Item | None:
     """The team, also a deleted one (it stays for the history)."""
     return unit.get(TEAMS, team_key(team_id))
 
