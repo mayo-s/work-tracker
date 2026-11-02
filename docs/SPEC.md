@@ -468,7 +468,7 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
   - A schema version item takes the place of `PRAGMA user_version`: the app refuses a table written by a newer
     version, and later data changes are numbered scripts like the SQLite migrations.
   - A transaction collects its writes and sends them at its end, so its reads see them and a failure writes
-    nothing; ids come from counters and are never reused.
+    nothing; ids are random UUIDv7, in the order of creation.
   - A change touching at most 100 items is atomic, as in SQLite (DynamoDB's transaction limit). Larger changes
     (renaming or merging a ticket, assigning a service to many tickets, leaving a team) are written in atomic chunks,
     e.g. an entry together with its history line, and end with the step that closes them (deleting the old ticket,
@@ -519,7 +519,9 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 - zappa logs at WARNING: its default, DEBUG, writes every request with its cookies and body to CloudWatch.
 - Each function runs as the role `work-tracker-<stage>-ZappaLambdaExecutionRole` (the name zappa looks up; it creates
   no role of its own), made from `deploy/lambda-policy.json`: read and write the stage's table, read the stage's
-  parameter (decrypting it only through SSM), write its logs.
+  parameter (decrypting it only through SSM), write its logs. Besides Lambda, only the stage's keep-warm rule may use
+  it (`deploy/lambda-trust-policy.json`): zappa's EventBridge rule calls the function every few minutes, so it rarely
+  starts cold, and zappa hands the rule the function's role.
 - Setup token: the URL is public, so on Lambda the first user (the admin) is created only with the setup token. It is
   a `SecureString` in the SSM Parameter Store of `eu-central-1`, created once by hand and never in the repository:
   `aws ssm put-parameter --name /work-tracker-<stage>/setup-token --type SecureString --value "$(python -c "import

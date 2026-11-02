@@ -2,9 +2,17 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "TheFunction",
       "Effect": "Allow",
       "Principal": {"Service": "lambda.amazonaws.com"},
       "Action": "sts:AssumeRole"
+    },
+    {
+      "Sid": "TheKeepWarmRuleOfTheStage",
+      "Effect": "Allow",
+      "Principal": {"Service": "events.amazonaws.com"},
+      "Action": "sts:AssumeRole",
+      "Condition": {"ArnLike": {"aws:SourceArn": "arn:aws:events:eu-central-1:*:rule/work-tracker-STAGE*"}}
     }
   ]
 }

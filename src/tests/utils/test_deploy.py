@@ -10,6 +10,7 @@ import pytest
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 ZAPPA = json.loads((ROOT / 'zappa_settings.json').read_text())
 POLICY = (ROOT / 'deploy' / 'lambda-policy.json').read_text()
+TRUST = (ROOT / 'deploy' / 'lambda-trust-policy.json').read_text()
 STAGES = ['dev', 'prod']
 
 
@@ -26,7 +27,7 @@ def test_dev_and_prod_share_one_base_and_differ_only_in_their_bucket():
 
 
 def test_no_account_id_in_the_settings_and_the_policy():
-    for text in (json.dumps(ZAPPA), POLICY):
+    for text in (json.dumps(ZAPPA), POLICY, TRUST):
         assert not re.search(r'\d{12}', text)
 
 
@@ -41,9 +42,20 @@ def test_requests_and_their_data_are_not_logged(name):
     assert stage(name)['log_level'] == 'WARNING'  # zappa's default, DEBUG, logs every request with cookies and body
 
 
-@pytest.mark.parametrize('kept_out', ['examples', '*.db', '.env', 'tests', '.venv', 'node_modules'])
+@pytest.mark.parametrize('kept_out', ['*.db', '.env', '.venv', 'node_modules'])
 def test_private_data_and_tools_stay_out_of_the_package(kept_out):
     assert all(kept_out in stage(name)['exclude'] for name in STAGES)
+
+
+@pytest.mark.parametrize('folder', ['examples', 'docs', 'src/tests', 'src/templates/tests'])
+def test_project_folders_stay_out_by_their_path(folder):
+    assert all(folder in stage(name)['exclude_glob'] for name in STAGES)
+
+
+@pytest.mark.parametrize('name', ['docs', 'tests', 'examples', 'data', 'deploy'])
+def test_no_folder_name_that_packages_use_is_excluded_by_name(name):
+    """`exclude` matches names in the installed packages too: `docs` once took botocore.docs, which zappa imports."""
+    assert all(name not in stage(stage_name)['exclude'] for stage_name in STAGES)
 
 
 @pytest.mark.parametrize('name', STAGES)
@@ -67,3 +79,11 @@ def test_the_role_of_a_stage_reaches_only_its_table_its_token_and_its_logs():
                          'arn:aws:ssm:eu-central-1:*:parameter/work-tracker-dev/setup-token', '*',
                          'arn:aws:logs:eu-central-1:*:log-group:/aws/lambda/work-tracker-dev*']
     assert policy['Statement'][2]['Condition'] == {'StringEquals': {'kms:ViaService': 'ssm.eu-central-1.amazonaws.com'}}
+
+
+def test_only_lambda_and_the_keep_warm_rule_of_the_stage_may_use_the_role():
+    trust = json.loads(TRUST.replace('STAGE', 'dev'))
+    assert [statement['Principal']['Service'] for statement in trust['Statement']] == [
+        'lambda.amazonaws.com', 'events.amazonaws.com']
+    assert trust['Statement'][1]['Condition'] == {
+        'ArnLike': {'aws:SourceArn': 'arn:aws:events:eu-central-1:*:rule/work-tracker-dev*'}}

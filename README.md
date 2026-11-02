@@ -115,7 +115,7 @@ aws ssm put-parameter --region eu-central-1 --name /work-tracker-$stage/setup-to
 aws ssm get-parameter --region eu-central-1 --name /work-tracker-$stage/setup-token --with-decryption \
   --query Parameter.Value --output text | pbcopy                                 # into the password manager
 aws iam create-role --role-name work-tracker-$stage-ZappaLambdaExecutionRole \
-  --assume-role-policy-document file://deploy/lambda-trust-policy.json
+  --assume-role-policy-document "$(sed "s/STAGE/$stage/g" deploy/lambda-trust-policy.json)" # Lambda, keep-warm rule
 aws iam put-role-policy --role-name work-tracker-$stage-ZappaLambdaExecutionRole --policy-name work-tracker \
   --policy-document "$(sed "s/STAGE/$stage/g" deploy/lambda-policy.json)"         # what the function may do
 ./deploy/zappa.sh $stage deploy                                                   # prints the Function URL
@@ -361,13 +361,13 @@ tools use SQLite directly.
 
 The DynamoDB backend (`dynamodb`, for AWS Lambda) holds the same records with the same rules in one table for all
 users (the key layout is in `keys.py`). A transaction collects its writes and sends them at the end in one
-`TransactWriteItems`, all or nothing (at most 100 items; more answer 409), and its reads already see them; ids come
-from counters and are never reused. Larger changes (a service for many tickets, renaming a ticket with many entries)
+`TransactWriteItems`, all or nothing (at most 100 items; more answer 409), and its reads already see them; ids are
+random UUIDv7 in the order of creation. Larger changes (a service for many tickets, renaming a ticket with many entries)
 write atomic chunks and end with the step that closes them, so repeating one that stopped halfway completes it.
-The table is created once with the local AWS credentials:
+The table of each stage is created once with the local AWS credentials:
 
 ```shell
-pipenv run python -m src.modules.storage.dynamodb create-table work-tracker  # eu-central-1, on-demand, time to live, point-in-time recovery
+pipenv run python -m src.modules.storage.dynamodb create-table work-tracker-dev  # eu-central-1, on-demand, time to live, point-in-time recovery
 ```
 
 | Module       | Contents                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
