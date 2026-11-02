@@ -1,6 +1,6 @@
 // The user's account: fields for name, username, e-mail address and password (login, registration, setup, settings).
 
-import { api, ApiError, type NewUserInput, type ProfileInput, type UserView } from './api.ts';
+import { api, ApiError, type NewUserInput, type ProfileInput, type TwoFactorSetup, type UserView } from './api.ts';
 import { el } from './dom.ts';
 import { field, submit } from './forms.ts';
 
@@ -136,6 +136,11 @@ export async function renderRegisterPage(doc: Document): Promise<void> {
   root.querySelector<HTMLElement>('input')?.focus();
 }
 
+/** Whether the login failed only for the missing code of the authenticator app (two-factor login). */
+export function needsCode(failure: unknown): boolean {
+  return failure instanceof ApiError && (failure.details as { code?: string } | null)?.code === 'two_factor_required';
+}
+
 /** Only paths of this app, so a link cannot send the user elsewhere after logging in. */
 export function safeNext(next: string | null): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
@@ -148,9 +153,13 @@ function loginForm(
   const name = el('input', { id: 'login-name', name: 'login', autocomplete: 'username', required: true });
   const password = el('input', { id: 'login-password', name: 'password', type: 'password', autocomplete: 'current-password',
     required: true });
+  const code = el('input', { id: 'login-code', name: 'code', inputmode: 'numeric', autocomplete: 'one-time-code' });
+  const codeField = field('login', 'code', 'Code of your authenticator app', code, 'Six digits; a new one every 30 seconds.');
+  codeField.hidden = true;  // shown once the password is right and the account uses two-factor login
   const form = el('form', { class: 'card login-form' },
     field('login', 'name', 'Username or e-mail address', name),
     field('login', 'password', 'Password', password),
+    codeField,
     error,
     el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Log in')),
     registration && el('p', { class: 'muted login-hint' }, 'No account yet? ', el('a', { href: '/register' }, 'Register')),
@@ -161,8 +170,14 @@ function loginForm(
         + 'the computer running the app: ', el('code', {}, 'pipenv run python -m src.modules.auth set-password USERNAME')));
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    api.login(name.value.trim(), password.value).then(() => window.location.assign(next),
-      (failure: unknown) => fail(failure, 'Logging in failed.'));
+    api.login(name.value.trim(), password.value, codeField.hidden ? null : code.value.trim())
+      .then(() => window.location.assign(next), (failure: unknown) => {
+        if (needsCode(failure)) {
+          codeField.hidden = false;
+          code.focus();
+        }
+        fail(failure, 'Logging in failed.');
+      });
   });
   return form;
 }
@@ -260,8 +275,56 @@ export function accountSection(user: UserView | null, enabled: boolean, reload: 
       : 'The login is switched off (WORK_TRACKER_AUTH=off), e.g. for local development.'));
     return section;
   }
-  section.append(profileForm(user, reload), el('h3', { class: 'account-heading' }, 'Change password'), passwordForm(reload));
+  section.append(profileForm(user, reload), el('h3', { class: 'account-heading' }, 'Change password'), passwordForm(reload),
+    el('h3', { class: 'account-heading' }, 'Two-factor login'), twoFactorPart(user, reload));
   return section;
+}
+
+/** On: a note and switching it off with the password. Off: setting it up with an authenticator app (QR code or the
+ * secret as text), confirmed by a first code. */
+function twoFactorPart(user: UserView, reload: (message: string) => void): HTMLElement {
+  const part = el('div', { class: 'two-factor' });
+  if (user.two_factor) {
+    const password = el('input', { id: 'two-factor-password', type: 'password', autocomplete: 'current-password' });
+    const form = el('form', { class: 'balance-form', novalidate: true },
+      el('p', {}, 'On: every login also asks for the code of your authenticator app.'),
+      field('two-factor', 'password', 'Current password', password),
+      el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
+      el('div', { class: 'form-actions' }, el('button', { type: 'submit' }, 'Switch off')));
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      void submit(form, 'two-factor', ['password'], () => api.twoFactorOff(password.value),
+        () => reload('Two-factor login is off'));
+    });
+    part.append(form);
+    return part;
+  }
+  const start = el('button', { type: 'button' }, 'Set up two-factor login');
+  start.addEventListener('click', () => {
+    api.startTwoFactor().then((setup) => part.replaceChildren(twoFactorSetup(setup, reload)),
+      (failure: unknown) => part.append(el('p', { class: 'form-error' }, errorText(failure, 'The setup could not start.'))));
+  });
+  part.append(el('p', {}, 'Off. With it, every login also asks for a code of an authenticator app on your phone (e.g. '
+    + 'Google Authenticator, Microsoft Authenticator, 1Password).'), start);
+  return part;
+}
+
+function twoFactorSetup(setup: TwoFactorSetup, reload: (message: string) => void): HTMLFormElement {
+  const code = el('input', { id: 'two-factor-code', inputmode: 'numeric', autocomplete: 'one-time-code' });
+  const form = el('form', { class: 'balance-form', novalidate: true },
+    el('p', {}, '1. Scan the QR code with your authenticator app, or enter the secret by hand.'),
+    el('img', { class: 'two-factor-qr', src: setup.qr, alt: 'QR code for your authenticator app', width: 200, height: 200 }),
+    el('p', {}, 'Secret: ', el('code', { class: 'one-time-password' }, setup.secret)),
+    el('p', {}, '2. Enter the code the app shows now.'),
+    field('two-factor', 'code', 'Code', code, 'Six digits; a new one every 30 seconds.'),
+    el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Switch on')));
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    void submit(form, 'two-factor', ['code'], () => api.confirmTwoFactor(code.value.trim()),
+      () => reload('Two-factor login is on'));
+  });
+  return form;
 }
 
 function profileForm(user: UserView, reload: (message: string) => void): HTMLFormElement {

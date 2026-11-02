@@ -24,7 +24,7 @@ from src.models.schedules import Schedule
 from src.models.settings import Settings
 from src.models.audit import AuditEntry
 from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRole
-from src.models.users import Role, User
+from src.models.users import Role, TwoFactor, User
 
 Clock = Callable[[], dt.datetime]
 Theme = Literal['system', 'light', 'dark']
@@ -129,6 +129,8 @@ class Users(Protocol):
     def check_password(self, user_id: str, password: str) -> bool: ...
     def set_password(self, user_id: str, password: str) -> None: ...
     def set_one_time_password(self, user_id: str, password: str) -> None: ...
+    def two_factor(self, user_id: str) -> TwoFactor | None: ...
+    def save_two_factor(self, user_id: str, state: TwoFactor | None) -> None: ...
 
 
 class Sessions(Protocol):

@@ -27,6 +27,7 @@ class UserView(BaseModel):
     role: Role = Field(description='The app role: root (runs the app, tracks no work), admin or user (team roles: see team)')
     must_change_password: bool = Field(default=False, description='True after a one-time password, until the user chose '
                                                                   'their own')
+    two_factor: bool = Field(default=False, description='Whether the login also needs a code of an authenticator app')
 
     @classmethod
     def of(cls, user: User) -> Self:
@@ -66,6 +67,30 @@ class LoginInput(BaseModel):
 
     login: str = Field(min_length=1, max_length=200, description='Username or e-mail address')
     password: str = Field(min_length=1, max_length=200)
+    code: str | None = Field(default=None, max_length=20,
+                             description='With two-factor login: the code of the authenticator app')
+
+
+class TwoFactorStatus(BaseModel):
+    enabled: bool = Field(description='Whether the login also needs a code of an authenticator app')
+
+
+class TwoFactorSetup(BaseModel):
+    secret: str = Field(description='For entering by hand, if the QR code cannot be scanned')
+    uri: str = Field(description='The otpauth:// address the QR code holds')
+    qr: str = Field(description='The QR code as an SVG data URI')
+
+
+class TwoFactorCode(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    code: str = Field(min_length=6, max_length=20, description='The current code of the authenticator app')
+
+
+class TwoFactorOff(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    password: str = Field(min_length=1, max_length=200, description='The current password')
 
 
 class PasswordInput(BaseModel):

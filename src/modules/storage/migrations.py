@@ -613,4 +613,10 @@ MIGRATIONS: tuple[Migration, ...] = (
         used_at TEXT NOT NULL
     );
     """,
+    # 20: two-factor login (TASKS.md 9.1g1): the authenticator app's secret, whether it is confirmed, the last step used
+    """
+    ALTER TABLE users ADD COLUMN two_factor_secret TEXT;
+    ALTER TABLE users ADD COLUMN two_factor INTEGER NOT NULL DEFAULT 0 CHECK (two_factor IN (0, 1));
+    ALTER TABLE users ADD COLUMN two_factor_step INTEGER NOT NULL DEFAULT 0;
+    """,
 )

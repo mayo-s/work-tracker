@@ -1641,7 +1641,7 @@
       "post": {
         "summary": "Log in with username or e-mail address; sets the session cookie (valid 24 h since the last activity).",
         "operationId": "post__api_auth_login",
-        "description": "After 5 failed logins or registrations within a minute, logins pause (429). A deactivated user is refused (403).",
+        "description": "After 5 failed logins or registrations within a minute, logins pause (429). A deactivated user is refused (403). With two-factor login, the right password without `code` answers 401 with the code `two_factor_required` (not counted as failed); a wrong code counts as a failed login.",
         "tags": [
           "Login"
         ],
@@ -2029,6 +2029,171 @@
               }
             }
           }
+        }
+      }
+    },
+    "/api/auth/me/two-factor": {
+      "get": {
+        "summary": "Whether the logged-in user's login needs a code of an authenticator app.",
+        "operationId": "get__api_auth_me_two-factor",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFactorStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Start setting up two-factor login: a new secret, as QR code and as text, for the authenticator app; a first code confirms it (PUT). Starting again replaces an unconfirmed secret; 409 once it is on.",
+        "operationId": "post__api_auth_me_two-factor",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFactorSetup"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Confirm the setup with the current code of the authenticator app (403 if wrong): from now on, the login needs a code. 409 without a setup started or once it is on.",
+        "operationId": "put__api_auth_me_two-factor",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFactorStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorCode"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/auth/me/two-factor/off": {
+      "post": {
+        "summary": "Switch two-factor login off, with the current password (403 if wrong).",
+        "operationId": "post__api_auth_me_two-factor_off",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorOff"
+              }
+            }
+          },
+          "required": true
         }
       }
     },
@@ -4695,6 +4860,20 @@
             "minLength": 1,
             "title": "Password",
             "type": "string"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "With two-factor login: the code of the authenticator app",
+            "title": "Code"
           }
         },
         "required": [
@@ -4741,6 +4920,12 @@
             "default": false,
             "description": "True after a one-time password, until the user chose their own",
             "title": "Must Change Password",
+            "type": "boolean"
+          },
+          "two_factor": {
+            "default": false,
+            "description": "Whether the login also needs a code of an authenticator app",
+            "title": "Two Factor",
             "type": "boolean"
           }
         },
@@ -4933,6 +5118,80 @@
           "first_name"
         ],
         "title": "ProfileInput",
+        "type": "object"
+      },
+      "TwoFactorStatus": {
+        "properties": {
+          "enabled": {
+            "description": "Whether the login also needs a code of an authenticator app",
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "TwoFactorStatus",
+        "type": "object"
+      },
+      "TwoFactorSetup": {
+        "properties": {
+          "secret": {
+            "description": "For entering by hand, if the QR code cannot be scanned",
+            "title": "Secret",
+            "type": "string"
+          },
+          "uri": {
+            "description": "The otpauth:// address the QR code holds",
+            "title": "Uri",
+            "type": "string"
+          },
+          "qr": {
+            "description": "The QR code as an SVG data URI",
+            "title": "Qr",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "uri",
+          "qr"
+        ],
+        "title": "TwoFactorSetup",
+        "type": "object"
+      },
+      "TwoFactorCode": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "The current code of the authenticator app",
+            "maxLength": 20,
+            "minLength": 6,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "TwoFactorCode",
+        "type": "object"
+      },
+      "TwoFactorOff": {
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "description": "The current password",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "TwoFactorOff",
         "type": "object"
       },
       "PasswordInput": {

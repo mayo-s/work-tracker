@@ -30,6 +30,16 @@ class User(DomainModel):
     registered_at: dt.datetime | None = None  # None: registered before it was recorded
     last_login_at: dt.datetime | None = None
     must_change_password: bool = False  # after a one-time password from an admin, until the user chose their own
+    two_factor: bool = False  # the login also needs a code of their authenticator app
+
+
+class TwoFactor(DomainModel):
+    """A user's authenticator app (TOTP): its secret, whether it is confirmed, and the last time step used (a code
+    works only once). Never shown again after the setup, and not part of `User`."""
+
+    secret: str
+    enabled: bool = False  # False while being set up: a first code confirms it
+    last_step: int = 0
 
 
 def password_problem(password: str) -> str | None:
