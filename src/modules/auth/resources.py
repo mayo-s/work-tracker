@@ -1,4 +1,4 @@
-"""Login endpoints: /api/auth/status, /login, /logout, /root, /register, /me and /me/password."""
+"""Login endpoints: /api/auth/status, /login, /logout, /root, /register, /me, /me/password and /me/audit."""
 
 import datetime as dt
 from collections.abc import Callable
@@ -7,6 +7,7 @@ import falcon
 from spectree import Response
 
 from src.models.users import Role, User
+from src.modules.admin.audit import AuditView, record
 from src.modules.auth.schemas import (
     AuthStatus, LoginInput, NewUserInput, PasswordInput, ProfileInput, RootInput, UserView,
 )
@@ -33,12 +34,13 @@ class _AuthResource:
         set_session_cookie(req, resp, store.sessions().start(user.id, self._clock()))
 
     def _create(self, req: falcon.Request, resp: falcon.Response, store: Store, json: NewUserInput, role: Role = 'user',
-                ) -> None:
+                ) -> User:
         """Add the user, log them in and answer with them (201)."""
         user = store.users(self._clock).add(json.to_user().model_copy(update={'role': role}), json.password)
         self._log_in(req, resp, store, user)
         resp.status = falcon.HTTP_201
         resp.media = UserView.of(user)
+        return user
 
 
 def _user_id(req: falcon.Request) -> str:
@@ -123,7 +125,8 @@ class RootResource(_AuthResource):
         with self._storage.transaction() as store:
             if store.users().root_id():
                 raise ConflictError('There is a root already; log in instead')
-            self._create(req, resp, store, json, 'root')
+            root = self._create(req, resp, store, json, 'root')
+            record(store, self._clock(), root.id, 'root_created', root.id)
 
 
 class RegisterResource(_AuthResource):
@@ -157,6 +160,14 @@ class MeResource(_AuthResource):
         """Change username, e-mail address and name of the logged-in user."""
         with self._storage.transaction() as store:
             resp.media = UserView.of(store.users().update(json.to_user(_user_id(req))))
+
+
+class MyAuditResource(_AuthResource):
+    @spec.validate(resp=Response('HTTP_401', HTTP_200=list[AuditView]), tags=TAGS)
+    def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+        """The latest changes to the logged-in user's account (from the audit log), newest first."""
+        with self._storage.transaction() as store:
+            resp.media = [AuditView.of(entry) for entry in store.audit_log().of_user(_user_id(req))]
 
 
 class PasswordResource(_AuthResource):

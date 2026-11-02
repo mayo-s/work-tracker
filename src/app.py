@@ -7,10 +7,12 @@ import falcon
 
 from src.defaultresources.default import Default
 from src.modules.admin.resources import (
-    AdminOneTimePassword, AdminSettingsResource, AdminTeamCollection, AdminTeamItem, AdminUserCollection, AdminUserItem,
+    AdminAuditResource, AdminOneTimePassword, AdminSettingsResource, AdminTeamCollection, AdminTeamItem, AdminUserCollection,
+    AdminUserItem,
 )
 from src.modules.auth.resources import (
-    AuthStatusResource, LoginResource, LogoutResource, MeResource, PasswordResource, RegisterResource, RootResource,
+    AuthStatusResource, LoginResource, LogoutResource, MeResource, MyAuditResource, PasswordResource, RegisterResource,
+    RootResource,
 )
 from src.modules.auth.sessions import Authentication, LocalUser, auth_enabled
 from src.modules.auth.setup_token import SetupToken
@@ -105,11 +107,13 @@ def create_app(
     app.add_route('/api/auth/register', RegisterResource(storage, clock, enabled))
     app.add_route('/api/auth/me', MeResource(storage, clock))
     app.add_route('/api/auth/me/password', PasswordResource(storage, clock))
-    app.add_route('/api/admin/users', AdminUserCollection(storage))
-    app.add_route('/api/admin/users/{user_id}', AdminUserItem(storage))
-    app.add_route('/api/admin/users/{user_id}/one-time-password', AdminOneTimePassword(storage))
-    app.add_route('/api/admin/settings', AdminSettingsResource(storage))
-    app.add_route('/api/admin/teams', AdminTeamCollection(storage))
+    app.add_route('/api/auth/me/audit', MyAuditResource(storage, clock))
+    app.add_route('/api/admin/users', AdminUserCollection(storage, clock))
+    app.add_route('/api/admin/users/{user_id}', AdminUserItem(storage, clock))
+    app.add_route('/api/admin/users/{user_id}/one-time-password', AdminOneTimePassword(storage, clock))
+    app.add_route('/api/admin/settings', AdminSettingsResource(storage, clock))
+    app.add_route('/api/admin/audit', AdminAuditResource(storage, clock))
+    app.add_route('/api/admin/teams', AdminTeamCollection(storage, clock))
     app.add_route('/api/admin/teams/{team_id}', AdminTeamItem(storage, clock))
     app.add_route('/api/teams/{team_id}', TeamItem(storage, clock))
     app.add_route('/api/teams/{team_id}/invitations', TeamInvitations(storage, clock))

@@ -508,6 +508,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/me/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The latest changes to the logged-in user's account (from the audit log), newest first. */
+        get: operations["get__api_auth_me_audit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users": {
         parameters: {
             query?: never;
@@ -576,6 +593,23 @@ export interface paths {
         get: operations["get__api_admin_settings"];
         /** Switch registration on or off; the login page links to /register only while it is on. */
         put: operations["put__api_admin_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The audit log, newest first (the latest 200): who changed whose role, team role or status, set a one-time password, switched registration or changed a team, and when. */
+        get: operations["get__api_admin_audit"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1164,6 +1198,8 @@ export interface components {
              */
             registration: boolean;
         };
+        /** AuditViewList */
+        AuditViewList: components["schemas"]["AuditView"][];
         /** AuthStatus */
         AuthStatus: {
             /**
@@ -2322,6 +2358,39 @@ export interface components {
             ctx?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /** AuditView */
+        AuditView: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Actor
+             * @description Name of who made the change
+             */
+            actor: string;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed";
+            /**
+             * User
+             * @description Name of whose account it is about
+             */
+            user: string | null;
+            /**
+             * Team
+             * @description Name of the team (now, after a rename)
+             */
+            team: string | null;
+            /**
+             * Detail
+             * @description e.g. the new role, 'on' or 'off', a team's former name
+             */
+            detail: string;
         };
         /** TeamRef */
         TeamRef: {
@@ -4564,6 +4633,42 @@ export interface operations {
             };
         };
     };
+    get__api_auth_me_audit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditViewList"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
     get__api_admin_users: {
         parameters: {
             query?: never;
@@ -4766,6 +4871,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminSettings"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_admin_audit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditViewList"];
                 };
             };
             /** @description Forbidden */

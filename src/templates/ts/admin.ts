@@ -2,7 +2,8 @@
 // (status, one-time password). Admins: the teams, team roles, and looking after everyone else. Both see the users with
 // their role, team, team role and whether they can log in.
 
-import { ApiError, api, type AdminTeamView, type AdminUserInput, type AdminUserView } from './api.ts';
+import { ApiError, api, type AdminTeamView, type AdminUserInput, type AdminUserView, type AuditView } from './api.ts';
+import { auditTable } from './audit.ts';
 import { formatTimestamp } from './dates.ts';
 import { ask } from './dialog.ts';
 import { el } from './dom.ts';
@@ -204,11 +205,21 @@ function teamsTable(teams: AdminTeamView[]): EditableTable {
   };
 }
 
+function auditSection(entries: AuditView[]): HTMLElement {
+  return el('section', { class: 'review-section', id: 'audit' },
+    el('h2', {}, 'Audit log'),
+    el('p', { class: 'muted' }, 'Who changed roles, team roles or the status of users, set one-time passwords, switched '
+      + 'registration or changed teams, and when; the latest 200. Every user sees the changes to their own account in '
+      + 'their settings.'),
+    auditTable(entries, 'No changes yet.'));
+}
+
 export async function renderAdminPage(doc: Document): Promise<void> {
   await renderEditablePage(doc, 'admin', 'admin-status', async (page) => {
-    const [users, status] = await Promise.all([api.adminUsers(), api.authStatus()]);
+    const [users, audit, status] = await Promise.all([api.adminUsers(), api.adminAudit(), api.authStatus()]);
     const viewer: Viewer = status.user?.role === 'root' ? 'root' : 'admin';
-    const shared = [usersSection(users, viewer, status.user?.id, page), oneTimePasswordSection(users, viewer, page)];
+    const shared = [usersSection(users, viewer, status.user?.id, page), oneTimePasswordSection(users, viewer, page),
+      auditSection(audit)];
     return viewer === 'root'
       ? [registrationSection((await api.adminSettings()).registration, page), ...shared]
       : [tableSection(teamsTable(await api.adminTeams()), page), ...shared];

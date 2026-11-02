@@ -2,9 +2,10 @@
 // export of the own data and account.
 
 import {
-  api, ApiError, type MyInvitationView, type MyTeamView, type PtoYear, type PtoYearInput, type ReportViewEntry,
-  type ScheduleInput, type ScheduleView, type SettingsView, type Theme,
+  api, ApiError, type AuditView, type MyInvitationView, type MyTeamView, type PtoYear, type PtoYearInput,
+  type ReportViewEntry, type ScheduleInput, type ScheduleView, type SettingsView, type Theme,
 } from './api.ts';
+import { auditTable } from './audit.ts';
 import { formatDate, formatMonth, formatTimestamp } from './dates.ts';
 import { el } from './dom.ts';
 import { button, renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
@@ -19,7 +20,7 @@ const SIGNED: DurationRules = { signed: true };  // the opening balance may be n
 const SECTIONS = [
   ['balance', 'Overtime balance'], ['schedules', 'Work schedules'], ['pto-years', 'PTO years'], ['services', 'Services'],
   ['activity-types', 'Activity types'], ['team', 'Team'], ['appearance', 'Appearance'], ['data', 'Your data'],
-  ['account', 'Account'],
+  ['account', 'Account'], ['account-log', 'Changes to your account'],
 ];
 const THEMES: [Theme, string][] = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
 
@@ -270,6 +271,14 @@ function teamSection(mine: MyTeamView, page: Page): HTMLElement {
     invitations.length ? el('ul', { class: 'invitation-list' }, ...invitations) : null);
 }
 
+/** What root or an admin changed in the user's account (audit log). */
+function accountLogSection(entries: AuditView[]): HTMLElement {
+  return el('section', { class: 'review-section', id: 'account-log' },
+    el('h2', {}, 'Changes to your account'),
+    el('p', { class: 'muted' }, 'Who changed your role, team role or status, or set a one-time password for you, and when.'),
+    auditTable(entries, 'No changes yet.'));
+}
+
 function contents(): HTMLElement {
   return el('nav', { class: 'settings-contents', 'aria-label': 'Sections' },
     ...SECTIONS.map(([id, title]) => el('a', { href: `#${id}` }, title)));
@@ -278,8 +287,10 @@ function contents(): HTMLElement {
 export async function renderSettingsPage(doc: Document): Promise<void> {
   await renderEditablePage(doc, 'settings', 'settings-status', async (page) => {
     const status = await api.authStatus();
+    const account = [accountSection(status.user ?? null, status.enabled, page.reload),
+      ...(status.user ? [accountLogSection(await api.myAudit())] : [])];
     if (status.user?.role === 'root') {  // root tracks no work: only how the app looks and its account
-      return [appearanceSection((await api.theme()).theme, page), accountSection(status.user, status.enabled, page.reload)];
+      return [appearanceSection((await api.theme()).theme, page), ...account];
     }
     const [settings, schedules, years, services, activityTypes, tickets, theme, mine] = await Promise.all([
       api.settings(), api.schedules(), api.ptoYears(), api.services(), api.activityTypes(), api.tickets(), api.theme(),
@@ -295,7 +306,7 @@ export async function renderSettingsPage(doc: Document): Promise<void> {
       teamSection(mine, page),
       appearanceSection(theme.theme, page),
       dataSection(),
-      accountSection(status.user ?? null, status.enabled, page.reload),
+      ...account,
     ];
   });
   doc.getElementById(doc.location.hash.slice(1))?.scrollIntoView();  // a link like /settings#services

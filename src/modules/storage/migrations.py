@@ -580,4 +580,18 @@ MIGRATIONS: tuple[Migration, ...] = (
     ALTER TABLE new_users RENAME TO users;
     CREATE UNIQUE INDEX one_root ON users (role) WHERE role = 'root';
     """,
+    # 17: the audit log (TASKS.md 9.1d): who changed what of whom and when in running the app
+    """
+    CREATE TABLE audit_log (
+        id       TEXT NOT NULL PRIMARY KEY,
+        at       TEXT NOT NULL,
+        actor_id TEXT NOT NULL REFERENCES users (id),
+        action   TEXT NOT NULL,  -- AuditAction (src/models/audit.py)
+        user_id  TEXT REFERENCES users (id),  -- whose account it is about
+        team_id  TEXT REFERENCES teams (id),
+        detail   TEXT NOT NULL DEFAULT ''  -- e.g. the new role, 'on' or 'off', a team's former name
+    );
+    CREATE INDEX audit_log_by_time ON audit_log (at);
+    CREATE INDEX audit_log_by_user ON audit_log (user_id, at);
+    """,
 )

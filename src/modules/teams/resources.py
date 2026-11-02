@@ -9,6 +9,7 @@ from spectree import Response
 
 from src.models.catalog import Service, ServiceChoice
 from src.models.teams import Member
+from src.modules.admin.audit import record
 from src.modules.auth.sessions import current_user
 from src.modules.catalog.resources import ServiceInput
 from src.modules.storage.errors import NotFoundError
@@ -92,6 +93,7 @@ class TeamMemberItem(_TeamResource):
             if user_id not in [member.user_id for member in teams.members(team_id)]:
                 raise falcon.HTTPNotFound(description='No such member')
             teams.leave(user_id)
+            record(store, self._clock(), current_user(req), 'member_removed', user_id, team_id)
         resp.status = falcon.HTTP_204
 
 
