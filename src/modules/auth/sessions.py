@@ -22,8 +22,8 @@ OPEN_PREFIXES = ('/static/', '/apidoc')
 # After a one-time password, until the user chose their own: only this page, its API and what every page needs
 NEW_PASSWORD_PATHS = {'/password', '/api/auth/me/password'}
 # Root tracks no work: its pages and the API behind them; other pages forward to /admin, the rest of the API answers 403
-ROOT_PAGES = {'/admin', '/team', '/settings', '/password'}
-ROOT_API = ('/api/auth/', '/api/admin/', '/api/teams/', '/api/theme')
+ROOT_PAGES = {'/admin', '/settings', '/password'}
+ROOT_API = ('/api/auth/', '/api/admin/', '/api/theme')
 
 
 def auth_enabled() -> bool:

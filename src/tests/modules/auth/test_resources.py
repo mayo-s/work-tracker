@@ -81,7 +81,7 @@ def test_root_is_created_once_and_logs_in(app):
     assert (again.status, again.json['description']) == (falcon.HTTP_409, 'There is a root already; log in instead')
 
 
-@pytest.mark.parametrize('path, location', [('/', '/admin'), ('/week', '/admin'), ('/setup', '/admin')])
+@pytest.mark.parametrize('path, location', [('/', '/admin'), ('/week', '/admin'), ('/setup', '/admin'), ('/team', '/admin')])
 def test_root_tracks_no_work_and_goes_to_admin(app, root, path, location):
     result = app.simulate_get(path, cookies=root)
     assert (result.status, result.headers['location']) == (falcon.HTTP_303, location)

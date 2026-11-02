@@ -1,5 +1,6 @@
-// Admin page (/admin): registration on or off, the teams, the users with their role, team, team role and whether they
-// can log in, and one-time passwords by e-mail address.
+// Admin page (/admin), for root and admins (SPEC 5.7). Root: registration, appointing admins and looking after them
+// (status, one-time password). Admins: the teams, team roles, and looking after everyone else. Both see the users with
+// their role, team, team role and whether they can log in.
 
 import { ApiError, api, type AdminTeamView, type AdminUserInput, type AdminUserView } from './api.ts';
 import { formatTimestamp } from './dates.ts';
@@ -10,8 +11,22 @@ import { field, submit } from './forms.ts';
 
 type TeamRole = NonNullable<AdminUserInput['team_role']>;
 
+type Viewer = 'root' | 'admin';
+
 const ROLES: [AdminUserInput['role'], string][] = [['admin', 'Admin'], ['user', 'User']];  // root is never given
+const ROLE_LABELS: Record<AdminUserView['role'], string> = { root: 'Root', admin: 'Admin', user: 'User' };
 const TEAM_ROLES: [TeamRole, string][] = [['member', 'Member'], ['team_admin', 'Team admin']];
+
+/** What the viewer may change in a user's row: root the role of anyone and the status of admins; admins team roles and
+ * the status of everyone else. Nobody changes their own row, and root's stays as it is. */
+export function editable(viewer: Viewer, user: AdminUserView, self: boolean): Record<'role' | 'teamRole' | 'status', boolean> {
+  const fixed = self || user.role === 'root';
+  return {
+    role: !fixed && viewer === 'root',
+    teamRole: !fixed && viewer === 'admin' && Boolean(user.team),
+    status: !fixed && viewer === (user.role === 'admin' ? 'root' : 'admin'),
+  };
+}
 
 function timestampCell(value: string | null | undefined): HTMLTableCellElement {
   return el('td', {}, value ? formatTimestamp(value) : el('span', { class: 'muted' }, '—'));
@@ -40,8 +55,8 @@ function registrationSection(open: boolean, page: Page): HTMLElement {
     el('label', { class: 'checkbox-field', for: 'admin-registration' }, box, 'Allow registration'));
 }
 
-function roleSelect(user: AdminUserView, self: boolean, page: Page): HTMLSelectElement {
-  const select = el('select', { 'aria-label': `Role of ${user.username}`, disabled: self },
+function roleSelect(user: AdminUserView, page: Page): HTMLSelectElement {
+  const select = el('select', { 'aria-label': `Role of ${user.username}` },
     ...ROLES.map(([value, label]) => el('option', { value, selected: user.role === value }, label)));
   select.addEventListener('change', () => {
     const role = select.value as AdminUserInput['role'];
@@ -51,12 +66,15 @@ function roleSelect(user: AdminUserView, self: boolean, page: Page): HTMLSelectE
   return select;
 }
 
-/** The role in their team: only for members of a team, and nobody changes their own. */
-function teamRoleCell(user: AdminUserView, self: boolean, page: Page): HTMLTableCellElement {
+/** The role in their team (only members of a team have one), chosen in place if `canEdit`. */
+function teamRoleCell(user: AdminUserView, canEdit: boolean, page: Page): HTMLTableCellElement {
   if (!user.team) {
     return el('td', {}, el('span', { class: 'muted' }, '—'));
   }
-  const select = el('select', { 'aria-label': `Role of ${user.username} in ${user.team}`, disabled: self },
+  if (!canEdit) {
+    return el('td', {}, TEAM_ROLES.find(([value]) => value === user.team_role)?.[1] ?? '');
+  }
+  const select = el('select', { 'aria-label': `Role of ${user.username} in ${user.team}` },
     ...TEAM_ROLES.map(([value, label]) => el('option', { value, selected: user.team_role === value }, label)));
   select.addEventListener('change', () => {
     const teamRole = select.value as TeamRole;
@@ -66,9 +84,13 @@ function teamRoleCell(user: AdminUserView, self: boolean, page: Page): HTMLTable
   return el('td', {}, select);
 }
 
-/** Active or deactivated, chosen in place (not for oneself); a deactivation asks first. */
-function statusCell(user: AdminUserView, self: boolean, page: Page): HTMLTableCellElement {
-  const select = el('select', { 'aria-label': `Status of ${user.username}`, disabled: self },
+/** Active or deactivated, chosen in place if `canEdit`; a deactivation asks first. */
+function statusCell(user: AdminUserView, canEdit: boolean, page: Page): HTMLTableCellElement {
+  const badge = user.active && user.must_change_password ? el('span', { class: 'badge admin-badge' }, 'One-time password') : '';
+  if (!canEdit) {
+    return el('td', {}, user.active ? 'Active' : el('span', { class: 'badge warning' }, 'Deactivated'), badge);
+  }
+  const select = el('select', { 'aria-label': `Status of ${user.username}` },
     el('option', { value: 'active', selected: user.active }, 'Active'),
     el('option', { value: 'deactivated', selected: !user.active }, 'Deactivated'));
   select.addEventListener('change', () => {
@@ -81,8 +103,7 @@ function statusCell(user: AdminUserView, self: boolean, page: Page): HTMLTableCe
     api.updateAdminUser(user.id, userInput(user, { active }))
       .then(() => page.reload(`${active ? 'Reactivated' : 'Deactivated'} ${user.username}`), page.fail);
   });
-  return el('td', {}, select,
-    user.active && user.must_change_password ? el('span', { class: 'badge admin-badge' }, 'One-time password') : '');
+  return el('td', {}, select, badge);
 }
 
 /** The user with this e-mail address, ignoring case and surrounding spaces. */
@@ -91,8 +112,9 @@ export function userByEmail(users: AdminUserView[], email: string): AdminUserVie
   return users.find((user) => user.email.toLowerCase() === wanted);
 }
 
-/** Sets a one-time password for the user with the e-mail address entered and shows it once, to pass on. */
-function oneTimePasswordSection(users: AdminUserView[], page: Page): HTMLElement {
+/** Sets a one-time password for the user with the e-mail address entered and shows it once, to pass on: root for an
+ * admin, an admin for anyone else. */
+function oneTimePasswordSection(users: AdminUserView[], viewer: Viewer, page: Page): HTMLElement {
   const email = el('input', { id: 'otp-email', name: 'email', type: 'email', autocomplete: 'off' });
   const form = el('form', { class: 'balance-form invite-form', novalidate: true },
     field('otp', 'email', 'E-mail address', email, 'The exact address of the user (upper and lower case do not matter).'),
@@ -121,38 +143,46 @@ function oneTimePasswordSection(users: AdminUserView[], page: Page): HTMLElement
   });
   return el('section', { class: 'review-section', id: 'one-time-password' },
     el('h2', {}, 'One-time password'),
-    el('p', { class: 'muted' }, 'For a user who forgot their password: they are logged out, and at the next login they choose '
-      + 'a new password with the one-time password. It is shown only once, to pass on in person or by phone. Your own '
-      + 'password is changed in your settings.'),
+    el('p', { class: 'muted' }, `For ${viewer === 'root' ? 'an admin' : 'a user'} who forgot their password `
+      + `(${viewer === 'root' ? 'users get theirs from an admin' : 'admins get theirs from root'}): they are logged out, `
+      + 'and at the next login they choose a new password with the one-time password. It is shown only once, to pass on '
+      + 'in person or by phone. Your own password is changed in your settings.'),
     form);
 }
 
-function userRow(user: AdminUserView, me: string | undefined, page: Page): HTMLTableRowElement {
+function userRow(user: AdminUserView, viewer: Viewer, me: string | undefined, page: Page): HTMLTableRowElement {
   const self = user.id === me;
-  const root = user.role === 'root';  // stays root and active, never in a team
+  const can = editable(viewer, user, self);
   return el('tr', {},
     el('td', {}, el('strong', {}, user.username), self ? el('span', { class: 'muted' }, ' (you)') : ''),
     el('td', {}, [user.first_name, user.last_name].filter(Boolean).join(' ')),
     el('td', {}, user.email),
     el('td', {}, user.team ?? el('span', { class: 'muted' }, '—')),
-    teamRoleCell(user, self, page),
-    el('td', {}, root ? 'Root' : roleSelect(user, self, page)),
-    root ? el('td', {}, 'Active') : statusCell(user, self, page),
+    teamRoleCell(user, can.teamRole, page),
+    el('td', {}, can.role ? roleSelect(user, page) : ROLE_LABELS[user.role]),
+    statusCell(user, can.status, page),
     timestampCell(user.registered_at),
     timestampCell(user.last_login_at));
 }
 
-function usersSection(users: AdminUserView[], me: string | undefined, page: Page): HTMLElement {
+const USERS_HINT: Record<Viewer, string> = {
+  root: 'You appoint and remove admins (Role) and look after them: their status, and a one-time password below. Admins '
+    + 'look after everyone else and the teams. A deactivated user is logged out and cannot log in; their data is kept. '
+    + 'Root tracks no work and sees nobody\'s days or entries.',
+  admin: 'You give team roles and look after the users: their status, and a one-time password below; root appoints the '
+    + 'admins and looks after them. A deactivated user is logged out and cannot log in; their data is kept. The team role '
+    + 'belongs to the team: a team admin, admin or user, manages the team they are in (its members, invitations and '
+    + 'services) and sees its members\' reports; leaving the team ends it. Nobody changes their own row.',
+};
+
+function usersSection(users: AdminUserView[], viewer: Viewer, me: string | undefined, page: Page): HTMLElement {
   const header = el('tr', {}, ...['Username', 'Name', 'E-mail address', 'Team', 'Team role', 'Role', 'Status', 'Registered',
     'Last login'].map((label) => el('th', {}, label)));
   return el('section', { class: 'review-section', id: 'users' },
     el('h2', {}, 'Users'),
-    el('p', { class: 'muted' }, 'Admins manage registration and users; users work on their own data only. A deactivated '
-      + 'user is logged out and cannot log in; their data is kept. Nobody can demote or deactivate themselves. The team role '
-      + 'belongs to the team: a team admin, admin or user, manages the team they are in (its members, invitations and '
-      + 'services) and sees its members\' reports; leaving the team ends it. Nobody changes their own team role.'),
+    el('p', { class: 'muted' }, USERS_HINT[viewer]),
     el('table', { class: 'review-table list-table admin-users' }, el('thead', {}, header),
-      el('tbody', {}, ...users.map((user) => userRow(user, me, page)))));
+      el('tbody', {}, ...users.map((user) => userRow(user, viewer, me, page)))));
 }
 
 function teamsTable(teams: AdminTeamView[]): EditableTable {
@@ -176,12 +206,11 @@ function teamsTable(teams: AdminTeamView[]): EditableTable {
 
 export async function renderAdminPage(doc: Document): Promise<void> {
   await renderEditablePage(doc, 'admin', 'admin-status', async (page) => {
-    const [settings, users, teams, status] = await Promise.all([
-      api.adminSettings(), api.adminUsers(), api.adminTeams(), api.authStatus(),
-    ]);
-    return [
-      registrationSection(settings.registration, page), tableSection(teamsTable(teams), page),
-      usersSection(users, status.user?.id, page), oneTimePasswordSection(users, page),
-    ];
+    const [users, status] = await Promise.all([api.adminUsers(), api.authStatus()]);
+    const viewer: Viewer = status.user?.role === 'root' ? 'root' : 'admin';
+    const shared = [usersSection(users, viewer, status.user?.id, page), oneTimePasswordSection(users, viewer, page)];
+    return viewer === 'root'
+      ? [registrationSection((await api.adminSettings()).registration, page), ...shared]
+      : [tableSection(teamsTable(await api.adminTeams()), page), ...shared];
   });
 }

@@ -253,7 +253,7 @@ L.16 (a–i) → 9.1 (a–i).
     creates root (with the setup token on Lambda) and no tracking data; root's pages are `/admin`, its profile and
     password (the tracking API answers 403); "Create root admin" once on `/login` of a database with users but no
     root; the first user who is not root takes over the records of a database used without users
-  - [ ] **9.1c** Permissions: root switches registration, appoints and removes admins and helps admins (one-time
+  - [x] **9.1c** Permissions: root switches registration, appoints and removes admins and helps admins (one-time
     password, deactivate, reactivate); admins manage users, team admins and teams, no longer admins
   - [ ] **9.1d** Audit log: role, team admin, auditor and team changes, (de)activations, one-time passwords,
     two-factor resets, registration, backups and restores; all on `/admin` for root and admins, the own entries in the
