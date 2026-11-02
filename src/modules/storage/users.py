@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Callable
 
 from src.lib.passwords import hash_password, verify_password
-from src.models.users import Role, User
+from src.models.users import Role, TwoFactor, User
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.owners import start_with_defaults, take_over_unowned
 
@@ -16,7 +16,8 @@ SESSION_LIFETIME = dt.timedelta(hours=24)
 SESSION_RENEWAL = dt.timedelta(minutes=30)  # the stored expiry is renewed at most this often
 ATTEMPTS_ALLOWED = 5  # failed logins and registrations together
 ATTEMPT_PAUSE = dt.timedelta(minutes=1)
-_COLUMNS = 'id, username, email, first_name, last_name, role, active, registered_at, last_login_at, must_change_password'
+_COLUMNS = ('id, username, email, first_name, last_name, role, active, registered_at, last_login_at, must_change_password,'
+            ' two_factor')
 
 
 def random_id() -> str:
@@ -107,6 +108,19 @@ class UserRepository:
         """A password from an admin: it ends all sessions, and the user chooses their own at the next login."""
         self.get(user_id)
         self._set_password(user_id, password, must_change=True)
+
+    def two_factor(self, user_id: str) -> TwoFactor | None:
+        row = self._conn.execute('SELECT two_factor_secret, two_factor, two_factor_step FROM users WHERE id = ?',
+                                 (user_id,)).fetchone()
+        if row is None or row[0] is None:
+            return None
+        return TwoFactor(secret=row[0], enabled=bool(row[1]), last_step=row[2])
+
+    def save_two_factor(self, user_id: str, state: TwoFactor | None) -> None:
+        """The authenticator app being set up, confirmed or with a code used; None switches two-factor login off."""
+        values = (state.secret, int(state.enabled), state.last_step) if state else (None, 0, 0)
+        self._conn.execute('UPDATE users SET two_factor_secret = ?, two_factor = ?, two_factor_step = ? WHERE id = ?',
+                           (*values, user_id))
 
     def _set_password(self, user_id: str, password: str, must_change: bool) -> None:
         self._conn.execute('UPDATE users SET password_hash = ?, must_change_password = ? WHERE id = ?',

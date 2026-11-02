@@ -9,6 +9,7 @@ import uuid
 import pytest
 
 from src.models.settings import Settings
+from src.models.users import TwoFactor
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.tests.users import KLARA, PASCAL, RAINER
 
@@ -222,3 +223,18 @@ def test_a_used_setup_token_is_refused_the_second_time(storage):
     run(storage, lambda store: store.use_setup_token('other hash', LOGIN))
     with pytest.raises(ConflictError, match='This setup token was used already'):
         run(storage, lambda store: store.use_setup_token('hash', LOGIN))
+
+
+def test_two_factor_is_set_up_confirmed_and_switched_off(storage, klara):
+    def users(action):
+        return run(storage, lambda store: action(store.users()))
+
+    confirmed = TwoFactor(secret='ABC', enabled=True, last_step=7)
+    assert users(lambda repository: repository.two_factor(klara.id)) is None
+    users(lambda repository: repository.save_two_factor(klara.id, TwoFactor(secret='ABC')))
+    assert users(lambda repository: repository.get(klara.id)).two_factor is False  # not confirmed yet
+    users(lambda repository: repository.save_two_factor(klara.id, confirmed))
+    assert users(lambda repository: repository.two_factor(klara.id)) == confirmed
+    assert users(lambda repository: repository.get(klara.id)).two_factor is True
+    users(lambda repository: repository.save_two_factor(klara.id, None))
+    assert users(lambda repository: repository.two_factor(klara.id)) is None

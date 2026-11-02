@@ -12,7 +12,7 @@ from src.modules.admin.resources import (
 )
 from src.modules.auth.resources import (
     AuthStatusResource, LoginResource, LogoutResource, MeResource, MyAuditResource, PasswordResource, RegisterResource,
-    RootResetResource, RootResource,
+    RootResetResource, RootResource, TwoFactorOffResource, TwoFactorResource,
 )
 from src.modules.auth.sessions import Authentication, LocalUser, auth_enabled
 from src.modules.auth.setup_token import SetupToken
@@ -109,6 +109,8 @@ def create_app(
     app.add_route('/api/auth/me', MeResource(storage, clock))
     app.add_route('/api/auth/me/password', PasswordResource(storage, clock))
     app.add_route('/api/auth/me/audit', MyAuditResource(storage, clock))
+    app.add_route('/api/auth/me/two-factor', TwoFactorResource(storage, clock))
+    app.add_route('/api/auth/me/two-factor/off', TwoFactorOffResource(storage, clock))
     app.add_route('/api/admin/users', AdminUserCollection(storage, clock))
     app.add_route('/api/admin/users/{user_id}', AdminUserItem(storage, clock))
     app.add_route('/api/admin/users/{user_id}/one-time-password', AdminOneTimePassword(storage, clock))

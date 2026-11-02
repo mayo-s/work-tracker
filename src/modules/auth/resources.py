@@ -1,4 +1,5 @@
-"""Login endpoints: /api/auth/status, /login, /logout, /root, /root/reset, /register, /me, /me/password and /me/audit."""
+"""Login endpoints: /api/auth/status, /login, /logout, /root, /root/reset, /register, /me, /me/password, /me/audit and
+/me/two-factor."""
 
 import datetime as dt
 from collections.abc import Callable
@@ -6,14 +7,17 @@ from collections.abc import Callable
 import falcon
 from spectree import Response
 
-from src.models.users import Role, User
+from src.lib.totp import new_secret, provisioning_uri
+from src.models.users import Role, TwoFactor, User
 from src.modules.admin.audit import AuditView, record
 from src.modules.auth.schemas import (
-    AuthStatus, LoginInput, NewUserInput, PasswordInput, ProfileInput, RootInput, RootResetInput, UserView,
+    AuthStatus, LoginInput, NewUserInput, PasswordInput, ProfileInput, RootInput, RootResetInput, TwoFactorCode,
+    TwoFactorOff, TwoFactorSetup, TwoFactorStatus, UserView,
 )
 from src.modules.teams.schemas import TeamRef
 from src.modules.auth.sessions import COOKIE, PAUSED, clear_session_cookie, set_session_cookie
 from src.modules.auth.setup_token import SetupToken, check_setup_token
+from src.modules.auth.two_factor import WRONG_CODE, code_accepted, qr_code, second_factor
 from src.modules.storage.errors import ConflictError
 from src.modules.storage.store import Storage, Store
 from src.utils.spec import spec
@@ -89,16 +93,19 @@ class LoginResource(_AuthResource):
         """Log in with username or e-mail address; sets the session cookie (valid 24 h since the last activity).
 
         After 5 failed logins or registrations within a minute, logins pause (429). A deactivated user is refused (403).
+        With two-factor login, the right password without `code` answers 401 with the code `two_factor_required`
+        (not counted as failed); a wrong code counts as a failed login.
         """
         with self._storage.transaction() as store:
-            user = self._check(store, json)
+            user, refusal = self._check(store, json)
             if user:
                 self._log_in(req, resp, store, user)
-        if user is None:  # answered after the transaction, so the failed login is stored
-            raise falcon.HTTPUnauthorized(title='401 Unauthorized', description=WRONG_LOGIN)
+        if refusal:  # answered after the transaction, so the failed login is stored
+            raise falcon.HTTPUnauthorized(title='401 Unauthorized', description=refusal)
         resp.media = UserView.of(user)
 
-    def _check(self, store: Store, json: LoginInput) -> User | None:
+    def _check(self, store: Store, json: LoginInput) -> tuple[User | None, str | None]:
+        """The user, or why the login failed (counted as a failed login)."""
         now = self._clock()
         attempts, users = store.attempts(), store.users()
         if attempts.paused(now):
@@ -106,11 +113,14 @@ class LoginResource(_AuthResource):
         user = users.by_login(json.login)
         if user is None or not users.check_password(user.id, json.password):
             attempts.add(now)
-            return None
+            return None, WRONG_LOGIN
         if not user.active:
             raise falcon.HTTPForbidden(description='This account is deactivated; ask an admin')
+        if not second_factor(store, user, json.code, now):
+            attempts.add(now)
+            return None, WRONG_CODE
         attempts.clear_failed(now)
-        return user
+        return user, None
 
 
 class LogoutResource(_AuthResource):
@@ -205,6 +215,54 @@ class MyAuditResource(_AuthResource):
         """The latest changes to the logged-in user's account (from the audit log), newest first."""
         with self._storage.transaction() as store:
             resp.media = [AuditView.of(entry) for entry in store.audit_log().of_user(_user_id(req))]
+
+
+class TwoFactorResource(_AuthResource):
+    @spec.validate(resp=Response('HTTP_401', HTTP_200=TwoFactorStatus), tags=TAGS)
+    def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+        """Whether the logged-in user's login needs a code of an authenticator app."""
+        with self._storage.transaction() as store:
+            resp.media = TwoFactorStatus(enabled=store.users().get(_user_id(req)).two_factor)
+
+    @spec.validate(resp=Response('HTTP_401', 'HTTP_409', HTTP_201=TwoFactorSetup), tags=TAGS)
+    def on_post(self, req: falcon.Request, resp: falcon.Response) -> None:
+        """Start setting up two-factor login: a new secret, as QR code and as text, for the authenticator app; a first
+        code confirms it (PUT). Starting again replaces an unconfirmed secret; 409 once it is on."""
+        with self._storage.transaction() as store:
+            users = store.users()
+            user = users.get(_user_id(req))
+            if user.two_factor:
+                raise ConflictError('Two-factor login is on already')
+            secret = new_secret()
+            users.save_two_factor(user.id, TwoFactor(secret=secret))
+        uri = provisioning_uri(secret, user.username)
+        resp.status = falcon.HTTP_201
+        resp.media = TwoFactorSetup(secret=secret, uri=uri, qr=qr_code(uri))
+
+    @spec.validate(json=TwoFactorCode, resp=Response('HTTP_401', 'HTTP_403', 'HTTP_409', HTTP_200=TwoFactorStatus),
+                   tags=TAGS)
+    def on_put(self, req: falcon.Request, resp: falcon.Response, json: TwoFactorCode) -> None:
+        """Confirm the setup with the current code of the authenticator app (403 if wrong): from now on, the login needs
+        a code. 409 without a setup started or once it is on."""
+        with self._storage.transaction() as store:
+            state = store.users().two_factor(_user_id(req))
+            if state is None or state.enabled:
+                raise ConflictError('Start the setup first' if state is None else 'Two-factor login is on already')
+            if not code_accepted(store, _user_id(req), json.code, self._clock(), enabled=False):
+                raise falcon.HTTPForbidden(description=WRONG_CODE)
+        resp.media = TwoFactorStatus(enabled=True)
+
+
+class TwoFactorOffResource(_AuthResource):
+    @spec.validate(json=TwoFactorOff, resp=Response('HTTP_204', 'HTTP_401', 'HTTP_403'), tags=TAGS)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, json: TwoFactorOff) -> None:
+        """Switch two-factor login off, with the current password (403 if wrong)."""
+        with self._storage.transaction() as store:
+            users = store.users()
+            if not users.check_password(_user_id(req), json.password):
+                raise falcon.HTTPForbidden(description='The current password is wrong')
+            users.save_two_factor(_user_id(req), None)
+        resp.status = falcon.HTTP_204
 
 
 class PasswordResource(_AuthResource):

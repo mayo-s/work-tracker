@@ -410,7 +410,7 @@ export interface paths {
         put?: never;
         /**
          * Log in with username or e-mail address; sets the session cookie (valid 24 h since the last activity).
-         * @description After 5 failed logins or registrations within a minute, logins pause (429). A deactivated user is refused (403).
+         * @description After 5 failed logins or registrations within a minute, logins pause (429). A deactivated user is refused (403). With two-factor login, the right password without `code` answers 401 with the code `two_factor_required` (not counted as failed); a wrong code counts as a failed login.
          */
         post: operations["post__api_auth_login"];
         delete?: never;
@@ -536,6 +536,42 @@ export interface paths {
         get: operations["get__api_auth_me_audit"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me/two-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the logged-in user's login needs a code of an authenticator app. */
+        get: operations["get__api_auth_me_two-factor"];
+        /** Confirm the setup with the current code of the authenticator app (403 if wrong): from now on, the login needs a code. 409 without a setup started or once it is on. */
+        put: operations["put__api_auth_me_two-factor"];
+        /** Start setting up two-factor login: a new secret, as QR code and as text, for the authenticator app; a first code confirms it (PUT). Starting again replaces an unconfirmed secret; 409 once it is on. */
+        post: operations["post__api_auth_me_two-factor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me/two-factor/off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Switch two-factor login off, with the current password (403 if wrong). */
+        post: operations["post__api_auth_me_two-factor_off"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1359,6 +1395,12 @@ export interface components {
             login: string;
             /** Password */
             password: string;
+            /**
+             * Code
+             * @description With two-factor login: the code of the authenticator app
+             * @default null
+             */
+            code?: string | null;
         };
         /** UserView */
         UserView: {
@@ -1387,6 +1429,12 @@ export interface components {
              * @default false
              */
             must_change_password?: boolean;
+            /**
+             * Two Factor
+             * @description Whether the login also needs a code of an authenticator app
+             * @default false
+             */
+            two_factor?: boolean;
         };
         /** RootInput */
         RootInput: {
@@ -1479,6 +1527,48 @@ export interface components {
              * @default
              */
             last_name?: string;
+        };
+        /** TwoFactorStatus */
+        TwoFactorStatus: {
+            /**
+             * Enabled
+             * @description Whether the login also needs a code of an authenticator app
+             */
+            enabled: boolean;
+        };
+        /** TwoFactorSetup */
+        TwoFactorSetup: {
+            /**
+             * Secret
+             * @description For entering by hand, if the QR code cannot be scanned
+             */
+            secret: string;
+            /**
+             * Uri
+             * @description The otpauth:// address the QR code holds
+             */
+            uri: string;
+            /**
+             * Qr
+             * @description The QR code as an SVG data URI
+             */
+            qr: string;
+        };
+        /** TwoFactorCode */
+        TwoFactorCode: {
+            /**
+             * Code
+             * @description The current code of the authenticator app
+             */
+            code: string;
+        };
+        /** TwoFactorOff */
+        TwoFactorOff: {
+            /**
+             * Password
+             * @description The current password
+             */
+            password: string;
         };
         /** PasswordInput */
         PasswordInput: {
@@ -4895,6 +4985,184 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "get__api_auth_me_two-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoFactorStatus"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "put__api_auth_me_two-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorCode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoFactorStatus"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_auth_me_two-factor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoFactorSetup"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_auth_me_two-factor_off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorOff"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

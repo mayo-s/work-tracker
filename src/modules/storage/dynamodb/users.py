@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 from src.lib.passwords import hash_password, verify_password
 from src.models.base import new_id as new_record_id
-from src.models.users import Role, User
+from src.models.users import Role, TwoFactor, User
 from src.modules.storage.dynamodb.catalog import add_default_activity_types
 from src.modules.storage.dynamodb.keys import ATTEMPTS, LOGIN, ROOT, USERS, user_partition
 from src.modules.storage.dynamodb.table import Item
@@ -32,7 +32,8 @@ def _login_key(field: str, value: str) -> str:
 def _user(item: Item) -> User:
     return User(id=item['id'], **{field: item[field] for field in _PROFILE}, role=item['role'], active=item['active'],
                 registered_at=item.get('registered_at'), last_login_at=item.get('last_login_at'),
-                must_change_password=item.get('must_change_password', False))
+                must_change_password=item.get('must_change_password', False),
+                two_factor=bool(item.get('two_factor_secret')) and item.get('two_factor_on', False))
 
 
 def _epoch(moment: dt.datetime) -> int:
@@ -123,6 +124,17 @@ class DynamoUsers:
         """A password from an admin: it ends all sessions, and the user chooses their own at the next login."""
         self._change(user_id, password_hash=hash_password(password), must_change_password=True)
         end_sessions(self._unit, user_id)
+
+    def two_factor(self, user_id: str) -> TwoFactor | None:
+        item = self._profile(user_id)
+        if not item.get('two_factor_secret'):
+            return None
+        return TwoFactor(secret=item['two_factor_secret'], enabled=item['two_factor_on'], last_step=item['two_factor_step'])
+
+    def save_two_factor(self, user_id: str, state: TwoFactor | None) -> None:
+        """The authenticator app being set up, confirmed or with a code used; None switches two-factor login off."""
+        self._change(user_id, two_factor_secret=state.secret if state else None, two_factor_on=bool(state and state.enabled),
+                     two_factor_step=state.last_step if state else 0)
 
     def _profiles(self) -> list[Item]:
         return sorted(self._unit.query_prefix(USERS, 'USER#'), key=lambda item: item['order'])

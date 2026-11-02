@@ -1375,6 +1375,13 @@ body:has(main[data-page='password']) .app-nav {
   margin: var(--space-6) 0 var(--space-3);
 }
 
+.two-factor-qr {
+  display: block;
+  margin: var(--space-2) 0;
+  background: #fff;  /* a QR code needs a light background in the dark theme too */
+  border-radius: var(--radius);
+}
+
 .root-reset {
   margin-top: var(--space-6);
 }

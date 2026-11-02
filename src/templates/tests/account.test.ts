@@ -3,7 +3,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { accountError, emptyAccount, passwordError, profileInput, safeNext } from '../ts/account.ts';
+import { accountError, emptyAccount, needsCode, passwordError, profileInput, safeNext } from '../ts/account.ts';
+import { ApiError } from '../ts/api.ts';
 
 const RAINER = {
   username: 'rainer', email: 'rainer.zufall@example.com', first_name: 'Rainer', last_name: '',
@@ -40,4 +41,10 @@ test('after logging in, only paths of this app', () => {
   assert.equal(safeNext(null), '/');
   assert.equal(safeNext('https://example.com/'), '/');
   assert.equal(safeNext('//example.com/'), '/');
+});
+
+test('the login asks for the code only when the password was right and the code is missing', () => {
+  assert.equal(needsCode(new ApiError(401, 'Enter the code', { code: 'two_factor_required' })), true);
+  assert.equal(needsCode(new ApiError(401, 'Wrong username, e-mail address or password', {})), false);
+  assert.equal(needsCode(new Error('offline')), false);
 });

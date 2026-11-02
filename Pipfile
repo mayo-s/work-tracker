@@ -10,6 +10,7 @@ pydantic = "*"
 holidays = "*"
 gunicorn = "*"
 boto3 = "*"
+segno = "*"
 
 [dev-packages]
 flake8 = "*"

@@ -33,6 +33,8 @@ export type UserView = Schemas['UserView'];
 export type ProfileInput = Schemas['ProfileInput'];
 export type NewUserInput = Schemas['NewUserInput'];
 export type RootInput = Schemas['RootInput'];
+export type TwoFactorSetup = Schemas['TwoFactorSetup'];
+export type TwoFactorStatus = Schemas['TwoFactorStatus'];
 export type AdminUserView = Schemas['AdminUserView'];
 export type AuditView = Schemas['AuditView'];
 export type OneTimePasswordView = Schemas['OneTimePasswordView'];
@@ -188,7 +190,12 @@ export const api = {
   dashboard: (member: string | null = null) => request<DashboardView>('GET', `/api/dashboard${memberQuery(member)}`),
 
   authStatus: () => request<AuthStatus>('GET', '/api/auth/status'),
-  login: (login: string, password: string) => request<UserView>('POST', '/api/auth/login', { login, password }),
+  login: (login: string, password: string, code: string | null = null) =>
+    request<UserView>('POST', '/api/auth/login', { login, password, code }),
+  twoFactor: () => request<TwoFactorStatus>('GET', '/api/auth/me/two-factor'),
+  startTwoFactor: () => request<TwoFactorSetup>('POST', '/api/auth/me/two-factor'),
+  confirmTwoFactor: (code: string) => request<TwoFactorStatus>('PUT', '/api/auth/me/two-factor', { code }),
+  twoFactorOff: (password: string) => request<void>('POST', '/api/auth/me/two-factor/off', { password }),
   logout: () => request<void>('POST', '/api/auth/logout'),
   createRoot: (input: RootInput) => request<UserView>('POST', '/api/auth/root', input),
   resetRoot: (setupToken: string, newPassword: string) =>
