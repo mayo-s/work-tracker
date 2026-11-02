@@ -1,7 +1,7 @@
 // The audit log (SPEC 5.7) as text: on the admin page all of it, in the settings the changes to the own account.
 
 import type { AuditView } from './api.ts';
-import { formatTimestamp } from './dates.ts';
+import { formatDate, formatTimestamp } from './dates.ts';
 import { el } from './dom.ts';
 
 const ROLE_NAMES: Record<string, string> = {
@@ -23,6 +23,8 @@ export function auditText(entry: AuditView): string {
     team_renamed: () => `${actor} renamed the team ${detail} to ${team}`,
     team_deleted: () => `${actor} deleted the team ${team}`,
     member_removed: () => `${actor} removed ${user} from ${team}`,
+    auditor_assigned: () => `${actor} made ${user} auditor of ${team}${detail ? ` until ${formatDate(detail)}` : ''}`,
+    auditor_removed: () => `${actor} ended ${user}'s audit of ${team}`,
   };
   return texts[entry.action]();
 }

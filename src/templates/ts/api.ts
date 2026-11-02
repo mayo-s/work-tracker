@@ -41,6 +41,9 @@ export type AdminSettings = Schemas['AdminSettings'];
 export type AdminTeamView = Schemas['AdminTeamView'];
 export type TeamPageView = Schemas['TeamPageView'];
 export type MemberView = Schemas['MemberView'];
+export type AuditorView = Schemas['AuditorView'];
+export type AuditorNote = Schemas['AuditorNote'];
+export type AuditedTeam = Schemas['AuditedTeam'];
 export type InvitationView = Schemas['InvitationView'];
 export type InvitationSent = Schemas['InvitationSent'];
 export type MyTeamView = Schemas['MyTeamView'];
@@ -204,6 +207,11 @@ export const api = {
   saveAdminSettings: (input: AdminSettings) => request<AdminSettings>('PUT', '/api/admin/settings', input),
   adminTeams: () => request<AdminTeamView[]>('GET', '/api/admin/teams'),
   addTeam: (name: string) => request<AdminTeamView>('POST', '/api/admin/teams', { name }),
+  adminAuditors: () => request<AuditorView[]>('GET', '/api/admin/auditors'),
+  assignAuditor: (teamId: string, userId: string, until: string | null) =>
+    request<AuditorView>('PUT', `/api/admin/teams/${segment(teamId)}/auditors/${segment(userId)}`, { until }),
+  removeAuditor: (teamId: string, userId: string) =>
+    request<void>('DELETE', `/api/admin/teams/${segment(teamId)}/auditors/${segment(userId)}`),
   renameTeam: (id: string, name: string) => request<AdminTeamView>('PUT', `/api/admin/teams/${segment(id)}`, { name }),
   deleteTeam: (id: string) => request<void>('DELETE', `/api/admin/teams/${segment(id)}`),
 
@@ -223,6 +231,7 @@ export const api = {
     request<void>('DELETE', `/api/teams/${segment(teamId)}/services/${segment(id)}`),
 
   myTeam: () => request<MyTeamView>('GET', '/api/team'),
+  audits: () => request<AuditedTeam[]>('GET', '/api/audits'),
   leaveTeam: () => request<void>('DELETE', '/api/team'),
   acceptInvitation: (id: string) => request<MyTeamView>('POST', `/api/team/invitations/${segment(id)}/accept`),
   declineInvitation: (id: string) => request<void>('DELETE', `/api/team/invitations/${segment(id)}`),

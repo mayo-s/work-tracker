@@ -9,7 +9,8 @@ from src.models.base import DomainModel
 
 AuditAction = Literal[
     'root_created', 'role_changed', 'team_role_changed', 'deactivated', 'reactivated', 'one_time_password',
-    'registration_switched', 'team_created', 'team_renamed', 'team_deleted', 'member_removed',
+    'registration_switched', 'team_created', 'team_renamed', 'team_deleted', 'member_removed', 'auditor_assigned',
+    'auditor_removed',
 ]
 
 
@@ -20,7 +21,8 @@ class AuditEntry(DomainModel):
     action: AuditAction
     user_id: str | None = Field(default=None, description='Whose account the change is about')
     team_id: str | None = None
-    detail: str = Field(default='', description="e.g. the new role, 'on' or 'off', a team's former name")
+    detail: str = Field(default='', description="e.g. the new role, 'on' or 'off', a team's former name, an auditor's "
+                                                "last day")
     at: dt.datetime
     actor_name: str = ''
     user_name: str = ''

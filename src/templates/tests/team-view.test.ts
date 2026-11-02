@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { ownView, viewedMember, withMember } from '../ts/team-view.ts';
+import { ownView, staysText, viewedMember, viewedText, withMember } from '../ts/team-view.ts';
 
 test('the member from the address', () => {
   assert.equal(viewedMember('?week=2026-W45&member=abc'), 'abc');
@@ -21,4 +21,20 @@ test('links to the team view pages keep the member, others stay', () => {
 test('back to the own data', () => {
   assert.equal(ownView('/month', '?month=2026-10&member=abc'), '/month?month=2026-10');
   assert.equal(ownView('/', '?member=abc'), '/');
+});
+
+test('an auditor sees the stays: each from the day joined to the day before leaving', () => {
+  assert.equal(staysText([{ joined_on: '2026-11-02', left_on: '2026-11-04' }, { joined_on: '2026-11-05', left_on: null }]),
+    '02.11.2026–03.11.2026, from 05.11.2026');
+});
+
+test('the banner names the member and their days, as team admin or as auditor', () => {
+  const rainer = { user_id: 'r', username: 'rainer', email: 'rainer.zufall@example.com', first_name: 'Rainer',
+    last_name: 'Zufall', team_role: 'member' as const, joined_on: '2026-11-04' };
+  assert.deepEqual(viewedText('r', { name: 'Platform', members: [rainer] }, []),
+    ['Rainer Zufall', ' from 04.11.2026, when they joined Platform']);
+  const audit = { team_id: 't', team: 'Billing', until: null,
+    members: [{ user_id: 'r', name: 'Rainer Zufall', stays: [{ joined_on: '2026-11-02', left_on: '2026-11-04' }] }] };
+  assert.deepEqual(viewedText('r', null, [audit]), ['Rainer Zufall', ' on their days in Billing (02.11.2026–03.11.2026)']);
+  assert.equal(viewedText('x', null, [audit]), null);
 });

@@ -11,7 +11,7 @@ from collections.abc import Callable
 
 from src.models.base import new_id
 from src.models.catalog import Service
-from src.models.teams import Invitation, Member, Membership, ReportView, Team, TeamRole
+from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRole
 from src.modules.storage.dynamodb.catalog import DynamoServices, DynamoTeamServices
 from src.modules.storage.dynamodb.keys import USERS, user_partition
 from src.modules.storage.dynamodb.memberships import (
@@ -65,12 +65,15 @@ class DynamoTeams:
         return team
 
     def delete(self, team_id: str) -> None:
-        """Only a team without members; its open invitations and services go with it, its history stays."""
+        """Only a team without members; its open invitations, services and auditors go with it, its history stays."""
         stored = self.get(team_id)
         if self.members(team_id):
             raise ConflictError('The team still has members; remove them first')
         for invitation in self._unit.query_prefix(team_partition(team_id), 'INVITE#'):
             _delete_invitation(self._unit, invitation)
+        auditors = DynamoAuditors(self._unit)
+        for auditor in auditors.of_team(team_id):
+            auditors.remove(team_id, auditor.user_id)
         services = DynamoTeamServices(self._unit, team_id)
         for service in services.all():
             services.delete(service.id)
@@ -95,6 +98,13 @@ class DynamoTeams:
         """All teams the user was in, oldest first."""
         return [_membership(self._unit, item) for item in self._unit.query_prefix(user_partition(user_id), MEMBERSHIP)]
 
+    def stays(self, team_id: str) -> list[Membership]:
+        """Everyone who was ever in the team, each stay of theirs, oldest first (`STAY#<membership id>` points to the
+        membership in the user's partition)."""
+        stays = (self._unit.get(user_partition(item['user_id']), f'{MEMBERSHIP}{item["SK"].removeprefix("STAY#")}')
+                 for item in self._unit.query_prefix(team_partition(team_id), 'STAY#'))
+        return [_membership(self._unit, stay) for stay in stays if stay]
+
     def join(self, user_id: str, team_id: str) -> Membership:
         """The user joins the team today, leaving their current team first."""
         team = self.get(team_id)
@@ -105,6 +115,7 @@ class DynamoTeams:
                         'user_id': user_id, 'joined_on': today, 'left_on': None, 'team_role': 'member'})
         self._unit.put({'PK': team_partition(team_id), 'SK': f'MEMBER#{user_id}', 'user_id': user_id, 'joined_on': today,
                         'team_role': 'member'})
+        self._unit.put({'PK': team_partition(team_id), 'SK': f'STAY#{membership_id}', 'user_id': user_id})
         return Membership(team_id=team_id, team_name=team.name, user_id=user_id, joined_on=today)
 
     def leave(self, user_id: str) -> None:
@@ -155,6 +166,45 @@ def _delete_invitation(unit: Unit, item: Item) -> None:
     """Both copies of an invitation (`item` is either)."""
     unit.delete(team_partition(item['team_id']), f'INVITE#{item["id"]}')
     unit.delete(_invites_partition(item['email']), team_key(item['team_id']))
+
+
+class DynamoAuditors:
+    """Who has the team view of which team read-only, and until when; kept twice, in the team's partition
+    (`AUDITOR#<user id>`) and in the auditor's (`AUDITS#<team id>`)."""
+
+    def __init__(self, unit: Unit) -> None:
+        self._unit = unit
+
+    def assign(self, auditor: Auditor) -> None:
+        """Assigns the user to the team, or changes the end date of an assignment."""
+        values = auditor.model_dump(mode='json', exclude={'team_name', 'user_name'})
+        self._unit.put({'PK': team_partition(auditor.team_id), 'SK': f'AUDITOR#{auditor.user_id}', **values})
+        self._unit.put({'PK': user_partition(auditor.user_id), 'SK': f'AUDITS#{auditor.team_id}', **values})
+
+    def remove(self, team_id: str, user_id: str) -> None:
+        if self._unit.get(team_partition(team_id), f'AUDITOR#{user_id}') is None:
+            raise NotFoundError('No such auditor')
+        self._unit.delete(team_partition(team_id), f'AUDITOR#{user_id}')
+        self._unit.delete(user_partition(user_id), f'AUDITS#{team_id}')
+
+    def all(self) -> list[Auditor]:
+        teams = [item['id'] for item in self._unit.query_prefix(TEAMS, 'TEAM#') if item['deleted_at'] is None]
+        return _sorted([auditor for team_id in teams for auditor in self.of_team(team_id)])
+
+    def of_user(self, user_id: str) -> list[Auditor]:
+        return _sorted([self._auditor(item) for item in self._unit.query_prefix(user_partition(user_id), 'AUDITS#')])
+
+    def of_team(self, team_id: str) -> list[Auditor]:
+        return _sorted([self._auditor(item) for item in self._unit.query_prefix(team_partition(team_id), 'AUDITOR#')])
+
+    def _auditor(self, item: Item) -> Auditor:
+        profile = _profile(self._unit, item['user_id']) or {}
+        name = f'{profile.get("first_name", "")} {profile.get("last_name", "")}'.strip()
+        return Auditor(**attributes(item), team_name=team_item(self._unit, item['team_id'])['name'], user_name=name)
+
+
+def _sorted(auditors: list[Auditor]) -> list[Auditor]:
+    return sorted(auditors, key=lambda auditor: (auditor.team_name.lower(), auditor.user_name))
 
 
 class DynamoInvitations:

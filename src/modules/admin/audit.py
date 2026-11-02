@@ -22,7 +22,7 @@ class AuditView(BaseModel):
     action: AuditAction
     user: str | None = Field(description='Name of whose account it is about')
     team: str | None = Field(description='Name of the team (now, after a rename)')
-    detail: str = Field(description="e.g. the new role, 'on' or 'off', a team's former name")
+    detail: str = Field(description="e.g. the new role, 'on' or 'off', a team's former name, an auditor's last day")
 
     @classmethod
     def of(cls, entry: AuditEntry) -> Self:

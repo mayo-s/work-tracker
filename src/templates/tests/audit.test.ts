@@ -20,3 +20,10 @@ test('each change reads as a sentence', () => {
     'Pascal Turbo renamed the team Platform to Core');
   assert.equal(auditText({ ...ENTRY, action: 'deactivated', detail: '' }), 'Pascal Turbo deactivated Hans Dampf');
 });
+
+test('auditor assignments read as sentences', () => {
+  const assigned = { ...ENTRY, actor: 'Klara Himmel', action: 'auditor_assigned' as const, team: 'Platform' };
+  assert.equal(auditText({ ...assigned, detail: '2026-11-30' }), 'Klara Himmel made Hans Dampf auditor of Platform until 30.11.2026');
+  assert.equal(auditText({ ...assigned, detail: '' }), 'Klara Himmel made Hans Dampf auditor of Platform');
+  assert.equal(auditText({ ...assigned, action: 'auditor_removed', detail: '' }), "Klara Himmel ended Hans Dampf's audit of Platform");
+});

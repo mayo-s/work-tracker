@@ -5,7 +5,7 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.models.teams import Invitation, Member, Membership, ReportView, Team, TeamRole
+from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRole
 from src.models.users import EMAIL_PATTERN, User
 
 
@@ -85,8 +85,38 @@ class MyInvitationView(BaseModel):
                    invited_by=' '.join(filter(None, (inviter.first_name, inviter.last_name))))
 
 
+class AuditorNote(BaseModel):
+    name: str = Field(description='Name of the auditor')
+    team: str = Field(description='The team whose view they have, one you are or were in')
+    until: dt.date | None = Field(description='The last day; null: until removed')
+
+    @classmethod
+    def of(cls, auditor: Auditor) -> Self:
+        return cls(name=auditor.user_name, team=auditor.team_name, until=auditor.until)
+
+
+class StayView(BaseModel):
+    joined_on: dt.date
+    left_on: dt.date | None = Field(description='The first day no longer in the team; null: still in it')
+
+
+class AuditedMember(BaseModel):
+    user_id: str
+    name: str
+    stays: list[StayView] = Field(description='The days shown in the team view: each stay in the team, oldest first')
+
+
+class AuditedTeam(BaseModel):
+    """A team the user audits, with everyone who was ever in it."""
+
+    team_id: str
+    team: str
+    until: dt.date | None = Field(description='The last day of the assignment; null: until removed')
+    members: list[AuditedMember]
+
+
 class ReportViewEntry(BaseModel):
-    viewer: str = Field(description='Name of the team admin who looked')
+    viewer: str = Field(description='Name of the team admin or auditor who looked')
     report: str = Field(description='dashboard, week, month or year')
     period: str = Field(description='e.g. 2026-W44, 2026-10, 2026; empty for the dashboard')
     viewed_at: dt.datetime
@@ -102,4 +132,5 @@ class MyTeamView(BaseModel):
     team: TeamRef | None
     invitations: list[MyInvitationView]
     team_admins: list[str] = Field(description='Names of the team admins who can see your reports')
+    auditors: list[AuditorNote] = Field(default=[], description='Auditors who can see your days in a team')
     viewed_by: list[ReportViewEntry] = Field(description='The latest views of your reports, newest first')

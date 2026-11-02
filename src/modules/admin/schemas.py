@@ -5,7 +5,7 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.models.teams import Member, Membership, Team, TeamRole
+from src.models.teams import Auditor, Member, Membership, Team, TeamRole
 from src.models.users import AssignableRole, Role, User
 
 
@@ -54,6 +54,26 @@ class AdminTeamView(BaseModel):
     def of(cls, team: Team, members: list[Member]) -> Self:
         return cls(id=team.id, name=team.name, members=len(members),
                    team_admins=[member.username for member in members if member.team_role == 'team_admin'])
+
+
+class AuditorInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    until: dt.date | None = Field(default=None, description='The last day the auditor sees the team; null: until removed')
+
+
+class AuditorView(BaseModel):
+    team_id: str
+    team: str
+    user_id: str
+    user: str = Field(description='Name of the auditor')
+    until: dt.date | None
+    assigned_at: dt.datetime
+
+    @classmethod
+    def of(cls, auditor: Auditor) -> Self:
+        return cls(team_id=auditor.team_id, team=auditor.team_name, user_id=auditor.user_id, user=auditor.user_name,
+                   until=auditor.until, assigned_at=auditor.assigned_at)
 
 
 class OneTimePasswordView(BaseModel):

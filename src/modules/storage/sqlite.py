@@ -19,7 +19,7 @@ from src.modules.storage.settings import (
     set_registration, setup_done, start_import,
 )
 from src.modules.storage.store import Clock, RenameResult, Theme
-from src.modules.storage.teams import InvitationRepository, ReportViewLog, TeamRepository
+from src.modules.storage.teams import AuditorRepository, InvitationRepository, ReportViewLog, TeamRepository
 from src.modules.storage.tickets import TicketRepository
 from src.modules.storage.users import LoginAttempts, SessionRepository, UserRepository
 
@@ -74,6 +74,9 @@ class SqliteStore:
 
     def audit_log(self) -> AuditLogRepository:
         return AuditLogRepository(self._conn)
+
+    def auditors(self) -> AuditorRepository:
+        return AuditorRepository(self._conn)
 
     def rename_ticket(self, user_id: str, old_key: str, new_key: str, clock: Clock | None = None) -> RenameResult:
         return rename_ticket(self._conn, user_id, old_key, new_key, clock)

@@ -653,6 +653,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/teams/{team_id}/auditors/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Make a user or admin an auditor of the team, optionally until a day (inclusive), or change that day: they see the team view of everyone who was ever in the team, for the days of each stay, read-only. Not oneself and not root (409). */
+        put: operations["put__api_admin_teams_{team_id}_auditors_{user_id}"];
+        post?: never;
+        /** End an assignment: the auditor no longer sees the team. */
+        delete: operations["delete__api_admin_teams_{team_id}_auditors_{user_id}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/auditors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** All auditors by team: who has the team view of which team read-only, and until when. */
+        get: operations["get__api_admin_auditors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/teams/{team_id}": {
         parameters: {
             query?: never;
@@ -803,6 +838,23 @@ export interface paths {
         put?: never;
         /** Accept an invitation: join the team (leaving the current one); the other invitations are declined. */
         post: operations["post__api_team_invitations_{invitation_id}_accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The teams the user audits today, each with everyone who was ever in it and their stays (the days the team view shows); empty for anyone who audits no team. */
+        get: operations["get__api_audits"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1190,6 +1242,38 @@ export interface components {
              */
             team_admins: string[];
         };
+        /** AuditorViewList */
+        AuditorViewList: components["schemas"]["AuditorView"][];
+        /** AuditorInput */
+        AuditorInput: {
+            /**
+             * Until
+             * @description The last day the auditor sees the team; null: until removed
+             * @default null
+             */
+            until?: string | null;
+        };
+        /** AuditorView */
+        AuditorView: {
+            /** Team Id */
+            team_id: string;
+            /** Team */
+            team: string;
+            /** User Id */
+            user_id: string;
+            /**
+             * User
+             * @description Name of the auditor
+             */
+            user: string;
+            /** Until */
+            until: string | null;
+            /**
+             * Assigned At
+             * Format: date-time
+             */
+            assigned_at: string;
+        };
         /** AdminSettings */
         AdminSettings: {
             /**
@@ -1432,7 +1516,7 @@ export interface components {
         MemberQuery: {
             /**
              * Member
-             * @description Team view: id (UUID) of a member of the team admin's team
+             * @description Team view: id (UUID) of a member of the team admin's or auditor's team
              * @default null
              */
             member?: string | null;
@@ -1507,7 +1591,7 @@ export interface components {
             end?: string | null;
             /**
              * Member
-             * @description Team view: id (UUID) of a member of the team admin's team
+             * @description Team view: id (UUID) of a member of the team admin's or auditor's team
              * @default null
              */
             member?: string | null;
@@ -2199,6 +2283,12 @@ export interface components {
              */
             team_admins: string[];
             /**
+             * Auditors
+             * @description Auditors who can see your days in a team
+             * @default []
+             */
+            auditors?: components["schemas"]["AuditorNote"][];
+            /**
              * Viewed By
              * @description The latest views of your reports, newest first
              */
@@ -2206,6 +2296,8 @@ export interface components {
         };
         /** ServiceChoiceList */
         ServiceChoiceList: components["schemas"]["ServiceChoice"][];
+        /** AuditedTeamList */
+        AuditedTeamList: components["schemas"]["AuditedTeam"][];
         /** TicketQuery */
         TicketQuery: {
             /**
@@ -2375,7 +2467,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed";
+            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed";
             /**
              * User
              * @description Name of whose account it is about
@@ -2388,7 +2480,7 @@ export interface components {
             team: string | null;
             /**
              * Detail
-             * @description e.g. the new role, 'on' or 'off', a team's former name
+             * @description e.g. the new role, 'on' or 'off', a team's former name, an auditor's last day
              */
             detail: string;
         };
@@ -3068,6 +3160,24 @@ export interface components {
              */
             joined_on: string;
         };
+        /** AuditorNote */
+        AuditorNote: {
+            /**
+             * Name
+             * @description Name of the auditor
+             */
+            name: string;
+            /**
+             * Team
+             * @description The team whose view they have, one you are or were in
+             */
+            team: string;
+            /**
+             * Until
+             * @description The last day; null: until removed
+             */
+            until: string | null;
+        };
         /** MyInvitationView */
         MyInvitationView: {
             /** Id */
@@ -3089,7 +3199,7 @@ export interface components {
         ReportViewEntry: {
             /**
              * Viewer
-             * @description Name of the team admin who looked
+             * @description Name of the team admin or auditor who looked
              */
             viewer: string;
             /**
@@ -3107,6 +3217,48 @@ export interface components {
              * Format: date-time
              */
             viewed_at: string;
+        };
+        /** AuditedMember */
+        AuditedMember: {
+            /** User Id */
+            user_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Stays
+             * @description The days shown in the team view: each stay in the team, oldest first
+             */
+            stays: components["schemas"]["StayView"][];
+        };
+        /**
+         * AuditedTeam
+         * @description A team the user audits, with everyone who was ever in it.
+         */
+        AuditedTeam: {
+            /** Team Id */
+            team_id: string;
+            /** Team */
+            team: string;
+            /**
+             * Until
+             * @description The last day of the assignment; null: until removed
+             */
+            until: string | null;
+            /** Members */
+            members: components["schemas"]["AuditedMember"][];
+        };
+        /** StayView */
+        StayView: {
+            /**
+             * Joined On
+             * Format: date
+             */
+            joined_on: string;
+            /**
+             * Left On
+             * @description The first day no longer in the team; null: still in it
+             */
+            left_on: string | null;
         };
     };
     responses: never;
@@ -3157,7 +3309,7 @@ export interface operations {
                 week?: string | null;
                 start?: string | null;
                 end?: string | null;
-                /** @description Team view: id (UUID) of a member of the team admin's team */
+                /** @description Team view: id (UUID) of a member of the team admin's or auditor's team */
                 member?: string | null;
             };
             header?: never;
@@ -3344,7 +3496,7 @@ export interface operations {
                 week?: string | null;
                 start?: string | null;
                 end?: string | null;
-                /** @description Team view: id (UUID) of a member of the team admin's team */
+                /** @description Team view: id (UUID) of a member of the team admin's or auditor's team */
                 member?: string | null;
             };
             header?: never;
@@ -3856,7 +4008,7 @@ export interface operations {
     get__api_dashboard: {
         parameters: {
             query?: {
-                /** @description Team view: id (UUID) of a member of the team admin's team */
+                /** @description Team view: id (UUID) of a member of the team admin's or auditor's team */
                 member?: string | null;
             };
             header?: never;
@@ -3895,7 +4047,7 @@ export interface operations {
     "get__api_reports_weeks_{week}": {
         parameters: {
             query?: {
-                /** @description Team view: id (UUID) of a member of the team admin's team */
+                /** @description Team view: id (UUID) of a member of the team admin's or auditor's team */
                 member?: string | null;
             };
             header?: never;
@@ -3944,7 +4096,7 @@ export interface operations {
     "get__api_reports_months_{month}": {
         parameters: {
             query?: {
-                /** @description Team view: id (UUID) of a member of the team admin's team */
+                /** @description Team view: id (UUID) of a member of the team admin's or auditor's team */
                 member?: string | null;
             };
             header?: never;
@@ -3986,7 +4138,7 @@ export interface operations {
     "get__api_reports_years_{year}": {
         parameters: {
             query?: {
-                /** @description Team view: id (UUID) of a member of the team admin's team */
+                /** @description Team view: id (UUID) of a member of the team admin's or auditor's team */
                 member?: string | null;
             };
             header?: never;
@@ -5118,6 +5270,147 @@ export interface operations {
             };
         };
     };
+    "put__api_admin_teams_{team_id}_auditors_{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: string;
+                /** @description Id (UUID) of the user */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuditorInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditorView"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "delete__api_admin_teams_{team_id}_auditors_{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: string;
+                /** @description Id (UUID) of the user */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_admin_auditors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditorViewList"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
     "get__api_teams_{team_id}": {
         parameters: {
             query?: never;
@@ -5634,6 +5927,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_audits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditedTeamList"];
+                };
             };
             /** @description Unprocessable Content */
             422: {

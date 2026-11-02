@@ -594,4 +594,16 @@ MIGRATIONS: tuple[Migration, ...] = (
     CREATE INDEX audit_log_by_time ON audit_log (at);
     CREATE INDEX audit_log_by_user ON audit_log (user_id, at);
     """,
+    # 18: auditors (TASKS.md 9.1e): who has the team view of which team read-only, and until when
+    """
+    CREATE TABLE team_auditors (
+        team_id     TEXT NOT NULL REFERENCES teams (id),
+        user_id     TEXT NOT NULL REFERENCES users (id),
+        until       TEXT,  -- the last day; NULL: until removed
+        assigned_by TEXT NOT NULL REFERENCES users (id),
+        assigned_at TEXT NOT NULL,
+        PRIMARY KEY (team_id, user_id)
+    );
+    CREATE INDEX team_auditors_by_user ON team_auditors (user_id);
+    """,
 )

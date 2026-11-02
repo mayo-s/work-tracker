@@ -168,11 +168,11 @@
                 }
               ],
               "default": null,
-              "description": "Team view: id (UUID) of a member of the team admin's team",
+              "description": "Team view: id (UUID) of a member of the team admin's or auditor's team",
               "title": "Member"
             },
             "required": false,
-            "description": "Team view: id (UUID) of a member of the team admin's team"
+            "description": "Team view: id (UUID) of a member of the team admin's or auditor's team"
           }
         ],
         "responses": {
@@ -464,11 +464,11 @@
                 }
               ],
               "default": null,
-              "description": "Team view: id (UUID) of a member of the team admin's team",
+              "description": "Team view: id (UUID) of a member of the team admin's or auditor's team",
               "title": "Member"
             },
             "required": false,
-            "description": "Team view: id (UUID) of a member of the team admin's team"
+            "description": "Team view: id (UUID) of a member of the team admin's or auditor's team"
           }
         ],
         "responses": {
@@ -1066,11 +1066,11 @@
                 }
               ],
               "default": null,
-              "description": "Team view: id (UUID) of a member of the team admin's team",
+              "description": "Team view: id (UUID) of a member of the team admin's or auditor's team",
               "title": "Member"
             },
             "required": false,
-            "description": "Team view: id (UUID) of a member of the team admin's team"
+            "description": "Team view: id (UUID) of a member of the team admin's or auditor's team"
           }
         ],
         "responses": {
@@ -1131,11 +1131,11 @@
                 }
               ],
               "default": null,
-              "description": "Team view: id (UUID) of a member of the team admin's team",
+              "description": "Team view: id (UUID) of a member of the team admin's or auditor's team",
               "title": "Member"
             },
             "required": false,
-            "description": "Team view: id (UUID) of a member of the team admin's team"
+            "description": "Team view: id (UUID) of a member of the team admin's or auditor's team"
           }
         ],
         "responses": {
@@ -1200,11 +1200,11 @@
                 }
               ],
               "default": null,
-              "description": "Team view: id (UUID) of a member of the team admin's team",
+              "description": "Team view: id (UUID) of a member of the team admin's or auditor's team",
               "title": "Member"
             },
             "required": false,
-            "description": "Team view: id (UUID) of a member of the team admin's team"
+            "description": "Team view: id (UUID) of a member of the team admin's or auditor's team"
           }
         ],
         "responses": {
@@ -1266,11 +1266,11 @@
                 }
               ],
               "default": null,
-              "description": "Team view: id (UUID) of a member of the team admin's team",
+              "description": "Team view: id (UUID) of a member of the team admin's or auditor's team",
               "title": "Member"
             },
             "required": false,
-            "description": "Team view: id (UUID) of a member of the team admin's team"
+            "description": "Team view: id (UUID) of a member of the team admin's or auditor's team"
           }
         ],
         "responses": {
@@ -2434,6 +2434,162 @@
         }
       }
     },
+    "/api/admin/teams/{team_id}/auditors/{user_id}": {
+      "delete": {
+        "summary": "End an assignment: the auditor no longer sees the team.",
+        "operationId": "delete__api_admin_teams_{team_id}_auditors_{user_id}",
+        "description": "",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id of the team"
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id (UUID) of the user"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Make a user or admin an auditor of the team, optionally until a day (inclusive), or change that day: they see the team view of everyone who was ever in the team, for the days of each stay, read-only. Not oneself and not root (409).",
+        "operationId": "put__api_admin_teams_{team_id}_auditors_{user_id}",
+        "description": "",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id of the team"
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id (UUID) of the user"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditorView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditorInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/admin/auditors": {
+      "get": {
+        "summary": "All auditors by team: who has the team view of which team read-only, and until when.",
+        "operationId": "get__api_admin_auditors",
+        "description": "",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditorViewList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/teams/{team_id}": {
       "get": {
         "summary": "The team with its members (accounts only) and open invitations.",
@@ -2998,6 +3154,39 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MyTeamView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audits": {
+      "get": {
+        "summary": "The teams the user audits today, each with everyone who was ever in it and their stays (the days the team view shows); empty for anyone who audits no team.",
+        "operationId": "get__api_audits",
+        "description": "",
+        "tags": [
+          "Teams"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditedTeamList"
                 }
               }
             }
@@ -4267,6 +4456,82 @@
         "title": "AdminTeamView",
         "type": "object"
       },
+      "AuditorViewList": {
+        "items": {
+          "$ref": "#/components/schemas/AuditorView"
+        },
+        "title": "AuditorViewList",
+        "type": "array"
+      },
+      "AuditorInput": {
+        "additionalProperties": false,
+        "properties": {
+          "until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The last day the auditor sees the team; null: until removed",
+            "title": "Until"
+          }
+        },
+        "title": "AuditorInput",
+        "type": "object"
+      },
+      "AuditorView": {
+        "properties": {
+          "team_id": {
+            "title": "Team Id",
+            "type": "string"
+          },
+          "team": {
+            "title": "Team",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          },
+          "user": {
+            "description": "Name of the auditor",
+            "title": "User",
+            "type": "string"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          },
+          "assigned_at": {
+            "format": "date-time",
+            "title": "Assigned At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "team_id",
+          "team",
+          "user_id",
+          "user",
+          "until",
+          "assigned_at"
+        ],
+        "title": "AuditorView",
+        "type": "object"
+      },
       "AdminSettings": {
         "additionalProperties": false,
         "properties": {
@@ -4751,7 +5016,7 @@
               }
             ],
             "default": null,
-            "description": "Team view: id (UUID) of a member of the team admin's team",
+            "description": "Team view: id (UUID) of a member of the team admin's or auditor's team",
             "title": "Member"
           }
         },
@@ -4906,7 +5171,7 @@
               }
             ],
             "default": null,
-            "description": "Team view: id (UUID) of a member of the team admin's team",
+            "description": "Team view: id (UUID) of a member of the team admin's or auditor's team",
             "title": "Member"
           }
         },
@@ -6329,6 +6594,15 @@
             "title": "Team Admins",
             "type": "array"
           },
+          "auditors": {
+            "default": [],
+            "description": "Auditors who can see your days in a team",
+            "items": {
+              "$ref": "#/components/schemas/AuditorNote"
+            },
+            "title": "Auditors",
+            "type": "array"
+          },
           "viewed_by": {
             "description": "The latest views of your reports, newest first",
             "items": {
@@ -6352,6 +6626,13 @@
           "$ref": "#/components/schemas/ServiceChoice"
         },
         "title": "ServiceChoiceList",
+        "type": "array"
+      },
+      "AuditedTeamList": {
+        "items": {
+          "$ref": "#/components/schemas/AuditedTeam"
+        },
+        "title": "AuditedTeamList",
         "type": "array"
       },
       "TicketQuery": {
@@ -6736,7 +7017,9 @@
               "team_created",
               "team_renamed",
               "team_deleted",
-              "member_removed"
+              "member_removed",
+              "auditor_assigned",
+              "auditor_removed"
             ],
             "title": "Action",
             "type": "string"
@@ -6766,7 +7049,7 @@
             "title": "Team"
           },
           "detail": {
-            "description": "e.g. the new role, 'on' or 'off', a team's former name",
+            "description": "e.g. the new role, 'on' or 'off', a team's former name, an auditor's last day",
             "title": "Detail",
             "type": "string"
           }
@@ -8148,6 +8431,40 @@
         "title": "MemberView",
         "type": "object"
       },
+      "AuditorNote": {
+        "properties": {
+          "name": {
+            "description": "Name of the auditor",
+            "title": "Name",
+            "type": "string"
+          },
+          "team": {
+            "description": "The team whose view they have, one you are or were in",
+            "title": "Team",
+            "type": "string"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last day; null: until removed",
+            "title": "Until"
+          }
+        },
+        "required": [
+          "name",
+          "team",
+          "until"
+        ],
+        "title": "AuditorNote",
+        "type": "object"
+      },
       "MyInvitationView": {
         "properties": {
           "id": {
@@ -8181,7 +8498,7 @@
       "ReportViewEntry": {
         "properties": {
           "viewer": {
-            "description": "Name of the team admin who looked",
+            "description": "Name of the team admin or auditor who looked",
             "title": "Viewer",
             "type": "string"
           },
@@ -8208,6 +8525,102 @@
           "viewed_at"
         ],
         "title": "ReportViewEntry",
+        "type": "object"
+      },
+      "AuditedMember": {
+        "properties": {
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "stays": {
+            "description": "The days shown in the team view: each stay in the team, oldest first",
+            "items": {
+              "$ref": "#/components/schemas/StayView"
+            },
+            "title": "Stays",
+            "type": "array"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "stays"
+        ],
+        "title": "AuditedMember",
+        "type": "object"
+      },
+      "AuditedTeam": {
+        "description": "A team the user audits, with everyone who was ever in it.",
+        "properties": {
+          "team_id": {
+            "title": "Team Id",
+            "type": "string"
+          },
+          "team": {
+            "title": "Team",
+            "type": "string"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last day of the assignment; null: until removed",
+            "title": "Until"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/AuditedMember"
+            },
+            "title": "Members",
+            "type": "array"
+          }
+        },
+        "required": [
+          "team_id",
+          "team",
+          "until",
+          "members"
+        ],
+        "title": "AuditedTeam",
+        "type": "object"
+      },
+      "StayView": {
+        "properties": {
+          "joined_on": {
+            "format": "date",
+            "title": "Joined On",
+            "type": "string"
+          },
+          "left_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first day no longer in the team; null: still in it",
+            "title": "Left On"
+          }
+        },
+        "required": [
+          "joined_on",
+          "left_on"
+        ],
+        "title": "StayView",
         "type": "object"
       }
     }

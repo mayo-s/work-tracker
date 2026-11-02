@@ -25,6 +25,6 @@ class DashboardResource:
         """Key figures, the overtime balance over time, days off coming up and this year's figures, up to today; `member`
         shows a member of the team admin's team (team view, logged for the member)."""
         with self._storage.transaction() as store:
-            view = viewing(req, store, query.member)
+            view = viewing(req, store, query.member, self._today())
             view.log(store, 'dashboard', '', self._clock())
-            resp.media = Dashboard(store, view.user_id, self._today(), view.visible_from).view()
+            resp.media = Dashboard(store, view.user_id, self._today(), view.stays).view()

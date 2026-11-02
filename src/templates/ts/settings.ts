@@ -2,8 +2,8 @@
 // export of the own data and account.
 
 import {
-  api, ApiError, type AuditView, type MyInvitationView, type MyTeamView, type PtoYear, type PtoYearInput,
-  type ReportViewEntry, type ScheduleInput, type ScheduleView, type SettingsView, type Theme,
+  api, ApiError, type AuditorNote, type AuditView, type MyInvitationView, type MyTeamView, type PtoYear,
+  type PtoYearInput, type ReportViewEntry, type ScheduleInput, type ScheduleView, type SettingsView, type Theme,
 } from './api.ts';
 import { auditTable } from './audit.ts';
 import { formatDate, formatMonth, formatTimestamp } from './dates.ts';
@@ -232,16 +232,28 @@ export function reportLabel(view: ReportViewEntry): string {
   return labels[view.report] ?? view.report;
 }
 
-/** Who can see the user's reports, and who looked (team view). */
+/** `Hans Dampf (Platform, until 30.11.2026)`: an auditor who can see the user's days in a team. */
+export function auditorText(auditor: AuditorNote): string {
+  return `${auditor.name} (${auditor.team}${auditor.until ? `, until ${formatDate(auditor.until)}` : ''})`;
+}
+
+/** Who can see the user's reports (team admins, auditors), and who looked (team view). */
 function teamViewInfo(mine: MyTeamView): HTMLElement[] {
-  if (!mine.team || !mine.team_admins.length) {
+  const auditors = mine.auditors ?? [];
+  const notes = [
+    mine.team && mine.team_admins.length ? el('p', { class: 'muted' }, `The team admins of ${mine.team.name} `
+      + `(${mine.team_admins.join(', ')}) can see your dashboard, week, month and year from `
+      + `${formatDate(mine.team.joined_on)} on, read-only; not your day notes.`) : null,
+    auditors.length ? el('p', { class: 'muted' }, `Auditors can see the same for your days in their team: `
+      + `${auditors.map(auditorText).join(', ')}.`) : null,
+  ].filter((note): note is HTMLParagraphElement => note !== null);
+  if (!notes.length && !mine.viewed_by.length) {
     return [];
   }
   const views = mine.viewed_by.map((view) => el('tr', {},
     el('td', {}, formatTimestamp(view.viewed_at)), el('td', {}, view.viewer), el('td', {}, reportLabel(view))));
   return [
-    el('p', { class: 'muted' }, `The team admins of ${mine.team.name} (${mine.team_admins.join(', ')}) can see your `
-      + `dashboard, week, month and year from ${formatDate(mine.team.joined_on)} on, read-only; not your day notes.`),
+    ...notes,
     el('h3', { class: 'account-heading' }, 'Who looked at your reports'),
     views.length
       ? el('table', { class: 'review-table list-table' },

@@ -13,7 +13,7 @@ from src.modules.storage.dynamodb.keys import META, SCHEMA, user_partition
 from src.modules.storage.dynamodb.renames import rename_ticket
 from src.modules.storage.dynamodb.schedules import DynamoPtoYears, DynamoSchedules
 from src.modules.storage.dynamodb.table import Table
-from src.modules.storage.dynamodb.teams import DynamoInvitations, DynamoReportViews, DynamoTeams
+from src.modules.storage.dynamodb.teams import DynamoAuditors, DynamoInvitations, DynamoReportViews, DynamoTeams
 from src.modules.storage.dynamodb.tickets import DynamoTickets
 from src.modules.storage.dynamodb.unit import Unit
 from src.modules.storage.dynamodb.users import DynamoAttempts, DynamoSessions, DynamoUsers
@@ -78,6 +78,9 @@ class DynamoStore:
 
     def audit_log(self) -> DynamoAuditLog:
         return DynamoAuditLog(self._unit)
+
+    def auditors(self) -> DynamoAuditors:
+        return DynamoAuditors(self._unit)
 
     def rename_ticket(self, user_id: str, old_key: str, new_key: str, clock: Clock | None = None) -> RenameResult:
         return rename_ticket(self._unit, user_id, old_key, new_key, clock)

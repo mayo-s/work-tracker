@@ -1,13 +1,15 @@
 // Admin page (/admin), for root and admins (SPEC 5.7). Root: registration, appointing admins and looking after them
-// (status, one-time password). Admins: the teams, team roles, and looking after everyone else. Both see the users with
-// their role, team, team role and whether they can log in.
+// (status, one-time password). Admins: the teams, their auditors, team roles, and looking after everyone else. Both
+// see the users with their role, team, team role and whether they can log in.
 
-import { ApiError, api, type AdminTeamView, type AdminUserInput, type AdminUserView, type AuditView } from './api.ts';
+import {
+  ApiError, api, type AdminTeamView, type AdminUserInput, type AdminUserView, type AuditorView, type AuditView,
+} from './api.ts';
 import { auditTable } from './audit.ts';
-import { formatTimestamp } from './dates.ts';
+import { formatDate, formatTimestamp } from './dates.ts';
 import { ask } from './dialog.ts';
 import { el } from './dom.ts';
-import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
+import { button, renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 import { field, submit } from './forms.ts';
 
 type TeamRole = NonNullable<AdminUserInput['team_role']>;
@@ -205,6 +207,55 @@ function teamsTable(teams: AdminTeamView[]): EditableTable {
   };
 }
 
+/** Who audits which team, until when; an admin assigns a user or another admin (not themselves) by e-mail address. */
+function auditorsSection(auditors: AuditorView[], users: AdminUserView[], teams: AdminTeamView[], page: Page): HTMLElement {
+  const row = (auditor: AuditorView): HTMLTableRowElement => el('tr', {},
+    el('td', {}, auditor.team), el('td', {}, auditor.user),
+    el('td', {}, auditor.until ? formatDate(auditor.until) : el('span', { class: 'muted' }, 'until removed')),
+    el('td', { class: 'row-actions' }, button('Remove', () => {
+      api.removeAuditor(auditor.team_id, auditor.user_id)
+        .then(() => page.reload(`${auditor.user} no longer audits ${auditor.team}`), page.fail);
+    })));
+  return el('section', { class: 'review-section', id: 'auditors' },
+    el('h2', {}, 'Auditors'),
+    el('p', { class: 'muted' }, 'An auditor sees the dashboard, week, month and year of everyone who was ever in the team, '
+      + 'for the days they belonged to it, read-only (no day notes, no review); the members see who can look. The access '
+      + 'ends after the last day, or when removed. Not for yourself.'),
+    auditors.length
+      ? el('table', { class: 'review-table list-table' },
+        el('thead', {}, el('tr', {}, ...['Team', 'Auditor', 'Last day'].map((label) => el('th', {}, label)),
+          el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
+        el('tbody', {}, ...auditors.map(row)))
+      : el('p', {}, 'No auditors yet.'),
+    teams.length ? auditorForm(users, teams, page) : el('p', { class: 'muted' }, 'Create a team first.'));
+}
+
+function auditorForm(users: AdminUserView[], teams: AdminTeamView[], page: Page): HTMLFormElement {
+  const email = el('input', { id: 'auditor-email', name: 'email', type: 'email', autocomplete: 'off' });
+  const team = el('select', { id: 'auditor-team', name: 'team' },
+    ...teams.map((item) => el('option', { value: item.id }, item.name)));
+  const until = el('input', { id: 'auditor-until', name: 'until', type: 'date' });
+  const form = el('form', { class: 'balance-form invite-form', novalidate: true },
+    field('auditor', 'email', 'E-mail address', email, 'The exact address of the user or admin.'),
+    field('auditor', 'team', 'Team', team),
+    field('auditor', 'until', 'Last day (optional)', until, 'Empty: until removed.'),
+    el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Assign')));
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    let done = '';
+    void submit(form, 'auditor', ['email', 'team', 'until'], async () => {
+      const user = userByEmail(users, email.value);
+      if (!user) {
+        throw new ApiError(404, 'No user has this e-mail address.', [{ loc: ['email'], msg: 'No user has this e-mail address.' }]);
+      }
+      const assigned = await api.assignAuditor(team.value, user.id, until.value || null);
+      done = `${assigned.user} audits ${assigned.team}`;
+    }, () => page.reload(done));
+  });
+  return form;
+}
+
 function auditSection(entries: AuditView[]): HTMLElement {
   return el('section', { class: 'review-section', id: 'audit' },
     el('h2', {}, 'Audit log'),
@@ -220,8 +271,10 @@ export async function renderAdminPage(doc: Document): Promise<void> {
     const viewer: Viewer = status.user?.role === 'root' ? 'root' : 'admin';
     const shared = [usersSection(users, viewer, status.user?.id, page), oneTimePasswordSection(users, viewer, page),
       auditSection(audit)];
-    return viewer === 'root'
-      ? [registrationSection((await api.adminSettings()).registration, page), ...shared]
-      : [tableSection(teamsTable(await api.adminTeams()), page), ...shared];
+    if (viewer === 'root') {
+      return [registrationSection((await api.adminSettings()).registration, page), ...shared];
+    }
+    const [teams, auditors] = await Promise.all([api.adminTeams(), api.adminAuditors()]);
+    return [tableSection(teamsTable(teams), page), auditorsSection(auditors, users, teams, page), ...shared];
   });
 }

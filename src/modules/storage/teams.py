@@ -5,7 +5,7 @@ import sqlite3
 from collections.abc import Callable
 
 from src.models.base import new_id
-from src.models.teams import Invitation, Member, Membership, ReportView, Team, TeamRole
+from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRole
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.store import Teams
 
@@ -40,11 +40,12 @@ class TeamRepository:
         return team
 
     def delete(self, team_id: str) -> None:
-        """Only a team without members; its open invitations and services go with it, its history stays."""
+        """Only a team without members; its open invitations, services and auditors go with it, its history stays."""
         self.get(team_id)
         if self.members(team_id):
             raise ConflictError('The team still has members; remove them first')
         self._conn.execute('DELETE FROM team_invitations WHERE team_id = ?', (team_id,))
+        self._conn.execute('DELETE FROM team_auditors WHERE team_id = ?', (team_id,))
         self._conn.execute('DELETE FROM services WHERE team_id = ?', (team_id,))
         self._conn.execute('UPDATE teams SET deleted_at = ? WHERE id = ?', (self._clock().isoformat(), team_id))
 
@@ -62,9 +63,16 @@ class TeamRepository:
 
     def history(self, user_id: str) -> list[Membership]:
         """All teams the user was in, oldest first."""
+        return self._memberships('user_id', user_id)
+
+    def stays(self, team_id: str) -> list[Membership]:
+        """Everyone who was ever in the team, each stay of theirs, oldest first."""
+        return self._memberships('team_id', team_id)
+
+    def _memberships(self, column: str, value: str) -> list[Membership]:
         rows = self._conn.execute(
             'SELECT team_id, teams.name AS team_name, user_id, joined_on, left_on, team_role FROM team_memberships'
-            ' JOIN teams ON teams.id = team_id WHERE user_id = ? ORDER BY team_memberships.id', (user_id,))
+            f' JOIN teams ON teams.id = team_id WHERE team_memberships.{column} = ? ORDER BY team_memberships.id', (value,))
         return [Membership(**dict(row)) for row in rows]
 
     def join(self, user_id: str, team_id: str) -> Membership:
@@ -117,6 +125,43 @@ class TeamRepository:
             return self._conn.execute(sql, params)
         except sqlite3.IntegrityError as error:
             raise ConflictError(f'A team named "{name}" already exists') from error
+
+
+class AuditorRepository:
+    """Who has the team view of which team read-only, and until when (SPEC 5.7); assigned by an admin."""
+
+    _SELECT = ("SELECT team_id, user_id, until, assigned_by, assigned_at, teams.name AS team_name,"
+               " trim(users.first_name || ' ' || users.last_name) AS user_name FROM team_auditors"
+               ' JOIN teams ON teams.id = team_id JOIN users ON users.id = user_id')
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def assign(self, auditor: Auditor) -> None:
+        """Assigns the user to the team, or changes the end date of an assignment."""
+        self._conn.execute(
+            'INSERT INTO team_auditors (team_id, user_id, until, assigned_by, assigned_at) VALUES (?, ?, ?, ?, ?)'
+            ' ON CONFLICT (team_id, user_id) DO UPDATE SET until = excluded.until, assigned_by = excluded.assigned_by,'
+            ' assigned_at = excluded.assigned_at',
+            (auditor.team_id, auditor.user_id, auditor.until.isoformat() if auditor.until else None, auditor.assigned_by,
+             auditor.assigned_at.isoformat()))
+
+    def remove(self, team_id: str, user_id: str) -> None:
+        if not self._conn.execute('DELETE FROM team_auditors WHERE team_id = ? AND user_id = ?', (team_id, user_id)).rowcount:
+            raise NotFoundError('No such auditor')
+
+    def all(self) -> list[Auditor]:
+        return self._select('', ())
+
+    def of_user(self, user_id: str) -> list[Auditor]:
+        return self._select('WHERE user_id = ?', (user_id,))
+
+    def of_team(self, team_id: str) -> list[Auditor]:
+        return self._select('WHERE team_id = ?', (team_id,))
+
+    def _select(self, where: str, params: tuple) -> list[Auditor]:
+        rows = self._conn.execute(f'{self._SELECT} {where} ORDER BY teams.name COLLATE NOCASE, user_name', params)
+        return [Auditor(**dict(row)) for row in rows]
 
 
 class InvitationRepository:

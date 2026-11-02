@@ -1,13 +1,14 @@
 """Reports for a week, a month (with the coding work by service) and a year (with the PTO account).
 
 Worked time, target and overtime count up to today; future days do not count yet. Days off count for
-the whole period, so planned PTO shows up. In the team view, the period figures start on the day the member joined the
-team; the balance and the PTO account are running figures and cover the whole time.
+the whole period, so planned PTO shows up. In the team view, the period figures count only the member's days in the
+team (Stays); the balance and the PTO account are running figures and cover the whole time.
 """
 
 import calendar
 import datetime as dt
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from typing import Annotated
 
 from pydantic import BaseModel, Field
@@ -15,11 +16,13 @@ from pydantic import BaseModel, Field
 from src.lib.balances import DayRecord, overtime_balance, pto_accounts, summarize_period
 from src.lib.daytypes import DaySummary, DayType
 from src.lib.durations import format_duration, parse_duration
-from src.models.entries import TicketEntry
+from src.lib.stays import Stays
+from src.models.entries import Entry, TicketEntry
 from src.modules.storage.store import Store
 
 Records = dict[dt.date, DayRecord]
 VisibleFrom = Annotated[dt.date | None, Field(description='Team view: the first day shown (the member joined the team)')]
+Shows = Callable[[dt.date], bool] | None  # team view: whether a day is shown (one of the member's days in the team)
 
 
 class PeriodTotals(BaseModel):
@@ -94,16 +97,17 @@ class YearReport(BaseModel):
 
 
 class Reports:
-    """Builds a user's reports within the transaction of the given store; with `visible_from` (team view), period
-    figures start on that day."""
+    """Builds a user's reports within the transaction of the given store; with `stays` (team view), period figures
+    count only the days shown."""
 
-    def __init__(self, store: Store, user_id: str, today: dt.date, visible_from: dt.date | None = None) -> None:
+    def __init__(self, store: Store, user_id: str, today: dt.date, stays: Stays | None = None) -> None:
         self._store = store
         self._user = user_id
         self._today = today
-        self._visible_from = visible_from
+        self._visible_from = stays.first if stays else None
+        self._shows: Shows = stays.shows if stays else None
         self._settings = store.load_settings(user_id)
-        self._first = max(self._settings.balance_start, visible_from or dt.date.min)
+        self._first = max(self._settings.balance_start, self._visible_from or dt.date.min)
         self._pto_terms = store.pto_years(user_id).terms()
         self._schedules = store.schedules(user_id).schedules()
 
@@ -116,7 +120,7 @@ class Reports:
     def month(self, year: int, month: int) -> MonthReport:
         start, end = _month_bounds(year, month)
         records = self._records(end)
-        coding = CodingWork(self._store, self._user).by_service(max(start, self._visible_from or start), end)
+        coding = CodingWork(self._store, self._user).by_service(max(start, self._first), end, self._shows)
         return MonthReport(
             month=f'{year}-{month:02d}',
             totals=self._totals(records, start, end),
@@ -147,10 +151,11 @@ class Reports:
         return self._store.days(self._user).records(self._settings.balance_start, end)
 
     def _period_days(self, records: Records, start: dt.date, end: dt.date) -> list[DaySummary]:
-        """Days of the period from the balance start on (days before it are ignored; in the team view also those before
-        the member joined the team)."""
+        """Days of the period from the balance start on (days before it are ignored; in the team view also those not
+        shown)."""
         first = max(start, self._first)
-        return summarize_period(records, first, end, self._schedules) if first <= end else []
+        days = summarize_period(records, first, end, self._schedules) if first <= end else []
+        return [day for day in days if self._shows(day.date)] if self._shows else days
 
     def _counted_days(self, records: Records, start: dt.date, end: dt.date) -> list[DaySummary]:
         """Days of the period from the balance start up to today."""
@@ -207,10 +212,11 @@ class CodingWork:
         self._ticket_services = {ticket.key: ticket.service_id for ticket in store.tickets(user_id).all()}
         self._services = {service.id: service.short_name for service in store.services(user_id).choices()}
 
-    def by_service(self, start: dt.date, end: dt.date) -> list[ServiceWork]:
+    def by_service(self, start: dt.date, end: dt.date, shows: Shows = None) -> list[ServiceWork]:
+        """The coding work from `start` to `end`; with `shows` (team view), only on the days shown."""
         grouped = defaultdict(lambda: defaultdict(list))
         for entry in self._entries.between(start, end):
-            if isinstance(entry, TicketEntry) and entry.coding:
+            if _coding(entry, shows):
                 grouped[self._ticket_services.get(entry.ticket_key)][entry.ticket_key].append(entry)
         services = sorted(grouped, key=lambda service_id: (service_id is None, (self._services.get(service_id) or '').lower()))
         return [self._service_work(service_id, grouped[service_id]) for service_id in services]
@@ -223,6 +229,10 @@ class CodingWork:
             duration=format_duration(sum(parse_duration(ticket.duration) for ticket in work)),
             tickets=work,
         )
+
+
+def _coding(entry: Entry, shows: Shows) -> bool:
+    return isinstance(entry, TicketEntry) and entry.coding and (shows is None or shows(entry.date))
 
 
 def _ticket_work(key: str | None, entries: list[TicketEntry]) -> TicketWork:
