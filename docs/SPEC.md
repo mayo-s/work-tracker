@@ -321,11 +321,13 @@ corners, one accent color. Warnings are the only loud element.
   new user (not root) starts with the four default activity types and goes through the setup; "Log out" is there
   during the setup too, and after the next login the setup continues.
 - App roles:
-  - **root** runs the app: exactly one, the first user (created in the setup, 7.4); it cannot be demoted or
-    deactivated. Root switches registration on and off, appoints and removes admins, sets one-time passwords for
+  - **root** runs the app: exactly one, created once (in the setup of a new database, or with "Create root admin"
+    on `/login` of one with users; on Lambda with the setup token, 7.4); it cannot be demoted or deactivated, and
+    nobody is made root. Root switches registration on and off, appoints and removes admins, sets one-time passwords for
     admins, resets their two-factor login, deactivates and reactivates them, and makes and restores the full backup
-    (5.9). Root tracks no work: no setup, days or reports, never in a team (the tracking API answers 403); its start
-    page is `/admin`.
+    (5.9). Root tracks no work: no setup, days or reports, never in a team. It reaches `/admin`, the team pages and
+    its settings (profile, password, color theme); other pages forward to `/admin`, the rest of the API answers 403.
+    Its start page is `/admin`.
   - **admin** organizes and tracks their own work: manages users and team admins (one-time password, two-factor
     reset, deactivate, reactivate), teams, team services, team admins and auditors. Admins do not appoint admins and
     do not deactivate them.

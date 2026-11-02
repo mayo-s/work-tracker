@@ -1,4 +1,4 @@
-"""The setup token (SPEC 7.4): on AWS Lambda the first user (the admin) is created only with it; SSM simulated by moto."""
+"""The setup token (SPEC 7.4): on AWS Lambda root is created only with it; SSM simulated by moto."""
 
 import secrets
 
@@ -15,10 +15,8 @@ from src.tests.users import PASSWORD
 from src.utils.stages import stage_setup_token
 
 TOKEN = secrets.token_urlsafe(32)
-USER = {'username': 'klara', 'email': 'klara.himmel@example.com', 'first_name': 'Klara', 'last_name': 'Himmel',
+ROOT = {'username': 'rainer', 'email': 'rainer.zufall@example.com', 'first_name': 'Rainer', 'last_name': 'Zufall',
         'password': PASSWORD}
-SETUP = {'balance_start': '2026-11-02', 'schedule': {'weekly_hours': '40:00', 'work_days': ['Mon']}, 'pto_first_year': 5,
-         'user': USER}
 
 
 @pytest.fixture
@@ -36,39 +34,38 @@ def app_with(fresh_database, ssm, value=TOKEN):
     return testing.TestClient(create_app(fresh_database, auth=True, setup_token=SetupToken(ssm)))
 
 
-def test_the_first_user_with_the_token(fresh_database, ssm):
+def create_root(app, token):
+    return app.simulate_post('/api/auth/root', json=ROOT | {'setup_token': token})
+
+
+def test_root_with_the_token(fresh_database, ssm):
     app = app_with(fresh_database, ssm)
     assert app.simulate_get('/api/auth/status').json['setup_token'] is True
-    assert app.simulate_post('/api/setup', json=SETUP | {'setup_token': TOKEN}).json == {'done': True}
+    assert create_root(app, TOKEN).status == falcon.HTTP_201
     assert app.simulate_get('/api/auth/status').json['setup_token'] is False  # no longer needed
 
 
 @pytest.mark.parametrize('token', [None, '', 'guessed', TOKEN[:-1]])
-def test_without_the_right_token_no_user_is_created(fresh_database, ssm, token):
+def test_without_the_right_token_no_root_is_created(fresh_database, ssm, token):
     app = app_with(fresh_database, ssm)
-    result = app.simulate_post('/api/setup', json=SETUP | {'setup_token': token})
+    result = create_root(app, token)
     assert (result.status, result.json['description']) == (falcon.HTTP_403, 'The setup token is wrong')
-    assert app.simulate_get('/api/auth/status').json['has_users'] is False
+    assert app.simulate_get('/api/auth/status').json['has_root'] is False
 
 
 def test_guessing_pauses_after_five_tries(fresh_database, ssm):
     app = app_with(fresh_database, ssm)
     for _ in range(5):
-        app.simulate_post('/api/setup', json=SETUP | {'setup_token': 'guessed'})
-    assert app.simulate_post('/api/setup', json=SETUP | {'setup_token': TOKEN}).status == falcon.HTTP_429
+        create_root(app, 'guessed')
+    assert create_root(app, TOKEN).status == falcon.HTTP_429
 
 
-@pytest.mark.parametrize('path, body', [
-    ('/api/auth/first-user', USER),
-    ('/api/setup/import', {'data': {'format': 'work-tracker', 'version': 1, 'exported_at': '2026-10-30T12:00:00',
-                                    'settings': {'balance_start': '2026-11-02'}, 'theme': 'system', 'work_schedules': [],
-                                    'pto_years': [], 'services': [], 'activity_types': [], 'tickets': [], 'days': [],
-                                    'entries': [], 'history': [], 'review_flags': []}, 'user': USER}),
-])
-def test_every_way_to_the_first_user_needs_it(fresh_database, ssm, path, body):
-    app = app_with(fresh_database, ssm)
-    assert app.simulate_post(path, json=body).status == falcon.HTTP_403
-    assert app.simulate_post(path, json=body | {'setup_token': TOKEN}).status in (falcon.HTTP_200, falcon.HTTP_201)
+def test_a_database_with_users_but_no_root_needs_it_too(database, ssm):
+    app = app_with(database, ssm)  # Klara's, from before root existed
+    status = app.simulate_get('/api/auth/status').json
+    assert (status['has_users'], status['has_root'], status['setup_token']) == (True, False, True)
+    assert create_root(app, None).status == falcon.HTTP_403
+    assert create_root(app, TOKEN).status == falcon.HTTP_201
 
 
 @pytest.mark.parametrize('value, message', [
@@ -77,15 +74,15 @@ def test_every_way_to_the_first_user_needs_it(fresh_database, ssm, path, body):
 ])
 def test_without_a_proper_token_in_ssm_nobody_gets_in(fresh_database, ssm, value, message):
     app = app_with(fresh_database, ssm, value)
-    result = app.simulate_post('/api/setup', json=SETUP | {'setup_token': value})
+    result = create_root(app, value)
     assert (result.status, result.json['description']) == (falcon.HTTP_409, message)
 
 
-def test_after_the_first_user_the_token_is_not_needed(fresh_database, ssm):
+def test_after_root_the_token_is_not_needed(fresh_database, ssm):
     app = app_with(fresh_database, ssm)
-    app.simulate_post('/api/setup', json=SETUP | {'setup_token': TOKEN})
+    create_root(app, TOKEN)
     ssm.delete_parameter(Name=DEFAULT_PARAMETER)  # deleted after the setup, as the README says
-    assert app.simulate_post('/api/auth/login', json={'login': 'klara', 'password': PASSWORD}).status == falcon.HTTP_200
+    assert app.simulate_post('/api/auth/login', json={'login': 'rainer', 'password': PASSWORD}).status == falcon.HTTP_200
 
 
 def test_the_token_is_only_used_on_lambda(monkeypatch, ssm):

@@ -277,9 +277,13 @@ function contents(): HTMLElement {
 
 export async function renderSettingsPage(doc: Document): Promise<void> {
   await renderEditablePage(doc, 'settings', 'settings-status', async (page) => {
-    const [settings, schedules, years, services, activityTypes, tickets, theme, status, mine] = await Promise.all([
+    const status = await api.authStatus();
+    if (status.user?.role === 'root') {  // root tracks no work: only how the app looks and its account
+      return [appearanceSection((await api.theme()).theme, page), accountSection(status.user, status.enabled, page.reload)];
+    }
+    const [settings, schedules, years, services, activityTypes, tickets, theme, mine] = await Promise.all([
       api.settings(), api.schedules(), api.ptoYears(), api.services(), api.activityTypes(), api.tickets(), api.theme(),
-      api.authStatus(), api.myTeam(),
+      api.myTeam(),
     ]);
     return [
       contents(),

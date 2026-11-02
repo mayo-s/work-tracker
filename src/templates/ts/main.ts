@@ -14,6 +14,8 @@ export function markCurrentPage(nav: ParentNode, path: string): void {
   }
 }
 
+const TRACKING_LINKS = ['/', '/week', '/month', '/year', '/review'].map((href) => `a[href="${href}"]`).join(', ');
+
 /** Page code, loaded only on its page (`<main data-page="…">`). */
 const PAGES: Record<string, () => Promise<void>> = {
   components: async () => (await import('./gallery.ts')).renderGallery(document),
@@ -64,10 +66,13 @@ async function showUser(header: Element, nav: Element | null): Promise<void> {
   if (!nav) {
     return;
   }
+  if (status.user.role === 'root') {  // root tracks no work
+    nav.querySelectorAll(TRACKING_LINKS).forEach((link) => link.remove());
+  }
   if (status.team?.team_role === 'team_admin') {
     nav.append(Object.assign(document.createElement('a'), { href: '/team', textContent: 'Team' }));
   }
-  if (status.user.role === 'admin') {
+  if (status.user.role === 'admin' || status.user.role === 'root') {
     nav.append(Object.assign(document.createElement('a'), { href: '/admin', textContent: 'Admin' }));
   }
   markCurrentPage(nav, window.location.pathname);

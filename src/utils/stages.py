@@ -55,7 +55,7 @@ def stage_storage() -> Storage:
 
 
 def stage_setup_token() -> SetupToken | None:
-    """The token the first user needs: on AWS Lambda from the SSM parameter named like the function (e.g.
+    """The token creating root needs: on AWS Lambda from the SSM parameter named like the function (e.g.
     /work-tracker-prod/setup-token), or $WORK_TRACKER_SETUP_TOKEN_PARAMETER; locally none."""
     if current_stage() is Stage.LOCAL:
         return None

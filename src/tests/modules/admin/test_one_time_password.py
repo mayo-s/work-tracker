@@ -17,7 +17,7 @@ NEW = 'my own password 7!'
 @pytest.fixture
 def hans_id(storage):
     with storage.transaction() as store:
-        store.users().add(KLARA, PASSWORD)  # the first user: admin
+        store.users().add(KLARA, PASSWORD)  # an admin
         return store.users().add(HANS, PASSWORD).id
 
 

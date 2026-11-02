@@ -1,7 +1,7 @@
-"""The setup token (SPEC 7.4): on AWS Lambda the URL is public, so only who knows it creates the first user (the admin).
+"""The setup token (SPEC 7.4): on AWS Lambda the URL is public, so only who knows it creates root, who runs the app.
 
 It is a SecureString in the SSM Parameter Store, created once by hand and never in the repository, and read only when
-the first user is created. Locally there is none.
+root is created. Locally there is none.
 """
 
 import datetime as dt
@@ -47,15 +47,15 @@ class SetupToken:
 def check_setup_token(
     storage: Storage, setup_token: SetupToken | None, given: str | None, clock: Callable[[], dt.datetime],
 ) -> None:
-    """Before creating the first user (setup, import, first user): with a setup token (AWS Lambda), it must be given.
+    """Before creating root: with a setup token (AWS Lambda), it must be given.
 
     A wrong token counts as a failed login, kept in a transaction of its own: trying pauses after 5 within a minute
-    (429). Once a user exists, the token no longer matters.
+    (429). Once root exists, the token no longer matters.
     """
     if setup_token is None:
         return
     with storage.transaction() as store:
-        if store.users().count():
+        if store.users().root_id():
             return
         attempts, now = store.attempts(), clock()
         if attempts.paused(now):

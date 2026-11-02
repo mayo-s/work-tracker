@@ -1514,9 +1514,9 @@
         }
       },
       "post": {
-        "summary": "Set up the user's data at once: start day, opening balance, work schedule, PTO years and services. On a new database, it first creates the first user (`user`), who takes over its data and is logged in.",
+        "summary": "Set up the logged-in user's data at once: start day, opening balance, work schedule, PTO years and services.",
         "operationId": "post__api_setup",
-        "description": "The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything. On AWS Lambda the first user needs the setup token (403).",
+        "description": "The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything.",
         "tags": [
           "Setup"
         ],
@@ -1560,9 +1560,9 @@
     },
     "/api/setup/import": {
       "post": {
-        "summary": "Set up the user's data from an export file instead of the setup steps; answers how many records of each type it wrote. On a new database, it first creates the first user (`user`), who is logged in.",
+        "summary": "Set up the logged-in user's data from an export file instead of the setup steps; answers how many records of each type it wrote.",
         "operationId": "post__api_setup_import",
-        "description": "Only for a user who is not set up and has no days or entries (409 otherwise). Everything is written or nothing: another format, a newer version (422) or a file referring to records it does not hold (409) leave no trace. On AWS Lambda the first user needs the setup token (403).",
+        "description": "Only for a user who is not set up and has no days or entries (409 otherwise). Everything is written or nothing: another format, a newer version (422) or a file referring to records it does not hold (409) leave no trace.",
         "tags": [
           "Setup"
         ],
@@ -1606,7 +1606,7 @@
     },
     "/api/auth/status": {
       "get": {
-        "summary": "Whether the login is on, whether a user exists, who is logged in (with their team and number of open invitations), and whether new users can register.",
+        "summary": "Whether the login is on, whether users and root exist, who is logged in (with their team and number of open invitations), whether new users can register, and whether creating root needs the setup token.",
         "operationId": "get__api_auth_status",
         "description": "",
         "tags": [
@@ -1715,10 +1715,10 @@
         }
       }
     },
-    "/api/auth/first-user": {
+    "/api/auth/root": {
       "post": {
-        "summary": "Create the first user of a database that has none, and log in; refused (409) once a user exists. On AWS Lambda only with the setup token (403 if wrong; wrong tokens count as failed logins).",
-        "operationId": "post__api_auth_first-user",
+        "summary": "Create root, who runs the app and tracks no work, and log in: once per database (409 afterwards), on a new one or one with users. On AWS Lambda only with the setup token (403 if wrong; wrong tokens count as failed logins).",
+        "operationId": "post__api_auth_root",
         "description": "",
         "tags": [
           "Login"
@@ -1759,7 +1759,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/FirstUserInput"
+                "$ref": "#/components/schemas/RootInput"
               }
             }
           },
@@ -1984,7 +1984,7 @@
       "put": {
         "summary": "Change a user's role, or deactivate (their sessions end, their data is kept) or reactivate them.",
         "operationId": "put__api_admin_users_{user_id}",
-        "description": "Nobody demotes or deactivates themselves (409), so an active admin always remains. Only a member of a team has a team role (409); a team admin manages that team. Nobody changes their own team role (409), so no admin makes themselves the team admin who sees the members' reports.",
+        "description": "Nobody demotes or deactivates themselves (409), and root stays as it is (409). Only a member of a team has a team role (409); a team admin manages that team. Nobody changes their own team role (409), so no admin makes themselves the team admin who sees the members' reports.",
         "tags": [
           "Admin"
         ],
@@ -2046,7 +2046,7 @@
       "post": {
         "summary": "Set a one-time password for a user who forgot theirs, shown only in this answer: their sessions end, and at the next login they choose their own password before anything else.",
         "operationId": "post__api_admin_users_{user_id}_one-time-password",
-        "description": "Not for the own account (409): that password is changed in the settings.",
+        "description": "Not for the own account nor root's (409): those passwords are changed in the settings.",
         "tags": [
           "Admin"
         ],
@@ -3968,7 +3968,7 @@
         "additionalProperties": false,
         "properties": {
           "role": {
-            "description": "The app role: admins manage users and teams",
+            "description": "The app role: admins manage users and teams (root is never given)",
             "enum": [
               "admin",
               "user"
@@ -4031,6 +4031,7 @@
           },
           "role": {
             "enum": [
+              "root",
               "admin",
               "user"
             ],
@@ -4221,6 +4222,12 @@
             "title": "Has Users",
             "type": "boolean"
           },
+          "has_root": {
+            "default": false,
+            "description": "False until root, who runs the app, is created",
+            "title": "Has Root",
+            "type": "boolean"
+          },
           "user": {
             "anyOf": [
               {
@@ -4257,7 +4264,7 @@
           },
           "setup_token": {
             "default": false,
-            "description": "True while the first user needs the setup token (AWS Lambda)",
+            "description": "True while creating root needs the setup token (AWS Lambda)",
             "title": "Setup Token",
             "type": "boolean"
           }
@@ -4319,8 +4326,9 @@
             "type": "string"
           },
           "role": {
-            "description": "The app role: admin or user (team roles: see team)",
+            "description": "The app role: root (runs the app, tracks no work), admin or user (team roles: see team)",
             "enum": [
+              "root",
               "admin",
               "user"
             ],
@@ -4345,7 +4353,7 @@
         "title": "UserView",
         "type": "object"
       },
-      "FirstUserInput": {
+      "RootInput": {
         "additionalProperties": false,
         "properties": {
           "username": {
@@ -4395,7 +4403,7 @@
               }
             ],
             "default": null,
-            "description": "Only on AWS Lambda, for the first user: the setup token",
+            "description": "Only on AWS Lambda: the setup token",
             "title": "Setup Token"
           }
         },
@@ -4405,7 +4413,7 @@
           "first_name",
           "password"
         ],
-        "title": "FirstUserInput",
+        "title": "RootInput",
         "type": "object"
       },
       "NewUserInput": {
@@ -6021,31 +6029,6 @@
             },
             "title": "Services",
             "type": "array"
-          },
-          "user": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/NewUserInput"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "The first user, who is logged in afterwards"
-          },
-          "setup_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Only on AWS Lambda, for the first user: the setup token",
-            "title": "Setup Token"
           }
         },
         "required": [
@@ -6062,31 +6045,6 @@
           "data": {
             "$ref": "#/components/schemas/UserData",
             "description": "The content of an export file (\"Export my data\" on the settings page)"
-          },
-          "user": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/NewUserInput"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "The first user, who is logged in afterwards"
-          },
-          "setup_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Only on AWS Lambda, for the first user: the setup token",
-            "title": "Setup Token"
           }
         },
         "required": [

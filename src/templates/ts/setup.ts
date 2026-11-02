@@ -1,7 +1,7 @@
-// Setup page (/setup): the initial setup of a new database in steps, saved at once with "Start", or from the file of
-// "Export my data".
+// Setup page (/setup): on a new database, root is created first; then each user sets up their own data in steps,
+// saved at once with "Start", or from the file of "Export my data".
 
-import { accountError, accountFields, emptyAccount, profileInput, type AccountValues } from './account.ts';
+import { rootForm } from './account.ts';
 import { api, ApiError, type ImportSummary, type SetupImportInput, type SetupInput } from './api.ts';
 import { formatDate, isoDate, type IsoDate } from './dates.ts';
 import { el } from './dom.ts';
@@ -22,15 +22,11 @@ export type SetupState = {
   firstYear: string;
   firstYearChanged: boolean;
   services: Service[];
-  account: AccountValues | null;  // the first user; null if the database already has one
-  setupToken: string | null;  // on AWS Lambda for the first user; null where none is needed
 };
 
-export type Step = 'Login' | 'Start' | 'Work schedule' | 'PTO' | 'Services' | 'Summary';
+export type Step = 'Start' | 'Work schedule' | 'PTO' | 'Services' | 'Summary';
 
-export function steps(state: SetupState): Step[] {
-  return [...(state.account ? ['Login' as const] : []), 'Start', 'Work schedule', 'PTO', 'Services', 'Summary'];
-}
+export const STEPS: Step[] = ['Start', 'Work schedule', 'PTO', 'Services', 'Summary'];
 const EXPORT_VERSION = 1;  // the newest export file version this app reads
 const OPENING: DurationRules = { signed: true };
 const WEEKLY_HOURS: DurationRules = { limit: 168 * 60 };
@@ -50,15 +46,12 @@ export function initialState(today: IsoDate): SetupState {
   return {
     start: today, opening: '0:00', weeklyHours: '40:00', workDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], state: 'BE',
     companyHalfDays: true, perYear: '30', firstYear: String(proRata(30, today)), firstYearChanged: false, services: [],
-    account: emptyAccount(), setupToken: null,
   };
 }
 
 /** The problem that keeps a step from going on, or null. */
 export function stepError(state: SetupState, step: Step): string | null {
   const checks: Partial<Record<Step, () => string | null>> = {
-    'Login': () => (state.account ? accountError(state.account, true) : null)
-      ?? (state.setupToken !== null && !state.setupToken.trim() ? 'Enter the setup token.' : null),
     'Start': () => (!state.start ? 'Enter the first day.'
       : checkDuration(state.opening, OPENING).kind === 'ok' ? null
         : 'Enter the opening balance, e.g. 0:00, 12:30, -1:45 or 1.5.'),
@@ -83,13 +76,7 @@ export function setupInput(state: SetupState): SetupInput {
     pto_first_year: Number(state.firstYear),
     services: state.services.filter((service) => service.short_name.trim())
       .map((service) => ({ short_name: service.short_name.trim(), name: service.name.trim() })),
-    user: newUser(state),
-    setup_token: state.setupToken?.trim() || null,
   };
-}
-
-function newUser(state: SetupState): SetupInput['user'] {
-  return state.account ? { ...profileInput(state.account), password: state.account.password } : null;
 }
 
 /** The content of a chosen export file, or why it cannot be imported. */
@@ -123,9 +110,7 @@ export function importSummary(summary: ImportSummary): [string, string][] {
 export function summary(state: SetupState): [string, string][] {
   const year = Number(state.start.slice(0, 4));
   const services = setupInput(state).services ?? [];
-  const account = state.account;
   return [
-    ...(account ? [['Login', `${account.username.trim()} · ${account.email.trim()}`] as [string, string]] : []),
     ['First day', formatDate(state.start)],
     ['Opening balance', state.opening.trim()],
     ['Work schedule', `${state.weeklyHours.trim()} h per week, ${state.workDays.join(', ')}`],
@@ -167,16 +152,6 @@ function fileImport(onImport: (file: File | undefined) => void): HTMLElement {
     'Import the file of "Export my data" (settings page) instead of the next steps: it sets up everything at once.',
     field('Export file', file),
     button('Import', () => onImport(file.files?.[0])));
-}
-
-function loginStep(state: SetupState): HTMLElement[] {
-  return [
-    el('p', {}, 'Your login for the app: log in with the username or the e-mail address.'),
-    el('div', { class: 'setup-fields' }, ...accountFields('setup-user', state.account!, true),
-      state.setupToken === null ? null : field('Setup token', input('setup-token', state.setupToken,
-        (value) => (state.setupToken = value), { type: 'password', autocomplete: 'off' }),
-      'The token from the AWS Parameter Store (README, deployment): only with it the first user is created.')),
-  ];
 }
 
 function startStep(state: SetupState, onImport: (file: File | undefined) => void): HTMLElement[] {
@@ -288,7 +263,7 @@ function stepContent(
   state: SetupState, name: Step, draw: () => void, onImport: (file: File | undefined) => void,
 ): HTMLElement[] {
   const builders: Record<Step, () => HTMLElement[]> = {
-    'Login': () => loginStep(state), 'Start': () => startStep(state, onImport),
+    'Start': () => startStep(state, onImport),
     'Work schedule': () => scheduleStep(state),
     'PTO': () => ptoStep(state), 'Services': () => servicesStep(state, draw), 'Summary': () => summaryStep(state),
   };
@@ -300,11 +275,17 @@ export async function renderSetupPage(doc: Document): Promise<void> {
   if (!root) {
     return;
   }
-  const state = initialState(isoDate(new Date()));
   const status = await api.authStatus();
-  state.account = status.has_users ? null : state.account;  // a database with a user keeps it
-  state.setupToken = status.setup_token ? '' : null;
-  const names = steps(state);
+  if (status.enabled && !status.user) {  // a new database: root first, who then lets the users in
+    doc.querySelector('.review-header h1')!.textContent = 'Create root admin';
+    doc.querySelector('.review-header p')!.textContent = 'Root runs the app: registration, admins and backups. It tracks '
+      + 'no work; the people who do get accounts of their own afterwards.';
+    root.replaceChildren(rootForm(status.setup_token ?? false));
+    root.querySelector<HTMLElement>('input')?.focus();
+    return;
+  }
+  const state = initialState(isoDate(new Date()));
+  const names = STEPS;
   let step = 0;
   const error = el('p', { class: 'field-error', role: 'alert', hidden: true });
   root.addEventListener('input', () => (error.hidden = true));
@@ -342,8 +323,7 @@ export async function renderSetupPage(doc: Document): Promise<void> {
     file.text().then((text) => {
       const parsed = parseExportFile(text);
       return 'problem' in parsed ? fail(parsed.problem)
-        : api.importSetup({ data: parsed.data, user: newUser(state), setup_token: state.setupToken?.trim() || null })
-          .then(imported);
+        : api.importSetup({ data: parsed.data }).then(imported);
     }).catch((failure: unknown) => fail(failure instanceof ApiError ? failure.message : 'The file could not be imported.'));
   };
   const draw = (): void => {

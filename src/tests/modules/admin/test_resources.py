@@ -6,7 +6,7 @@ from falcon import testing
 
 from src.app import create_app
 from src.modules.storage.users import UserRepository
-from src.tests.users import HANS, PASSWORD, USER
+from src.tests.users import HANS, PASCAL, PASSWORD, USER
 
 NOW = dt.datetime(2026, 10, 29, 8, 0)
 UNKNOWN = '00000000-0000-4000-8000-000000000404'
@@ -85,6 +85,25 @@ def test_nobody_demotes_or_deactivates_themselves(app, klara, body):
 def test_unknown_user(app, klara):
     body = {'role': 'user', 'active': True}
     assert app.simulate_put(f'/api/admin/users/{UNKNOWN}', cookies=klara, json=body).status == falcon.HTTP_404
+
+
+@pytest.fixture
+def root_id(database):
+    with database.transaction() as conn:
+        return UserRepository(conn).add(PASCAL.model_copy(update={'role': 'root'}), PASSWORD).id
+
+
+@pytest.mark.parametrize('body', [{'role': 'admin', 'active': True}, {'role': 'user', 'active': False}])
+def test_root_stays_as_it_is(app, klara, root_id, body):
+    result = app.simulate_put(f'/api/admin/users/{root_id}', cookies=klara, json=body)
+    assert (result.status, result.json['description']) == (falcon.HTTP_409, 'Root stays root and active')
+    result = app.simulate_post(f'/api/admin/users/{root_id}/one-time-password', cookies=klara)
+    assert (result.status, result.json['description']) == (falcon.HTTP_409, "Root's password is changed in its own settings")
+
+
+def test_nobody_is_made_root(app, klara, hans_id):
+    body = {'role': 'root', 'active': True}
+    assert app.simulate_put(f'/api/admin/users/{hans_id}', cookies=klara, json=body).status_code == 422
 
 
 def test_only_members_of_a_team_can_be_team_admins(app, klara, hans_id):

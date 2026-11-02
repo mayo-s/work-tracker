@@ -6,7 +6,7 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.teams import Member, Membership, Team, TeamRole
-from src.models.users import Role, User
+from src.models.users import AssignableRole, Role, User
 
 
 class AdminUserView(BaseModel):
@@ -32,7 +32,7 @@ class AdminUserView(BaseModel):
 class AdminUserInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
-    role: Role = Field(description='The app role: admins manage users and teams')
+    role: AssignableRole = Field(description='The app role: admins manage users and teams (root is never given)')
     team_role: TeamRole | None = Field(default=None, description='The role in their team (only for a member of a team); '
                                                                  'null keeps it. A team admin manages the team')
     active: bool = Field(description='False deactivates the user: they cannot log in, their sessions end')

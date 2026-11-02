@@ -196,3 +196,22 @@ def test_settings_are_per_user(storage, klara):
     run(storage, lambda store: store.save_theme(klara.id, 'dark'))
     run(storage, lambda store: store.finish_setup(klara.id))
     assert run(storage, lambda store: (store.load_theme(rainer.id), store.setup_done(rainer.id))) == ('system', False)
+
+
+def test_there_is_only_one_root(storage, klara):
+    root = add(storage, PASCAL.model_copy(update={'role': 'root'}))
+    assert run(storage, lambda store: store.users().root_id()) == root.id
+    with pytest.raises(ConflictError, match='There is a root already'):
+        add(storage, RAINER.model_copy(update={'role': 'root'}))
+
+
+def test_root_tracks_no_work(storage):
+    root = add(storage, PASCAL.model_copy(update={'role': 'root'}))
+    assert run(storage, lambda store: store.activity_types(root.id).all()) == []
+    assert run(storage, lambda store: store.users().first_id()) is None  # with the login off, the app is nobody's
+
+
+def test_the_first_user_is_the_first_who_is_not_root(storage):
+    add(storage, PASCAL.model_copy(update={'role': 'root'}))
+    rainer = add(storage, RAINER)
+    assert run(storage, lambda store: store.users().first_id()) == rainer.id

@@ -1,4 +1,4 @@
-"""Login endpoints: /api/auth/status, /login, /logout, /first-user, /register, /me and /me/password."""
+"""Login endpoints: /api/auth/status, /login, /logout, /root, /register, /me and /me/password."""
 
 import datetime as dt
 from collections.abc import Callable
@@ -6,9 +6,9 @@ from collections.abc import Callable
 import falcon
 from spectree import Response
 
-from src.models.users import User
+from src.models.users import Role, User
 from src.modules.auth.schemas import (
-    AuthStatus, FirstUserInput, LoginInput, NewUserInput, PasswordInput, ProfileInput, UserView,
+    AuthStatus, LoginInput, NewUserInput, PasswordInput, ProfileInput, RootInput, UserView,
 )
 from src.modules.teams.schemas import TeamRef
 from src.modules.auth.sessions import COOKIE, PAUSED, clear_session_cookie, set_session_cookie
@@ -32,9 +32,10 @@ class _AuthResource:
     def _log_in(self, req: falcon.Request, resp: falcon.Response, store: Store, user: User) -> None:
         set_session_cookie(req, resp, store.sessions().start(user.id, self._clock()))
 
-    def _create(self, req: falcon.Request, resp: falcon.Response, store: Store, json: NewUserInput) -> None:
+    def _create(self, req: falcon.Request, resp: falcon.Response, store: Store, json: NewUserInput, role: Role = 'user',
+                ) -> None:
         """Add the user, log them in and answer with them (201)."""
-        user = store.users(self._clock).add(json.to_user(), json.password)
+        user = store.users(self._clock).add(json.to_user().model_copy(update={'role': role}), json.password)
         self._log_in(req, resp, store, user)
         resp.status = falcon.HTTP_201
         resp.media = UserView.of(user)
@@ -50,14 +51,15 @@ def _user_id(req: falcon.Request) -> str:
 class AuthStatusResource(_AuthResource):
     @spec.validate(resp=Response(HTTP_200=AuthStatus), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
-        """Whether the login is on, whether a user exists, who is logged in (with their team and number of open
-        invitations), and whether new users can register."""
+        """Whether the login is on, whether users and root exist, who is logged in (with their team and number of open
+        invitations), whether new users can register, and whether creating root needs the setup token."""
         user_id = req.context.get('user_id') if self._enabled else None  # with the login off, nobody is logged in
         with self._storage.transaction() as store:
-            has_users = store.users().count() > 0
-            status = AuthStatus(enabled=self._enabled, has_users=has_users, user=None,
+            users = store.users()
+            has_root = users.root_id() is not None
+            status = AuthStatus(enabled=self._enabled, has_users=users.count() > 0, has_root=has_root, user=None,
                                 registration=self._enabled and store.registration_open(),
-                                setup_token=self._setup_token is not None and not has_users)
+                                setup_token=self._setup_token is not None and not has_root)
             resp.media = _with_user(status, store, user_id) if user_id is not None else status
 
 
@@ -111,16 +113,17 @@ class LogoutResource(_AuthResource):
         resp.status = falcon.HTTP_204
 
 
-class FirstUserResource(_AuthResource):
-    @spec.validate(json=FirstUserInput, resp=Response('HTTP_403', 'HTTP_409', 'HTTP_429', HTTP_201=UserView), tags=TAGS)
-    def on_post(self, req: falcon.Request, resp: falcon.Response, json: FirstUserInput) -> None:
-        """Create the first user of a database that has none, and log in; refused (409) once a user exists. On AWS
-        Lambda only with the setup token (403 if wrong; wrong tokens count as failed logins)."""
+class RootResource(_AuthResource):
+    @spec.validate(json=RootInput, resp=Response('HTTP_403', 'HTTP_409', 'HTTP_429', HTTP_201=UserView), tags=TAGS)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, json: RootInput) -> None:
+        """Create root, who runs the app and tracks no work, and log in: once per database (409 afterwards), on a new
+        one or one with users. On AWS Lambda only with the setup token (403 if wrong; wrong tokens count as failed
+        logins)."""
         check_setup_token(self._storage, self._setup_token, json.setup_token, self._clock)
         with self._storage.transaction() as store:
-            if store.users().count():
-                raise ConflictError('A user exists already; log in instead')
-            self._create(req, resp, store, json)
+            if store.users().root_id():
+                raise ConflictError('There is a root already; log in instead')
+            self._create(req, resp, store, json, 'root')
 
 
 class RegisterResource(_AuthResource):

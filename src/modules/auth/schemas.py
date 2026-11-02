@@ -24,7 +24,7 @@ class UserView(BaseModel):
     email: str
     first_name: str
     last_name: str
-    role: Role = Field(description='The app role: admin or user (team roles: see team)')
+    role: Role = Field(description='The app role: root (runs the app, tracks no work), admin or user (team roles: see team)')
     must_change_password: bool = Field(default=False, description='True after a one-time password, until the user chose '
                                                                   'their own')
 
@@ -50,8 +50,8 @@ class NewUserInput(ProfileInput):
     password: NewPassword
 
 
-class FirstUserInput(NewUserInput):
-    setup_token: str | None = Field(default=None, description='Only on AWS Lambda, for the first user: the setup token')
+class RootInput(NewUserInput):
+    setup_token: str | None = Field(default=None, description='Only on AWS Lambda: the setup token')
 
 
 class LoginInput(BaseModel):
@@ -71,8 +71,9 @@ class PasswordInput(BaseModel):
 class AuthStatus(BaseModel):
     enabled: bool = Field(description='False when the login is switched off (WORK_TRACKER_AUTH=off)')
     has_users: bool = Field(description='False until the first user is created')
+    has_root: bool = Field(default=False, description='False until root, who runs the app, is created')
     user: UserView | None = Field(description='The logged-in user')
     registration: bool = Field(description='True while new users can register on /register')
     team: TeamRef | None = Field(default=None, description='The team of the logged-in user')
     invitations: int = Field(default=0, description='Open team invitations of the logged-in user')
-    setup_token: bool = Field(default=False, description='True while the first user needs the setup token (AWS Lambda)')
+    setup_token: bool = Field(default=False, description='True while creating root needs the setup token (AWS Lambda)')

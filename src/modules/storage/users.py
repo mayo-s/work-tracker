@@ -41,17 +41,21 @@ class UserRepository:
         return User(**dict(row))
 
     def add(self, user: User, password: str) -> User:
-        """A new user with the default activity types and the setup still to do; the first user becomes admin and
-        takes over all records without an owner."""
-        first = self.count() == 0
-        added = user.model_copy(update={'id': self._new_id(), 'active': True, 'registered_at': self._clock()}
-                                | ({'role': 'admin'} if first else {}))
+        """A new user with their role: root (only one, 409 for a second) tracks no work; anyone else starts with the
+        default activity types and the setup still to do, and the first of them takes over all records without an
+        owner."""
+        root = user.role == 'root'
+        if root and self.root_id():
+            raise ConflictError('There is a root already')
+        first = not root and self.first_id() is None
+        added = user.model_copy(update={'id': self._new_id(), 'active': True, 'registered_at': self._clock()})
         sql = 'INSERT INTO users (id, username, email, first_name, last_name, role, registered_at, password_hash)' \
               ' VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         self._write(sql, (added.id, *_profile(added), added.role, added.registered_at.isoformat(), hash_password(password)))
         if first:
             take_over_unowned(self._conn, added.id)
-        start_with_defaults(self._conn, added.id)
+        if not root:
+            start_with_defaults(self._conn, added.id)
         return added
 
     def all(self) -> list[User]:
@@ -70,8 +74,13 @@ class UserRepository:
         return self.get(user_id)
 
     def first_id(self) -> str | None:
-        """The first user, as whom the app acts when the login is off (the rowid keeps the order of creation)."""
-        row = self._conn.execute('SELECT id FROM users ORDER BY rowid LIMIT 1').fetchone()
+        """The first user who is not root, as whom the app acts when the login is off (the rowid keeps the order of
+        creation)."""
+        row = self._conn.execute("SELECT id FROM users WHERE role != 'root' ORDER BY rowid LIMIT 1").fetchone()
+        return row[0] if row else None
+
+    def root_id(self) -> str | None:
+        row = self._conn.execute("SELECT id FROM users WHERE role = 'root'").fetchone()
         return row[0] if row else None
 
     def update(self, user: User) -> User:

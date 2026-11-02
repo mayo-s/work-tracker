@@ -206,36 +206,47 @@ def klaras_file(database):
         return export_data(SqliteStore(conn), USER, NOW).model_dump(mode='json')
 
 
+ROOT = {'username': 'rainer', 'email': 'rainer.zufall@example.com', 'first_name': 'Rainer', 'last_name': 'Zufall',
+        'password': PASSWORD}
 NEW_USER = {'username': 'hans', 'email': 'hans.dampf@example.com', 'first_name': 'Hans', 'last_name': 'Dampf',
             'password': PASSWORD}
 
 
-def test_setup_of_a_new_database_from_a_file(fresh_database, klaras_file):
+@pytest.fixture
+def new_database(fresh_database):
+    """A new database run by root, Rainer, where Hans has just registered (logged in, not set up)."""
     client = testing.TestClient(create_app(fresh_database, auth=True))
-    result = client.simulate_post('/api/setup/import', json={'data': klaras_file, 'user': NEW_USER})
+    root = {'wt_session': client.simulate_post('/api/auth/root', json=ROOT).cookies['wt_session'].value}
+    client.simulate_put('/api/admin/settings', cookies=root, json={'registration': True})
+    hans = {'wt_session': client.simulate_post('/api/auth/register', json=NEW_USER).cookies['wt_session'].value}
+    return client, hans
+
+
+def test_setup_of_a_new_user_from_a_file(new_database, klaras_file):
+    client, hans = new_database
+    result = client.simulate_post('/api/setup/import', cookies=hans, json={'data': klaras_file})
     assert (result.status, result.json['entries'], result.json['days']) == (falcon.HTTP_200, 3, 1)
-    cookies = {'wt_session': result.cookies['wt_session'].value}
-    assert client.simulate_get('/api/setup', cookies=cookies).json == {'done': True}
-    week = client.simulate_get('/api/entries', cookies=cookies, params={'week': '2026-W44'}).json
+    assert client.simulate_get('/api/setup', cookies=hans).json == {'done': True}
+    week = client.simulate_get('/api/entries', cookies=hans, params={'week': '2026-W44'}).json
     assert [entry['ticket_key'] for entry in week if entry['kind'] == 'ticket'] == ['TNG-5213', 'TNG-5214']
 
 
-def test_a_failed_import_leaves_nothing_behind(fresh_database, klaras_file):
-    client = testing.TestClient(create_app(fresh_database, auth=True))
+def test_a_failed_import_leaves_nothing_behind(new_database, klaras_file):
+    client, hans = new_database
     broken = klaras_file | {'tickets': [{'key': 'TNG-1', 'service_id': 99}]}
-    result = client.simulate_post('/api/setup/import', json={'data': broken, 'user': NEW_USER})
+    result = client.simulate_post('/api/setup/import', cookies=hans, json={'data': broken})
     assert result.status == falcon.HTTP_409
     assert result.json['description'] == 'The file refers to service 99, which it does not hold'
-    assert client.simulate_get('/api/auth/status').json['has_users'] is False
+    assert client.simulate_get('/api/tickets', cookies=hans).json == []
 
 
 @pytest.mark.parametrize('change, message', [
     ({'format': 'spreadsheet'}, 'This is no Work Tracker export file'),
     ({'version': 2}, 'The file has version 2; this Work Tracker reads up to version 1'),
 ])
-def test_other_formats_and_newer_versions_are_refused(fresh_database, klaras_file, change, message):
-    client = testing.TestClient(create_app(fresh_database, auth=True))
-    result = client.simulate_post('/api/setup/import', json={'data': klaras_file | change, 'user': NEW_USER})
+def test_other_formats_and_newer_versions_are_refused(new_database, klaras_file, change, message):
+    client, hans = new_database
+    result = client.simulate_post('/api/setup/import', cookies=hans, json={'data': klaras_file | change})
     assert result.status_code == 422
     assert message in result.text
 

@@ -11,6 +11,8 @@ from src.modules.storage.owners import NO_OWNER
 
 RAINER = {'username': 'rainer', 'email': 'rainer.zufall@example.com', 'first_name': 'Rainer', 'last_name': 'Zufall',
           'password': 'correct horse battery 9!'}
+PASCAL = {'username': 'pascal', 'email': 'turbo.pascal@example.com', 'first_name': 'Pascal', 'last_name': 'Turbo',
+          'password': 'a long root password 7?'}
 
 
 class Clock:
@@ -47,9 +49,16 @@ def session(result):
 
 
 @pytest.fixture
-def cookies(app):
-    """Rainer, logged in."""
-    return session(app.simulate_post('/api/auth/first-user', json=RAINER))
+def root(app):
+    """Pascal, root, logged in."""
+    return session(app.simulate_post('/api/auth/root', json=PASCAL))
+
+
+@pytest.fixture
+def cookies(app, root):
+    """Rainer, logged in: he registered once root had opened the registration, and took over the records."""
+    app.simulate_put('/api/admin/settings', cookies=root, json={'registration': True})
+    return session(app.simulate_post('/api/auth/register', json=RAINER))
 
 
 def login(app, name='rainer', password='correct horse battery 9!'):
@@ -59,16 +68,34 @@ def login(app, name='rainer', password='correct horse battery 9!'):
 def test_without_a_user_pages_forward_to_login_to_create_it(app):
     result = app.simulate_get('/year', query_string='year=2025')
     assert (result.status, result.headers['location']) == (falcon.HTTP_303, '/login?next=%2Fyear%3Fyear%3D2025')
-    status = {'enabled': True, 'has_users': False, 'user': None, 'registration': False,
+    status = {'enabled': True, 'has_users': False, 'has_root': False, 'user': None, 'registration': False,
               'team': None, 'invitations': 0, 'setup_token': False}
     assert app.simulate_get('/api/auth/status').json == status
 
 
-def test_first_user_logs_in_and_only_once(app):
-    result = app.simulate_post('/api/auth/first-user', json=RAINER)
-    assert (result.status, result.json['username']) == (falcon.HTTP_201, 'rainer')
-    assert app.simulate_get('/api/auth/me', cookies=session(result)).json['email'] == 'rainer.zufall@example.com'
-    assert app.simulate_post('/api/auth/first-user', json=RAINER | {'username': 'pascal'}).status == falcon.HTTP_409
+def test_root_is_created_once_and_logs_in(app):
+    result = app.simulate_post('/api/auth/root', json=PASCAL)
+    assert (result.status, result.json['role']) == (falcon.HTTP_201, 'root')
+    assert app.simulate_get('/api/auth/me', cookies=session(result)).json['email'] == 'turbo.pascal@example.com'
+    again = app.simulate_post('/api/auth/root', json=RAINER)
+    assert (again.status, again.json['description']) == (falcon.HTTP_409, 'There is a root already; log in instead')
+
+
+@pytest.mark.parametrize('path, location', [('/', '/admin'), ('/week', '/admin'), ('/setup', '/admin')])
+def test_root_tracks_no_work_and_goes_to_admin(app, root, path, location):
+    result = app.simulate_get(path, cookies=root)
+    assert (result.status, result.headers['location']) == (falcon.HTTP_303, location)
+
+
+@pytest.mark.parametrize('path', ['/api/dashboard', '/api/days', '/api/settings', '/api/team', '/api/export'])
+def test_root_has_no_tracking_api(app, root, path):
+    result = app.simulate_get(path, cookies=root)
+    assert (result.status, result.json['description']) == (falcon.HTTP_403, 'Root runs the app and tracks no work')
+
+
+@pytest.mark.parametrize('path', ['/admin', '/settings', '/api/admin/users', '/api/theme', '/api/auth/me'])
+def test_root_has_its_pages_and_their_api(app, root, path):
+    assert app.simulate_get(path, cookies=root).status == falcon.HTTP_200
 
 
 @pytest.mark.parametrize('path', ['/', '/week', '/settings'])
@@ -172,7 +199,7 @@ def test_password_change_errors(app, cookies, body, status):
 def test_login_off_leaves_everything_open(unclaimed):
     app = testing.TestClient(create_app(unclaimed, auth=False))
     assert app.simulate_get('/api/dashboard').status == falcon.HTTP_200
-    status = {'enabled': False, 'has_users': False, 'user': None, 'registration': False,
+    status = {'enabled': False, 'has_users': False, 'has_root': False, 'user': None, 'registration': False,
               'team': None, 'invitations': 0, 'setup_token': False}
     assert app.simulate_get('/api/auth/status').json == status
 
@@ -194,6 +221,6 @@ def test_command_refuses_weak_or_different_passwords(database, answers):
 
 
 def test_weak_passwords_are_refused_with_the_rule(app):
-    result = app.simulate_post('/api/auth/first-user', json=RAINER | {'password': 'only letters here'})
+    result = app.simulate_post('/api/auth/root', json=PASCAL | {'password': 'only letters here'})
     assert result.status_code == 422
     assert 'letters, digits and a special character' in result.json[0]['msg']

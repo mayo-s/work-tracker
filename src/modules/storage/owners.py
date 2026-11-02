@@ -12,7 +12,7 @@ DEFAULT_ACTIVITY_TYPES = ('Tool Management', 'Meeting', 'Travel', 'Other')
 
 
 def take_over_unowned(conn: sqlite3.Connection, user_id: str) -> None:
-    """All records without an owner become the user's (only for the first user)."""
+    """All records without an owner become the user's (only for the first user who is not root)."""
     for table in PERSONAL_TABLES:
         conn.execute(f'UPDATE {table} SET user_id = ? WHERE user_id = ?', (user_id, NO_OWNER))
 

@@ -7,7 +7,6 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.catalog import Service
-from src.modules.auth.schemas import NewUserInput
 from src.models.pto import PtoDays, PtoYear
 from src.models.settings import Settings
 from src.modules.catalog.resources import ServiceInput
@@ -28,8 +27,6 @@ class SetupInput(BaseModel):
     pto_per_year: Days = Field(default=Decimal(30), description='PTO days per year, entered for the year after the first')
     pto_first_year: Days = Field(description='PTO days of the first year, e.g. pro rata')
     services: list[ServiceInput] = Field(default=[], description='Services of the job; more can be added later')
-    user: NewUserInput | None = Field(default=None, description='The first user, who is logged in afterwards')
-    setup_token: str | None = Field(default=None, description='Only on AWS Lambda, for the first user: the setup token')
 
     def settings(self) -> Settings:
         return Settings(balance_start=self.balance_start, opening_balance=parse_signed_duration(self.opening_balance))
@@ -46,8 +43,6 @@ class SetupImportInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     data: UserData = Field(description='The content of an export file ("Export my data" on the settings page)')
-    user: NewUserInput | None = Field(default=None, description='The first user, who is logged in afterwards')
-    setup_token: str | None = Field(default=None, description='Only on AWS Lambda, for the first user: the setup token')
 
 
 class SetupStatus(BaseModel):
