@@ -1,5 +1,5 @@
-"""Admin endpoints (403 for others): /api/admin/users (root and admins), /api/admin/teams, each also by id (admins),
-and /api/admin/settings (root).
+"""Admin endpoints (403 for others): /api/admin/users and /api/admin/audit (root and admins), /api/admin/teams, each
+also by id (admins), and /api/admin/settings (root). Every change goes into the audit log.
 
 Root appoints and removes admins and helps them (one-time password, deactivate, reactivate); admins help users and
 team admins, give team roles and manage teams (SPEC 5.7)."""
@@ -11,6 +11,7 @@ import falcon
 from spectree import Response
 
 from src.lib.passwords import one_time_password
+from src.modules.admin.audit import AuditView, record
 from src.modules.admin.schemas import AdminSettings, AdminTeamView, AdminUserInput, AdminUserView, OneTimePasswordView
 from src.modules.auth.sessions import current_user
 from src.models.teams import Membership
@@ -51,10 +52,13 @@ def _check_help(actor: User, target: User, action: str) -> None:
         raise falcon.HTTPForbidden(description=f'Only {who} may {action}')
 
 
-class AdminUserCollection:
-    def __init__(self, storage: Storage) -> None:
+class _AdminResource:
+    def __init__(self, storage: Storage, clock: Callable[[], dt.datetime] = dt.datetime.now) -> None:
         self._storage = storage
+        self._clock = clock
 
+
+class AdminUserCollection(_AdminResource):
     @spec.validate(resp=Response('HTTP_403', HTTP_200=list[AdminUserView]), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         """All users in the order they registered, with role, status, registration, last login and team."""
@@ -63,10 +67,7 @@ class AdminUserCollection:
             resp.media = [_view(store, user.id) for user in store.users().all()]
 
 
-class AdminUserItem:
-    def __init__(self, storage: Storage) -> None:
-        self._storage = storage
-
+class AdminUserItem(_AdminResource):
     @spec.validate(json=AdminUserInput, resp=Response('HTTP_403', 'HTTP_404', 'HTTP_409', HTTP_200=AdminUserView),
                    tags=TAGS, path_parameter_descriptions=ID_PARAMETER)
     def on_put(self, req: falcon.Request, resp: falcon.Response, user_id: str, json: AdminUserInput) -> None:
@@ -86,11 +87,21 @@ class AdminUserItem:
             if user_id == actor.id:
                 _check_own_change(json, membership)
             _check_rights(actor, target, json, membership)
-            if json.team_role is not None and (json.team_role == 'team_admin' or membership):
-                teams.set_team_role(user_id, json.team_role)
+            now = self._clock()
+            if _team_role_changes(json, membership):
+                changed = teams.set_team_role(user_id, json.team_role)  # 409 without a team
+                record(store, now, actor.id, 'team_role_changed', user_id, changed.team_id, changed.team_role)
             users.set_role(user_id, json.role)
             users.set_active(user_id, json.active)
+            _record_role_and_status(store, now, actor.id, target, json)
             resp.media = _view(store, user_id)
+
+
+def _record_role_and_status(store: Store, now: dt.datetime, actor_id: str, target: User, json: AdminUserInput) -> None:
+    if json.role != target.role:
+        record(store, now, actor_id, 'role_changed', target.id, detail=json.role)
+    if json.active != target.active:
+        record(store, now, actor_id, 'reactivated' if json.active else 'deactivated', target.id)
 
 
 def _check_rights(actor: User, target: User, json: AdminUserInput, membership: Membership | None) -> None:
@@ -113,10 +124,7 @@ def _check_own_change(json: AdminUserInput, membership: Membership | None) -> No
         raise ConflictError('You cannot change your own team role; ask another admin')
 
 
-class AdminOneTimePassword:
-    def __init__(self, storage: Storage) -> None:
-        self._storage = storage
-
+class AdminOneTimePassword(_AdminResource):
     @spec.validate(resp=Response('HTTP_403', 'HTTP_404', 'HTTP_409', HTTP_201=OneTimePasswordView), tags=TAGS,
                    path_parameter_descriptions=ID_PARAMETER)
     def on_post(self, req: falcon.Request, resp: falcon.Response, user_id: str) -> None:
@@ -136,14 +144,12 @@ class AdminOneTimePassword:
             _check_help(actor, target, 'set one-time passwords')
             password = one_time_password()
             store.users().set_one_time_password(user_id, password)
+            record(store, self._clock(), actor.id, 'one_time_password', user_id)
         resp.status = falcon.HTTP_201
         resp.media = OneTimePasswordView(password=password)
 
 
-class AdminTeamCollection:
-    def __init__(self, storage: Storage) -> None:
-        self._storage = storage
-
+class AdminTeamCollection(_AdminResource):
     @spec.validate(resp=Response('HTTP_403', HTTP_200=list[AdminTeamView]), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         """All teams with their number of members and their team admins."""
@@ -155,23 +161,24 @@ class AdminTeamCollection:
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: TeamInput) -> None:
         """Create a team; names are unique, ignoring case (409)."""
         with self._storage.transaction() as store:
-            _staff(req, store, ('admin',))
-            resp.media = _team_view(store, store.teams().add(json.to_team()).id)
+            actor = _staff(req, store, ('admin',))
+            team = store.teams().add(json.to_team())
+            record(store, self._clock(), actor.id, 'team_created', team_id=team.id)
+            resp.media = _team_view(store, team.id)
         resp.status = falcon.HTTP_201
 
 
-class AdminTeamItem:
-    def __init__(self, storage: Storage, clock: Callable[[], dt.datetime] = dt.datetime.now) -> None:
-        self._storage = storage
-        self._clock = clock
-
+class AdminTeamItem(_AdminResource):
     @spec.validate(json=TeamInput, resp=Response('HTTP_403', 'HTTP_404', 'HTTP_409', HTTP_200=AdminTeamView), tags=TAGS,
                    path_parameter_descriptions=TEAM_PARAMETER)
     def on_put(self, req: falcon.Request, resp: falcon.Response, team_id: str, json: TeamInput) -> None:
         """Rename a team."""
         with self._storage.transaction() as store:
-            _staff(req, store, ('admin',))
-            store.teams().rename(json.to_team(team_id))
+            actor, teams = _staff(req, store, ('admin',)), store.teams()
+            former = teams.get(team_id).name
+            teams.rename(json.to_team(team_id))
+            if former != json.name:
+                record(store, self._clock(), actor.id, 'team_renamed', team_id=team_id, detail=former)
             resp.media = _team_view(store, team_id)
 
     @spec.validate(resp=Response('HTTP_204', 'HTTP_403', 'HTTP_404', 'HTTP_409'), tags=TAGS,
@@ -180,15 +187,13 @@ class AdminTeamItem:
         """Delete a team without members (409 otherwise); its invitations and services go with it, the membership
         history keeps it."""
         with self._storage.transaction() as store:
-            _staff(req, store, ('admin',))
+            actor = _staff(req, store, ('admin',))
             store.teams(self._clock).delete(team_id)
+            record(store, self._clock(), actor.id, 'team_deleted', team_id=team_id)
         resp.status = falcon.HTTP_204
 
 
-class AdminSettingsResource:
-    def __init__(self, storage: Storage) -> None:
-        self._storage = storage
-
+class AdminSettingsResource(_AdminResource):
     @spec.validate(resp=Response('HTTP_403', HTTP_200=AdminSettings), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         """App-wide settings: whether new users can register."""
@@ -200,9 +205,21 @@ class AdminSettingsResource:
     def on_put(self, req: falcon.Request, resp: falcon.Response, json: AdminSettings) -> None:
         """Switch registration on or off; the login page links to /register only while it is on."""
         with self._storage.transaction() as store:
-            _staff(req, store, ('root',))
-            store.set_registration(json.registration)
+            actor = _staff(req, store, ('root',))
+            if store.registration_open() != json.registration:
+                store.set_registration(json.registration)
+                record(store, self._clock(), actor.id, 'registration_switched', detail='on' if json.registration else 'off')
         resp.media = json
+
+
+class AdminAuditResource(_AdminResource):
+    @spec.validate(resp=Response('HTTP_403', HTTP_200=list[AuditView]), tags=TAGS)
+    def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+        """The audit log, newest first (the latest 200): who changed whose role, team role or status, set a one-time
+        password, switched registration or changed a team, and when."""
+        with self._storage.transaction() as store:
+            _staff(req, store)
+            resp.media = [AuditView.of(entry) for entry in store.audit_log().latest()]
 
 
 def _view(store: Store, user_id: str) -> AdminUserView:

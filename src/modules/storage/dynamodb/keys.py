@@ -12,14 +12,15 @@
 | `TEAMS`          | `TEAM#<id>`             | a team (`deleted_at` once deleted; `NAME#…` keeps names unique)   |
 | `TEAM#<id>`      | `MEMBER#<user id>`      | a current member (team role); also `INVITE#<id>`, team services   |
 | `INVITES#<mail>` | `TEAM#<id>`             | an invitation to an e-mail address (lower case), for that user    |
+| `AUDIT`          | `AT#<time>#<id>`        | an audit log entry (one about a user also as `AUDIT#…` in theirs) |
 | `USER#<user id>` | e.g. `DAY#2026-10-30`   | a user's records: one partition per user, so only their own data  |
 
 In a user's partition: `SETTINGS` (balance, setup, theme), `SESSION#<hash>` (to end all their sessions),
 `SERVICE#<id>` and `ACTIVITY_TYPE#<id>` (names unique by `SERVICE_NAME#…` / `ACTIVITY_TYPE_NAME#<lower case>`),
 `TICKET#<key>`, `DAY#<date>`, `ENTRY#<date>#<id>` with `ENTRY_ID#<id>` (its date), `HISTORY#<entry id>#<id>`,
 `FLAG#<id>`, `SCHEDULE#<id>` (one per day by `SCHEDULE_FROM#<date>`), `PTO#<year>`, `MEMBERSHIP#<id>` (the teams they
-were in) and `VIEW#<time>#<id>` (who looked at their reports). Ids are UUIDv7s (SPEC 7.2a), so sort keys holding them
-keep the order of creation.
+were in), `VIEW#<time>#<id>` (who looked at their reports) and `AUDIT#<time>#<id>` (changes to their account). Ids
+are UUIDv7s (SPEC 7.2a), so sort keys holding them keep the order of creation.
 """
 
 META, SCHEMA = 'META', 'SCHEMA'

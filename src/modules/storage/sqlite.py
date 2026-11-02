@@ -5,6 +5,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 
 from src.models.settings import Settings
+from src.modules.storage.audit import AuditLogRepository
 from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository, TeamServiceRepository
 from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
@@ -70,6 +71,9 @@ class SqliteStore:
 
     def report_views(self) -> ReportViewLog:
         return ReportViewLog(self._conn)
+
+    def audit_log(self) -> AuditLogRepository:
+        return AuditLogRepository(self._conn)
 
     def rename_ticket(self, user_id: str, old_key: str, new_key: str, clock: Clock | None = None) -> RenameResult:
         return rename_ticket(self._conn, user_id, old_key, new_key, clock)

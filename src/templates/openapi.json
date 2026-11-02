@@ -1944,6 +1944,42 @@
         }
       }
     },
+    "/api/auth/me/audit": {
+      "get": {
+        "summary": "The latest changes to the logged-in user's account (from the audit log), newest first.",
+        "operationId": "get__api_auth_me_audit",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditViewList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/users": {
       "get": {
         "summary": "All users in the order they registered, with role, status, registration, last login and team.",
@@ -2171,6 +2207,42 @@
             }
           },
           "required": true
+        }
+      }
+    },
+    "/api/admin/audit": {
+      "get": {
+        "summary": "The audit log, newest first (the latest 200): who changed whose role, team role or status, set a one-time password, switched registration or changed a team, and when.",
+        "operationId": "get__api_admin_audit",
+        "description": "",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditViewList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -4209,6 +4281,13 @@
         ],
         "title": "AdminSettings",
         "type": "object"
+      },
+      "AuditViewList": {
+        "items": {
+          "$ref": "#/components/schemas/AuditView"
+        },
+        "title": "AuditViewList",
+        "type": "array"
       },
       "AuthStatus": {
         "properties": {
@@ -6631,6 +6710,76 @@
           "type"
         ],
         "title": "ValidationErrorElement",
+        "type": "object"
+      },
+      "AuditView": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "actor": {
+            "description": "Name of who made the change",
+            "title": "Actor",
+            "type": "string"
+          },
+          "action": {
+            "enum": [
+              "root_created",
+              "role_changed",
+              "team_role_changed",
+              "deactivated",
+              "reactivated",
+              "one_time_password",
+              "registration_switched",
+              "team_created",
+              "team_renamed",
+              "team_deleted",
+              "member_removed"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of whose account it is about",
+            "title": "User"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the team (now, after a rename)",
+            "title": "Team"
+          },
+          "detail": {
+            "description": "e.g. the new role, 'on' or 'off', a team's former name",
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "actor",
+          "action",
+          "user",
+          "team",
+          "detail"
+        ],
+        "title": "AuditView",
         "type": "object"
       },
       "TeamRef": {

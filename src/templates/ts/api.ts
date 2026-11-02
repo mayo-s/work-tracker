@@ -34,6 +34,7 @@ export type ProfileInput = Schemas['ProfileInput'];
 export type NewUserInput = Schemas['NewUserInput'];
 export type RootInput = Schemas['RootInput'];
 export type AdminUserView = Schemas['AdminUserView'];
+export type AuditView = Schemas['AuditView'];
 export type OneTimePasswordView = Schemas['OneTimePasswordView'];
 export type AdminUserInput = Schemas['AdminUserInput'];
 export type AdminSettings = Schemas['AdminSettings'];
@@ -193,6 +194,8 @@ export const api = {
     request<void>('PUT', '/api/auth/me/password', { current_password: currentPassword, new_password: newPassword }),
 
   adminUsers: () => request<AdminUserView[]>('GET', '/api/admin/users'),
+  adminAudit: () => request<AuditView[]>('GET', '/api/admin/audit'),
+  myAudit: () => request<AuditView[]>('GET', '/api/auth/me/audit'),
   oneTimePassword: (userId: string) =>
     request<OneTimePasswordView>('POST', `/api/admin/users/${segment(userId)}/one-time-password`),
   updateAdminUser: (id: string, input: AdminUserInput) =>

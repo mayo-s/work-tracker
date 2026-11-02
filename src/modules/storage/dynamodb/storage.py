@@ -4,6 +4,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
 from src.models.settings import Settings
+from src.modules.storage.dynamodb.audit import DynamoAuditLog
 from src.modules.storage.dynamodb import settings as stored_settings
 from src.modules.storage.dynamodb.catalog import DynamoActivityTypes, DynamoServices, DynamoTeamServices
 from src.modules.storage.dynamodb.days import DynamoDays
@@ -74,6 +75,9 @@ class DynamoStore:
 
     def report_views(self) -> DynamoReportViews:
         return DynamoReportViews(self._unit)
+
+    def audit_log(self) -> DynamoAuditLog:
+        return DynamoAuditLog(self._unit)
 
     def rename_ticket(self, user_id: str, old_key: str, new_key: str, clock: Clock | None = None) -> RenameResult:
         return rename_ticket(self._unit, user_id, old_key, new_key, clock)

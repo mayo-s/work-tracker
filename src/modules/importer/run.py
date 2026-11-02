@@ -70,15 +70,19 @@ def import_file(
 
 
 def import_user(conn: sqlite3.Connection, login: str | None) -> str:
-    """The given user; without one, the only user, or no owner yet while there is no user (the first user takes it)."""
+    """The given user; without one, the only user who is not root, or no owner yet while there is none (the first one
+    takes it). Root tracks no work, so nothing is imported for it."""
     users = UserRepository(conn)
     if login:
         if (user := users.by_login(login)) is None:
             raise SheetImportError(f'No user {login!r}')
+        if user.role == 'root':
+            raise SheetImportError('Root tracks no work: name the user to import for with --user')
         return user.id
-    if users.count() > 1:
+    trackers = [user.id for user in users.all() if user.role != 'root']
+    if len(trackers) > 1:
         raise SheetImportError('Several users: name the one to import for with --user')
-    return users.first_id() or NO_OWNER
+    return trackers[0] if trackers else NO_OWNER
 
 
 def import_rows(

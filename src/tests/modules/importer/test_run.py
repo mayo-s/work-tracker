@@ -18,7 +18,7 @@ from src.modules.storage.errors import ConflictError
 from src.modules.storage.owners import NO_OWNER
 from src.modules.storage.tickets import TicketRepository
 from src.modules.storage.users import UserRepository
-from src.tests.users import HANS, PASSWORD, USER
+from src.tests.users import HANS, PASCAL, PASSWORD, USER
 
 NOW = dt.datetime(2026, 10, 28, 16, 0)
 SHEET = '''Date,Start,End,Pause,Sum,Comment
@@ -192,6 +192,13 @@ def test_several_users_need_a_name(conn):
     UserRepository(conn).add(HANS, PASSWORD)
     with pytest.raises(SheetImportError, match='--user'):
         import_user(conn, None)
+
+
+def test_root_does_not_count(conn):
+    UserRepository(conn).add(PASCAL.model_copy(update={'role': 'root'}), PASSWORD)
+    assert import_user(conn, None) == USER
+    with pytest.raises(SheetImportError, match='Root tracks no work'):
+        import_user(conn, 'pascal')
 
 
 def test_unknown_user_is_refused(conn):
