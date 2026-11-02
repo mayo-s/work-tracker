@@ -81,7 +81,7 @@ def test_the_lambda_app(monkeypatch, on_lambda, dynamo_table):
     lambda_app = importlib.reload(importlib.import_module('src.lambda_app'))
     client = testing.TestClient(lambda_app.app)
     assert client.simulate_get('/health').status == falcon.HTTP_200
-    assert client.simulate_get('/api/auth/status').json['setup_token'] is True  # the first user needs it
+    assert client.simulate_get('/api/auth/status').json['setup_token'] is True  # creating root needs it
 
 
 def test_app_without_database_stops_without_stage():

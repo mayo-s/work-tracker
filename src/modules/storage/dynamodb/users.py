@@ -8,7 +8,7 @@ from src.lib.passwords import hash_password, verify_password
 from src.models.base import new_id as new_record_id
 from src.models.users import Role, User
 from src.modules.storage.dynamodb.catalog import add_default_activity_types
-from src.modules.storage.dynamodb.keys import ATTEMPTS, LOGIN, USERS, user_partition
+from src.modules.storage.dynamodb.keys import ATTEMPTS, LOGIN, ROOT, USERS, user_partition
 from src.modules.storage.dynamodb.table import Item
 from src.modules.storage.dynamodb.unit import Unit
 from src.modules.storage.errors import NotFoundError
@@ -57,15 +57,17 @@ class DynamoUsers:
         return _user(self._profile(user_id))
 
     def add(self, user: User, password: str) -> User:
-        """A new user with the default activity types and the setup still to do; the first user becomes admin."""
-        first = self.count() == 0
-        added = user.model_copy(update={'id': self._new_id(), 'active': True, 'registered_at': self._clock()}
-                                | ({'role': 'admin'} if first else {}))
+        """A new user with their role: root (only one, kept unique by `USERS` / `ROOT`) tracks no work; anyone else
+        starts with the default activity types and the setup still to do."""
+        added = user.model_copy(update={'id': self._new_id(), 'active': True, 'registered_at': self._clock()})
+        if added.role == 'root':
+            self._unit.put({'PK': USERS, 'SK': ROOT, 'user_id': added.id}, unique='There is a root already')
         for field in ('username', 'email'):
             self._claim(field, getattr(added, field), added.id)
         self._unit.put({'PK': USERS, 'SK': _profile_key(added.id), 'order': new_record_id(),
                         'password_hash': hash_password(password)} | _values(added))
-        add_default_activity_types(self._unit, added.id)
+        if added.role != 'root':
+            add_default_activity_types(self._unit, added.id)
         return added
 
     def all(self) -> list[User]:
@@ -84,9 +86,12 @@ class DynamoUsers:
         return self.get(user_id)
 
     def first_id(self) -> str | None:
-        """The first user, as whom the app acts when the login is off."""
-        profiles = self._profiles()
-        return profiles[0]['id'] if profiles else None
+        """The first user who is not root, as whom the app acts when the login is off."""
+        return next((item['id'] for item in self._profiles() if item['role'] != 'root'), None)
+
+    def root_id(self) -> str | None:
+        item = self._unit.get(USERS, ROOT)
+        return item['user_id'] if item else None
 
     def update(self, user: User) -> User:
         """The profile (username, e-mail address, name); the role stays as it is."""

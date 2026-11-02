@@ -249,7 +249,7 @@ L.16 (a–i) → 9.1 (a–i).
 - [ ] **9.1** Roles for running the app (SPEC 5.6, 5.7, 5.9, 7.4), in steps:
   - [x] **9.1a** Team role on the membership: member or team admin, for admins and users alike (migration: a
     `team_admin` becomes a user and team admin of their team); the team view checks the membership
-  - [ ] **9.1b** Root: the app role `root` (exactly one, not demoted or deactivated); the setup of a new database
+  - [x] **9.1b** Root: the app role `root` (exactly one, not demoted or deactivated); the setup of a new database
     creates root (with the setup token on Lambda) and no tracking data; root's pages are `/admin`, its profile and
     password (the tracking API answers 403); "Create root admin" once on `/login` of a database with users but no
     root; the first user who is not root takes over the records of a database used without users

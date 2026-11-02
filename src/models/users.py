@@ -14,7 +14,9 @@ PASSWORD_RULES = f'At least {PASSWORD_MIN_LENGTH} characters with letters, digit
 # a letter, a digit and a special character (anything but letters, digits and spaces)
 _PASSWORD_CHARACTERS = (str.isalpha, str.isdecimal, lambda char: not char.isalnum() and not char.isspace())
 
-Role = Literal['admin', 'user']  # the app role; a team admin is a member's team role (teams.py)
+# The app role (a team admin is a member's team role, teams.py): exactly one root runs the app and tracks no work
+Role = Literal['root', 'admin', 'user']
+AssignableRole = Literal['admin', 'user']  # root is created once, never given or taken
 
 
 class User(DomainModel):

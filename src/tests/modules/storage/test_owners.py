@@ -10,7 +10,7 @@ from src.modules.storage.days import DayRepository
 from src.modules.storage.owners import NO_OWNER
 from src.modules.storage.settings import setup_done
 from src.modules.storage.users import UserRepository
-from src.tests.users import HANS, PASSWORD, USER
+from src.tests.users import HANS, PASSWORD, RAINER, USER
 
 
 def names(conn, user_id):
@@ -21,8 +21,17 @@ def test_first_user_takes_over_the_records_without_owner(fresh_database):
     with fresh_database.transaction() as conn:
         assert names(conn, NO_OWNER) == ['Tool Management', 'Meeting', 'Travel', 'Other']
         user = UserRepository(conn).add(HANS, PASSWORD)
-        assert (user.role, names(conn, NO_OWNER)) == ('admin', [])
+        assert (user.role, names(conn, NO_OWNER)) == ('user', [])
         assert names(conn, user.id) == ['Tool Management', 'Meeting', 'Travel', 'Other']
+
+
+def test_root_takes_nothing_over_and_starts_with_nothing(fresh_database):
+    with fresh_database.transaction() as conn:
+        users = UserRepository(conn)
+        root = users.add(RAINER.model_copy(update={'role': 'root'}), PASSWORD)
+        assert (names(conn, root.id), names(conn, NO_OWNER)) == ([], ['Tool Management', 'Meeting', 'Travel', 'Other'])
+        hans = users.add(HANS, PASSWORD)  # the first who tracks work
+        assert (names(conn, hans.id), names(conn, NO_OWNER)) == (['Tool Management', 'Meeting', 'Travel', 'Other'], [])
 
 
 def test_another_user_starts_with_defaults_and_the_setup_to_do(conn):

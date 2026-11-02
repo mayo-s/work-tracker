@@ -81,7 +81,7 @@ function errorText(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-/** The login page: log in, or create the first user of a database that has none; then on to `next`. */
+/** The login page: log in, then on to `next`; while the database has no root, also "Create root admin". */
 export async function renderLoginPage(doc: Document): Promise<void> {
   const root = doc.querySelector<HTMLElement>('#login');
   if (!root) {
@@ -98,12 +98,15 @@ export async function renderLoginPage(doc: Document): Promise<void> {
     error.textContent = errorText(failure, fallback);
     error.hidden = false;
   };
+  const intro = 'This database has no root yet. Root runs the app (registration, admins, backups) and tracks no work; '
+    + 'create it once.';
   if (!status.has_users) {
-    doc.querySelector('#login-title')!.textContent = 'Create your login';
-    root.replaceChildren(newUserForm('first-user', 'This database has no login yet. Create it once; from then on, the app '
-      + 'asks for it.', 'Create login', api.firstUser, error, fail, next));
+    doc.querySelector('#login-title')!.textContent = 'Create root admin';
+    root.replaceChildren(rootForm(status.setup_token ?? false, intro));
   } else {
-    root.replaceChildren(loginForm(error, fail, next, status.registration));
+    root.replaceChildren(loginForm(error, fail, next, status.registration),
+      ...(status.has_root ? [] : [el('h2', { class: 'account-heading' }, 'Create root admin'),
+        rootForm(status.setup_token ?? false, intro)]));
   }
   root.querySelector<HTMLElement>('input')?.focus();
 }
@@ -158,7 +161,36 @@ function loginForm(
   return form;
 }
 
-/** A form creating a user with `create` (the first user, or a registration), who is logged in; then on to `next`. */
+/** Creates root (once per database; on AWS Lambda with the setup token), who is logged in and goes to `/admin`. */
+export function rootForm(withToken: boolean, intro = ''): HTMLFormElement {
+  const values = emptyAccount();
+  const token = el('input', { id: 'root-token', name: 'setup_token', type: 'password', autocomplete: 'off' });
+  const error = el('p', { class: 'form-error field-error', role: 'alert', hidden: true });
+  const form = el('form', { class: 'card login-form root-form', novalidate: true },
+    intro ? el('p', {}, intro) : null,
+    ...accountFields('root', values, true),
+    withToken ? field('root', 'token', 'Setup token', token,
+      'The token from the AWS Parameter Store (README, "Deploy to AWS"): only with it root is created.') : null,
+    error,
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Create root admin')));
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const problem = accountError(values, true) ?? (withToken && !token.value.trim() ? 'Enter the setup token.' : null);
+    if (problem) {
+      error.textContent = problem;
+      error.hidden = false;
+      return;
+    }
+    api.createRoot({ ...profileInput(values), password: values.password, setup_token: withToken ? token.value.trim() : null })
+      .then(() => window.location.assign('/admin'), (failure: unknown) => {
+        error.textContent = errorText(failure, 'Root could not be created.');
+        error.hidden = false;
+      });
+  });
+  return form;
+}
+
+/** A form creating a user with `create` (a registration), who is logged in; then on to `next`. */
 function newUserForm(
   prefix: string, intro: string, submitLabel: string, create: (input: NewUserInput) => Promise<UserView>,
   error: HTMLElement, fail: (failure: unknown, fallback: string) => void, next: string,

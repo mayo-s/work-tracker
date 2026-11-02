@@ -10,16 +10,16 @@ import { field, submit } from './forms.ts';
 
 type TeamRole = NonNullable<AdminUserInput['team_role']>;
 
-const ROLES: [AdminUserInput['role'], string][] = [['admin', 'Admin'], ['user', 'User']];
+const ROLES: [AdminUserInput['role'], string][] = [['admin', 'Admin'], ['user', 'User']];  // root is never given
 const TEAM_ROLES: [TeamRole, string][] = [['member', 'Member'], ['team_admin', 'Team admin']];
 
 function timestampCell(value: string | null | undefined): HTMLTableCellElement {
   return el('td', {}, value ? formatTimestamp(value) : el('span', { class: 'muted' }, '—'));
 }
 
-/** The input that keeps the user's role, team role and status except for `changes`. */
+/** The input that keeps the user's role, team role and status except for `changes` (never for root, which stays). */
 export function userInput(user: AdminUserView, changes: Partial<AdminUserInput>): AdminUserInput {
-  return { role: user.role, team_role: user.team_role ?? null, active: user.active, ...changes };
+  return { role: user.role as AdminUserInput['role'], team_role: user.team_role ?? null, active: user.active, ...changes };
 }
 
 /** `an admin`, `a user`, `a team admin`, `a member`. */
@@ -129,14 +129,15 @@ function oneTimePasswordSection(users: AdminUserView[], page: Page): HTMLElement
 
 function userRow(user: AdminUserView, me: string | undefined, page: Page): HTMLTableRowElement {
   const self = user.id === me;
+  const root = user.role === 'root';  // stays root and active, never in a team
   return el('tr', {},
     el('td', {}, el('strong', {}, user.username), self ? el('span', { class: 'muted' }, ' (you)') : ''),
     el('td', {}, [user.first_name, user.last_name].filter(Boolean).join(' ')),
     el('td', {}, user.email),
     el('td', {}, user.team ?? el('span', { class: 'muted' }, '—')),
     teamRoleCell(user, self, page),
-    el('td', {}, roleSelect(user, self, page)),
-    statusCell(user, self, page),
+    el('td', {}, root ? 'Root' : roleSelect(user, self, page)),
+    root ? el('td', {}, 'Active') : statusCell(user, self, page),
     timestampCell(user.registered_at),
     timestampCell(user.last_login_at));
 }

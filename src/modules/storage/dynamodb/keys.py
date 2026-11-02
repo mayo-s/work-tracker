@@ -5,6 +5,7 @@
 | `META`           | `SCHEMA`                | the schema version (`version`)                                    |
 | `APP`            | `SETTINGS`              | app-wide settings, e.g. `registration`                            |
 | `USERS`          | `USER#<user id>`        | a user's profile, role, password hash and registration `order`    |
+| `USERS`          | `ROOT`                  | the user id of root, kept unique: there is only one               |
 | `LOGIN`          | `USERNAME#<lower case>` | the user id of a username, kept unique (also `EMAIL#…`)           |
 | `SESSION#<hash>` | `SESSION`               | a session by the hash of its token (time to live `expires_at`)    |
 | `ATTEMPTS`       | `AT#<time>#<random>`    | a failed login or registration; `CLEARED`: failed ones up to then |
@@ -23,7 +24,7 @@ keep the order of creation.
 
 META, SCHEMA = 'META', 'SCHEMA'
 APP, SETTINGS = 'APP', 'SETTINGS'
-USERS, LOGIN, ATTEMPTS = 'USERS', 'LOGIN', 'ATTEMPTS'
+USERS, ROOT, LOGIN, ATTEMPTS = 'USERS', 'ROOT', 'LOGIN', 'ATTEMPTS'
 
 
 def user_partition(user_id: str) -> str:

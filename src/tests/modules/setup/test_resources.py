@@ -13,9 +13,11 @@ SETUP = {
     'pto_per_year': 30,
     'pto_first_year': 25,
     'services': [{'short_name': 'AUTH', 'name': 'auth-service'}],
-    'user': {'username': 'pascal', 'email': 'turbo.pascal@example.com', 'first_name': 'Pascal', 'last_name': 'Turbo',
-             'password': 'correct horse battery 9!'},
 }
+ROOT = {'username': 'rainer', 'email': 'rainer.zufall@example.com', 'first_name': 'Rainer', 'last_name': 'Zufall',
+        'password': 'correct horse battery 9!'}
+PASCAL = {'username': 'pascal', 'email': 'turbo.pascal@example.com', 'first_name': 'Pascal', 'last_name': 'Turbo',
+          'password': 'correct horse battery 9!'}
 
 
 @pytest.fixture
@@ -96,22 +98,34 @@ def test_setup_is_documented(client):
     assert set(client.simulate_get('/apidoc/openapi.json').json['paths']['/api/setup']) == {'get', 'post'}
 
 
-def test_setup_creates_the_first_user_and_logs_in(fresh_database):
-    client = testing.TestClient(create_app(fresh_database, auth=True))
-    result = client.simulate_post('/api/setup', json=SETUP)
-    assert 'wt_session' in result.cookies
-    status = client.simulate_get('/api/auth/status', cookies={'wt_session': result.cookies['wt_session'].value}).json
-    assert (status['has_users'], status['user']['username']) == (True, 'pascal')
+def session(result):
+    return {'wt_session': result.cookies['wt_session'].value}
 
 
-def test_setup_needs_the_first_user(new):
-    body = {key: value for key, value in SETUP.items() if key != 'user'}
-    assert new.simulate_post('/api/setup', json=body).status == falcon.HTTP_409
-    assert new.simulate_get('/api/setup').json == {'done': False}
+@pytest.fixture
+def with_login(fresh_database):
+    """A client on a new database with the login on."""
+    return testing.TestClient(create_app(fresh_database, auth=True))
 
 
-def test_setup_keeps_an_existing_user(new):
-    new.simulate_post('/api/auth/first-user', json=SETUP['user'])
-    assert new.simulate_post('/api/setup', json=SETUP).status == falcon.HTTP_409
-    body = {key: value for key, value in SETUP.items() if key != 'user'}
-    assert new.simulate_post('/api/setup', json=body).status == falcon.HTTP_200
+def test_a_new_database_creates_root_first(with_login):
+    result = with_login.simulate_get('/week')
+    assert (result.status, result.headers['location']) == (falcon.HTTP_303, '/setup')
+    assert with_login.simulate_post('/api/setup', json=SETUP).status == falcon.HTTP_401  # nobody to set up yet
+    root = with_login.simulate_post('/api/auth/root', json=ROOT)
+    assert (root.status, root.json['role']) == (falcon.HTTP_201, 'root')
+    status = with_login.simulate_get('/api/auth/status', cookies=session(root)).json
+    assert (status['has_root'], status['user']['username']) == (True, 'rainer')
+
+
+def test_users_set_up_their_own_data_after_registering(with_login):
+    root = session(with_login.simulate_post('/api/auth/root', json=ROOT))
+    with_login.simulate_put('/api/admin/settings', cookies=root, json={'registration': True})
+    pascal = session(with_login.simulate_post('/api/auth/register', json=PASCAL))
+    assert with_login.simulate_get('/week', cookies=pascal).headers['location'] == '/setup'
+    assert with_login.simulate_post('/api/setup', cookies=pascal, json=SETUP).json == {'done': True}
+    assert with_login.simulate_get('/week', cookies=pascal).status == falcon.HTTP_200
+
+
+def test_the_setup_takes_no_account(new):
+    assert new.simulate_post('/api/setup', json=SETUP | {'user': PASCAL}).status_code == 422

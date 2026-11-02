@@ -559,4 +559,25 @@ MIGRATIONS: tuple[Migration, ...] = (
     DROP TABLE users;
     ALTER TABLE new_users RENAME TO users;
     """,
+    # 16: root runs the app (TASKS.md 9.1b): exactly one, created once; it tracks no work
+    """
+    CREATE TABLE new_users (
+        id                   TEXT PRIMARY KEY,  -- random UUID
+        username             TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+        email                TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+        first_name           TEXT    NOT NULL,
+        last_name            TEXT    NOT NULL DEFAULT '',
+        password_hash        TEXT    NOT NULL,
+        role                 TEXT    NOT NULL DEFAULT 'user' CHECK (role IN ('root', 'admin', 'user')),
+        active               INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+        registered_at        TEXT,
+        last_login_at        TEXT,
+        must_change_password INTEGER NOT NULL DEFAULT 0 CHECK (must_change_password IN (0, 1))
+    );
+    INSERT INTO new_users SELECT id, username, email, first_name, last_name, password_hash, role, active, registered_at,
+        last_login_at, must_change_password FROM users ORDER BY rowid;
+    DROP TABLE users;
+    ALTER TABLE new_users RENAME TO users;
+    CREATE UNIQUE INDEX one_root ON users (role) WHERE role = 'root';
+    """,
 )

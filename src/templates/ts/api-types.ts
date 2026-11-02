@@ -352,8 +352,8 @@ export interface paths {
         get: operations["get__api_setup"];
         put?: never;
         /**
-         * Set up the user's data at once: start day, opening balance, work schedule, PTO years and services. On a new database, it first creates the first user (`user`), who takes over its data and is logged in.
-         * @description The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything. On AWS Lambda the first user needs the setup token (403).
+         * Set up the logged-in user's data at once: start day, opening balance, work schedule, PTO years and services.
+         * @description The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything.
          */
         post: operations["post__api_setup"];
         delete?: never;
@@ -372,8 +372,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Set up the user's data from an export file instead of the setup steps; answers how many records of each type it wrote. On a new database, it first creates the first user (`user`), who is logged in.
-         * @description Only for a user who is not set up and has no days or entries (409 otherwise). Everything is written or nothing: another format, a newer version (422) or a file referring to records it does not hold (409) leave no trace. On AWS Lambda the first user needs the setup token (403).
+         * Set up the logged-in user's data from an export file instead of the setup steps; answers how many records of each type it wrote.
+         * @description Only for a user who is not set up and has no days or entries (409 otherwise). Everything is written or nothing: another format, a newer version (422) or a file referring to records it does not hold (409) leave no trace.
          */
         post: operations["post__api_setup_import"];
         delete?: never;
@@ -389,7 +389,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Whether the login is on, whether a user exists, who is logged in (with their team and number of open invitations), and whether new users can register. */
+        /** Whether the login is on, whether users and root exist, who is logged in (with their team and number of open invitations), whether new users can register, and whether creating root needs the setup token. */
         get: operations["get__api_auth_status"];
         put?: never;
         post?: never;
@@ -436,7 +436,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/first-user": {
+    "/api/auth/root": {
         parameters: {
             query?: never;
             header?: never;
@@ -445,8 +445,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create the first user of a database that has none, and log in; refused (409) once a user exists. On AWS Lambda only with the setup token (403 if wrong; wrong tokens count as failed logins). */
-        post: operations["post__api_auth_first-user"];
+        /** Create root, who runs the app and tracks no work, and log in: once per database (409 afterwards), on a new one or one with users. On AWS Lambda only with the setup token (403 if wrong; wrong tokens count as failed logins). */
+        post: operations["post__api_auth_root"];
         delete?: never;
         options?: never;
         head?: never;
@@ -535,7 +535,7 @@ export interface paths {
         get?: never;
         /**
          * Change a user's role, or deactivate (their sessions end, their data is kept) or reactivate them.
-         * @description Nobody demotes or deactivates themselves (409), so an active admin always remains. Only a member of a team has a team role (409); a team admin manages that team. Nobody changes their own team role (409), so no admin makes themselves the team admin who sees the members' reports.
+         * @description Nobody demotes or deactivates themselves (409), and root stays as it is (409). Only a member of a team has a team role (409); a team admin manages that team. Nobody changes their own team role (409), so no admin makes themselves the team admin who sees the members' reports.
          */
         put: operations["put__api_admin_users_{user_id}"];
         post?: never;
@@ -556,7 +556,7 @@ export interface paths {
         put?: never;
         /**
          * Set a one-time password for a user who forgot theirs, shown only in this answer: their sessions end, and at the next login they choose their own password before anything else.
-         * @description Not for the own account (409): that password is changed in the settings.
+         * @description Not for the own account nor root's (409): those passwords are changed in the settings.
          */
         post: operations["post__api_admin_users_{user_id}_one-time-password"];
         delete?: never;
@@ -1056,7 +1056,7 @@ export interface components {
         AdminUserInput: {
             /**
              * Role
-             * @description The app role: admins manage users and teams
+             * @description The app role: admins manage users and teams (root is never given)
              * @enum {string}
              */
             role: "admin" | "user";
@@ -1091,7 +1091,7 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "admin" | "user";
+            role: "root" | "admin" | "user";
             /**
              * Active
              * @description False: deactivated, cannot log in
@@ -1176,6 +1176,12 @@ export interface components {
              * @description False until the first user is created
              */
             has_users: boolean;
+            /**
+             * Has Root
+             * @description False until root, who runs the app, is created
+             * @default false
+             */
+            has_root?: boolean;
             /** @description The logged-in user */
             user: components["schemas"]["UserView"] | null;
             /**
@@ -1196,7 +1202,7 @@ export interface components {
             invitations?: number;
             /**
              * Setup Token
-             * @description True while the first user needs the setup token (AWS Lambda)
+             * @description True while creating root needs the setup token (AWS Lambda)
              * @default false
              */
             setup_token?: boolean;
@@ -1228,10 +1234,10 @@ export interface components {
             last_name: string;
             /**
              * Role
-             * @description The app role: admin or user (team roles: see team)
+             * @description The app role: root (runs the app, tracks no work), admin or user (team roles: see team)
              * @enum {string}
              */
-            role: "admin" | "user";
+            role: "root" | "admin" | "user";
             /**
              * Must Change Password
              * @description True after a one-time password, until the user chose their own
@@ -1239,8 +1245,8 @@ export interface components {
              */
             must_change_password?: boolean;
         };
-        /** FirstUserInput */
-        FirstUserInput: {
+        /** RootInput */
+        RootInput: {
             /**
              * Username
              * @description 3 to 30 letters, digits, dots, dashes or underscores
@@ -1266,7 +1272,7 @@ export interface components {
             password: string;
             /**
              * Setup Token
-             * @description Only on AWS Lambda, for the first user: the setup token
+             * @description Only on AWS Lambda: the setup token
              * @default null
              */
             setup_token?: string | null;
@@ -2057,33 +2063,11 @@ export interface components {
              * @default []
              */
             services?: components["schemas"]["ServiceInput"][];
-            /**
-             * @description The first user, who is logged in afterwards
-             * @default null
-             */
-            user?: components["schemas"]["NewUserInput"] | null;
-            /**
-             * Setup Token
-             * @description Only on AWS Lambda, for the first user: the setup token
-             * @default null
-             */
-            setup_token?: string | null;
         };
         /** SetupImportInput */
         SetupImportInput: {
             /** @description The content of an export file ("Export my data" on the settings page) */
             data: components["schemas"]["UserData"];
-            /**
-             * @description The first user, who is logged in afterwards
-             * @default null
-             */
-            user?: components["schemas"]["NewUserInput"] | null;
-            /**
-             * Setup Token
-             * @description Only on AWS Lambda, for the first user: the setup token
-             * @default null
-             */
-            setup_token?: string | null;
         };
         /**
          * ImportSummary
@@ -4344,7 +4328,7 @@ export interface operations {
             };
         };
     };
-    "post__api_auth_first-user": {
+    post__api_auth_root: {
         parameters: {
             query?: never;
             header?: never;
@@ -4353,7 +4337,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["FirstUserInput"];
+                "application/json": components["schemas"]["RootInput"];
             };
         };
         responses: {

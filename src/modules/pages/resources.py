@@ -78,10 +78,10 @@ class PageSettings:
 
 
 def _set_up(store: Store, user_id: str | None) -> bool:
-    """The user's setup state; not logged in, only a database without users is set up first (the login handles the
-    rest)."""
+    """The user's setup state (root has none to do); not logged in, only a database without users is set up first,
+    creating root (the login handles the rest)."""
     if user_id is not None:
-        return store.setup_done(user_id)
+        return store.users().root_id() == user_id or store.setup_done(user_id)
     return bool(store.users().count()) or store.setup_done(NO_OWNER)
 
 

@@ -22,10 +22,10 @@ TEAM_PARAMETER = {'team_id': 'Id of the team'}
 
 
 def _admin(req: falcon.Request, store: Store) -> str:
-    """The current user if they are an admin; 403 otherwise."""
+    """The current user if they are root or an admin; 403 otherwise."""
     user_id = current_user(req)
     try:
-        is_admin = store.users().get(user_id).role == 'admin'
+        is_admin = store.users().get(user_id).role in ('root', 'admin')
     except NotFoundError:  # e.g. no user yet with the login off
         is_admin = False
     if not is_admin:
@@ -54,15 +54,17 @@ class AdminUserItem:
     def on_put(self, req: falcon.Request, resp: falcon.Response, user_id: str, json: AdminUserInput) -> None:
         """Change a user's role, or deactivate (their sessions end, their data is kept) or reactivate them.
 
-        Nobody demotes or deactivates themselves (409), so an active admin always remains. Only a member of a team has a
+        Nobody demotes or deactivates themselves (409), and root stays as it is (409). Only a member of a team has a
         team role (409); a team admin manages that team. Nobody changes their own team role (409), so no admin makes
         themselves the team admin who sees the members' reports.
         """
         with self._storage.transaction() as store:
             users, teams = store.users(), store.teams()
-            if user_id == _admin(req, store):
+            admin_id = _admin(req, store)
+            if users.get(user_id).role == 'root':
+                raise ConflictError('Root stays root and active')
+            if user_id == admin_id:
                 _check_own_change(json, teams.membership(user_id))
-            users.get(user_id)
             if json.team_role is not None and (json.team_role == 'team_admin' or teams.membership(user_id)):
                 teams.set_team_role(user_id, json.team_role)
             users.set_role(user_id, json.role)
@@ -87,11 +89,13 @@ class AdminOneTimePassword:
         """Set a one-time password for a user who forgot theirs, shown only in this answer: their sessions end, and at
         the next login they choose their own password before anything else.
 
-        Not for the own account (409): that password is changed in the settings.
+        Not for the own account nor root's (409): those passwords are changed in the settings.
         """
         with self._storage.transaction() as store:
             if user_id == _admin(req, store):
                 raise ConflictError('Change your own password in your settings')
+            if store.users().get(user_id).role == 'root':
+                raise ConflictError("Root's password is changed in its own settings")
             password = one_time_password()
             store.users().set_one_time_password(user_id, password)
         resp.status = falcon.HTTP_201

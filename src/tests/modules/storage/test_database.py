@@ -134,3 +134,13 @@ def test_constraints(database, statement):
     with database.transaction() as conn:
         with pytest.raises(sqlite3.IntegrityError):
             conn.execute(statement, (USER,))
+
+
+ROOT = "INSERT INTO users (id, username, email, first_name, password_hash, role) VALUES (?, ?, ?, 'Root', '', 'root')"
+
+
+def test_one_root_only(database):
+    with database.transaction() as conn:
+        conn.execute(ROOT, (new_id(), 'rainer', 'rainer.zufall@example.com'))
+    with database.transaction() as conn, pytest.raises(sqlite3.IntegrityError):
+        conn.execute(ROOT, (new_id(), 'pascal', 'turbo.pascal@example.com'))
