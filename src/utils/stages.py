@@ -10,9 +10,10 @@ from enum import StrEnum
 import boto3
 
 from src.modules.auth.sessions import auth_enabled
-from src.modules.auth.setup_token import DEFAULT_PARAMETER, SetupToken
+from src.modules.auth.setup_token import SetupToken
 from src.modules.storage.database import Database, database_path
-from src.modules.storage.dynamodb.table import REGION
+from src.modules.storage.dynamodb.storage import DynamoStorage
+from src.modules.storage.dynamodb.table import REGION, Table
 from src.modules.storage.sqlite import SqliteStorage
 from src.modules.storage.store import Storage
 
@@ -43,18 +44,21 @@ def current_stage() -> Stage:
 
 
 def stage_storage() -> Storage:
-    """The storage of the current stage: locally the SQLite file $WORK_TRACKER_DB (default work_tracker.db)."""
+    """The storage of the current stage: locally the SQLite file $WORK_TRACKER_DB (default work_tracker.db), on AWS
+    Lambda the DynamoDB table named like the function (e.g. work-tracker-prod), or $WORK_TRACKER_TABLE."""
     if current_stage() is Stage.LOCAL:
         return SqliteStorage(Database(database_path()))
     if not auth_enabled():
         raise StageError('WORK_TRACKER_AUTH=off is for local development only, not on AWS Lambda')
-    raise StageError('The DynamoDB storage for AWS Lambda is not built yet')
+    table = os.environ.get('WORK_TRACKER_TABLE') or os.environ['AWS_LAMBDA_FUNCTION_NAME']
+    return DynamoStorage(Table(boto3.client('dynamodb', region_name=REGION), table))
 
 
 def stage_setup_token() -> SetupToken | None:
-    """The token the first user needs: on AWS Lambda from the SSM parameter $WORK_TRACKER_SETUP_TOKEN_PARAMETER (default
-    /work-tracker/setup-token), locally none."""
+    """The token the first user needs: on AWS Lambda from the SSM parameter named like the function (e.g.
+    /work-tracker-prod/setup-token), or $WORK_TRACKER_SETUP_TOKEN_PARAMETER; locally none."""
     if current_stage() is Stage.LOCAL:
         return None
-    parameter = os.environ.get('WORK_TRACKER_SETUP_TOKEN_PARAMETER', DEFAULT_PARAMETER)
+    function = os.environ['AWS_LAMBDA_FUNCTION_NAME']
+    parameter = os.environ.get('WORK_TRACKER_SETUP_TOKEN_PARAMETER') or f'/{function}/setup-token'
     return SetupToken(boto3.client('ssm', region_name=REGION), parameter)

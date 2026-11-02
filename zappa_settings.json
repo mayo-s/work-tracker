@@ -1,0 +1,30 @@
+{
+  "base": {
+    "project_name": "work-tracker",
+    "app_function": "src.lambda_app.app",
+    "aws_region": "eu-central-1",
+    "runtime": "python3.14",
+    "architecture": "x86_64",
+    "manage_roles": false,
+    "apigateway_enabled": false,
+    "function_url_enabled": true,
+    "function_url_config": {"authorizer": "NONE", "cors": {}},
+    "memory_size": 512,
+    "timeout_seconds": 60,
+    "keep_warm": true,
+    "log_level": "WARNING",
+    "aws_environment_variables": {"TZ": "CET-1CEST,M3.5.0,M10.5.0/3"},
+    "exclude": [
+      "*.db", ".env", ".env.example", ".git", ".idea", ".venv", "__pycache__", "*.pyc", "node_modules", "examples",
+      "tests", "docs", "deploy", "Dockerfile", "compose.yaml", "package.json", "package-lock.json"
+    ]
+  },
+  "dev": {
+    "extends": "base",
+    "s3_bucket": "work-tracker-deploy-dev"
+  },
+  "prod": {
+    "extends": "base",
+    "s3_bucket": "work-tracker-deploy-prod"
+  }
+}

@@ -92,8 +92,19 @@ def test_the_token_is_only_used_on_lambda(monkeypatch, ssm):
     monkeypatch.setenv('STAGE', 'Local')
     monkeypatch.delenv('AWS_LAMBDA_FUNCTION_NAME', raising=False)
     assert stage_setup_token() is None
-    monkeypatch.delenv('STAGE')
-    monkeypatch.setenv('AWS_LAMBDA_FUNCTION_NAME', 'work-tracker')
+
+
+def test_on_lambda_the_token_is_named_like_the_function(monkeypatch, ssm):
+    monkeypatch.delenv('STAGE', raising=False)
+    monkeypatch.delenv('WORK_TRACKER_SETUP_TOKEN_PARAMETER', raising=False)
+    monkeypatch.setenv('AWS_LAMBDA_FUNCTION_NAME', 'work-tracker-dev')
+    ssm.put_parameter(Name='/work-tracker-dev/setup-token', Value=TOKEN, Type='SecureString')
+    assert stage_setup_token().matches(TOKEN)
+
+
+def test_another_parameter_can_be_named(monkeypatch, ssm):
+    monkeypatch.delenv('STAGE', raising=False)
+    monkeypatch.setenv('AWS_LAMBDA_FUNCTION_NAME', 'work-tracker-dev')
     monkeypatch.setenv('WORK_TRACKER_SETUP_TOKEN_PARAMETER', '/other/token')
     ssm.put_parameter(Name='/other/token', Value=TOKEN, Type='SecureString')
     assert stage_setup_token().matches(TOKEN)

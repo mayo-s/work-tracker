@@ -100,6 +100,35 @@ gallery of the UI components, each with its use and the HTML to copy. The databa
 These documentation routes are listed in the spec as well, under the Maintenance tag.
 `$WORK_TRACKER_HOST` and `$WORK_TRACKER_PORT` change the address of the development server.
 
+## Deploy to AWS
+
+The app runs on AWS Lambda in `eu-central-1` with the data in DynamoDB (SPEC 7.4), in two stages, `dev` and `prod`;
+a few cents per month each. Everything of a stage is named after its function `work-tracker-<stage>`: the table, the
+setup token `/work-tracker-<stage>/setup-token` and the role `work-tracker-<stage>-ZappaLambdaExecutionRole`. With the
+deploying user's credentials (e.g. `awsume`), once per stage (here `dev`):
+
+```shell
+stage=dev
+pipenv run python -m src.modules.storage.dynamodb create-table work-tracker-$stage
+aws ssm put-parameter --region eu-central-1 --name /work-tracker-$stage/setup-token --type SecureString \
+  --value "$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"     # the token for the first user
+aws ssm get-parameter --region eu-central-1 --name /work-tracker-$stage/setup-token --with-decryption \
+  --query Parameter.Value --output text | pbcopy                                 # into the password manager
+aws iam create-role --role-name work-tracker-$stage-ZappaLambdaExecutionRole \
+  --assume-role-policy-document file://deploy/lambda-trust-policy.json
+aws iam put-role-policy --role-name work-tracker-$stage-ZappaLambdaExecutionRole --policy-name work-tracker \
+  --policy-document "$(sed "s/STAGE/$stage/g" deploy/lambda-policy.json)"         # what the function may do
+./deploy/zappa.sh $stage deploy                                                   # prints the Function URL
+```
+
+Then open the Function URL: `/setup` asks for the account and the setup token, and "Import" takes the file of "Export
+my data" from the local app. Afterwards the token is no longer needed:
+`aws ssm delete-parameter --region eu-central-1 --name /work-tracker-$stage/setup-token`.
+
+Later changes: `./deploy/zappa.sh dev update`, then `./deploy/zappa.sh prod update`. Both stages share the settings of
+`base` in `zappa_settings.json` and differ only in their S3 bucket for the packages (`work-tracker-deploy-<stage>`;
+bucket names are unique across all AWS accounts).
+
 ## Run in a container (e.g. on a NAS)
 
 Not working for now: the container sets no `STAGE`, so the app stops on start (to be fixed or removed).

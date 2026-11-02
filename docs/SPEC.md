@@ -507,13 +507,23 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 
 ### 7.4 Deployment (AWS Lambda via zappa)
 
-- zappa deploys the app as a Lambda function behind API Gateway (HTTPS) in `eu-central-1`, runtime `python3.14`, from
-  `zappa_settings.json` (committed; it holds no secrets), with `TZ=Europe/Berlin` ("today" follows it; Lambda runs in
-  UTC), `WORK_TRACKER_TABLE` and `WORK_TRACKER_SETUP_TOKEN_PARAMETER` (default `/work-tracker/setup-token`).
+- Two stages, `dev` and `prod`: zappa deploys each as a Lambda function `work-tracker-<stage>` in `eu-central-1`,
+  runtime `python3.14`, from `zappa_settings.json` (committed; no secrets, no account id). Both extend its `base`
+  settings and differ only in the S3 bucket for the packages (`work-tracker-deploy-<stage>`).
+- Each stage has its own table `work-tracker-<stage>` and setup token `/work-tracker-<stage>/setup-token`: the app takes
+  both names from the function's name (`WORK_TRACKER_TABLE` and `WORK_TRACKER_SETUP_TOKEN_PARAMETER` can name others).
+- A function is reached by its Function URL (HTTPS, no API Gateway: no path prefix the app's links would miss, no 29 s
+  limit; no CORS, the app only talks to itself).
+- Environment: `TZ=CET-1CEST,M3.5.0,M10.5.0/3` (Berlin time as a rule, so "today" is right even without time zone
+  files in the image; Lambda runs in UTC).
+- zappa logs at WARNING: its default, DEBUG, writes every request with its cookies and body to CloudWatch.
+- Each function runs as the role `work-tracker-<stage>-ZappaLambdaExecutionRole` (the name zappa looks up; it creates
+  no role of its own), made from `deploy/lambda-policy.json`: read and write the stage's table, read the stage's
+  parameter (decrypting it only through SSM), write its logs.
 - Setup token: the URL is public, so on Lambda the first user (the admin) is created only with the setup token. It is
   a `SecureString` in the SSM Parameter Store of `eu-central-1`, created once by hand and never in the repository:
-  `aws ssm put-parameter --name /work-tracker/setup-token --type SecureString --value "$(python -c "import secrets;
-  print(secrets.token_urlsafe(32))")"` (at least 32 characters).
+  `aws ssm put-parameter --name /work-tracker-<stage>/setup-token --type SecureString --value "$(python -c "import
+  secrets; print(secrets.token_urlsafe(32))")"` (at least 32 characters).
   - While no user exists, `/setup` asks for it (also for an import); the app reads the parameter only then, not on
     every start, and creating the first user in any way (setup, import, `/api/auth/first-user`) needs it. A wrong
     token is refused and counts as a failed login (5 per minute, 5.6), and the comparison takes the same time for
@@ -521,7 +531,9 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
   - Once the first user exists, the token no longer matters and the parameter can be deleted. Registration stays off
     until the admin switches it on, so nobody else gets an account. Locally (`STAGE=Local`), no token is needed.
 - The package leaves out `examples/` (the real spreadsheet data), `*.db`, `.env`, the tests, `node_modules` and
-  `.venv`; the compiled JavaScript is built before deploying (`npm run build`).
+  `.venv`; the compiled JavaScript is built before deploying (`npm run build`). `deploy/zappa.sh` packages from a
+  virtualenv outside the project that holds only what the app needs (no moto, pytest, …): about 26 MB. zappa copies the
+  active virtualenv's packages apart from the project files, so excluding `.venv` would not keep the dev tools out.
 - Expected costs for a single user: a few cents per month (Lambda and DynamoDB on demand, no VPC, no NAT gateway).
 
 ## 8. Future ideas
