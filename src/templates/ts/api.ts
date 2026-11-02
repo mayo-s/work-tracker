@@ -191,6 +191,8 @@ export const api = {
   login: (login: string, password: string) => request<UserView>('POST', '/api/auth/login', { login, password }),
   logout: () => request<void>('POST', '/api/auth/logout'),
   createRoot: (input: RootInput) => request<UserView>('POST', '/api/auth/root', input),
+  resetRoot: (setupToken: string, newPassword: string) =>
+    request<UserView>('POST', '/api/auth/root/reset', { setup_token: setupToken, new_password: newPassword }),
   register: (input: NewUserInput) => request<UserView>('POST', '/api/auth/register', input),
   saveProfile: (input: ProfileInput) => request<UserView>('PUT', '/api/auth/me', input),
   changePassword: (currentPassword: string, newPassword: string) =>

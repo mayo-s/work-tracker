@@ -1,5 +1,6 @@
 """The SQLite backend of the storage interfaces (store.py): this package's repositories on one connection."""
 
+import datetime as dt
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -10,6 +11,7 @@ from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepositor
 from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
+from src.modules.storage.errors import USED_TOKEN, ConflictError
 from src.modules.storage.owners import clear_records
 from src.modules.storage.pto_years import PtoYearRepository
 from src.modules.storage.renames import rename_ticket
@@ -116,6 +118,13 @@ class SqliteStore:
 
     def set_registration(self, enabled: bool) -> None:
         set_registration(self._conn, enabled)
+
+    def use_setup_token(self, token_hash: str, at: dt.datetime) -> None:
+        """Marks the setup token used (by its hash): it works only once (409 for a second time)."""
+        try:
+            self._conn.execute('INSERT INTO used_setup_tokens (hash, used_at) VALUES (?, ?)', (token_hash, at.isoformat()))
+        except sqlite3.IntegrityError as error:
+            raise ConflictError(USED_TOKEN) from error
 
 
 class SqliteStorage:

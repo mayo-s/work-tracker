@@ -10,7 +10,7 @@ from src.models.base import DomainModel
 AuditAction = Literal[
     'root_created', 'role_changed', 'team_role_changed', 'deactivated', 'reactivated', 'one_time_password',
     'registration_switched', 'team_created', 'team_renamed', 'team_deleted', 'member_removed', 'auditor_assigned',
-    'auditor_removed',
+    'auditor_removed', 'root_login_reset',
 ]
 
 

@@ -1,5 +1,6 @@
 """The DynamoDB backend of the storage interfaces (store.py), used on AWS Lambda; where the items are: keys.py."""
 
+import datetime as dt
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
@@ -9,7 +10,7 @@ from src.modules.storage.dynamodb import settings as stored_settings
 from src.modules.storage.dynamodb.catalog import DynamoActivityTypes, DynamoServices, DynamoTeamServices
 from src.modules.storage.dynamodb.days import DynamoDays
 from src.modules.storage.dynamodb.entries import DynamoEntries
-from src.modules.storage.dynamodb.keys import META, SCHEMA, user_partition
+from src.modules.storage.dynamodb.keys import APP, META, SCHEMA, user_partition
 from src.modules.storage.dynamodb.renames import rename_ticket
 from src.modules.storage.dynamodb.schedules import DynamoPtoYears, DynamoSchedules
 from src.modules.storage.dynamodb.table import Table
@@ -17,7 +18,7 @@ from src.modules.storage.dynamodb.teams import DynamoAuditors, DynamoInvitations
 from src.modules.storage.dynamodb.tickets import DynamoTickets
 from src.modules.storage.dynamodb.unit import Unit
 from src.modules.storage.dynamodb.users import DynamoAttempts, DynamoSessions, DynamoUsers
-from src.modules.storage.errors import SchemaVersionError
+from src.modules.storage.errors import USED_TOKEN, SchemaVersionError
 from src.modules.storage.store import Clock, RenameResult, Theme
 
 # Changes of the item layout, applied once in order: MIGRATIONS[0] brings a table from version 1 to 2, and so on
@@ -125,6 +126,10 @@ class DynamoStore:
 
     def set_registration(self, enabled: bool) -> None:
         stored_settings.set_registration(self._unit, enabled)
+
+    def use_setup_token(self, token_hash: str, at: dt.datetime) -> None:
+        """Marks the setup token used (by its hash): it works only once (409 for a second time)."""
+        self._unit.put({'PK': APP, 'SK': f'TOKEN#{token_hash}', 'used_at': at.isoformat()}, unique=USED_TOKEN)
 
 
 class DynamoStorage:

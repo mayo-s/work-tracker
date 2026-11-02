@@ -27,3 +27,8 @@ test('auditor assignments read as sentences', () => {
   assert.equal(auditText({ ...assigned, detail: '' }), 'Klara Himmel made Hans Dampf auditor of Platform');
   assert.equal(auditText({ ...assigned, action: 'auditor_removed', detail: '' }), "Klara Himmel ended Hans Dampf's audit of Platform");
 });
+
+test('a reset of the root login', () => {
+  assert.equal(auditText({ ...ENTRY, action: 'root_login_reset', user: 'Pascal Turbo', detail: '' }),
+    'Pascal Turbo reset the root login with a new setup token');
+});

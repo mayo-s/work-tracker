@@ -81,7 +81,8 @@ function errorText(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-/** The login page: log in, then on to `next`; while the database has no root, also "Create root admin". */
+/** The login page: log in, then on to `next`; while the database has no root, also "Create root admin"; on AWS
+ * Lambda also "Reset root login" with a new setup token. */
 export async function renderLoginPage(doc: Document): Promise<void> {
   const root = doc.querySelector<HTMLElement>('#login');
   if (!root) {
@@ -104,9 +105,10 @@ export async function renderLoginPage(doc: Document): Promise<void> {
     doc.querySelector('#login-title')!.textContent = 'Create root admin';
     root.replaceChildren(rootForm(status.setup_token ?? false, intro));
   } else {
-    root.replaceChildren(loginForm(error, fail, next, status.registration),
+    root.replaceChildren(loginForm(error, fail, next, status.registration, status.root_reset ?? false),
       ...(status.has_root ? [] : [el('h2', { class: 'account-heading' }, 'Create root admin'),
-        rootForm(status.setup_token ?? false, intro)]));
+        rootForm(status.setup_token ?? false, intro)]),
+      ...(status.root_reset ? [rootResetForm()] : []));
   }
   root.querySelector<HTMLElement>('input')?.focus();
 }
@@ -141,6 +143,7 @@ export function safeNext(next: string | null): string {
 
 function loginForm(
   error: HTMLElement, fail: (failure: unknown, fallback: string) => void, next: string, registration: boolean,
+  onLambda: boolean,
 ): HTMLFormElement {
   const name = el('input', { id: 'login-name', name: 'login', autocomplete: 'username', required: true });
   const password = el('input', { id: 'login-password', name: 'password', type: 'password', autocomplete: 'current-password',
@@ -151,8 +154,11 @@ function loginForm(
     error,
     el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Log in')),
     registration && el('p', { class: 'muted login-hint' }, 'No account yet? ', el('a', { href: '/register' }, 'Register')),
-    el('p', { class: 'muted login-hint' }, 'Forgot the password? Reset it on the computer running the app: ',
-      el('code', {}, 'pipenv run python -m src.modules.auth set-password USERNAME')));
+    onLambda
+      ? el('p', { class: 'muted login-hint' }, 'Forgot the password? An admin sets a one-time password for you (for an '
+        + 'admin: root).')
+      : el('p', { class: 'muted login-hint' }, 'Forgot the password? Ask an admin for a one-time password, or reset it on '
+        + 'the computer running the app: ', el('code', {}, 'pipenv run python -m src.modules.auth set-password USERNAME')));
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     api.login(name.value.trim(), password.value).then(() => window.location.assign(next),
@@ -188,6 +194,38 @@ export function rootForm(withToken: boolean, intro = ''): HTMLFormElement {
       });
   });
   return form;
+}
+
+/** Root forgot its password (AWS Lambda): a new setup token (README, "Deploy to AWS") sets a new one; on to /admin. */
+function rootResetForm(): HTMLElement {
+  const values = emptyAccount();
+  const token = el('input', { id: 'reset-token', name: 'setup_token', type: 'password', autocomplete: 'off' });
+  const fresh = input('reset', 'password', values, { type: 'password', autocomplete: 'new-password' });
+  const repeat = input('reset', 'repeat', values, { type: 'password', autocomplete: 'new-password' });
+  const error = el('p', { class: 'form-error field-error', role: 'alert', hidden: true });
+  const form = el('form', { class: 'card login-form', novalidate: true },
+    el('p', {}, 'For root only: create the setup token parameter again with a new token (README, "Deploy to AWS"), then '
+      + 'set a new password with it. The token works once.'),
+    field('reset', 'token', 'New setup token', token),
+    field('reset', 'password', 'New password', fresh, PASSWORD_HINT),
+    field('reset', 'repeat', 'Repeat the new password', repeat),
+    error,
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Reset root login')));
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const problem = (token.value.trim() ? null : 'Enter the new setup token.') ?? passwordError(values.password, values.repeat);
+    const show = (message: string): void => {
+      error.textContent = message;
+      error.hidden = false;
+    };
+    if (problem) {
+      show(problem);
+      return;
+    }
+    api.resetRoot(token.value.trim(), values.password).then(() => window.location.assign('/admin'),
+      (failure: unknown) => show(errorText(failure, "Root's login could not be reset.")));
+  });
+  return el('details', { class: 'root-reset' }, el('summary', {}, 'Reset root login'), form);
 }
 
 /** A form creating a user with `create` (a registration), who is logged in; then on to `next`. */

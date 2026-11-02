@@ -1,4 +1,4 @@
-"""Login endpoints: /api/auth/status, /login, /logout, /root, /register, /me, /me/password and /me/audit."""
+"""Login endpoints: /api/auth/status, /login, /logout, /root, /root/reset, /register, /me, /me/password and /me/audit."""
 
 import datetime as dt
 from collections.abc import Callable
@@ -9,7 +9,7 @@ from spectree import Response
 from src.models.users import Role, User
 from src.modules.admin.audit import AuditView, record
 from src.modules.auth.schemas import (
-    AuthStatus, LoginInput, NewUserInput, PasswordInput, ProfileInput, RootInput, UserView,
+    AuthStatus, LoginInput, NewUserInput, PasswordInput, ProfileInput, RootInput, RootResetInput, UserView,
 )
 from src.modules.teams.schemas import TeamRef
 from src.modules.auth.sessions import COOKIE, PAUSED, clear_session_cookie, set_session_cookie
@@ -20,6 +20,7 @@ from src.utils.spec import spec
 
 TAGS = ['Login']
 WRONG_LOGIN = 'Wrong username, e-mail address or password'
+ROOT_EXISTS = 'There is a root already; log in instead'
 
 
 class _AuthResource:
@@ -42,6 +43,12 @@ class _AuthResource:
         resp.media = UserView.of(user)
         return user
 
+    def _refuse_if_root(self, exists: bool) -> None:
+        """409 if there is a root (`exists`), or if there is none."""
+        with self._storage.transaction() as store:
+            if (store.users().root_id() is not None) == exists:
+                raise ConflictError(ROOT_EXISTS if exists else 'There is no root yet; create it first')
+
 
 def _user_id(req: falcon.Request) -> str:
     user_id = req.context.get('user_id')
@@ -57,12 +64,15 @@ class AuthStatusResource(_AuthResource):
         invitations), whether new users can register, and whether creating root needs the setup token."""
         user_id = req.context.get('user_id') if self._enabled else None  # with the login off, nobody is logged in
         with self._storage.transaction() as store:
-            users = store.users()
-            has_root = users.root_id() is not None
-            status = AuthStatus(enabled=self._enabled, has_users=users.count() > 0, has_root=has_root, user=None,
-                                registration=self._enabled and store.registration_open(),
-                                setup_token=self._setup_token is not None and not has_root)
+            status = self._status(store)
             resp.media = _with_user(status, store, user_id) if user_id is not None else status
+
+    def _status(self, store: Store) -> AuthStatus:
+        users, token = store.users(), self._setup_token is not None
+        has_root = users.root_id() is not None
+        return AuthStatus(enabled=self._enabled, has_users=users.count() > 0, has_root=has_root, user=None,
+                          registration=self._enabled and store.registration_open(), setup_token=token and not has_root,
+                          root_reset=token and has_root)
 
 
 def _with_user(status: AuthStatus, store: Store, user_id: str) -> AuthStatus:
@@ -120,13 +130,40 @@ class RootResource(_AuthResource):
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: RootInput) -> None:
         """Create root, who runs the app and tracks no work, and log in: once per database (409 afterwards), on a new
         one or one with users. On AWS Lambda only with the setup token (403 if wrong; wrong tokens count as failed
-        logins)."""
-        check_setup_token(self._storage, self._setup_token, json.setup_token, self._clock)
+        logins), which then works no more (409 a second time)."""
+        self._refuse_if_root(True)
+        used = check_setup_token(self._storage, self._setup_token, json.setup_token, self._clock)
         with self._storage.transaction() as store:
             if store.users().root_id():
-                raise ConflictError('There is a root already; log in instead')
+                raise ConflictError(ROOT_EXISTS)
             root = self._create(req, resp, store, json, 'root')
+            _use(store, used, self._clock())
             record(store, self._clock(), root.id, 'root_created', root.id)
+
+
+def _use(store: Store, token_hash: str | None, now: dt.datetime) -> None:
+    if token_hash:
+        store.use_setup_token(token_hash, now)
+
+
+class RootResetResource(_AuthResource):
+    @spec.validate(json=RootResetInput, resp=Response('HTTP_403', 'HTTP_409', 'HTTP_429', HTTP_200=UserView), tags=TAGS)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, json: RootResetInput) -> None:
+        """Reset root's login with a new setup token (AWS Lambda; root forgot its password): a new password, all of
+        root's sessions end, and root is logged in. The token then works no more (409 a second time); 403 if wrong
+        (counts as a failed login). Locally there is no setup token (409): use the set-password command."""
+        if self._setup_token is None:
+            raise ConflictError('No setup token here; locally, reset the password with the set-password command')
+        self._refuse_if_root(False)
+        used = check_setup_token(self._storage, self._setup_token, json.setup_token, self._clock)
+        with self._storage.transaction() as store:
+            users, now = store.users(), self._clock()
+            root_id = users.root_id()
+            users.set_password(root_id, json.new_password)
+            _use(store, used, now)
+            record(store, now, root_id, 'root_login_reset', root_id)
+            self._log_in(req, resp, store, users.get(root_id))
+            resp.media = UserView.of(users.get(root_id))
 
 
 class RegisterResource(_AuthResource):

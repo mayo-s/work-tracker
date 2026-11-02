@@ -11,6 +11,7 @@ from moto import mock_aws
 from src.app import create_app
 from src.modules.auth.setup_token import DEFAULT_PARAMETER, SetupToken
 from src.modules.storage.dynamodb.table import REGION
+from src.modules.storage.errors import USED_TOKEN
 from src.tests.users import PASSWORD
 from src.utils.stages import stage_setup_token
 
@@ -105,3 +106,52 @@ def test_another_parameter_can_be_named(monkeypatch, ssm):
     monkeypatch.setenv('WORK_TRACKER_SETUP_TOKEN_PARAMETER', '/other/token')
     ssm.put_parameter(Name='/other/token', Value=TOKEN, Type='SecureString')
     assert stage_setup_token().matches(TOKEN)
+
+
+def test_a_token_works_once(fresh_database, ssm):
+    app = app_with(fresh_database, ssm)
+    create_root(app, TOKEN)
+    result = reset_root(app, TOKEN)  # the same token again
+    assert (result.status, result.json['description']) == (falcon.HTTP_409, USED_TOKEN)
+
+
+def reset_root(app, token, password='a new root password 8%'):
+    return app.simulate_post('/api/auth/root/reset', json={'setup_token': token, 'new_password': password})
+
+
+def test_root_login_is_reset_with_a_new_token(fresh_database, ssm):
+    app = app_with(fresh_database, ssm)
+    old_session = {'wt_session': create_root(app, TOKEN).cookies['wt_session'].value}
+    new_token = secrets.token_urlsafe(32)
+    ssm.put_parameter(Name=DEFAULT_PARAMETER, Value=new_token, Type='SecureString', Overwrite=True)
+    assert app.simulate_get('/api/auth/status').json['root_reset'] is True
+    result = reset_root(app, new_token)
+    assert (result.status, result.json['role']) == (falcon.HTTP_200, 'root')
+    assert app.simulate_get('/api/auth/me', cookies=old_session).status == falcon.HTTP_401  # its sessions ended
+    login = {'login': 'rainer', 'password': 'a new root password 8%'}
+    assert app.simulate_post('/api/auth/login', json=login).status == falcon.HTTP_200
+    log = app.simulate_get('/api/admin/audit', cookies={'wt_session': result.cookies['wt_session'].value}).json
+    assert [entry['action'] for entry in log] == ['root_login_reset', 'root_created']
+
+
+@pytest.mark.parametrize('token', ['guessed', TOKEN[:-1]])
+def test_a_wrong_token_resets_nothing(fresh_database, ssm, token):
+    app = app_with(fresh_database, ssm)
+    create_root(app, TOKEN)
+    result = reset_root(app, token)
+    assert (result.status, result.json['description']) == (falcon.HTTP_403, 'The setup token is wrong')
+
+
+def test_reset_needs_root_and_a_new_password_by_the_rules(fresh_database, ssm):
+    app = app_with(fresh_database, ssm)
+    result = reset_root(app, TOKEN)
+    assert (result.status, result.json['description']) == (falcon.HTTP_409, 'There is no root yet; create it first')
+    create_root(app, secrets.token_urlsafe(32))  # another token, so TOKEN would still be new
+    assert reset_root(app, TOKEN, password='too short').status_code == 422
+
+
+def test_locally_root_login_is_not_reset_this_way(database):
+    app = testing.TestClient(create_app(database, auth=True))
+    result = reset_root(app, TOKEN)
+    assert (result.status, result.json['description']) == (
+        falcon.HTTP_409, 'No setup token here; locally, reset the password with the set-password command')

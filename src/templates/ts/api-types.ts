@@ -445,8 +445,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create root, who runs the app and tracks no work, and log in: once per database (409 afterwards), on a new one or one with users. On AWS Lambda only with the setup token (403 if wrong; wrong tokens count as failed logins). */
+        /** Create root, who runs the app and tracks no work, and log in: once per database (409 afterwards), on a new one or one with users. On AWS Lambda only with the setup token (403 if wrong; wrong tokens count as failed logins), which then works no more (409 a second time). */
         post: operations["post__api_auth_root"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/root/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset root's login with a new setup token (AWS Lambda; root forgot its password): a new password, all of root's sessions end, and root is logged in. The token then works no more (409 a second time); 403 if wrong (counts as a failed login). Locally there is no setup token (409): use the set-password command. */
+        post: operations["post__api_auth_root_reset"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1326,6 +1343,12 @@ export interface components {
              * @default false
              */
             setup_token?: boolean;
+            /**
+             * Root Reset
+             * @description True on AWS Lambda once root exists: root's login can be reset with a new setup token
+             * @default false
+             */
+            root_reset?: boolean;
         };
         /** LoginInput */
         LoginInput: {
@@ -1396,6 +1419,19 @@ export interface components {
              * @default null
              */
             setup_token?: string | null;
+        };
+        /** RootResetInput */
+        RootResetInput: {
+            /**
+             * Setup Token
+             * @description A new setup token (README, "Deploy to AWS")
+             */
+            setup_token: string;
+            /**
+             * New Password
+             * @description At least 12 characters with letters, digits and a special character
+             */
+            new_password: string;
         };
         /** NewUserInput */
         NewUserInput: {
@@ -2467,7 +2503,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed";
+            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed" | "root_login_reset";
             /**
              * User
              * @description Name of whose account it is about
@@ -4564,6 +4600,60 @@ export interface operations {
         responses: {
             /** @description Created */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserView"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    post__api_auth_root_reset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RootResetInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
