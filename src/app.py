@@ -12,7 +12,7 @@ from src.modules.admin.resources import (
 )
 from src.modules.auth.resources import (
     AuthStatusResource, LoginResource, LogoutResource, MeResource, MyAuditResource, PasswordResource, RegisterResource,
-    RootResource,
+    RootResetResource, RootResource,
 )
 from src.modules.auth.sessions import Authentication, LocalUser, auth_enabled
 from src.modules.auth.setup_token import SetupToken
@@ -104,6 +104,7 @@ def create_app(
     app.add_route('/api/auth/login', LoginResource(storage, clock))
     app.add_route('/api/auth/logout', LogoutResource(storage, clock))
     app.add_route('/api/auth/root', RootResource(storage, clock, setup_token=setup_token))
+    app.add_route('/api/auth/root/reset', RootResetResource(storage, clock, setup_token=setup_token))
     app.add_route('/api/auth/register', RegisterResource(storage, clock, enabled))
     app.add_route('/api/auth/me', MeResource(storage, clock))
     app.add_route('/api/auth/me/password', PasswordResource(storage, clock))

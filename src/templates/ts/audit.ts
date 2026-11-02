@@ -13,6 +13,7 @@ export function auditText(entry: AuditView): string {
   const { actor, user, team, detail } = entry;
   const texts: Record<AuditView['action'], () => string> = {
     root_created: () => `${actor} became root`,
+    root_login_reset: () => `${actor} reset the root login with a new setup token`,
     role_changed: () => `${actor} made ${user} ${ROLE_NAMES[detail] ?? detail}`,
     team_role_changed: () => `${actor} made ${user} ${ROLE_NAMES[detail] ?? detail} of ${team}`,
     deactivated: () => `${actor} deactivated ${user}`,

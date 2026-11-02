@@ -1,10 +1,11 @@
 """The setup token (SPEC 7.4): on AWS Lambda the URL is public, so only who knows it creates root, who runs the app.
 
-It is a SecureString in the SSM Parameter Store, created once by hand and never in the repository, and read only when
-root is created. Locally there is none.
+It is a SecureString in the SSM Parameter Store, created by hand and never in the repository, and read only when root
+is created or its login reset. Each token works once: the hashes of those used are kept. Locally there is none.
 """
 
 import datetime as dt
+import hashlib
 import hmac
 from collections.abc import Callable
 from typing import Any
@@ -44,19 +45,24 @@ class SetupToken:
         return value
 
 
+def token_hash(token: str) -> str:
+    """How a used token is kept: a long random token needs no salt or slow hash."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
 def check_setup_token(
     storage: Storage, setup_token: SetupToken | None, given: str | None, clock: Callable[[], dt.datetime],
-) -> None:
-    """Before creating root: with a setup token (AWS Lambda), it must be given.
+) -> str | None:
+    """Before creating root or resetting its login: with a setup token (AWS Lambda), it must be given. Returns its hash
+    for `use_setup_token` in the transaction of the change, which refuses a token used before (409); None without a
+    setup token.
 
     A wrong token counts as a failed login, kept in a transaction of its own: trying pauses after 5 within a minute
-    (429). Once root exists, the token no longer matters.
+    (429).
     """
     if setup_token is None:
-        return
+        return None
     with storage.transaction() as store:
-        if store.users().root_id():
-            return
         attempts, now = store.attempts(), clock()
         if attempts.paused(now):
             raise falcon.HTTPTooManyRequests(description=PAUSED)
@@ -65,3 +71,4 @@ def check_setup_token(
             attempts.add(now)
     if wrong:
         raise falcon.HTTPForbidden(description='The setup token is wrong')
+    return token_hash(given or '')

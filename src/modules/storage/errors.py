@@ -15,3 +15,6 @@ class SchemaVersionError(RuntimeError):
 
 class TooManyChangesError(ConflictError):
     """Raised when one change would write more items than DynamoDB can write together (100)."""
+
+
+USED_TOKEN = 'This setup token was used already; create a new one (README, "Deploy to AWS")'

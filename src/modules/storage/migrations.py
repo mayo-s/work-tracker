@@ -606,4 +606,11 @@ MIGRATIONS: tuple[Migration, ...] = (
     );
     CREATE INDEX team_auditors_by_user ON team_auditors (user_id);
     """,
+    # 19: setup tokens work once (TASKS.md 9.1f): the hashes of those used
+    """
+    CREATE TABLE used_setup_tokens (
+        hash    TEXT NOT NULL PRIMARY KEY,  -- SHA-256 of the token
+        used_at TEXT NOT NULL
+    );
+    """,
 )

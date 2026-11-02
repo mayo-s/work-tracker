@@ -16,7 +16,7 @@ COOKIE = 'wt_session'
 PAUSED = 'Too many attempts; try again in a minute'
 OPEN_PATHS = {
     '/login', '/register', '/health', '/api/auth/status', '/api/auth/login', '/api/auth/logout', '/api/auth/root',
-    '/api/auth/register',
+    '/api/auth/root/reset', '/api/auth/register',
 }
 OPEN_PREFIXES = ('/static/', '/apidoc')
 # After a one-time password, until the user chose their own: only this page, its API and what every page needs

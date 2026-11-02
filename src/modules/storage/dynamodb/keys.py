@@ -4,6 +4,7 @@
 |------------------|-------------------------|-------------------------------------------------------------------|
 | `META`           | `SCHEMA`                | the schema version (`version`)                                    |
 | `APP`            | `SETTINGS`              | app-wide settings, e.g. `registration`                            |
+| `APP`            | `TOKEN#<hash>`          | a setup token used once (SHA-256), refused afterwards             |
 | `USERS`          | `USER#<user id>`        | a user's profile, role, password hash and registration `order`    |
 | `USERS`          | `ROOT`                  | the user id of root, kept unique: there is only one               |
 | `LOGIN`          | `USERNAME#<lower case>` | the user id of a username, kept unique (also `EMAIL#…`)           |

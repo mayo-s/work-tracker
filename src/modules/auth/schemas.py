@@ -54,6 +54,13 @@ class RootInput(NewUserInput):
     setup_token: str | None = Field(default=None, description='Only on AWS Lambda: the setup token')
 
 
+class RootResetInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    setup_token: str = Field(min_length=1, max_length=200, description='A new setup token (README, "Deploy to AWS")')
+    new_password: NewPassword
+
+
 class LoginInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
@@ -77,3 +84,5 @@ class AuthStatus(BaseModel):
     team: TeamRef | None = Field(default=None, description='The team of the logged-in user')
     invitations: int = Field(default=0, description='Open team invitations of the logged-in user')
     setup_token: bool = Field(default=False, description='True while creating root needs the setup token (AWS Lambda)')
+    root_reset: bool = Field(default=False, description="True on AWS Lambda once root exists: root's login can be reset "
+                                                        'with a new setup token')

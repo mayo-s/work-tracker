@@ -1375,6 +1375,15 @@ body:has(main[data-page='password']) .app-nav {
   margin: var(--space-6) 0 var(--space-3);
 }
 
+.root-reset {
+  margin-top: var(--space-6);
+}
+
+.root-reset summary {
+  cursor: pointer;
+  margin-bottom: var(--space-3);
+}
+
 /* Team invitations in the settings */
 
 .invitation-list {

@@ -1717,7 +1717,7 @@
     },
     "/api/auth/root": {
       "post": {
-        "summary": "Create root, who runs the app and tracks no work, and log in: once per database (409 afterwards), on a new one or one with users. On AWS Lambda only with the setup token (403 if wrong; wrong tokens count as failed logins).",
+        "summary": "Create root, who runs the app and tracks no work, and log in: once per database (409 afterwards), on a new one or one with users. On AWS Lambda only with the setup token (403 if wrong; wrong tokens count as failed logins), which then works no more (409 a second time).",
         "operationId": "post__api_auth_root",
         "description": "",
         "tags": [
@@ -1760,6 +1760,58 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RootInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/auth/root/reset": {
+      "post": {
+        "summary": "Reset root's login with a new setup token (AWS Lambda; root forgot its password): a new password, all of root's sessions end, and root is logged in. The token then works no more (409 a second time); 403 if wrong (counts as a failed login). Locally there is no setup token (409): use the set-password command.",
+        "operationId": "post__api_auth_root_reset",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RootResetInput"
               }
             }
           },
@@ -4611,6 +4663,12 @@
             "description": "True while creating root needs the setup token (AWS Lambda)",
             "title": "Setup Token",
             "type": "boolean"
+          },
+          "root_reset": {
+            "default": false,
+            "description": "True on AWS Lambda once root exists: root's login can be reset with a new setup token",
+            "title": "Root Reset",
+            "type": "boolean"
           }
         },
         "required": [
@@ -4758,6 +4816,31 @@
           "password"
         ],
         "title": "RootInput",
+        "type": "object"
+      },
+      "RootResetInput": {
+        "additionalProperties": false,
+        "properties": {
+          "setup_token": {
+            "description": "A new setup token (README, \"Deploy to AWS\")",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Setup Token",
+            "type": "string"
+          },
+          "new_password": {
+            "description": "At least 12 characters with letters, digits and a special character",
+            "maxLength": 200,
+            "minLength": 12,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "setup_token",
+          "new_password"
+        ],
+        "title": "RootResetInput",
         "type": "object"
       },
       "NewUserInput": {
@@ -7019,7 +7102,8 @@
               "team_deleted",
               "member_removed",
               "auditor_assigned",
-              "auditor_removed"
+              "auditor_removed",
+              "root_login_reset"
             ],
             "title": "Action",
             "type": "string"

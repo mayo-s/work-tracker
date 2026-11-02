@@ -215,3 +215,10 @@ def test_the_first_user_is_the_first_who_is_not_root(storage):
     add(storage, PASCAL.model_copy(update={'role': 'root'}))
     rainer = add(storage, RAINER)
     assert run(storage, lambda store: store.users().first_id()) == rainer.id
+
+
+def test_a_used_setup_token_is_refused_the_second_time(storage):
+    run(storage, lambda store: store.use_setup_token('hash', LOGIN))
+    run(storage, lambda store: store.use_setup_token('other hash', LOGIN))
+    with pytest.raises(ConflictError, match='This setup token was used already'):
+        run(storage, lambda store: store.use_setup_token('hash', LOGIN))
