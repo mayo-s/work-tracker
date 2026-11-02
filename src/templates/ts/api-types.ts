@@ -535,7 +535,7 @@ export interface paths {
         get?: never;
         /**
          * Change a user's role, or deactivate (their sessions end, their data is kept) or reactivate them.
-         * @description Nobody demotes or deactivates themselves (409), so an active admin always remains. Only a member of a team can be a team admin (409); they manage that team.
+         * @description Nobody demotes or deactivates themselves (409), so an active admin always remains. Only a member of a team has a team role (409); a team admin manages that team. Nobody changes their own team role (409), so no admin makes themselves the team admin who sees the members' reports.
          */
         put: operations["put__api_admin_users_{user_id}"];
         post?: never;
@@ -1056,10 +1056,16 @@ export interface components {
         AdminUserInput: {
             /**
              * Role
-             * @description A team admin manages the team they are in
+             * @description The app role: admins manage users and teams
              * @enum {string}
              */
-            role: "admin" | "team_admin" | "user";
+            role: "admin" | "user";
+            /**
+             * Team Role
+             * @description The role in their team (only for a member of a team); null keeps it. A team admin manages the team
+             * @default null
+             */
+            team_role?: ("member" | "team_admin") | null;
             /**
              * Active
              * @description False deactivates the user: they cannot log in, their sessions end
@@ -1085,7 +1091,7 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "admin" | "team_admin" | "user";
+            role: "admin" | "user";
             /**
              * Active
              * @description False: deactivated, cannot log in
@@ -1103,6 +1109,11 @@ export interface components {
              * @description Name of the team the user is in
              */
             team: string | null;
+            /**
+             * Team Role
+             * @description Their role in that team; null without a team
+             */
+            team_role: ("member" | "team_admin") | null;
             /**
              * Must Change Password
              * @description A one-time password is set; the user has not chosen their own yet
@@ -1217,10 +1228,10 @@ export interface components {
             last_name: string;
             /**
              * Role
-             * @description admin, team_admin or user
+             * @description The app role: admin or user (team roles: see team)
              * @enum {string}
              */
-            role: "admin" | "team_admin" | "user";
+            role: "admin" | "user";
             /**
              * Must Change Password
              * @description True after a one-time password, until the user chose their own
@@ -2339,6 +2350,12 @@ export interface components {
              * Format: date
              */
             joined_on: string;
+            /**
+             * Team Role
+             * @description member or team_admin (manages the team, has its team view)
+             * @enum {string}
+             */
+            team_role: "member" | "team_admin";
         };
         /** BalancePoint */
         BalancePoint: {
@@ -2988,10 +3005,10 @@ export interface components {
             /** Last Name */
             last_name: string;
             /**
-             * Role
+             * Team Role
              * @enum {string}
              */
-            role: "admin" | "team_admin" | "user";
+            team_role: "member" | "team_admin";
             /**
              * Joined On
              * Format: date

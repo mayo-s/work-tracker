@@ -1,25 +1,30 @@
-// Admin page (/admin): registration on or off, the teams, and the users with their role, team and whether they can log in.
+// Admin page (/admin): registration on or off, the teams, the users with their role, team, team role and whether they
+// can log in, and one-time passwords by e-mail address.
 
-import { api, type AdminTeamView, type AdminUserInput, type AdminUserView } from './api.ts';
+import { ApiError, api, type AdminTeamView, type AdminUserInput, type AdminUserView } from './api.ts';
 import { formatTimestamp } from './dates.ts';
 import { ask } from './dialog.ts';
 import { el } from './dom.ts';
-import { button, renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
+import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
+import { field, submit } from './forms.ts';
 
-const ROLES: [AdminUserInput['role'], string][] = [['admin', 'Admin'], ['team_admin', 'Team admin'], ['user', 'User']];
+type TeamRole = NonNullable<AdminUserInput['team_role']>;
+
+const ROLES: [AdminUserInput['role'], string][] = [['admin', 'Admin'], ['user', 'User']];
+const TEAM_ROLES: [TeamRole, string][] = [['member', 'Member'], ['team_admin', 'Team admin']];
 
 function timestampCell(value: string | null | undefined): HTMLTableCellElement {
   return el('td', {}, value ? formatTimestamp(value) : el('span', { class: 'muted' }, '—'));
 }
 
-/** The input that keeps the user's role and status except for `changes`. */
+/** The input that keeps the user's role, team role and status except for `changes`. */
 export function userInput(user: AdminUserView, changes: Partial<AdminUserInput>): AdminUserInput {
-  return { role: user.role, active: user.active, ...changes };
+  return { role: user.role, team_role: user.team_role ?? null, active: user.active, ...changes };
 }
 
-/** `a team admin`, `an admin`, `a user`. */
-export function roleName(role: AdminUserInput['role']): string {
-  return { admin: 'an admin', team_admin: 'a team admin', user: 'a user' }[role];
+/** `an admin`, `a user`, `a team admin`, `a member`. */
+export function roleName(role: AdminUserInput['role'] | TeamRole): string {
+  return { admin: 'an admin', user: 'a user', team_admin: 'a team admin', member: 'a member' }[role];
 }
 
 function registrationSection(open: boolean, page: Page): HTMLElement {
@@ -37,9 +42,7 @@ function registrationSection(open: boolean, page: Page): HTMLElement {
 
 function roleSelect(user: AdminUserView, self: boolean, page: Page): HTMLSelectElement {
   const select = el('select', { 'aria-label': `Role of ${user.username}`, disabled: self },
-    ...ROLES.map(([value, label]) => el('option', {
-      value, selected: user.role === value, disabled: value === 'team_admin' && !user.team,  // team admins manage their team
-    }, label)));
+    ...ROLES.map(([value, label]) => el('option', { value, selected: user.role === value }, label)));
   select.addEventListener('change', () => {
     const role = select.value as AdminUserInput['role'];
     api.updateAdminUser(user.id, userInput(user, { role }))
@@ -48,40 +51,80 @@ function roleSelect(user: AdminUserView, self: boolean, page: Page): HTMLSelectE
   return select;
 }
 
-function activeToggle(user: AdminUserView, page: Page): HTMLButtonElement {
-  return button(user.active ? 'Deactivate' : 'Reactivate', () => {
-    if (user.active && !window.confirm(`Deactivate ${user.username}? They are logged out and cannot log in until `
-      + 'reactivated; their data is kept.')) {
-      return;
-    }
-    api.updateAdminUser(user.id, userInput(user, { active: !user.active }))
-      .then(() => page.reload(`${user.active ? 'Deactivated' : 'Reactivated'} ${user.username}`), page.fail);
+/** The role in their team: only for members of a team, and nobody changes their own. */
+function teamRoleCell(user: AdminUserView, self: boolean, page: Page): HTMLTableCellElement {
+  if (!user.team) {
+    return el('td', {}, el('span', { class: 'muted' }, '—'));
+  }
+  const select = el('select', { 'aria-label': `Role of ${user.username} in ${user.team}`, disabled: self },
+    ...TEAM_ROLES.map(([value, label]) => el('option', { value, selected: user.team_role === value }, label)));
+  select.addEventListener('change', () => {
+    const teamRole = select.value as TeamRole;
+    api.updateAdminUser(user.id, userInput(user, { team_role: teamRole }))
+      .then(() => page.reload(`${user.username} is now ${roleName(teamRole)} of ${user.team}`), page.fail);
   });
+  return el('td', {}, select);
 }
 
-/** Sets a one-time password for a user who forgot theirs and shows it once, to pass on. */
-function oneTimePasswordButton(user: AdminUserView, page: Page): HTMLButtonElement {
-  return button('One-time password', async () => {
-    const go = await ask(`One-time password for ${user.username}`, [
-      `${user.username} is logged out, the current password stops working, and at the next login ${user.username} `
-      + 'chooses a new one with the one-time password.'], [{ label: 'Set one-time password', value: true, primary: true }]);
-    if (!go) {
+/** Active or deactivated, chosen in place (not for oneself); a deactivation asks first. */
+function statusCell(user: AdminUserView, self: boolean, page: Page): HTMLTableCellElement {
+  const select = el('select', { 'aria-label': `Status of ${user.username}`, disabled: self },
+    el('option', { value: 'active', selected: user.active }, 'Active'),
+    el('option', { value: 'deactivated', selected: !user.active }, 'Deactivated'));
+  select.addEventListener('change', () => {
+    const active = select.value === 'active';
+    if (!active && !window.confirm(`Deactivate ${user.username}? They are logged out and cannot log in until `
+      + 'reactivated; their data is kept.')) {
+      select.value = 'active';
       return;
     }
-    api.oneTimePassword(user.id).then(async ({ password }) => {
+    api.updateAdminUser(user.id, userInput(user, { active }))
+      .then(() => page.reload(`${active ? 'Reactivated' : 'Deactivated'} ${user.username}`), page.fail);
+  });
+  return el('td', {}, select,
+    user.active && user.must_change_password ? el('span', { class: 'badge admin-badge' }, 'One-time password') : '');
+}
+
+/** The user with this e-mail address, ignoring case and surrounding spaces. */
+export function userByEmail(users: AdminUserView[], email: string): AdminUserView | undefined {
+  const wanted = email.trim().toLowerCase();
+  return users.find((user) => user.email.toLowerCase() === wanted);
+}
+
+/** Sets a one-time password for the user with the e-mail address entered and shows it once, to pass on. */
+function oneTimePasswordSection(users: AdminUserView[], page: Page): HTMLElement {
+  const email = el('input', { id: 'otp-email', name: 'email', type: 'email', autocomplete: 'off' });
+  const form = el('form', { class: 'balance-form invite-form', novalidate: true },
+    field('otp', 'email', 'E-mail address', email, 'The exact address of the user (upper and lower case do not matter).'),
+    el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Set one-time password')));
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    let done = '';
+    void submit(form, 'otp', ['email'], async () => {
+      const user = userByEmail(users, email.value);
+      if (!user) {
+        throw new ApiError(404, 'No user has this e-mail address.', [{ loc: ['email'], msg: 'No user has this e-mail address.' }]);
+      }
+      const go = await ask(`One-time password for ${user.username}`, [
+        `${user.username} is logged out, the current password stops working, and at the next login ${user.username} `
+        + 'chooses a new one with the one-time password.'], [{ label: 'Set one-time password', value: true, primary: true }]);
+      if (!go) {
+        return;
+      }
+      const { password } = await api.oneTimePassword(user.id);
       await ask(`One-time password for ${user.username}`, [
         el('p', {}, el('code', { class: 'one-time-password' }, password)),
         `Give it to ${user.username} in person or by phone. It is shown only now.`], [{ label: 'Done', value: true, primary: true }]);
-      page.reload(`Set a one-time password for ${user.username}`);
-    }, page.fail);
+      done = `Set a one-time password for ${user.username}`;
+    }, () => (done ? page.reload(done) : form.querySelectorAll('button').forEach((item) => (item.disabled = false))));
   });
-}
-
-function status(user: AdminUserView): HTMLElement | string {
-  if (!user.active) {
-    return el('span', { class: 'badge warning' }, 'Deactivated');
-  }
-  return user.must_change_password ? el('span', { class: 'badge' }, 'One-time password') : 'Active';
+  return el('section', { class: 'review-section', id: 'one-time-password' },
+    el('h2', {}, 'One-time password'),
+    el('p', { class: 'muted' }, 'For a user who forgot their password: they are logged out, and at the next login they choose '
+      + 'a new password with the one-time password. It is shown only once, to pass on in person or by phone. Your own '
+      + 'password is changed in your settings.'),
+    form);
 }
 
 function userRow(user: AdminUserView, me: string | undefined, page: Page): HTMLTableRowElement {
@@ -91,21 +134,22 @@ function userRow(user: AdminUserView, me: string | undefined, page: Page): HTMLT
     el('td', {}, [user.first_name, user.last_name].filter(Boolean).join(' ')),
     el('td', {}, user.email),
     el('td', {}, user.team ?? el('span', { class: 'muted' }, '—')),
+    teamRoleCell(user, self, page),
     el('td', {}, roleSelect(user, self, page)),
-    el('td', {}, status(user)),
+    statusCell(user, self, page),
     timestampCell(user.registered_at),
-    timestampCell(user.last_login_at),
-    el('td', { class: 'row-actions' }, ...(self ? [] : [oneTimePasswordButton(user, page), activeToggle(user, page)])));
+    timestampCell(user.last_login_at));
 }
 
 function usersSection(users: AdminUserView[], me: string | undefined, page: Page): HTMLElement {
-  const header = el('tr', {}, ...['Username', 'Name', 'E-mail address', 'Team', 'Role', 'Status', 'Registered', 'Last login']
-    .map((label) => el('th', {}, label)), el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')));
+  const header = el('tr', {}, ...['Username', 'Name', 'E-mail address', 'Team', 'Team role', 'Role', 'Status', 'Registered',
+    'Last login'].map((label) => el('th', {}, label)));
   return el('section', { class: 'review-section', id: 'users' },
     el('h2', {}, 'Users'),
     el('p', { class: 'muted' }, 'Admins manage registration and users; users work on their own data only. A deactivated '
-      + 'user is logged out and cannot log in; their data is kept. Nobody can demote or deactivate themselves. A team admin '
-      + 'manages the team they are in: its members, invitations and services.'),
+      + 'user is logged out and cannot log in; their data is kept. Nobody can demote or deactivate themselves. The team role '
+      + 'belongs to the team: a team admin, admin or user, manages the team they are in (its members, invitations and '
+      + 'services) and sees its members\' reports; leaving the team ends it. Nobody changes their own team role.'),
     el('table', { class: 'review-table list-table admin-users' }, el('thead', {}, header),
       el('tbody', {}, ...users.map((user) => userRow(user, me, page)))));
 }
@@ -136,7 +180,7 @@ export async function renderAdminPage(doc: Document): Promise<void> {
     ]);
     return [
       registrationSection(settings.registration, page), tableSection(teamsTable(teams), page),
-      usersSection(users, status.user?.id, page),
+      usersSection(users, status.user?.id, page), oneTimePasswordSection(users, page),
     ];
   });
 }

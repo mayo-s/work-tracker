@@ -5,7 +5,7 @@ import sqlite3
 from collections.abc import Callable
 
 from src.models.base import new_id
-from src.models.teams import Invitation, Member, Membership, ReportView, Team
+from src.models.teams import Invitation, Member, Membership, ReportView, Team, TeamRole
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.store import Teams
 
@@ -50,7 +50,7 @@ class TeamRepository:
 
     def members(self, team_id: str) -> list[Member]:
         rows = self._conn.execute(
-            'SELECT users.id AS user_id, username, email, first_name, last_name, role, joined_on FROM team_memberships'
+            'SELECT users.id AS user_id, username, email, first_name, last_name, team_role, joined_on FROM team_memberships'
             f' JOIN users ON users.id = user_id WHERE team_id = ? AND {_CURRENT} ORDER BY joined_on, username',
             (team_id,))
         return [Member(**dict(row)) for row in rows]
@@ -63,7 +63,7 @@ class TeamRepository:
     def history(self, user_id: str) -> list[Membership]:
         """All teams the user was in, oldest first."""
         rows = self._conn.execute(
-            'SELECT team_id, teams.name AS team_name, user_id, joined_on, left_on FROM team_memberships'
+            'SELECT team_id, teams.name AS team_name, user_id, joined_on, left_on, team_role FROM team_memberships'
             ' JOIN teams ON teams.id = team_id WHERE user_id = ? ORDER BY team_memberships.id', (user_id,))
         return [Membership(**dict(row)) for row in rows]
 
@@ -78,7 +78,7 @@ class TeamRepository:
 
     def leave(self, user_id: str) -> None:
         """The user leaves their team today: the team services their tickets use become personal services (an own
-        service with the same short name is used instead of a copy), and a team admin becomes a user again."""
+        service with the same short name is used instead of a copy); a team admin's role ends with the membership."""
         current = self.membership(user_id)
         if current is None:
             return
@@ -88,7 +88,14 @@ class TeamRepository:
                                (personal, user_id, service_id))
         self._conn.execute(f'UPDATE team_memberships SET left_on = ? WHERE user_id = ? AND {_CURRENT}',
                            (self._clock().date().isoformat(), user_id))
-        self._conn.execute("UPDATE users SET role = 'user' WHERE id = ? AND role = 'team_admin'", (user_id,))
+
+    def set_team_role(self, user_id: str, team_role: TeamRole) -> Membership:
+        """The role in the team the user is in now (409 if they are in none)."""
+        if self.membership(user_id) is None:
+            raise ConflictError('Only a member of a team has a team role; invite them first')
+        self._conn.execute(f'UPDATE team_memberships SET team_role = ? WHERE user_id = ? AND {_CURRENT}',
+                           (team_role, user_id))
+        return self.membership(user_id)
 
     def _services_in_use(self, user_id: str, team_id: str) -> list[sqlite3.Row]:
         return self._conn.execute(

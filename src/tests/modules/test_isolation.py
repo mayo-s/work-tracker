@@ -126,7 +126,7 @@ def klaras_records(app, storage, klara_id, klara):
     app.simulate_put(f'/api/admin/users/{klara_id}', cookies=klara, json={'role': 'admin', 'active': True})
     with storage.transaction() as store:
         store.teams().join(klara_id, team['id'])
-        store.users().set_role(klara_id, 'team_admin')
+        store.teams().set_team_role(klara_id, 'team_admin')
     app.simulate_post(f'/api/teams/{team["id"]}/invitations', cookies=klara, json={'email': 'rainer.zufall@example.com'})
     with storage.transaction() as store:
         invitation = store.invitations().of_team(team['id'])[0]
@@ -205,4 +205,5 @@ def test_klaras_records_stay_as_they_were(app, klaras_records, klara, hans):
     assert app.simulate_get('/api/pto-years/2026', cookies=klara).json['allowance'] == 31.0
     assert app.simulate_get(f'/api/teams/{records["team"]}', cookies=klara).json['name'] == 'Platform'
     assert len(app.simulate_get('/api/review', cookies=klara).json['entries']) == 1
-    assert app.simulate_get('/api/auth/me', cookies=klara).json['role'] == 'team_admin'
+    assert app.simulate_get('/api/auth/me', cookies=klara).json['role'] == 'admin'
+    assert app.simulate_get('/api/auth/status', cookies=klara).json['team']['team_role'] == 'team_admin'

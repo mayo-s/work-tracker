@@ -6,7 +6,8 @@ from typing import Literal
 from pydantic import Field
 
 from src.models.base import DomainModel, RecordId
-from src.models.users import Role
+
+TeamRole = Literal['member', 'team_admin']  # a team admin manages the team and has its team view
 
 
 class Team(DomainModel):
@@ -22,6 +23,7 @@ class Membership(DomainModel):
     user_id: str
     joined_on: dt.date
     left_on: dt.date | None = None
+    team_role: TeamRole = 'member'
 
 
 class Member(DomainModel):
@@ -32,7 +34,7 @@ class Member(DomainModel):
     email: str
     first_name: str
     last_name: str
-    role: Role
+    team_role: TeamRole
     joined_on: dt.date
 
 

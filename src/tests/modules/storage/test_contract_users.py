@@ -162,8 +162,8 @@ def test_all_users_in_the_order_they_registered(storage, klara):
 
 def test_change_role(storage, klara):
     rainer = add(storage, RAINER)
-    assert run(storage, lambda store: store.users().set_role(rainer.id, 'team_admin')).role == 'team_admin'
-    assert run(storage, lambda store: store.users().get(rainer.id)).role == 'team_admin'
+    assert run(storage, lambda store: store.users().set_role(rainer.id, 'admin')).role == 'admin'
+    assert run(storage, lambda store: store.users().get(rainer.id)).role == 'admin'
 
 
 def test_deactivating_ends_the_sessions_and_keeps_the_user(storage, klara):

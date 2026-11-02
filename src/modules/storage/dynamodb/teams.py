@@ -11,7 +11,7 @@ from collections.abc import Callable
 
 from src.models.base import new_id
 from src.models.catalog import Service
-from src.models.teams import Invitation, Member, Membership, ReportView, Team
+from src.models.teams import Invitation, Member, Membership, ReportView, Team, TeamRole
 from src.modules.storage.dynamodb.catalog import DynamoServices, DynamoTeamServices
 from src.modules.storage.dynamodb.keys import USERS, user_partition
 from src.modules.storage.dynamodb.memberships import (
@@ -25,7 +25,7 @@ from src.modules.storage.store import Teams
 
 def _membership(unit: Unit, item: Item) -> Membership:
     return Membership(team_id=item['team_id'], team_name=team_item(unit, item['team_id'])['name'], user_id=item['user_id'],
-                      joined_on=item['joined_on'], left_on=item['left_on'])
+                      joined_on=item['joined_on'], left_on=item['left_on'], team_role=item.get('team_role', 'member'))
 
 
 def _profile(unit: Unit, user_id: str) -> Item | None:
@@ -81,8 +81,9 @@ class DynamoTeams:
         members = []
         for item in self._unit.query_prefix(team_partition(team_id), 'MEMBER#'):
             profile = _profile(self._unit, item['user_id'])
-            members.append(Member(user_id=item['user_id'], joined_on=item['joined_on'], **{
-                field: profile[field] for field in ('username', 'email', 'first_name', 'last_name', 'role')}))
+            members.append(Member(user_id=item['user_id'], joined_on=item['joined_on'],
+                                  team_role=item.get('team_role', 'member'),
+                                  **{field: profile[field] for field in ('username', 'email', 'first_name', 'last_name')}))
         return sorted(members, key=lambda member: (member.joined_on, member.username))
 
     def membership(self, user_id: str) -> Membership | None:
@@ -101,23 +102,31 @@ class DynamoTeams:
         today = self._clock().date().isoformat()
         membership_id = new_id()
         self._unit.put({'PK': user_partition(user_id), 'SK': f'{MEMBERSHIP}{membership_id}', 'team_id': team_id,
-                        'user_id': user_id, 'joined_on': today, 'left_on': None})
-        self._unit.put({'PK': team_partition(team_id), 'SK': f'MEMBER#{user_id}', 'user_id': user_id, 'joined_on': today})
+                        'user_id': user_id, 'joined_on': today, 'left_on': None, 'team_role': 'member'})
+        self._unit.put({'PK': team_partition(team_id), 'SK': f'MEMBER#{user_id}', 'user_id': user_id, 'joined_on': today,
+                        'team_role': 'member'})
         return Membership(team_id=team_id, team_name=team.name, user_id=user_id, joined_on=today)
 
     def leave(self, user_id: str) -> None:
         """The user leaves their team today: the team services their tickets use become personal services (an own
-        service with the same short name is used instead of a copy), and a team admin becomes a user again. Many
-        tickets are changed in chunks; the membership ends last, so leaving again completes it."""
+        service with the same short name is used instead of a copy); a team admin's role ends with the membership.
+        Many tickets are changed in chunks; the membership ends last, so leaving again completes it."""
         current = current_membership(self._unit, user_id)
         if current is None:
             return
         self._keep_services(user_id, current['team_id'])
         self._unit.put(current | {'left_on': self._clock().date().isoformat()})
         self._unit.delete(team_partition(current['team_id']), f'MEMBER#{user_id}')
-        profile = _profile(self._unit, user_id)
-        if profile and profile['role'] == 'team_admin':
-            self._unit.put(profile | {'role': 'user'})
+
+    def set_team_role(self, user_id: str, team_role: TeamRole) -> Membership:
+        """The role in the team the user is in now (409 if they are in none), on both items of the membership."""
+        current = current_membership(self._unit, user_id)
+        if current is None:
+            raise ConflictError('Only a member of a team has a team role; invite them first')
+        member = self._unit.get(team_partition(current['team_id']), f'MEMBER#{user_id}')
+        self._unit.put(current | {'team_role': team_role})
+        self._unit.put(member | {'team_role': team_role})
+        return self.membership(user_id)
 
     def _keep_services(self, user_id: str, team_id: str) -> None:
         team_services = {service.id: service for service in DynamoTeamServices(self._unit, team_id).all()}

@@ -9,7 +9,7 @@
 | `SESSION#<hash>` | `SESSION`               | a session by the hash of its token (time to live `expires_at`)    |
 | `ATTEMPTS`       | `AT#<time>#<random>`    | a failed login or registration; `CLEARED`: failed ones up to then |
 | `TEAMS`          | `TEAM#<id>`             | a team (`deleted_at` once deleted; `NAME#…` keeps names unique)   |
-| `TEAM#<id>`      | `MEMBER#<user id>`      | a current member; also `INVITE#<id>` and the team's services      |
+| `TEAM#<id>`      | `MEMBER#<user id>`      | a current member (team role); also `INVITE#<id>`, team services   |
 | `INVITES#<mail>` | `TEAM#<id>`             | an invitation to an e-mail address (lower case), for that user    |
 | `USER#<user id>` | e.g. `DAY#2026-10-30`   | a user's records: one partition per user, so only their own data  |
 

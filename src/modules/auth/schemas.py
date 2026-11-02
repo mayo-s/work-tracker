@@ -24,7 +24,7 @@ class UserView(BaseModel):
     email: str
     first_name: str
     last_name: str
-    role: Role = Field(description='admin, team_admin or user')
+    role: Role = Field(description='The app role: admin or user (team roles: see team)')
     must_change_password: bool = Field(default=False, description='True after a one-time password, until the user chose '
                                                                   'their own')
 

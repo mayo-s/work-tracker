@@ -109,12 +109,24 @@ def test_leaving_copies_the_team_services_in_use(per_call, teams, platform, hans
     assert len(team_services.all()) == 3  # the team keeps its services
 
 
-def test_a_team_admin_leaving_becomes_a_user(per_call, teams, platform, hans):
-    users = per_call(lambda store: store.users())
+def test_a_team_admin_is_a_member_with_that_team_role(teams, platform, hans):
     teams.join(hans, platform.id)
-    users.set_role(hans, 'team_admin')
+    assert teams.set_team_role(hans, 'team_admin').team_role == 'team_admin'
+    assert [(member.username, member.team_role) for member in teams.members(platform.id)] == [('hans', 'team_admin')]
+    assert teams.membership(hans).team_role == 'team_admin'
+
+
+def test_the_team_role_ends_with_the_membership(teams, platform, hans):
+    teams.join(hans, platform.id)
+    teams.set_team_role(hans, 'team_admin')
     teams.leave(hans)
-    assert (users.get(hans).role, teams.membership(hans)) == ('user', None)
+    teams.join(hans, platform.id)  # back again: a member, until made team admin again
+    assert [membership.team_role for membership in teams.history(hans)] == ['team_admin', 'member']
+
+
+def test_only_a_member_of_a_team_has_a_team_role(teams, hans):
+    with pytest.raises(ConflictError, match='Only a member of a team has a team role'):
+        teams.set_team_role(hans, 'team_admin')
 
 
 def test_team_with_members_cannot_be_deleted(teams, platform, klara_id):

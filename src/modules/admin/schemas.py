@@ -5,7 +5,7 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.models.teams import Team
+from src.models.teams import Member, Membership, Team, TeamRole
 from src.models.users import Role, User
 
 
@@ -20,17 +20,21 @@ class AdminUserView(BaseModel):
     registered_at: dt.datetime | None = Field(description='Null for users registered before it was recorded')
     last_login_at: dt.datetime | None
     team: str | None = Field(description='Name of the team the user is in')
+    team_role: TeamRole | None = Field(description='Their role in that team; null without a team')
     must_change_password: bool = Field(description='A one-time password is set; the user has not chosen their own yet')
 
     @classmethod
-    def of(cls, user: User, team: str | None) -> Self:
-        return cls(**user.model_dump(), team=team)
+    def of(cls, user: User, membership: Membership | None) -> Self:
+        return cls(**user.model_dump(), team=membership.team_name if membership else None,
+                   team_role=membership.team_role if membership else None)
 
 
 class AdminUserInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
-    role: Role = Field(description='A team admin manages the team they are in')
+    role: Role = Field(description='The app role: admins manage users and teams')
+    team_role: TeamRole | None = Field(default=None, description='The role in their team (only for a member of a team); '
+                                                                 'null keeps it. A team admin manages the team')
     active: bool = Field(description='False deactivates the user: they cannot log in, their sessions end')
 
 
@@ -47,10 +51,9 @@ class AdminTeamView(BaseModel):
     team_admins: list[str] = Field(description='Usernames of the team admins')
 
     @classmethod
-    def of(cls, team: Team, members: list[tuple[str, str]]) -> Self:
-        """`members`: username and role of each current member."""
+    def of(cls, team: Team, members: list[Member]) -> Self:
         return cls(id=team.id, name=team.name, members=len(members),
-                   team_admins=[username for username, role in members if role == 'team_admin'])
+                   team_admins=[member.username for member in members if member.team_role == 'team_admin'])
 
 
 class OneTimePasswordView(BaseModel):

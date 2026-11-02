@@ -1,5 +1,5 @@
 /* Work Tracker — base layout and styles (UI style: docs/SPEC.md 5.5).
-   All colors, sizes and spacings are variables in :root; dark mode (TASKS.md L.4) is a second set of color values,
+   All colors, sizes and spacings are variables in :root; dark mode (TASKS.md 6.4) is a second set of color values,
    following the system unless a theme is chosen (data-theme="light" or "dark" on <html>). */
 
 @font-face {
@@ -1391,6 +1391,10 @@ body:has(main[data-page='password']) .app-nav {
 
 .admin-users select {
   width: auto;
+}
+
+.admin-badge {
+  margin-left: var(--space-2);
 }
 
 .invite-form {

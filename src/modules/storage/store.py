@@ -22,7 +22,7 @@ from src.models.pto import PtoYear
 from src.models.review import FlagReason, ReviewFlag
 from src.models.schedules import Schedule
 from src.models.settings import Settings
-from src.models.teams import Invitation, Member, Membership, ReportView, Team
+from src.models.teams import Invitation, Member, Membership, ReportView, Team, TeamRole
 from src.models.users import Role, User
 
 Clock = Callable[[], dt.datetime]
@@ -155,6 +155,7 @@ class Teams(Protocol):
     def history(self, user_id: str) -> list[Membership]: ...
     def join(self, user_id: str, team_id: str) -> Membership: ...
     def leave(self, user_id: str) -> None: ...
+    def set_team_role(self, user_id: str, team_role: TeamRole) -> Membership: ...
 
 
 class Invitations(Protocol):

@@ -1,4 +1,4 @@
-"""Team view (L.10): a team admin sees a member's data read-only, from the day the member joined the team."""
+"""Team view (7.4): a team admin sees a member's data read-only, from the day the member joined the team."""
 
 import datetime as dt
 
@@ -33,7 +33,7 @@ def ids(database):
         platform = teams.add(Team(name='Platform')).id
         for name in ('hans', 'rainer'):
             teams.join(ids[name], platform)
-        users.set_role(ids['hans'], 'team_admin')
+        teams.set_team_role(ids['hans'], 'team_admin')
         save_settings(conn, ids['rainer'], Settings(balance_start=dt.date(2026, 11, 2)))
         finish_setup(conn, ids['rainer'])
         days, entries = DayRepository(conn, ids['rainer']), EntryRepository(conn, ids['rainer'])

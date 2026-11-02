@@ -6,7 +6,7 @@ import { el } from './dom.ts';
 import { button, renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 import { field, submit } from './forms.ts';
 
-const ROLE_LABELS: Record<MemberView['role'], string> = { admin: 'Admin', team_admin: 'Team admin', user: 'Member' };
+const ROLE_LABELS: Record<MemberView['team_role'], string> = { team_admin: 'Team admin', member: 'Member' };
 
 /** The team to show: `?team=` (the admin opens any team from the admin page), otherwise the user's own. */
 export function teamId(search: string, own: string | null): string | null {
@@ -18,7 +18,7 @@ function membersSection(team: TeamPageView, me: string | undefined, page: Page):
     el('td', {}, el('strong', {}, member.username), member.user_id === me ? el('span', { class: 'muted' }, ' (you)') : ''),
     el('td', {}, [member.first_name, member.last_name].filter(Boolean).join(' ')),
     el('td', {}, member.email),
-    el('td', {}, ROLE_LABELS[member.role]),
+    el('td', {}, ROLE_LABELS[member.team_role]),
     el('td', {}, formatDate(member.joined_on)),
     el('td', { class: 'row-actions' }, member.user_id === me ? '' : button('Remove', () => {
       if (window.confirm(`Remove ${member.username} from ${team.name}? The team services their tickets use become `

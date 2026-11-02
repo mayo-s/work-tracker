@@ -157,7 +157,7 @@ MIGRATIONS: tuple[Migration, ...] = (
         at TEXT NOT NULL
     );
     """,
-    # 8: data per user (TASKS.md L.8a.1); all existing records go to the only user, who becomes admin. Without a user,
+    # 8: data per user (TASKS.md 7.2a); all existing records go to the only user, who becomes admin. Without a user,
     # they get user 0 (no owner yet) until the first user is created. `settings` stays for app-wide settings.
     """
     CREATE TEMP TABLE owner AS SELECT COALESCE(MIN(id), 0) AS id FROM users;
@@ -462,7 +462,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     DROP TABLE temp.user_ids;
     DROP TABLE temp.entry_sequence;
     """,
-    # 10: registration and user administration (TASKS.md L.8a.2): users can be deactivated and show when they registered
+    # 10: registration and user administration (TASKS.md 7.2b): users can be deactivated and show when they registered
     # and last logged in; registrations count towards the pause after failed logins
     """
     ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1));
@@ -472,7 +472,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     ALTER TABLE login_attempts ADD COLUMN kind TEXT NOT NULL DEFAULT 'failed_login'
         CHECK (kind IN ('failed_login', 'registration'));
     """,
-    # 11: teams (TASKS.md L.8a.3): memberships kept as history, invitations by e-mail address, and services of a team
+    # 11: teams (TASKS.md 7.2c): memberships kept as history, invitations by e-mail address, and services of a team
     """
     CREATE TABLE teams (
         id         INTEGER PRIMARY KEY,
@@ -515,7 +515,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     DROP TABLE services;
     ALTER TABLE new_services RENAME TO services;
     """,
-    # 12: team view (TASKS.md L.10): which team admin looked at which report of a member, shown to the member
+    # 12: team view (TASKS.md 7.4): which team admin looked at which report of a member, shown to the member
     """
     CREATE TABLE report_views (
         id        INTEGER PRIMARY KEY,
@@ -527,10 +527,36 @@ MIGRATIONS: tuple[Migration, ...] = (
     );
     CREATE INDEX report_views_by_member ON report_views (member_id, viewed_at);
     """,
-    # 13: UUIDv7 ids for records instead of integers counting up (SPEC 7.2a, TASKS.md L.11i2)
+    # 13: UUIDv7 ids for records instead of integers counting up (SPEC 7.2a, TASKS.md 8.1i2)
     to_record_ids,
-    # 14: one-time passwords set by an admin (TASKS.md L.11l): the user chooses their own at the next login
+    # 14: one-time passwords set by an admin (TASKS.md 8.1l): the user chooses their own at the next login
     """
     ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0 CHECK (must_change_password IN (0, 1));
+    """,
+    # 15: the team role is the membership's (TASKS.md 9.1a): a team admin becomes a user who is team admin of their team
+    """
+    ALTER TABLE team_memberships ADD COLUMN team_role TEXT NOT NULL DEFAULT 'member'
+        CHECK (team_role IN ('member', 'team_admin'));
+    UPDATE team_memberships SET team_role = 'team_admin'
+        WHERE left_on IS NULL AND user_id IN (SELECT id FROM users WHERE role = 'team_admin');
+
+    CREATE TABLE new_users (
+        id                   TEXT PRIMARY KEY,  -- random UUID
+        username             TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+        email                TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+        first_name           TEXT    NOT NULL,
+        last_name            TEXT    NOT NULL DEFAULT '',
+        password_hash        TEXT    NOT NULL,
+        role                 TEXT    NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+        active               INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+        registered_at        TEXT,
+        last_login_at        TEXT,
+        must_change_password INTEGER NOT NULL DEFAULT 0 CHECK (must_change_password IN (0, 1))
+    );
+    INSERT INTO new_users SELECT id, username, email, first_name, last_name, password_hash,
+        CASE role WHEN 'team_admin' THEN 'user' ELSE role END, active, registered_at, last_login_at, must_change_password
+        FROM users ORDER BY rowid;
+    DROP TABLE users;
+    ALTER TABLE new_users RENAME TO users;
     """,
 )

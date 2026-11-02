@@ -62,6 +62,30 @@ def test_database_in_use_keeps_its_data_and_counts_as_set_up(tmp_path, monkeypat
     assert (count(db, 'services'), count(db, 'pto_years'), setup_done) == (5, 4, '1')
 
 
+def test_a_team_admin_becomes_a_user_who_is_team_admin_of_their_team(tmp_path, monkeypatch):
+    db = Database(tmp_path / 'team-admins.db')
+    monkeypatch.setattr(migrations, 'MIGRATIONS', migrations.MIGRATIONS[:14])
+    db.migrate()
+    ids = {name: new_id() for name in ('klara', 'hans', 'rainer', 'team', 'now', 'before')}
+    with db.transaction() as conn:
+        for name, role in (('klara', 'admin'), ('hans', 'team_admin'), ('rainer', 'user')):
+            conn.execute("INSERT INTO users (id, username, email, first_name, password_hash, role) VALUES (?, ?, ?, ?, '', ?)",
+                         (ids[name], name, f'{name}@example.com', name.title(), role))
+        conn.execute("INSERT INTO teams (id, name) VALUES (?, 'Platform')", (ids['team'],))
+        conn.executemany('INSERT INTO team_memberships (id, team_id, user_id, joined_on, left_on) VALUES (?, ?, ?, ?, ?)', [
+            (ids['before'], ids['team'], ids['hans'], '2026-01-01', '2026-06-01'),
+            (ids['now'], ids['team'], ids['hans'], '2026-06-01', None),
+        ])
+    monkeypatch.undo()
+    db.migrate()
+    with db.transaction() as conn:
+        roles = [tuple(row) for row in conn.execute('SELECT username, role FROM users ORDER BY rowid')]
+        team_roles = [tuple(row) for row in conn.execute(
+            'SELECT joined_on, team_role FROM team_memberships ORDER BY joined_on')]
+    assert roles == [('klara', 'admin'), ('hans', 'user'), ('rainer', 'user')]
+    assert team_roles == [('2026-01-01', 'member'), ('2026-06-01', 'team_admin')]
+
+
 def test_migrate_rejects_newer_schema(database, monkeypatch):
     monkeypatch.setattr(migrations, 'MIGRATIONS', ())
     with pytest.raises(SchemaVersionError):

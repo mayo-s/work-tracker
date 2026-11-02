@@ -270,7 +270,7 @@ corners, one accent color. Warnings are the only loud element.
 - **Accessibility**: WCAG 2.2 AA (checked with axe-core on all pages, both themes). Links in text are underlined;
   hints and errors describe their field (`aria-describedby`); every field has a visible label; Escape closes inline
   forms, and focus returns to the button that opened them; "Skip to content" is the first link on each page.
-  Narrow screens and zoom follow in TASKS.md L.9.
+  Narrow screens and zoom follow in TASKS.md 6.7.
 
 ### 5.6 Login
 
@@ -279,55 +279,94 @@ corners, one accent color. Warnings are the only loud element.
   special character (anything but letters, digits and spaces); existing ones keep working. Log in with the username
   or the e-mail address.
 - A login is a session: a random token in an `HttpOnly`, `SameSite=Strict` cookie (`Secure` over HTTPS), stored only as
-  a hash. It stays valid for 24 hours since the last activity (renewed at most every 30 minutes); "Log out" ends it,
-  a new password ends all other sessions. After 5 failed logins or registrations within a minute, both pause for a
+  a hash. It stays valid for 24 hours since the last activity, root's for 1 hour (renewed at most every 30 minutes,
+  root's every 5); "Log out" ends it, a new password ends all other sessions. After 5 failed logins or registrations within a minute, both pause for a
   minute.
 - Every page and the API need a login (pages forward to `/login?next=…`, the API answers 401); `/login`, `/register`,
-  `/health`, the API docs and the static files stay open. A new database creates the first user in the setup, an
-  existing one once on `/login`; on AWS Lambda only with the setup token (7.4). Locally, a command resets a forgotten
-  password; on AWS Lambda, where nobody has a shell, the admin sets a one-time password for the user, who changes it at
-  the next login:
-  - The app makes it (four groups of four letters and digits, e.g. `k7Qm-3xTp-9wLs-Rf2c`) and shows it to the admin
-    only once, to pass on. The user's sessions end and their password no longer works.
+  `/health`, the API docs and the static files stay open. A new database creates root in the setup (5.7); one with
+  users but no root offers "Create root admin" once on `/login`; on AWS Lambda both only with the setup token (7.4).
+  Locally, a command resets a forgotten password; on AWS Lambda, where nobody has a shell, an admin sets a one-time
+  password for a user or team admin, root for an admin, and root resets its own with a new setup token (7.4). The
+  one-time password is changed at the next login:
+  - It is set in its own section of the admin page by the user's e-mail address (ignoring case), after a question.
+    The app makes it (four groups of four letters and digits, e.g. `k7Qm-3xTp-9wLs-Rf2c`) and shows it only once, to
+    pass on. The user's sessions end and their password no longer works.
   - After logging in with it, every page forwards to `/password` and the API answers 403, until the user chose their
-    own password there. The admin page shows "One-time password" as the user's status until then.
-  - Not for the own account (409): that password is changed in the settings. It stays valid until it is used.
+    own password there. The admin page shows "One-time password" next to the user's status until then.
+  - Not for the own account (409): that password is changed in the settings. It stays valid until it is used. It
+    does not switch off two-factor login.
+- Two-factor login (TOTP, an authenticator app): root and admins must use it, users and team admins may switch it on
+  in their settings.
+  - Setting it up shows a QR code (an SVG made on the server) and the secret as text; a first code confirms it. Root
+    sets it up right after the setup, an admin at the next login after being appointed: until then every page
+    forwards to `/2fa` and the API answers 403, as with a one-time password.
+  - Codes have 6 digits and change every 30 seconds; one step before or after is accepted, and each code works only
+    once. A wrong code counts as a failed login (5 per minute).
+  - Setting it up shows 10 recovery codes once, stored only as hashes; each replaces a code once. Without them, an
+    admin resets two-factor login for a user or team admin, root for an admin, and root its own with a new setup
+    token (7.4); it is then set up again at the next login.
+  - "Remember this browser" skips the code for 30 days in that browser (its own `HttpOnly` cookie, a random token
+    stored as a hash), never for root. A new password or a reset of two-factor login forgets all browsers.
 - `WORK_TRACKER_AUTH=off` switches the login off for local development (`STAGE=Local` only, see 7.1); the app then
-  works on the first user's data.
+  works on the first user's data who is not root.
 
 ### 5.7 Data per user
 
 - Each user has their own days, entries with their history, review flags, tickets with their service, services,
   activity types, work schedules, PTO years and settings (balance start, opening balance, theme, setup done).
-  Nobody sees or changes another user's records, the admin neither; an unknown or foreign id answers 404, using
+  Nobody sees or changes another user's records, root and admins neither; an unknown or foreign id answers 404, using
   another user's service or activity type 409.
-- A user is identified by a random UUID. Roles: admin, team admin, user. The first user is admin and takes over all records of a database used without
-  users. A new user starts with the four default activity types and goes through the setup; "Log out" is there during
-  the setup too, and after the next login the setup continues.
-- Registration: while an admin has switched it on (off by default), the login page links to `/register`. A new user
+- A user is identified by a random UUID and has one app role; in a team, the membership has a team role; an auditor
+  is assigned to teams. The first user who is not root takes over all records of a database used without users. A
+  new user (not root) starts with the four default activity types and goes through the setup; "Log out" is there
+  during the setup too, and after the next login the setup continues.
+- App roles:
+  - **root** runs the app: exactly one, the first user (created in the setup, 7.4); it cannot be demoted or
+    deactivated. Root switches registration on and off, appoints and removes admins, sets one-time passwords for
+    admins, resets their two-factor login, deactivates and reactivates them, and makes and restores the full backup
+    (5.9). Root tracks no work: no setup, days or reports, never in a team (the tracking API answers 403); its start
+    page is `/admin`.
+  - **admin** organizes and tracks their own work: manages users and team admins (one-time password, two-factor
+    reset, deactivate, reactivate), teams, team services, team admins and auditors. Admins do not appoint admins and
+    do not deactivate them.
+  - **user** tracks their own work and sees their own reports.
+- Team roles (on the membership, for admins and users alike): **member** and **team admin**. A team admin manages
+  the team they are in (invitations, members, team services) and has its team view; leaving the team ends the role.
+  Nobody changes their own team role, so no admin makes themselves the one who sees the members' reports.
+- **Auditor**: an admin assigns a user or another admin (never themselves, nor root) to one or more teams, optionally
+  until an end date (the access ends by itself then), otherwise until removed; deleting a team ends its assignments.
+  An auditor has the team view of those teams read-only, of everyone who was ever in the team, each for the days they
+  belonged to it (several stays each count). Being auditor changes nothing else.
+- Registration: while root has switched it on (off by default), the login page links to `/register`. A new user
   enters the fields of the login, is logged in at once (no e-mail confirmation) and goes through the setup. Off, or
   with the login off, `/register` answers 404.
-- Admin page `/admin` (linked in the navigation for admins; the admin API answers 403 to others): registration on or
-  off, and the users with username, name, e-mail address, role, status, registration and last login, none of their
-  time data. Admins change the role (admin or user), deactivate users (logged out at once, refused at login, data kept)
-  and reactivate them. Nobody demotes or deactivates themselves, so an active admin always remains; users are not
-  deleted. A forgotten password is reset with the command on the computer running the app.
+- Admin page `/admin` (linked in the navigation for root and admins; its API answers 403 to others): the users with
+  username, name, e-mail address, app role, team and team role, status, registration and last login, none of their
+  time data; roles and the status (Active or Deactivated, a deactivation asked first) are dropdowns in the table, a
+  one-time password has a section of its own. Root sees registration, the admins and the full backup; admins see
+  users, teams and auditors. Deactivated users are logged out at once and refused at login, their data kept. Nobody demotes or deactivates
+  themselves; users are not deleted. Locally, a forgotten password is also reset with the command.
+- Audit log: every change of roles, team admins and auditors, deactivation and reactivation, one-time password,
+  two-factor reset, registration switch, team change, full backup and restore is logged with who, what, whom and when
+  (no personal records). Root and admins see the whole log on `/admin`, every user the entries about their own
+  account in the settings.
 - Teams: a user is in at most one team; the membership history (joined on, left on) keeps which team a user was in on
-  each day. The admin creates, renames and deletes teams (only without members; a deleted team stays in the history)
-  and makes members team admins. A team admin manages the team they are in; leaving it makes them a user again.
-- Invitations: the admin, or a team admin for their team, invites by the exact e-mail address (ignoring case); the
+  each day. An admin creates, renames and deletes teams (only without members; a deleted team stays in the history)
+  and makes members team admins.
+- Invitations: an admin, or a team admin for their team, invites by the exact e-mail address (ignoring case); the
   answer and the list of open invitations never tell whether such a user exists. Users never see which teams exist.
   The invited user accepts or declines in the settings (a badge on Settings while one is open); accepting one declines
   the others and leaves the current team. The inviter can withdraw an open invitation.
 - Services: a service is personal or belongs to a team. Members choose their team's services next to their personal
-  ones; only the admin and the team's admins change team services. On leaving (or being removed), the team services
+  ones; only admins and the team's admins change team services. On leaving (or being removed), the team services
   the user's tickets use are copied into their personal services, or a personal service with the same short name is
   used, so the tickets keep their service.
 - Team view: a team admin chooses a current member of their team on the dashboard and sees their dashboard, week,
   month and year read-only, from the day the member joined the team (earlier days show as "not in this team"). Entry
   descriptions and notes are shown, day notes and the review are not; the overtime balance and PTO left are running
-  figures over the whole time. Admins get no such view unless they are team admin of that team; former members drop
-  out. Members see in their settings which team admins can look, and a log of who looked at which report and when.
+  figures over the whole time. Admins get no such view unless they are team admin or auditor of that team; former
+  members drop out (auditors still see them, see above). Members see in their settings which team admins and
+  auditors can look, and a log of who looked at which report and when.
 
 ### 5.8 Export and import (own data)
 
@@ -348,6 +387,25 @@ corners, one accent color. Warnings are the only loud element.
   what the unfinished import wrote. Finishing the setup is the last step and clears the mark.
 - Exporting, importing into a new user and exporting again gives the same file (apart from `exported_at`, and team
   services, which come back as personal ones).
+
+### 5.9 Full backup and restore (root)
+
+- Root downloads one file of the whole database on `/admin`: all users (with password hashes and two-factor
+  secrets), teams, memberships, invitations, auditors, every user's records with their history, the report view log,
+  the audit log and the app settings. Not in it: sessions, remembered browsers, failed logins, the used setup tokens.
+  It works across backends (e.g. local SQLite to DynamoDB).
+- The file is compressed (gzip) and encrypted with a passphrase root enters (at least 12 characters): AES-256-GCM
+  with a key from scrypt; the header (`{"format": "work-tracker-backup", "version": 1, …}`) holds the salt and the
+  nonce, nothing personal. The passphrase is stored nowhere: without it the file is useless.
+- Restore, on `/admin` with the file and its passphrase: a database holding nobody but root restores at once.
+  Otherwise root is asked whether to purge the current state first and confirms by typing `purge`; everything but
+  root goes, then the backup comes in. Root stays as it is (the backup's root is skipped); everyone else has their
+  password and two-factor login from the backup, and all other sessions end.
+- A wrong passphrase, a damaged file, an unknown format or a newer version is refused before anything is written.
+  SQLite restores in one transaction. DynamoDB purges and restores in atomic chunks; one that stops halfway marks the
+  database: only root can use the app until restoring the file again finishes it.
+- Both downloads and requests stay below Lambda's 6 MB (compressed, the data of a few users is far smaller); larger
+  databases would need S3 (later).
 
 ## 6. Import (spreadsheet CSV)
 
@@ -499,7 +557,9 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 - The rules of 5.7 hold on both backends and are enforced by the app: the user id comes from the session only, never
   from the request, and every repository of personal records is bound to that user id (`user_id = ?` in SQLite, the
   partition `USER#<user id>` in DynamoDB). A team admin reads a member's data only through the team view's check
-  (current member of their team, from the day they joined); the admin gets users and teams, never time data.
+  (current member of their team, from the day they joined), an auditor only through the same view with the
+  assignment's check (team and end date, the days of each stay); root and admins get users and teams, never time
+  data. Only the full backup (5.9) holds everybody's data, encrypted with root's passphrase.
 - Tests on both backends: another user's id answers 404 for every repository and API resource (team and admin routes
   403); the API tests run the whole app on each backend.
 - AWS: the Lambda's IAM role may read and write only this one table and its indexes, and read only the setup token
@@ -522,16 +582,20 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
   parameter (decrypting it only through SSM), write its logs. Besides Lambda, only the stage's keep-warm rule may use
   it (`deploy/lambda-trust-policy.json`): zappa's EventBridge rule calls the function every few minutes, so it rarely
   starts cold, and zappa hands the rule the function's role.
-- Setup token: the URL is public, so on Lambda the first user (the admin) is created only with the setup token. It is
+- Setup token: the URL is public, so on Lambda root is created only with the setup token. It is
   a `SecureString` in the SSM Parameter Store of `eu-central-1`, created once by hand and never in the repository:
   `aws ssm put-parameter --name /work-tracker-<stage>/setup-token --type SecureString --value "$(python -c "import
   secrets; print(secrets.token_urlsafe(32))")"` (at least 32 characters).
-  - While no user exists, `/setup` asks for it (also for an import); the app reads the parameter only then, not on
-    every start, and creating the first user in any way (setup, import, `/api/auth/first-user`) needs it. A wrong
-    token is refused and counts as a failed login (5 per minute, 5.6), and the comparison takes the same time for
-    every token. Without the parameter, `/setup` creates no user and says so.
-  - Once the first user exists, the token no longer matters and the parameter can be deleted. Registration stays off
-    until the admin switches it on, so nobody else gets an account. Locally (`STAGE=Local`), no token is needed.
+  - While there is no root, `/setup` (or `/login` of a database with users) asks for it; the app reads the parameter
+    only then, not on every start, and creating root in any way needs it. A wrong token is refused and counts as a
+    failed login (5 per minute, 5.6), and the comparison takes the same time for every token. Without the parameter,
+    no root is created and the page says so.
+  - Each token works once: the app keeps a hash of every token it used and refuses it afterwards, so a forgotten
+    parameter is harmless; deleting it afterwards is still the rule (README).
+  - Root forgot its password or lost its authenticator: create the parameter again with a new token; "Reset root
+    login" on `/login` takes it, sets a new password and resets two-factor login (set up again right after).
+  - Registration stays off until root switches it on, so nobody else gets an account. Locally (`STAGE=Local`), no
+    token is needed.
 - The package leaves out `examples/` (the real spreadsheet data), `*.db`, `.env`, the tests, `node_modules` and
   `.venv`; the compiled JavaScript is built before deploying (`npm run build`). `deploy/zappa.sh` packages from a
   virtualenv outside the project that holds only what the app needs (no moto, pytest, …): about 26 MB. zappa copies the
@@ -541,5 +605,5 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 ## 8. Future ideas
 
 - Export (CSV / spreadsheet format).
-- Settings page with overtime balance, PTO years, work schedules and holiday rules is done (TASKS.md, L.1a–L.1c).
-- Initial setup of a new database on `/setup` is done (TASKS.md, L.3).
+- Settings page with overtime balance, PTO years, work schedules and holiday rules is done (TASKS.md, 6.1a–6.1c).
+- Initial setup of a new database on `/setup` is done (TASKS.md, 6.3).

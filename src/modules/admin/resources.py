@@ -10,6 +10,7 @@ from spectree import Response
 from src.lib.passwords import one_time_password
 from src.modules.admin.schemas import AdminSettings, AdminTeamView, AdminUserInput, AdminUserView, OneTimePasswordView
 from src.modules.auth.sessions import current_user
+from src.models.teams import Membership
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.store import Storage, Store
 from src.modules.teams.schemas import TeamInput
@@ -53,19 +54,27 @@ class AdminUserItem:
     def on_put(self, req: falcon.Request, resp: falcon.Response, user_id: str, json: AdminUserInput) -> None:
         """Change a user's role, or deactivate (their sessions end, their data is kept) or reactivate them.
 
-        Nobody demotes or deactivates themselves (409), so an active admin always remains. Only a member of a team can be
-        a team admin (409); they manage that team.
+        Nobody demotes or deactivates themselves (409), so an active admin always remains. Only a member of a team has a
+        team role (409); a team admin manages that team. Nobody changes their own team role (409), so no admin makes
+        themselves the team admin who sees the members' reports.
         """
         with self._storage.transaction() as store:
-            users = store.users()
-            if user_id == _admin(req, store) and (json.role != 'admin' or not json.active):
-                raise ConflictError('You cannot demote or deactivate yourself; ask another admin')
+            users, teams = store.users(), store.teams()
+            if user_id == _admin(req, store):
+                _check_own_change(json, teams.membership(user_id))
             users.get(user_id)
-            if json.role == 'team_admin' and store.teams().membership(user_id) is None:
-                raise ConflictError('Only a member of a team can be a team admin; invite them first')
+            if json.team_role is not None and (json.team_role == 'team_admin' or teams.membership(user_id)):
+                teams.set_team_role(user_id, json.team_role)
             users.set_role(user_id, json.role)
             users.set_active(user_id, json.active)
             resp.media = _view(store, user_id)
+
+
+def _check_own_change(json: AdminUserInput, membership: Membership | None) -> None:
+    if json.role != 'admin' or not json.active:
+        raise ConflictError('You cannot demote or deactivate yourself; ask another admin')
+    if json.team_role is not None and json.team_role != (membership.team_role if membership else None):
+        raise ConflictError('You cannot change your own team role; ask another admin')
 
 
 class AdminOneTimePassword:
@@ -155,10 +164,9 @@ class AdminSettingsResource:
 
 
 def _view(store: Store, user_id: str) -> AdminUserView:
-    membership = store.teams().membership(user_id)
-    return AdminUserView.of(store.users().get(user_id), membership.team_name if membership else None)
+    return AdminUserView.of(store.users().get(user_id), store.teams().membership(user_id))
 
 
 def _team_view(store: Store, team_id: str) -> AdminTeamView:
     teams = store.teams()
-    return AdminTeamView.of(teams.get(team_id), [(member.username, member.role) for member in teams.members(team_id)])
+    return AdminTeamView.of(teams.get(team_id), teams.members(team_id))
