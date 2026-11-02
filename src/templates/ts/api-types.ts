@@ -534,8 +534,8 @@ export interface paths {
         };
         get?: never;
         /**
-         * Change a user's role, or deactivate (their sessions end, their data is kept) or reactivate them.
-         * @description Nobody demotes or deactivates themselves (409), and root stays as it is (409). Only a member of a team has a team role (409); a team admin manages that team. Nobody changes their own team role (409), so no admin makes themselves the team admin who sees the members' reports.
+         * Change a user's role or team role, or deactivate (their sessions end, their data is kept) or reactivate them.
+         * @description Only root appoints and removes admins and deactivates or reactivates them; only admins give team roles and deactivate or reactivate everyone else (403 otherwise). Nobody demotes or deactivates themselves (409), and root stays as it is (409). Only a member of a team has a team role (409); a team admin manages that team. Nobody changes their own team role (409), so no admin makes themselves the team admin who sees the members' reports.
          */
         put: operations["put__api_admin_users_{user_id}"];
         post?: never;
@@ -556,7 +556,7 @@ export interface paths {
         put?: never;
         /**
          * Set a one-time password for a user who forgot theirs, shown only in this answer: their sessions end, and at the next login they choose their own password before anything else.
-         * @description Not for the own account nor root's (409): those passwords are changed in the settings.
+         * @description Root sets it for admins, admins for everyone else (403 otherwise). Not for the own account nor root's (409): those passwords are changed in the settings.
          */
         post: operations["post__api_admin_users_{user_id}_one-time-password"];
         delete?: never;

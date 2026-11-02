@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { roleName, userByEmail, userInput } from '../ts/admin.ts';
+import { editable, roleName, userByEmail, userInput } from '../ts/admin.ts';
 import type { AdminUserView } from '../ts/api.ts';
 
 const HANS: AdminUserView = {
@@ -27,4 +27,20 @@ test('roles read as a sentence', () => {
 test('the user for a one-time password is found by e-mail address, ignoring case and spaces', () => {
   assert.equal(userByEmail([HANS], ' Hans.Dampf@Example.com ')?.username, 'hans');
   assert.equal(userByEmail([HANS], 'hans@example.com'), undefined);
+});
+
+test('root changes the role of anyone and the status of admins; admins team roles and the status of the others', () => {
+  const admin = { ...HANS, role: 'admin' as const };
+  const member = { ...HANS, team: 'Platform', team_role: 'member' as const };
+  assert.deepEqual(editable('root', HANS, false), { role: true, teamRole: false, status: false });
+  assert.deepEqual(editable('root', admin, false), { role: true, teamRole: false, status: true });
+  assert.deepEqual(editable('admin', member, false), { role: false, teamRole: true, status: true });
+  assert.deepEqual(editable('admin', admin, false), { role: false, teamRole: false, status: false });
+});
+
+test('nobody changes their own row, and root stays', () => {
+  const none = { role: false, teamRole: false, status: false };
+  assert.deepEqual(editable('admin', { ...HANS, role: 'admin', team: 'Platform', team_role: 'member' }, true), none);
+  assert.deepEqual(editable('admin', { ...HANS, role: 'root' }, false), none);
+  assert.deepEqual(editable('root', { ...HANS, role: 'root' }, true), none);
 });

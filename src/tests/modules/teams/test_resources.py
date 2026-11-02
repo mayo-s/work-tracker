@@ -158,9 +158,10 @@ def test_team_admin_leaving_has_no_team_role_left(app, klara, hans, team_id, han
     assert app.simulate_get(f'/api/teams/{team_id}', cookies=hans).status == falcon.HTTP_403
 
 
-def test_an_admin_is_team_admin_of_their_team_too(app, klara, hans, team_id):
+def test_an_admin_is_team_admin_of_their_team_too(app, database, klara, hans, team_id):
     hans_id = user_id(app, hans)
-    app.simulate_put(f'/api/admin/users/{hans_id}', cookies=klara, json={'role': 'admin', 'active': True})
+    with database.transaction() as conn:
+        UserRepository(conn).set_role(hans_id, 'admin')  # appointed by root
     join(app, klara, team_id, 'hans.dampf@example.com', hans)
     changed = app.simulate_put(f'/api/admin/users/{hans_id}', cookies=klara,
                                json={'role': 'admin', 'team_role': 'team_admin', 'active': True}).json
