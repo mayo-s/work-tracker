@@ -1,6 +1,11 @@
+import importlib
+
+import falcon
 import pytest
+from falcon import testing
 
 from src.app import create_app
+from src.modules.storage.dynamodb.storage import DynamoStorage
 from src.modules.storage.sqlite import SqliteStorage
 from src.utils.stages import Stage, StageError, current_stage, stage_storage
 
@@ -10,6 +15,7 @@ def no_stage(monkeypatch):
     """Neither STAGE (e.g. from .env) nor Lambda's variable, unless a test sets them."""
     monkeypatch.delenv('STAGE', raising=False)
     monkeypatch.delenv('AWS_LAMBDA_FUNCTION_NAME', raising=False)
+    monkeypatch.delenv('WORK_TRACKER_TABLE', raising=False)
 
 
 @pytest.fixture
@@ -59,9 +65,23 @@ def test_login_cannot_be_switched_off_on_lambda(monkeypatch, on_lambda):
         stage_storage()
 
 
-def test_lambda_has_no_storage_yet(on_lambda):
-    with pytest.raises(StageError, match='DynamoDB storage'):
-        stage_storage()
+def test_lambda_uses_the_table_named_like_the_function(monkeypatch, on_lambda, dynamo_table):
+    monkeypatch.setenv('AWS_LAMBDA_FUNCTION_NAME', dynamo_table.name)
+    storage = stage_storage()
+    assert isinstance(storage, DynamoStorage) and storage.table.name == dynamo_table.name
+
+
+def test_another_table_can_be_named(monkeypatch, on_lambda, dynamo_table):
+    monkeypatch.setenv('WORK_TRACKER_TABLE', dynamo_table.name)
+    assert stage_storage().table.name == dynamo_table.name
+
+
+def test_the_lambda_app(monkeypatch, on_lambda, dynamo_table):
+    monkeypatch.setenv('AWS_LAMBDA_FUNCTION_NAME', dynamo_table.name)
+    lambda_app = importlib.reload(importlib.import_module('src.lambda_app'))
+    client = testing.TestClient(lambda_app.app)
+    assert client.simulate_get('/health').status == falcon.HTTP_200
+    assert client.simulate_get('/api/auth/status').json['setup_token'] is True  # the first user needs it
 
 
 def test_app_without_database_stops_without_stage():

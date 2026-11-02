@@ -1,0 +1,31 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TheTableOfTheStage",
+      "Effect": "Allow",
+      "Action": ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem", "dynamodb:Query",
+                 "dynamodb:ConditionCheckItem"],
+      "Resource": "arn:aws:dynamodb:eu-central-1:*:table/work-tracker-STAGE"
+    },
+    {
+      "Sid": "TheSetupTokenOfTheStage",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:eu-central-1:*:parameter/work-tracker-STAGE/setup-token"
+    },
+    {
+      "Sid": "DecryptTheSetupTokenThroughSsm",
+      "Effect": "Allow",
+      "Action": "kms:Decrypt",
+      "Resource": "*",
+      "Condition": {"StringEquals": {"kms:ViaService": "ssm.eu-central-1.amazonaws.com"}}
+    },
+    {
+      "Sid": "ItsLogs",
+      "Effect": "Allow",
+      "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+      "Resource": "arn:aws:logs:eu-central-1:*:log-group:/aws/lambda/work-tracker-STAGE*"
+    }
+  ]
+}
