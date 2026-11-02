@@ -5,8 +5,8 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.models.teams import Invitation, Member, Membership, ReportView, Team
-from src.models.users import EMAIL_PATTERN, Role, User
+from src.models.teams import Invitation, Member, Membership, ReportView, Team, TeamRole
+from src.models.users import EMAIL_PATTERN, User
 
 
 class TeamInput(BaseModel):
@@ -24,7 +24,7 @@ class MemberView(BaseModel):
     email: str
     first_name: str
     last_name: str
-    role: Role
+    team_role: TeamRole
     joined_on: dt.date
 
     @classmethod
@@ -65,10 +65,12 @@ class TeamRef(BaseModel):
     id: str
     name: str
     joined_on: dt.date
+    team_role: TeamRole = Field(description='member or team_admin (manages the team, has its team view)')
 
     @classmethod
     def of(cls, membership: Membership) -> Self:
-        return cls(id=membership.team_id, name=membership.team_name, joined_on=membership.joined_on)
+        return cls(id=membership.team_id, name=membership.team_name, joined_on=membership.joined_on,
+                   team_role=membership.team_role)
 
 
 class MyInvitationView(BaseModel):

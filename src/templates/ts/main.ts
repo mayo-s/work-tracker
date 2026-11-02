@@ -64,7 +64,7 @@ async function showUser(header: Element, nav: Element | null): Promise<void> {
   if (!nav) {
     return;
   }
-  if (status.user.role === 'team_admin') {
+  if (status.team?.team_role === 'team_admin') {
     nav.append(Object.assign(document.createElement('a'), { href: '/team', textContent: 'Team' }));
   }
   if (status.user.role === 'admin') {

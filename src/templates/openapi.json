@@ -1984,7 +1984,7 @@
       "put": {
         "summary": "Change a user's role, or deactivate (their sessions end, their data is kept) or reactivate them.",
         "operationId": "put__api_admin_users_{user_id}",
-        "description": "Nobody demotes or deactivates themselves (409), so an active admin always remains. Only a member of a team can be a team admin (409); they manage that team.",
+        "description": "Nobody demotes or deactivates themselves (409), so an active admin always remains. Only a member of a team has a team role (409); a team admin manages that team. Nobody changes their own team role (409), so no admin makes themselves the team admin who sees the members' reports.",
         "tags": [
           "Admin"
         ],
@@ -3968,14 +3968,30 @@
         "additionalProperties": false,
         "properties": {
           "role": {
-            "description": "A team admin manages the team they are in",
+            "description": "The app role: admins manage users and teams",
             "enum": [
               "admin",
-              "team_admin",
               "user"
             ],
             "title": "Role",
             "type": "string"
+          },
+          "team_role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "member",
+                  "team_admin"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The role in their team (only for a member of a team); null keeps it. A team admin manages the team",
+            "title": "Team Role"
           },
           "active": {
             "description": "False deactivates the user: they cannot log in, their sessions end",
@@ -4016,7 +4032,6 @@
           "role": {
             "enum": [
               "admin",
-              "team_admin",
               "user"
             ],
             "title": "Role",
@@ -4064,6 +4079,22 @@
             "description": "Name of the team the user is in",
             "title": "Team"
           },
+          "team_role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "member",
+                  "team_admin"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Their role in that team; null without a team",
+            "title": "Team Role"
+          },
           "must_change_password": {
             "description": "A one-time password is set; the user has not chosen their own yet",
             "title": "Must Change Password",
@@ -4081,6 +4112,7 @@
           "registered_at",
           "last_login_at",
           "team",
+          "team_role",
           "must_change_password"
         ],
         "title": "AdminUserView",
@@ -4287,10 +4319,9 @@
             "type": "string"
           },
           "role": {
-            "description": "admin, team_admin or user",
+            "description": "The app role: admin or user (team roles: see team)",
             "enum": [
               "admin",
-              "team_admin",
               "user"
             ],
             "title": "Role",
@@ -6658,12 +6689,22 @@
             "format": "date",
             "title": "Joined On",
             "type": "string"
+          },
+          "team_role": {
+            "description": "member or team_admin (manages the team, has its team view)",
+            "enum": [
+              "member",
+              "team_admin"
+            ],
+            "title": "Team Role",
+            "type": "string"
           }
         },
         "required": [
           "id",
           "name",
-          "joined_on"
+          "joined_on",
+          "team_role"
         ],
         "title": "TeamRef",
         "type": "object"
@@ -7974,13 +8015,12 @@
             "title": "Last Name",
             "type": "string"
           },
-          "role": {
+          "team_role": {
             "enum": [
-              "admin",
-              "team_admin",
-              "user"
+              "member",
+              "team_admin"
             ],
-            "title": "Role",
+            "title": "Team Role",
             "type": "string"
           },
           "joined_on": {
@@ -7995,7 +8035,7 @@
           "email",
           "first_name",
           "last_name",
-          "role",
+          "team_role",
           "joined_on"
         ],
         "title": "MemberView",

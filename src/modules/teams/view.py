@@ -1,4 +1,4 @@
-"""Team view (TASKS.md L.10): whose data a request shows. A team admin views the members of their team read-only, from
+"""Team view (TASKS.md 7.4): whose data a request shows. A team admin views the members of their team read-only, from
 the day they joined it; each report viewed is logged for the member."""
 
 import datetime as dt
@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 
 from src.models.teams import Membership, ReportView
 from src.modules.auth.sessions import current_user
-from src.modules.storage.errors import NotFoundError
 from src.modules.storage.store import Store
 from src.utils.api import PeriodQuery
 
@@ -60,11 +59,4 @@ def _membership_in_own_team(store: Store, user_id: str, member: str) -> Membersh
     teams = store.teams()
     own, theirs = teams.membership(user_id), teams.membership(member)
     same_team = own is not None and theirs is not None and own.team_id == theirs.team_id
-    return theirs if same_team and _role(store, user_id) == 'team_admin' else None
-
-
-def _role(store: Store, user_id: str) -> str | None:
-    try:
-        return store.users().get(user_id).role
-    except NotFoundError:  # e.g. no user yet with the login off
-        return None
+    return theirs if same_team and own.team_role == 'team_admin' else None

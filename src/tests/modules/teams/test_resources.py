@@ -65,7 +65,8 @@ def user_id(app, cookies):
 def hans_team_admin(app, klara, hans, team_id):
     """Hans joined the team, and the admin made him its team admin."""
     join(app, klara, team_id, 'hans.dampf@example.com', hans)
-    app.simulate_put(f'/api/admin/users/{user_id(app, hans)}', cookies=klara, json={'role': 'team_admin', 'active': True})
+    app.simulate_put(f'/api/admin/users/{user_id(app, hans)}', cookies=klara,
+                     json={'role': 'user', 'team_role': 'team_admin', 'active': True})
 
 
 def test_admin_manages_teams(app, klara, team_id):
@@ -93,7 +94,7 @@ def test_invited_user_sees_and_accepts_the_invitation(app, klara, hans, team_id)
     invitation = app.simulate_get('/api/team', cookies=hans).json['invitations'][0]
     assert (invitation['team_name'], invitation['invited_by']) == ('Platform', 'Klara Himmel')
     joined = app.simulate_post(f'/api/team/invitations/{invitation["id"]}/accept', cookies=hans).json
-    team = {'id': team_id, 'name': 'Platform', 'joined_on': '2026-11-02'}
+    team = {'id': team_id, 'name': 'Platform', 'joined_on': '2026-11-02', 'team_role': 'member'}
     assert joined == {'team': team, 'invitations': [], 'team_admins': [], 'viewed_by': []}
     status = app.simulate_get('/api/auth/status', cookies=hans).json
     assert (status['team']['name'], status['invitations']) == ('Platform', 0)
@@ -123,8 +124,8 @@ def test_team_admin_manages_their_team_only(app, klara, hans, rainer, team_id, h
     assert invite(app, hans, other, 'rainer.zufall@example.com').status == falcon.HTTP_403
     assert app.simulate_get('/api/admin/teams', cookies=hans).status == falcon.HTTP_403
     members = app.simulate_get(f'/api/teams/{team_id}', cookies=hans).json['members']
-    assert [(member['username'], member['role']) for member in members] == [('hans', 'team_admin')]
-    assert set(members[0]) == {'user_id', 'username', 'email', 'first_name', 'last_name', 'role', 'joined_on'}
+    assert [(member['username'], member['team_role']) for member in members] == [('hans', 'team_admin')]
+    assert set(members[0]) == {'user_id', 'username', 'email', 'first_name', 'last_name', 'team_role', 'joined_on'}
 
 
 def test_members_choose_team_services_that_only_team_admins_change(app, klara, hans, rainer, team_id, hans_team_admin):
@@ -150,11 +151,29 @@ def test_removed_member_keeps_the_service_of_their_tickets(app, klara, hans, rai
     assert [service['team'] for service in app.simulate_get('/api/service-choices', cookies=rainer).json] == [None]
 
 
-def test_team_admin_leaving_becomes_a_user(app, klara, hans, team_id, hans_team_admin):
+def test_team_admin_leaving_has_no_team_role_left(app, klara, hans, team_id, hans_team_admin):
     assert app.simulate_delete('/api/team', cookies=hans).status == falcon.HTTP_204
     users = {user['username']: user for user in app.simulate_get('/api/admin/users', cookies=klara).json}
-    assert (users['hans']['role'], users['hans']['team']) == ('user', None)
+    assert (users['hans']['role'], users['hans']['team'], users['hans']['team_role']) == ('user', None, None)
     assert app.simulate_get(f'/api/teams/{team_id}', cookies=hans).status == falcon.HTTP_403
+
+
+def test_an_admin_is_team_admin_of_their_team_too(app, klara, hans, team_id):
+    hans_id = user_id(app, hans)
+    app.simulate_put(f'/api/admin/users/{hans_id}', cookies=klara, json={'role': 'admin', 'active': True})
+    join(app, klara, team_id, 'hans.dampf@example.com', hans)
+    changed = app.simulate_put(f'/api/admin/users/{hans_id}', cookies=klara,
+                               json={'role': 'admin', 'team_role': 'team_admin', 'active': True}).json
+    assert (changed['role'], changed['team'], changed['team_role']) == ('admin', 'Platform', 'team_admin')
+    assert app.simulate_get('/api/auth/status', cookies=hans).json['team']['team_role'] == 'team_admin'
+
+
+def test_nobody_changes_their_own_team_role(app, klara, team_id):
+    join(app, klara, team_id, 'klara.himmel@example.com', klara)
+    body = {'role': 'admin', 'team_role': 'team_admin', 'active': True}
+    result = app.simulate_put(f'/api/admin/users/{user_id(app, klara)}', cookies=klara, json=body)
+    assert (result.status, result.json['description']) == (falcon.HTTP_409, 'You cannot change your own team role; ask '
+                                                                            'another admin')
 
 
 def test_team_with_members_is_not_deleted(app, klara, hans, team_id, hans_team_admin):
@@ -163,7 +182,7 @@ def test_team_with_members_is_not_deleted(app, klara, hans, team_id, hans_team_a
 
 def test_admin_list_shows_the_team(app, klara, team_id, hans_team_admin):
     users = {user['username']: user for user in app.simulate_get('/api/admin/users', cookies=klara).json}
-    assert (users['hans']['team'], users['hans']['role'], users['klara']['team']) == ('Platform', 'team_admin', None)
+    assert (users['hans']['team'], users['hans']['team_role'], users['klara']['team']) == ('Platform', 'team_admin', None)
     teams = app.simulate_get('/api/admin/teams', cookies=klara).json
     assert (teams[0]['members'], teams[0]['team_admins']) == (1, ['hans'])
 

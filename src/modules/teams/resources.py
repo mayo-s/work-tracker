@@ -25,14 +25,14 @@ INVITED = 'If a user with this e-mail address exists, they find the invitation i
 
 
 def team_admin_of(req: falcon.Request, store: Store, team_id: str) -> str:
-    """The current user if they may manage the team: the admin, or an admin of this team; 403 otherwise."""
+    """The current user if they may manage the team: an admin, or a team admin of this team; 403 otherwise."""
     user_id = current_user(req)
     try:
         role = store.users().get(user_id).role
     except NotFoundError:  # e.g. no user yet with the login off
         role = None
     membership = store.teams().membership(user_id)
-    own_team = role == 'team_admin' and membership is not None and membership.team_id == team_id
+    own_team = membership is not None and membership.team_id == team_id and membership.team_role == 'team_admin'
     if role != 'admin' and not own_team:
         raise falcon.HTTPForbidden(description='Only the admin and the team admins of this team may do this')
     store.teams().get(team_id)
@@ -197,4 +197,4 @@ def my_team(store: Store, user_id: str) -> MyTeamView:
 def _team_admin_names(members: list[Member], user_id: str) -> list[str]:
     """The team admins who can see the user's reports (not the user themselves)."""
     return [' '.join(filter(None, (member.first_name, member.last_name))) for member in members
-            if member.role == 'team_admin' and member.user_id != user_id]
+            if member.team_role == 'team_admin' and member.user_id != user_id]

@@ -14,7 +14,7 @@ PASSWORD_RULES = f'At least {PASSWORD_MIN_LENGTH} characters with letters, digit
 # a letter, a digit and a special character (anything but letters, digits and spaces)
 _PASSWORD_CHARACTERS = (str.isalpha, str.isdecimal, lambda char: not char.isalnum() and not char.isspace())
 
-Role = Literal['admin', 'team_admin', 'user']
+Role = Literal['admin', 'user']  # the app role; a team admin is a member's team role (teams.py)
 
 
 class User(DomainModel):

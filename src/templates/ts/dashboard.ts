@@ -284,7 +284,7 @@ function yearSection(figures: DashboardView['this_year']): HTMLElement {
 /** For team admins: whose data to see, their own or a member's of their team (read-only). */
 async function memberChooser(member: string | null): Promise<HTMLElement | null> {
   const status = await api.authStatus();
-  if (status.user?.role !== 'team_admin' || !status.team) {
+  if (!status.user || status.team?.team_role !== 'team_admin') {
     return null;
   }
   const others = (await api.team(status.team.id)).members.filter((item) => item.user_id !== status.user!.id);
