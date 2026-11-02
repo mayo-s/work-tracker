@@ -7,8 +7,8 @@ import falcon
 
 from src.defaultresources.default import Default
 from src.modules.admin.resources import (
-    AdminAuditResource, AdminOneTimePassword, AdminSettingsResource, AdminTeamCollection, AdminTeamItem, AdminUserCollection,
-    AdminUserItem,
+    AdminAuditorCollection, AdminAuditorItem, AdminAuditResource, AdminOneTimePassword, AdminSettingsResource,
+    AdminTeamCollection, AdminTeamItem, AdminUserCollection, AdminUserItem,
 )
 from src.modules.auth.resources import (
     AuthStatusResource, LoginResource, LogoutResource, MeResource, MyAuditResource, PasswordResource, RegisterResource,
@@ -34,7 +34,7 @@ from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.sqlite import SqliteStorage
 from src.modules.storage.store import Storage
 from src.modules.teams.resources import (
-    MyInvitationAcceptance, MyInvitationItem, MyTeam, ServiceChoices, TeamInvitationItem, TeamInvitations, TeamItem,
+    MyAudits, MyInvitationAcceptance, MyInvitationItem, MyTeam, ServiceChoices, TeamInvitationItem, TeamInvitations, TeamItem,
     TeamMemberItem, TeamServiceCollection, TeamServiceItem,
 )
 from src.modules.tickets.resources import TicketCollection, TicketItem, TicketRenaming, TicketServiceAssignment
@@ -115,6 +115,8 @@ def create_app(
     app.add_route('/api/admin/audit', AdminAuditResource(storage, clock))
     app.add_route('/api/admin/teams', AdminTeamCollection(storage, clock))
     app.add_route('/api/admin/teams/{team_id}', AdminTeamItem(storage, clock))
+    app.add_route('/api/admin/auditors', AdminAuditorCollection(storage, clock))
+    app.add_route('/api/admin/teams/{team_id}/auditors/{user_id}', AdminAuditorItem(storage, clock))
     app.add_route('/api/teams/{team_id}', TeamItem(storage, clock))
     app.add_route('/api/teams/{team_id}/invitations', TeamInvitations(storage, clock))
     app.add_route('/api/teams/{team_id}/invitations/{invitation_id}', TeamInvitationItem(storage, clock))
@@ -122,6 +124,7 @@ def create_app(
     app.add_route('/api/teams/{team_id}/services', TeamServiceCollection(storage, clock))
     app.add_route('/api/teams/{team_id}/services/{service_id}', TeamServiceItem(storage, clock))
     app.add_route('/api/team', MyTeam(storage, clock))
+    app.add_route('/api/audits', MyAudits(storage, clock))
     app.add_route('/api/team/invitations/{invitation_id}', MyInvitationItem(storage, clock))
     app.add_route('/api/team/invitations/{invitation_id}/accept', MyInvitationAcceptance(storage, clock))
     app.add_route('/api/work-schedules', ScheduleCollection(storage))

@@ -6,7 +6,7 @@ import datetime as dt
 import pytest
 
 from src.models.catalog import Service
-from src.models.teams import ReportView, Team
+from src.models.teams import Auditor, ReportView, Team
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.tests.users import HANS
 
@@ -244,3 +244,48 @@ def test_report_views_newest_first_with_the_viewers_name(per_call, klara_id, han
     assert seen == [('year', 'Klara Himmel'), ('month', 'Klara Himmel'), ('week', 'Klara Himmel')]
     assert [view.report for view in views.of_member(hans, limit=2)] == ['year', 'month']
     assert views.of_member(klara_id) == []
+
+
+def test_the_stays_of_a_team_keep_former_members(teams, clock, platform, hans, klara_id):
+    teams.join(hans, platform.id)
+    clock.now = MONDAY + dt.timedelta(days=2)
+    teams.leave(hans)
+    teams.join(klara_id, platform.id)
+    clock.now = MONDAY + dt.timedelta(days=3)
+    teams.join(hans, platform.id)
+    stays = [(stay.user_id, stay.joined_on.day, stay.left_on and stay.left_on.day) for stay in teams.stays(platform.id)]
+    assert stays == [(hans, 2, 4), (klara_id, 4, None), (hans, 5, None)]
+
+
+@pytest.fixture
+def auditors(per_call):
+    return per_call(lambda store: store.auditors())
+
+
+def auditor(team_id, user_id, until=None, by=None):
+    return Auditor(team_id=team_id, user_id=user_id, until=until, assigned_by=by or user_id, assigned_at=MONDAY)
+
+
+def test_auditors_are_assigned_changed_and_removed(auditors, platform, hans, klara_id):
+    auditors.assign(auditor(platform.id, hans, by=klara_id))
+    auditors.assign(auditor(platform.id, hans, until=dt.date(2026, 11, 30), by=klara_id))  # a new end date
+    [assigned] = auditors.all()
+    assert (assigned.team_name, assigned.user_name, assigned.until) == ('Platform', 'Hans Dampf', dt.date(2026, 11, 30))
+    assert [item.user_id for item in auditors.of_team(platform.id)] == [hans]
+    assert [item.team_id for item in auditors.of_user(hans)] == [platform.id]
+    auditors.remove(platform.id, hans)
+    assert auditors.all() == []
+    with pytest.raises(NotFoundError, match='No such auditor'):
+        auditors.remove(platform.id, hans)
+
+
+def test_an_assignment_ends_after_its_last_day():
+    assigned = auditor('team', 'hans', until=dt.date(2026, 11, 30))
+    assert (assigned.active(dt.date(2026, 11, 30)), assigned.active(dt.date(2026, 12, 1))) == (True, False)
+    assert auditor('team', 'hans').active(dt.date(2099, 1, 1))
+
+
+def test_deleting_a_team_ends_its_auditors(teams, auditors, platform, hans):
+    auditors.assign(auditor(platform.id, hans))
+    teams.delete(platform.id)
+    assert (auditors.all(), auditors.of_user(hans)) == ([], [])

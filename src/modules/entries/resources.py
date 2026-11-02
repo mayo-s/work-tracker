@@ -26,8 +26,9 @@ class EntryCollection:
         start, end = query.period()
         with self._storage.transaction() as store:
             view = viewing(req, store, query.member)
-            entries = store.entries(view.user_id).between(max(start, view.visible_from or start), end)
-            resp.media = EntryViewer(store, view.user_id).views(entries)
+            entries = store.entries(view.user_id).between(start, end)
+            shown = [entry for entry in entries if view.stays.shows(entry.date)] if view.stays else entries
+            resp.media = EntryViewer(store, view.user_id).views(shown)
 
     @spec.validate(json=EntryInput, resp=Response('HTTP_409', HTTP_201=EntryView), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: EntryInput) -> None:

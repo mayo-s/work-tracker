@@ -1,5 +1,5 @@
 """Admin endpoints (403 for others): /api/admin/users and /api/admin/audit (root and admins), /api/admin/teams, each
-also by id (admins), and /api/admin/settings (root). Every change goes into the audit log.
+also by id, and the auditors (admins), and /api/admin/settings (root). Every change goes into the audit log.
 
 Root appoints and removes admins and helps them (one-time password, deactivate, reactivate); admins help users and
 team admins, give team roles and manage teams (SPEC 5.7)."""
@@ -12,9 +12,11 @@ from spectree import Response
 
 from src.lib.passwords import one_time_password
 from src.modules.admin.audit import AuditView, record
-from src.modules.admin.schemas import AdminSettings, AdminTeamView, AdminUserInput, AdminUserView, OneTimePasswordView
+from src.modules.admin.schemas import (
+    AdminSettings, AdminTeamView, AdminUserInput, AdminUserView, AuditorInput, AuditorView, OneTimePasswordView,
+)
 from src.modules.auth.sessions import current_user
-from src.models.teams import Membership
+from src.models.teams import Auditor, Membership
 from src.models.users import Role, User
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.store import Storage, Store
@@ -190,6 +192,45 @@ class AdminTeamItem(_AdminResource):
             actor = _staff(req, store, ('admin',))
             store.teams(self._clock).delete(team_id)
             record(store, self._clock(), actor.id, 'team_deleted', team_id=team_id)
+        resp.status = falcon.HTTP_204
+
+
+class AdminAuditorCollection(_AdminResource):
+    @spec.validate(resp=Response('HTTP_403', HTTP_200=list[AuditorView]), tags=TAGS)
+    def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+        """All auditors by team: who has the team view of which team read-only, and until when."""
+        with self._storage.transaction() as store:
+            _staff(req, store, ('admin',))
+            resp.media = [AuditorView.of(auditor) for auditor in store.auditors().all()]
+
+
+class AdminAuditorItem(_AdminResource):
+    @spec.validate(json=AuditorInput, resp=Response('HTTP_403', 'HTTP_404', 'HTTP_409', HTTP_200=AuditorView), tags=TAGS,
+                   path_parameter_descriptions=TEAM_PARAMETER | ID_PARAMETER)
+    def on_put(self, req: falcon.Request, resp: falcon.Response, team_id: str, user_id: str, json: AuditorInput) -> None:
+        """Make a user or admin an auditor of the team, optionally until a day (inclusive), or change that day: they see
+        the team view of everyone who was ever in the team, for the days of each stay, read-only. Not oneself and not
+        root (409)."""
+        with self._storage.transaction() as store:
+            actor = _staff(req, store, ('admin',))
+            store.teams().get(team_id)
+            if store.users().get(user_id).role == 'root':
+                raise ConflictError('Root tracks no work and audits no team')
+            if user_id == actor.id:
+                raise ConflictError('You cannot make yourself an auditor; ask another admin')
+            now, auditors = self._clock(), store.auditors()
+            auditors.assign(Auditor(team_id=team_id, user_id=user_id, until=json.until, assigned_by=actor.id, assigned_at=now))
+            record(store, now, actor.id, 'auditor_assigned', user_id, team_id, json.until.isoformat() if json.until else '')
+            resp.media = next(AuditorView.of(auditor) for auditor in auditors.of_team(team_id) if auditor.user_id == user_id)
+
+    @spec.validate(resp=Response('HTTP_204', 'HTTP_403', 'HTTP_404'), tags=TAGS,
+                   path_parameter_descriptions=TEAM_PARAMETER | ID_PARAMETER)
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, team_id: str, user_id: str) -> None:
+        """End an assignment: the auditor no longer sees the team."""
+        with self._storage.transaction() as store:
+            actor = _staff(req, store, ('admin',))
+            store.auditors().remove(team_id, user_id)
+            record(store, self._clock(), actor.id, 'auditor_removed', user_id, team_id)
         resp.status = falcon.HTTP_204
 
 

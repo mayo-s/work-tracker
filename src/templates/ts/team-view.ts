@@ -1,7 +1,8 @@
-// Team view: a team admin looks at a member's dashboard, week, month and year, read-only (`?member=<id>`).
+// Team view: a team admin or an auditor looks at a member's dashboard, week, month and year, read-only
+// (`?member=<id>`).
 
-import { api, type MemberView } from './api.ts';
-import { formatDate } from './dates.ts';
+import { api, type AuditedTeam, type MemberView } from './api.ts';
+import { addDays, formatDate } from './dates.ts';
 import { el } from './dom.ts';
 
 /** The pages of the team view; links to them keep the member. */
@@ -34,6 +35,30 @@ export function fullName(member: MemberView): string {
   return [member.first_name, member.last_name].filter(Boolean).join(' ');
 }
 
+type Stay = AuditedTeam['members'][number]['stays'][number];
+
+/** The days an auditor sees, e.g. `02.11.2026–03.11.2026, from 05.11.2026` (`left_on` is the first day no longer in). */
+export function staysText(stays: Stay[]): string {
+  return stays.map((stay) => (stay.left_on ? `${formatDate(stay.joined_on)}–${formatDate(addDays(stay.left_on, -1))}`
+    : `from ${formatDate(stay.joined_on)}`)).join(', ');
+}
+
+/** Who is viewed and which of their days, for the banner: as team admin from the day they joined, as auditor their stays
+ * in the audited teams. */
+export function viewedText(member: string, team: { name: string; members: MemberView[] } | null,
+  audits: AuditedTeam[]): [string, string] | null {
+  const current = team?.members.find((item) => item.user_id === member);
+  if (current && team) {
+    return [fullName(current), ` from ${formatDate(current.joined_on)}, when they joined ${team.name}`];
+  }
+  const audited = audits.flatMap((item) => item.members.filter((one) => one.user_id === member)
+    .map((one) => ({ team: item.team, name: one.name, stays: one.stays })));
+  if (!audited.length) {
+    return null;
+  }
+  return [audited[0]!.name, ` on their days in ${audited.map((item) => `${item.team} (${staysText(item.stays)})`).join(' and ')}`];
+}
+
 /** Keeps the member in all links to the team view pages, also in those the page renders later. */
 function keepMember(root: Node & ParentNode, member: string): void {
   const update = (): void => {
@@ -53,11 +78,11 @@ function keepMember(root: Node & ParentNode, member: string): void {
 export async function showTeamView(doc: Document, member: string): Promise<void> {
   keepMember(doc.body, member);
   const status = await api.authStatus();
-  const team = status.team ? await api.team(status.team.id) : null;
-  const viewed = team?.members.find((item) => item.user_id === member);
-  const since = viewed && team ? ` from ${formatDate(viewed.joined_on)}, when they joined ${team.name}` : '';
+  const [team, audits] = await Promise.all([
+    status.team?.team_role === 'team_admin' ? api.team(status.team.id) : null, api.audits()]);
+  const [name, days] = viewedText(member, team, audits) ?? ['A member', ''];
   doc.querySelector('main')?.prepend(el('div', { class: 'card team-view-banner', role: 'status' },
-    'Read-only: ', el('strong', {}, `${viewed ? fullName(viewed) : 'A member'}'s data`), `${since}. `,
+    'Read-only: ', el('strong', {}, `${name}'s data`), `${days}. `,
     'The overtime balance and PTO left cover the whole time. ',
     el('a', { href: ownView(doc.location.pathname, doc.location.search), [OWN_VIEW]: true }, 'Back to your data')));
 }

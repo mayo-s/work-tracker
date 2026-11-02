@@ -14,6 +14,7 @@ from src.lib.balances import summarize_period
 from src.lib.daytypes import DaySummary, DayType
 from src.lib.durations import format_duration, parse_duration
 from src.lib.public_holidays import holiday_on
+from src.lib.stays import Stays
 from src.modules.reports.schemas import CodingWork, PeriodTotals, PtoView, Reports, VisibleFrom
 from src.modules.review.schemas import review
 from src.modules.storage.store import Store
@@ -81,17 +82,18 @@ class DashboardView(BaseModel):
 class Dashboard:
     """Builds the dashboard within the transaction of the given store."""
 
-    def __init__(self, store: Store, user_id: str, today: dt.date, visible_from: dt.date | None = None) -> None:
+    def __init__(self, store: Store, user_id: str, today: dt.date, stays: Stays | None = None) -> None:
         self._store = store
         self._user = user_id
         self._today = today
-        self._visible_from = visible_from
+        self._visible_from = stays.first if stays else None
+        self._shows = stays.shows if stays else None  # team view: whether a day is one of the member's in the team
         self._settings = store.load_settings(user_id)
-        self._first = max(self._settings.balance_start, visible_from or dt.date.min)
+        self._first = max(self._settings.balance_start, self._visible_from or dt.date.min)
         self._schedules = store.schedules(user_id).schedules()
         last = today + dt.timedelta(days=COMING_UP_DAYS)
         self._records = store.days(user_id).records(self._settings.balance_start, last)
-        self._reports = Reports(store, user_id, today, visible_from)
+        self._reports = Reports(store, user_id, today, stays)
         self._balances = self._daily_balances()
 
     def view(self) -> DashboardView:
@@ -107,8 +109,8 @@ class Dashboard:
             pto=year.pto,
             week=week,
             this_week=self._reports.week(week, monday).totals,
-            week_target=format_duration(sum(day.target for day in self._summaries(max(monday, self._first),
-                                                                                  monday + dt.timedelta(days=6)))),
+            week_target=format_duration(sum(day.target for day in self._shown(max(monday, self._first),
+                                                                              monday + dt.timedelta(days=6)))),
             review_open=0 if self._visible_from else sum(review(self._store, self._user).counts.model_dump().values()),
             balance_series=self._series(),
             coming_up=self._coming_up(),
@@ -124,6 +126,11 @@ class Dashboard:
 
     def _summaries(self, start: dt.date, end: dt.date) -> list[DaySummary]:
         return summarize_period(self._records, start, end, self._schedules) if start <= end else []
+
+    def _shown(self, start: dt.date, end: dt.date) -> list[DaySummary]:
+        """The days of the period; in the team view only those shown."""
+        days = self._summaries(start, end)
+        return [day for day in days if self._shows(day.date)] if self._shows else days
 
     def _balance_on(self, date: dt.date) -> int:
         """The balance at the end of the day; before the balance start, the opening balance."""
@@ -154,7 +161,7 @@ class Dashboard:
     def _coming_up(self) -> list[ComingUp]:
         items: list[ComingUp] = []
         tomorrow = self._today + dt.timedelta(days=1)
-        for day in self._summaries(tomorrow, self._today + dt.timedelta(days=COMING_UP_DAYS)):
+        for day in self._shown(tomorrow, self._today + dt.timedelta(days=COMING_UP_DAYS)):
             if day.work_day:
                 _add_coming_up(items, day, self._holiday_name(day))
         return [item for item in items if item.day_type is not DayType.WORK]
@@ -165,8 +172,8 @@ class Dashboard:
 
     def _year_figures(self, days_worked: int, average: str, days_off: dict[DayType, int]) -> YearFigures:
         year = self._today.year
-        first = max(dt.date(year, 1, 1), self._visible_from or dt.date.min)
-        coding = CodingWork(self._store, self._user).by_service(first, dt.date(year, 12, 31))
+        first = max(dt.date(year, 1, 1), self._first)
+        coding = CodingWork(self._store, self._user).by_service(first, dt.date(year, 12, 31), self._shows)
         top = sorted(coding, key=lambda work: parse_duration(work.duration), reverse=True)[:3]
         return YearFigures(
             year=year, days_worked=days_worked, average_per_day_worked=average,

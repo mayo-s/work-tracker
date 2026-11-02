@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { acceptQuestion, applyTheme, formatWorkDays, ptoYearInput, reportLabel, scheduleInput } from '../ts/settings.ts';
+import { acceptQuestion, applyTheme, auditorText, formatWorkDays, ptoYearInput, reportLabel, scheduleInput } from '../ts/settings.ts';
 
 test('PTO year input: empty extra days are 0, an empty carry-over is calculated', () => {
   assert.deepEqual(ptoYearInput({ year: '2027', allowance: '25', extra_days: '', carried_over: '', note: 'pro rata' }),
@@ -51,4 +51,9 @@ test('the reports a team admin looked at', () => {
   assert.equal(reportLabel({ ...view, report: 'week', period: '2026-W45' }), 'Week 2026-W45');
   assert.equal(reportLabel({ ...view, report: 'month', period: '2026-10' }), 'Month October 2026');
   assert.equal(reportLabel({ ...view, report: 'dashboard', period: '' }), 'Dashboard');
+});
+
+test('an auditor who can look, with the team and the last day', () => {
+  assert.equal(auditorText({ name: 'Hans Dampf', team: 'Platform', until: '2026-11-30' }), 'Hans Dampf (Platform, until 30.11.2026)');
+  assert.equal(auditorText({ name: 'Hans Dampf', team: 'Platform', until: null }), 'Hans Dampf (Platform)');
 });

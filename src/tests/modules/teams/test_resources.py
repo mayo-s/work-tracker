@@ -95,7 +95,7 @@ def test_invited_user_sees_and_accepts_the_invitation(app, klara, hans, team_id)
     assert (invitation['team_name'], invitation['invited_by']) == ('Platform', 'Klara Himmel')
     joined = app.simulate_post(f'/api/team/invitations/{invitation["id"]}/accept', cookies=hans).json
     team = {'id': team_id, 'name': 'Platform', 'joined_on': '2026-11-02', 'team_role': 'member'}
-    assert joined == {'team': team, 'invitations': [], 'team_admins': [], 'viewed_by': []}
+    assert joined == {'team': team, 'invitations': [], 'team_admins': [], 'auditors': [], 'viewed_by': []}
     status = app.simulate_get('/api/auth/status', cookies=hans).json
     assert (status['team']['name'], status['invitations']) == ('Platform', 0)
 

@@ -38,6 +38,21 @@ class Member(DomainModel):
     joined_on: dt.date
 
 
+class Auditor(DomainModel):
+    """A user (or admin) who has the team view of a team read-only, until `until` (inclusive; None: until removed)."""
+
+    team_id: RecordId
+    user_id: str
+    until: dt.date | None = None
+    assigned_by: str
+    assigned_at: dt.datetime
+    team_name: str = ''
+    user_name: str = ''
+
+    def active(self, today: dt.date) -> bool:
+        return self.until is None or today <= self.until
+
+
 class Invitation(DomainModel):
     """An invitation to the user with this e-mail address, whether such a user exists or not."""
 

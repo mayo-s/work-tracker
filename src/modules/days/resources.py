@@ -35,7 +35,7 @@ class DayCollection:
             flags = _flags_by_date(days.day_flags(), start, end)
             schedules = store.schedules(view.user_id).schedules()
         shown = [day_view(date, recorded.get(date), flags[date], schedules.on(date)) for date in each_day(start, end)]
-        resp.media = [team_view_day(day, view.visible_from) for day in shown] if view.team_view else shown
+        resp.media = [team_view_day(day, view.stays) for day in shown] if view.stays else shown
 
 
 class DayItem:

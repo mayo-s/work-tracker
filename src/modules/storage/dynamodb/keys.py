@@ -11,6 +11,8 @@
 | `ATTEMPTS`       | `AT#<time>#<random>`    | a failed login or registration; `CLEARED`: failed ones up to then |
 | `TEAMS`          | `TEAM#<id>`             | a team (`deleted_at` once deleted; `NAME#…` keeps names unique)   |
 | `TEAM#<id>`      | `MEMBER#<user id>`      | a current member (team role); also `INVITE#<id>`, team services   |
+| `TEAM#<id>`      | `STAY#<membership id>`  | every stay in the team, current or former (for its auditors)      |
+| `TEAM#<id>`      | `AUDITOR#<user id>`     | an auditor of the team (also as `AUDITS#<team id>` in theirs)     |
 | `INVITES#<mail>` | `TEAM#<id>`             | an invitation to an e-mail address (lower case), for that user    |
 | `AUDIT`          | `AT#<time>#<id>`        | an audit log entry (one about a user also as `AUDIT#…` in theirs) |
 | `USER#<user id>` | e.g. `DAY#2026-10-30`   | a user's records: one partition per user, so only their own data  |

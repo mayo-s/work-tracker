@@ -10,6 +10,7 @@ from src.lib.daytypes import DayType, summarize_day
 from src.lib.durations import format_clock, format_duration, parse_clock, parse_duration
 from src.lib.public_holidays import holiday_on
 from src.lib.schedules import STANDARD, WorkSchedule
+from src.lib.stays import Stays
 from src.lib.worktime import legal_break
 from src.models.days import Day
 from src.models.review import FlagReason, ReviewFlag
@@ -115,10 +116,10 @@ def _text(minutes: int | None, format_: Callable[[int], str]) -> str | None:
     return None if minutes is None else format_(minutes)
 
 
-def team_view_day(day: DayView, visible_from: dt.date) -> DayView:
-    """A member's day as their team admin sees it: no note and no review flags; before the member joined the team, no
-    data at all."""
-    if day.date >= visible_from:
+def team_view_day(day: DayView, stays: Stays) -> DayView:
+    """A member's day in the team view: no note and no review flags; a day not in the team (before they joined, after
+    they left, between stays) without any data."""
+    if stays.shows(day.date):
         return day.model_copy(update={'note': '', 'flags': []})
     empty = {'recorded': False, 'start': None, 'end': None, 'break_time': None, 'break_default': False, 'worked': '0:00',
              'target': '0:00', 'overtime': '0:00', 'pto_days': 0.0, 'note': '', 'flags': [], 'in_team': False}

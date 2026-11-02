@@ -29,9 +29,9 @@ class _Report:
 
     def _reports(self, req: falcon.Request, store: Store, query: MemberQuery, report: str, period: str) -> Reports:
         """The reports of the user, or in the team view of the member (logged for them)."""
-        view = viewing(req, store, query.member)
+        view = viewing(req, store, query.member, self._today())
         view.log(store, report, period, self._clock())
-        return Reports(store, view.user_id, self._today(), view.visible_from)
+        return Reports(store, view.user_id, self._today(), view.stays)
 
 
 class WeekReportResource(_Report):

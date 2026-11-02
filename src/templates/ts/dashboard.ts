@@ -281,20 +281,31 @@ function yearSection(figures: DashboardView['this_year']): HTMLElement {
       row('Top services', top || '—'))));
 }
 
-/** For team admins: whose data to see, their own or a member's of their team (read-only). */
+type Choice = [string, string];  // user id, name
+
+/** For team admins and auditors: whose data to see, their own or a member's (read-only), grouped by team: the current
+ * members of the own team, everyone who was ever in an audited team. */
 async function memberChooser(member: string | null): Promise<HTMLElement | null> {
   const status = await api.authStatus();
-  if (!status.user || status.team?.team_role !== 'team_admin') {
+  if (!status.user) {
     return null;
   }
-  const others = (await api.team(status.team.id)).members.filter((item) => item.user_id !== status.user!.id);
-  if (!others.length) {
+  const me = status.user.id;
+  const groups: [string, Choice[]][] = (await api.audits()).map((team) => [`${team.team} (audit)`,
+    team.members.map((item): Choice => [item.user_id, item.name])]);
+  if (status.team?.team_role === 'team_admin') {
+    const members = (await api.team(status.team.id)).members.filter((item) => item.user_id !== me);
+    groups.unshift([status.team.name, members.map((item): Choice => [item.user_id, fullName(item)])]);
+  }
+  const shown = groups.filter(([, choices]) => choices.length);
+  if (!shown.length) {
     return null;
   }
   return el('form', { class: 'member-chooser', method: 'get', action: '/' },
     el('label', { for: 'dashboard-member' }, 'Viewing'),
     el('select', { id: 'dashboard-member', name: 'member' }, el('option', { value: '' }, 'Your data'),
-      ...others.map((item) => el('option', { value: item.user_id, selected: item.user_id === member }, fullName(item)))),
+      ...shown.map(([label, choices]) => el('optgroup', { label },
+        ...choices.map(([id, name]) => el('option', { value: id, selected: id === member }, name))))),
     el('button', { type: 'submit', class: 'button-small' }, 'Show'));
 }
 

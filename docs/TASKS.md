@@ -258,7 +258,7 @@ L.16 (a–i) → 9.1 (a–i).
   - [x] **9.1d** Audit log: role, team admin, auditor and team changes, (de)activations, one-time passwords,
     two-factor resets, registration, backups and restores; all on `/admin` for root and admins, the own entries in the
     settings
-  - [ ] **9.1e** Auditors: an admin assigns users or admins (not themselves) to teams, optionally until an end date;
+  - [x] **9.1e** Auditors: an admin assigns users or admins (not themselves) to teams, optionally until an end date;
     the team view read-only for everyone who was in the team, for the days of each stay; shown to members with the
     team admins, views in the view log
   - [ ] **9.1f** Setup token once only (hashes of used tokens); "Reset root login" on `/login` with a new token

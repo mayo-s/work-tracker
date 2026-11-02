@@ -74,15 +74,19 @@ def import_user(conn: sqlite3.Connection, login: str | None) -> str:
     takes it). Root tracks no work, so nothing is imported for it."""
     users = UserRepository(conn)
     if login:
-        if (user := users.by_login(login)) is None:
-            raise SheetImportError(f'No user {login!r}')
-        if user.role == 'root':
-            raise SheetImportError('Root tracks no work: name the user to import for with --user')
-        return user.id
+        return _named_user(users, login)
     trackers = [user.id for user in users.all() if user.role != 'root']
     if len(trackers) > 1:
         raise SheetImportError('Several users: name the one to import for with --user')
     return trackers[0] if trackers else NO_OWNER
+
+
+def _named_user(users: UserRepository, login: str) -> str:
+    if (user := users.by_login(login)) is None:
+        raise SheetImportError(f'No user {login!r}')
+    if user.role == 'root':
+        raise SheetImportError('Root tracks no work: name the user to import for with --user')
+    return user.id
 
 
 def import_rows(
