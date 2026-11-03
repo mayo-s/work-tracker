@@ -1,7 +1,9 @@
 """Restoring the full backup (SPEC 5.9): everything but root goes, then the backup comes in.
 
 Root stays as it is: the backup's root is skipped, and what it did (audit log, assignments) is credited to the current
-root. Everyone else gets their password and two-factor login from the backup. Before anything is written, the backup
+root. With `root_login`, the current root takes over the login of the backup's root instead (username, e-mail address,
+name, password, two-factor login) and has to log in again. Everyone else gets their password and two-factor login from
+the backup. Before anything is written, the backup
 is checked to hold together. SQLite restores in the caller's transaction; DynamoDB writes atomic chunks and marks the
 database until the restore finishes (a restore that stops halfway is completed by restoring again).
 """
@@ -28,18 +30,23 @@ class BackupError(ValueError):
     """The backup does not hold together; nothing was written."""
 
 
-def check_backup(backup: Backup, root: User) -> None:
+def check_backup(backup: Backup, root: User, root_login: bool = False) -> None:
     """BackupError if the backup does not hold together: a reference to a user or team it does not hold, a username or
-    e-mail address twice (also root's), or a ticket of a team service the user's team does not have."""
+    e-mail address twice (also root's: the current one, or with `root_login` the backup's), or a ticket of a team service
+    the user's team does not have."""
     people = _people(backup)
-    _unique([root.username, *(item.user.username for item in people)], 'username')
-    _unique([root.email, *(item.user.email for item in people)], 'e-mail address')
+    _check_names(people, _root_of(backup).user if root_login else root)
     teams = {item.team.id: item for item in backup.teams}
     _known((item.user.id for item in backup.users), _references(backup, _USER_FIELDS), 'user')
     _known(teams, _references(backup, _TEAM_FIELDS), 'team')
     current = _current_teams(backup)
     for item in people:
         _check_records(item, teams.get(current.get(item.user.id)))
+
+
+def _check_names(people: list[BackupUser], root: User) -> None:
+    _unique([root.username, *(item.user.username for item in people)], 'username')
+    _unique([root.email, *(item.user.email for item in people)], 'e-mail address')
 
 
 def _check_records(item: BackupUser, team: BackupTeam | None) -> None:
@@ -61,15 +68,13 @@ def _offered(service: ServiceChoice, team: BackupTeam | None) -> bool:
     return team is not None and service.team == team.team.name and service.short_name.casefold() in offered
 
 
-def restore_backup(store: Store, backup: Backup, root_id: str) -> RestoreSummary:
-    """Everything but root goes, then the backup (checked before, check_backup) comes in."""
-    root_of_backup = next((item.user.id for item in backup.users if item.user.role == 'root'), None)
-
-    def person(user_id: str | None) -> str | None:
-        return root_id if user_id is not None and user_id == root_of_backup else user_id
-
+def restore_backup(store: Store, backup: Backup, root_id: str, root_login: bool = False) -> RestoreSummary:
+    """Everything but root goes, then the backup (checked before, check_backup) comes in; with `root_login`, root takes
+    over the login of the backup's root (its sessions end)."""
     store.start_restore()
     store.purge(root_id)
+    if root_login:
+        _take_over_root_login(store, _root_of(backup), root_id)
     store.set_registration(backup.registration)
     people = _people(backup)
     _users(store, people)
@@ -79,10 +84,33 @@ def restore_backup(store: Store, backup: Backup, root_id: str) -> RestoreSummary
         import_data(store, item.user.id, item.records, team_services.get(current.get(item.user.id), {}))
         if item.setup_done:
             store.finish_setup(item.user.id)
-    _logs(store, backup, person)
+    _logs(store, backup, _as_current_root(backup, root_id))
     store.finish_restore()
     return RestoreSummary(users=len(people), teams=len(backup.teams), audit_entries=len(backup.audit_log),
                           entries=sum(len(item.records.entries) for item in people))
+
+
+def _as_current_root(backup: Backup, root_id: str) -> Callable[[str | None], str | None]:
+    """A user id of the backup, with the backup's root as the current one."""
+    root_of_backup = next((item.user.id for item in backup.users if item.user.role == 'root'), None)
+    return lambda user_id: root_id if user_id is not None and user_id == root_of_backup else user_id
+
+
+def _root_of(backup: Backup) -> BackupUser:
+    root = next((item for item in backup.users if item.user.role == 'root'), None)
+    if root is None:
+        raise BackupError('The backup holds no root whose login could be taken over')
+    return root
+
+
+def _take_over_root_login(store: Store, root: BackupUser, root_id: str) -> None:
+    """The current root keeps its id (and so what it did), and gets the login of the backup's root."""
+    users = store.users()
+    current = users.get(root_id)
+    users.update(current.model_copy(update={field: getattr(root.user, field)
+                                            for field in ('username', 'email', 'first_name', 'last_name')}))
+    users.set_password_hash(root_id, root.password_hash)
+    users.save_two_factor(root_id, root.two_factor)
 
 
 def _users(store: Store, people: list[BackupUser]) -> None:

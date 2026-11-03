@@ -735,7 +735,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Root only: restore the full backup from its file (base64) and passphrase. Everything but root goes first, then the backup comes in; root stays as it is (the backup's root is skipped), everyone else has their password and two-factor login from the backup, and all other sessions end.
+         * Root only: restore the full backup from its file (base64) and passphrase. Everything but root goes first, then the backup comes in; root stays as it is (the backup's root is skipped), everyone else has their password and two-factor login from the backup, and all other sessions end. With `root_login`, root takes over the login of the backup's root instead (username, e-mail address, name, password, two-factor login): its sessions end too, and it logs in again with that login.
          * @description While anyone but root exists, only with `confirm` 'purge' (409 with the code `purge_required` otherwise). A wrong passphrase, a damaged file, another format, a newer version or a backup that does not hold together is refused before anything is written (422). On DynamoDB the restore writes chunks; one that stops halfway leaves only root using the app until restoring the file again finishes it.
          */
         post: operations["post__api_admin_restore"];
@@ -1470,6 +1470,12 @@ export interface components {
              * @default null
              */
             confirm?: string | null;
+            /**
+             * Root Login
+             * @description Take over the login of the backup's root (username, e-mail address, name, password, two-factor login); root logs in again
+             * @default false
+             */
+            root_login?: boolean;
         };
         /** RestoreSummary */
         RestoreSummary: {

@@ -129,6 +129,12 @@ class UserRepository:
         """A new password ends all sessions of the user."""
         self._set_password(user_id, password, must_change=False)
 
+    def set_password_hash(self, user_id: str, password_hash: str) -> None:
+        """A password as its hash (root taking over the login of a full backup's root); ends all sessions of the user."""
+        self._conn.execute('UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?',
+                           (password_hash, user_id))
+        self._conn.execute('DELETE FROM sessions WHERE user_id = ?', (user_id,))
+
     def set_one_time_password(self, user_id: str, password: str) -> None:
         """A password from an admin: it ends all sessions, and the user chooses their own at the next login."""
         self.get(user_id)

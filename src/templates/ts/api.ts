@@ -226,8 +226,8 @@ export const api = {
   confirmNewApp: (code: string) => request<void>('PUT', '/api/auth/me/two-factor/new-app', { code }),
   resetTwoFactor: (userId: string) => request<void>('POST', `/api/admin/users/${segment(userId)}/two-factor-reset`),
   backup: (passphrase: string) => requestFile('/api/admin/backup', { passphrase }),
-  restore: (file: string, passphrase: string, confirm: string | null = null) =>
-    request<RestoreSummary>('POST', '/api/admin/restore', { file, passphrase, confirm }),
+  restore: (file: string, passphrase: string, confirm: string | null = null, rootLogin = false) =>
+    request<RestoreSummary>('POST', '/api/admin/restore', { file, passphrase, confirm, root_login: rootLogin }),
   logout: () => request<void>('POST', '/api/auth/logout'),
   createRoot: (input: RootInput) => request<UserView>('POST', '/api/auth/root', input),
   resetRoot: (setupToken: string, newPassword: string) =>

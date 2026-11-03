@@ -135,6 +135,11 @@ class DynamoUsers:
         end_sessions(self._unit, user_id)
         DynamoBrowsers(self._unit).forget(user_id)
 
+    def set_password_hash(self, user_id: str, password_hash: str) -> None:
+        """A password as its hash (root taking over the login of a full backup's root); ends all sessions of the user."""
+        self._change(user_id, password_hash=password_hash, must_change_password=False)
+        end_sessions(self._unit, user_id)
+
     def set_one_time_password(self, user_id: str, password: str) -> None:
         """A password from an admin: it ends all sessions, and the user chooses their own at the next login."""
         self._change(user_id, password_hash=hash_password(password), must_change_password=True)
