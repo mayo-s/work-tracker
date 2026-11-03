@@ -183,8 +183,9 @@ Roles (details: SPEC 5.7):
 
 `/admin` lists the users (role, team, team role, status, registration, last login) with dropdowns where the viewer may
 change something; nobody changes their own row. Deactivated users are logged out and refused, their data kept. The
-audit log there records every change by root and admins (who, what, whom, when); in the settings, each user sees the
-changes to their account and who looked at their reports.
+audit log there records every change by root and admins (who, what, whom, when) and everyone's changes to their own
+login (password, also with `set-password`; two-factor login on or off, new recovery codes, a new authenticator app); in
+the settings, each user sees the changes to their account and who looked at their reports.
 
 Teams: a user is in at most one; accepting an invitation (in the settings) leaves the current one. Members choose the
 team services next to their own; on leaving, those their tickets use become personal services.

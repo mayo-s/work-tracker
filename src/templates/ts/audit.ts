@@ -20,6 +20,12 @@ export function auditText(entry: AuditView): string {
     reactivated: () => `${actor} reactivated ${user}`,
     one_time_password: () => `${actor} set a one-time password for ${user}`,
     two_factor_reset: () => `${actor} reset the two-factor login of ${user}`,
+    password_changed: () => (detail === 'command' ? `The password of ${user} was set with the set-password command`
+      : `${actor} changed their password`),
+    two_factor_on: () => `${actor} switched two-factor login on`,
+    two_factor_off: () => `${actor} switched two-factor login off`,
+    two_factor_new_app: () => `${actor} moved two-factor login to a new authenticator app`,
+    recovery_codes_renewed: () => `${actor} made new recovery codes`,
     registration_switched: () => `${actor} switched registration ${detail}`,
     team_created: () => `${actor} created the team ${team}`,
     team_renamed: () => `${actor} renamed the team ${detail} to ${team}`,

@@ -233,3 +233,21 @@ def test_confirming_needs_a_new_app_started(app, klara, secret, clock):
 def test_no_new_app_while_two_factor_login_is_off(app, klara):
     result = new_app(app, klara, '123456')
     assert (result.status, result.json['description']) == (falcon.HTTP_409, 'Two-factor login is off')
+
+
+def own_log(app, cookies):
+    return [entry['action'] for entry in app.simulate_get('/api/auth/me/audit', cookies=cookies).json]
+
+
+def test_changes_to_two_factor_login_are_in_the_own_log(app, klara, secret, clock):
+    fresh = new_app(app, klara, clock.code(secret)).json['secret']
+    app.simulate_put('/api/auth/me/two-factor/new-app', cookies=klara, json={'code': clock.code(fresh)})
+    app.simulate_post('/api/auth/me/two-factor/recovery', cookies=klara, json={'password': PASSWORD})
+    app.simulate_post('/api/auth/me/two-factor/off', cookies=klara, json={'password': PASSWORD})
+    assert own_log(app, klara) == ['two_factor_off', 'recovery_codes_renewed', 'two_factor_new_app', 'two_factor_on']
+
+
+def test_refused_changes_are_not_logged(app, klara, secret, clock):
+    new_app(app, klara, clock.code(secret), password='not it')
+    app.simulate_post('/api/auth/me/two-factor/off', cookies=klara, json={'password': 'not it'})
+    assert own_log(app, klara) == ['two_factor_on']

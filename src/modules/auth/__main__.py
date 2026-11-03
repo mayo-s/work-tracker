@@ -1,11 +1,14 @@
 """Reset a forgotten password: python -m src.modules.auth set-password USERNAME_OR_EMAIL [--db PATH]."""
 
 import argparse
+import datetime as dt
 import getpass
 import sys
 from collections.abc import Callable
 
+from src.models.audit import AuditEntry
 from src.models.users import password_problem
+from src.modules.storage.audit import AuditLogRepository
 from src.modules.storage.database import Database, database_path
 from src.modules.storage.users import UserRepository
 
@@ -30,6 +33,8 @@ def main(argv: list[str] | None = None, read_password: Callable[[str], str] = ge
             print(f'No user {args.login!r}', file=sys.stderr)
             return 1
         users.set_password(user.id, password)
+        AuditLogRepository(conn).add(AuditEntry(actor_id=user.id, action='password_changed', user_id=user.id,
+                                                detail='command', at=dt.datetime.now()))
     print(f'Password of {user.username} changed; all their sessions are ended.')
     return 0
 

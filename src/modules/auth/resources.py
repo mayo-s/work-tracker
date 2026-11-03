@@ -270,6 +270,7 @@ class TwoFactorResource(_AuthResource):
             if not code_accepted(store, user_id, json.code, self._clock(), enabled=False):
                 raise falcon.HTTPForbidden(description='The code is wrong; enter the current one of your authenticator app')
             resp.media = RecoveryCodes(recovery_codes=_new_recovery_codes(store, user_id))
+            record(store, self._clock(), user_id, 'two_factor_on', user_id)
 
 
 def _setup(secret: str, username: str) -> TwoFactorSetup:
@@ -298,6 +299,7 @@ class RecoveryCodesResource(_AuthResource):
             if not users.get(user_id).two_factor:
                 raise ConflictError('Two-factor login is off')
             resp.media = RecoveryCodes(recovery_codes=_new_recovery_codes(store, user_id))
+            record(store, self._clock(), user_id, 'recovery_codes_renewed', user_id)
         resp.status = falcon.HTTP_201
 
 
@@ -346,6 +348,7 @@ class NewAppResource(_AuthResource):
             if not new_app_accepted(store, user_id, json.code, self._clock()):
                 raise falcon.HTTPForbidden(description='The code is wrong; enter the current one of your new authenticator '
                                                        'app')
+            record(store, self._clock(), user_id, 'two_factor_new_app', user_id)
         resp.status = falcon.HTTP_204
 
 
@@ -355,12 +358,13 @@ class TwoFactorOffResource(_AuthResource):
         """Switch two-factor login off, with the current password (403 if wrong); not for root and admins (409), who
         must use it."""
         with self._storage.transaction() as store:
-            users = store.users()
-            if required(users.get(_user_id(req))):
+            users, user_id = store.users(), _user_id(req)
+            if required(users.get(user_id)):
                 raise ConflictError('Root and admins must use two-factor login')
-            if not users.check_password(_user_id(req), json.password):
+            if not users.check_password(user_id, json.password):
                 raise falcon.HTTPForbidden(description='The current password is wrong')
-            users.save_two_factor(_user_id(req), None)
+            users.save_two_factor(user_id, None)
+            record(store, self._clock(), user_id, 'two_factor_off', user_id)
         resp.status = falcon.HTTP_204
 
 
@@ -374,5 +378,6 @@ class PasswordResource(_AuthResource):
             if not users.check_password(user_id, json.current_password):
                 raise falcon.HTTPForbidden(description='The current password is wrong')
             users.set_password(user_id, json.new_password)
+            record(store, self._clock(), user_id, 'password_changed', user_id)
             self._log_in(req, resp, store, users.get(user_id))
         resp.status = falcon.HTTP_204
