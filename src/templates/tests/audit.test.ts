@@ -32,3 +32,8 @@ test('a reset of the root login', () => {
   assert.equal(auditText({ ...ENTRY, action: 'root_login_reset', user: 'Pascal Turbo', detail: '' }),
     'Pascal Turbo reset the root login with a new setup token');
 });
+
+test('a reset of two-factor login', () => {
+  assert.equal(auditText({ ...ENTRY, actor: 'Klara Himmel', action: 'two_factor_reset', detail: '' }),
+    'Klara Himmel reset the two-factor login of Hans Dampf');
+});

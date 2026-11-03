@@ -19,6 +19,7 @@ export function auditText(entry: AuditView): string {
     deactivated: () => `${actor} deactivated ${user}`,
     reactivated: () => `${actor} reactivated ${user}`,
     one_time_password: () => `${actor} set a one-time password for ${user}`,
+    two_factor_reset: () => `${actor} reset the two-factor login of ${user}`,
     registration_switched: () => `${actor} switched registration ${detail}`,
     team_created: () => `${actor} created the team ${team}`,
     team_renamed: () => `${actor} renamed the team ${detail} to ${team}`,

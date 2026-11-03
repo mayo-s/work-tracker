@@ -57,7 +57,7 @@ def test_the_setup_shows_the_secret_as_qr_code_and_text(app, klara):
     setup = result.json
     assert setup['uri'].startswith('otpauth://totp/Work%20Tracker%3Aklara?secret=' + setup['secret'])
     assert setup['qr'].startswith('data:image/svg+xml')
-    assert app.simulate_get('/api/auth/me/two-factor', cookies=klara).json == {'enabled': False}  # not confirmed yet
+    assert app.simulate_get('/api/auth/me/two-factor', cookies=klara).json['enabled'] is False  # not confirmed yet
     assert login(app).status == falcon.HTTP_200  # so the login needs no code yet
 
 
@@ -66,7 +66,7 @@ def test_a_first_code_confirms_it(app, klara, clock):
     wrong = app.simulate_put('/api/auth/me/two-factor', cookies=klara, json={'code': clock.code(setup['secret'], 5)})
     assert wrong.status == falcon.HTTP_403
     right = app.simulate_put('/api/auth/me/two-factor', cookies=klara, json={'code': clock.code(setup['secret'])})
-    assert right.json == {'enabled': True}
+    assert len(set(right.json['recovery_codes'])) == 10
     assert app.simulate_get('/api/auth/status', cookies=klara).json['user']['two_factor'] is True
 
 
@@ -85,7 +85,7 @@ def test_each_code_works_once(app, secret, clock):
     login(app, code)
     result = login(app, code)
     assert (result.status, result.json['description']) == (
-        falcon.HTTP_401, 'The code is wrong; enter the current one of your authenticator app')
+        falcon.HTTP_401, 'The code is wrong; enter the current one of your authenticator app, or a recovery code')
 
 
 def test_wrong_codes_count_as_failed_logins(app, secret, clock):
@@ -115,3 +115,23 @@ def test_no_second_setup_while_it_is_on(app, klara, secret):
 def test_confirming_needs_a_setup(app, klara):
     result = app.simulate_put('/api/auth/me/two-factor', cookies=klara, json={'code': '123456'})
     assert (result.status, result.json['description']) == (falcon.HTTP_409, 'Start the setup first')
+
+
+def test_recovery_codes_work_once_each_in_place_of_a_code(app, klara, clock):
+    setup = app.simulate_post('/api/auth/me/two-factor', cookies=klara).json
+    codes = app.simulate_put('/api/auth/me/two-factor', cookies=klara, json={'code': clock.code(setup['secret'])}).json
+    first = codes['recovery_codes'][0]
+    assert login(app, first.upper().replace('-', ' ')).status == falcon.HTTP_200  # case, dashes and spaces do not matter
+    assert login(app, first).status == falcon.HTTP_401
+    assert app.simulate_get('/api/auth/me/two-factor', cookies=klara).json['recovery_left'] == 9
+
+
+def test_new_recovery_codes_replace_the_old_ones(app, klara, clock):
+    setup = app.simulate_post('/api/auth/me/two-factor', cookies=klara).json
+    old = app.simulate_put('/api/auth/me/two-factor', cookies=klara, json={'code': clock.code(setup['secret'])}).json
+    assert app.simulate_post('/api/auth/me/two-factor/recovery', cookies=klara, json={'password': 'not it'}).status == \
+        falcon.HTTP_403
+    new = app.simulate_post('/api/auth/me/two-factor/recovery', cookies=klara, json={'password': PASSWORD})
+    assert new.status == falcon.HTTP_201
+    assert login(app, old['recovery_codes'][0]).status == falcon.HTTP_401
+    assert login(app, new.json['recovery_codes'][0]).status == falcon.HTTP_200

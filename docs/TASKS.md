@@ -265,7 +265,7 @@ L.16 (a–i) → 9.1 (a–i).
   - [ ] **9.1g** Two-factor login (TOTP), in steps:
     - [x] **9.1g1** TOTP core: setting it up in the settings (QR code with `segno`, the secret as text, a first code
       confirms it), the code at login, each code only once, switching it off with the password; optional for everyone
-    - [ ] **9.1g2** Required for root and admins (forwarded to `/2fa` until set up), 10 recovery codes, resets (an
+    - [x] **9.1g2** Required for root and admins (forwarded to `/2fa` until set up), 10 recovery codes, resets (an
       admin for users, root for admins, root's own with the setup token), audit log entries
     - [ ] **9.1g3** "Remember this browser" for 30 days (not root); root's session ends after 1 hour without activity
   - [ ] **9.1h** Full backup on `/admin`: the whole database, gzip and AES-256-GCM with root's passphrase (scrypt;

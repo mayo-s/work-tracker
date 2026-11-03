@@ -89,9 +89,12 @@ function teamRoleCell(user: AdminUserView, canEdit: boolean, page: Page): HTMLTa
 
 /** Active or deactivated, chosen in place if `canEdit`; a deactivation asks first. */
 function statusCell(user: AdminUserView, canEdit: boolean, page: Page): HTMLTableCellElement {
-  const badge = user.active && user.must_change_password ? el('span', { class: 'badge admin-badge' }, 'One-time password') : '';
+  const badge = [
+    user.active && user.must_change_password ? el('span', { class: 'badge admin-badge' }, 'One-time password') : '',
+    user.two_factor ? el('span', { class: 'badge admin-badge', title: 'Two-factor login is on' }, '2FA') : '',
+  ];
   if (!canEdit) {
-    return el('td', {}, user.active ? 'Active' : el('span', { class: 'badge warning' }, 'Deactivated'), badge);
+    return el('td', {}, user.active ? 'Active' : el('span', { class: 'badge warning' }, 'Deactivated'), ...badge);
   }
   const select = el('select', { 'aria-label': `Status of ${user.username}` },
     el('option', { value: 'active', selected: user.active }, 'Active'),
@@ -106,7 +109,7 @@ function statusCell(user: AdminUserView, canEdit: boolean, page: Page): HTMLTabl
     api.updateAdminUser(user.id, userInput(user, { active }))
       .then(() => page.reload(`${active ? 'Reactivated' : 'Deactivated'} ${user.username}`), page.fail);
   });
-  return el('td', {}, select, badge);
+  return el('td', {}, select, ...badge);
 }
 
 /** The user with this e-mail address, ignoring case and surrounding spaces. */
@@ -115,22 +118,44 @@ export function userByEmail(users: AdminUserView[], email: string): AdminUserVie
   return users.find((user) => user.email.toLowerCase() === wanted);
 }
 
-/** Sets a one-time password for the user with the e-mail address entered and shows it once, to pass on: root for an
- * admin, an admin for anyone else. */
-function oneTimePasswordSection(users: AdminUserView[], viewer: Viewer, page: Page): HTMLElement {
+/** The user with the e-mail address entered, or an error under the field. */
+function enteredUser(users: AdminUserView[], email: HTMLInputElement): AdminUserView {
+  const user = userByEmail(users, email.value);
+  if (!user) {
+    throw new ApiError(404, 'No user has this e-mail address.', [{ loc: ['email'], msg: 'No user has this e-mail address.' }]);
+  }
+  return user;
+}
+
+/** For the user with the e-mail address entered: a one-time password, shown once to pass on, or a reset of their
+ * two-factor login (a lost phone): root for an admin, an admin for anyone else. */
+function loginHelpSection(users: AdminUserView[], viewer: Viewer, page: Page): HTMLElement {
   const email = el('input', { id: 'otp-email', name: 'email', type: 'email', autocomplete: 'off' });
+  const reset = el('button', { type: 'button' }, 'Reset two-factor login');
   const form = el('form', { class: 'balance-form invite-form', novalidate: true },
     field('otp', 'email', 'E-mail address', email, 'The exact address of the user (upper and lower case do not matter).'),
     el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
-    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Set one-time password')));
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Set one-time password'), reset));
+  let done = '';
+  const finish = (): void => (done ? page.reload(done) : form.querySelectorAll('button').forEach((item) => (item.disabled = false)));
+  reset.addEventListener('click', () => {
+    done = '';
+    void submit(form, 'otp', ['email'], async () => {
+      const user = enteredUser(users, email);
+      const go = await ask(`Reset the two-factor login of ${user.username}`, [
+        `${user.username} logs in with the password only, e.g. after losing the phone; root and admins set it up again `
+        + 'right after.'], [{ label: 'Reset two-factor login', value: true, primary: true }]);
+      if (go) {
+        await api.resetTwoFactor(user.id);
+        done = `Reset the two-factor login of ${user.username}`;
+      }
+    }, finish);
+  });
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    let done = '';
+    done = '';
     void submit(form, 'otp', ['email'], async () => {
-      const user = userByEmail(users, email.value);
-      if (!user) {
-        throw new ApiError(404, 'No user has this e-mail address.', [{ loc: ['email'], msg: 'No user has this e-mail address.' }]);
-      }
+      const user = enteredUser(users, email);
       const go = await ask(`One-time password for ${user.username}`, [
         `${user.username} is logged out, the current password stops working, and at the next login ${user.username} `
         + 'chooses a new one with the one-time password.'], [{ label: 'Set one-time password', value: true, primary: true }]);
@@ -142,14 +167,14 @@ function oneTimePasswordSection(users: AdminUserView[], viewer: Viewer, page: Pa
         el('p', {}, el('code', { class: 'one-time-password' }, password)),
         `Give it to ${user.username} in person or by phone. It is shown only now.`], [{ label: 'Done', value: true, primary: true }]);
       done = `Set a one-time password for ${user.username}`;
-    }, () => (done ? page.reload(done) : form.querySelectorAll('button').forEach((item) => (item.disabled = false))));
+    }, finish);
   });
   return el('section', { class: 'review-section', id: 'one-time-password' },
-    el('h2', {}, 'One-time password'),
-    el('p', { class: 'muted' }, `For ${viewer === 'root' ? 'an admin' : 'a user'} who forgot their password `
-      + `(${viewer === 'root' ? 'users get theirs from an admin' : 'admins get theirs from root'}): they are logged out, `
-      + 'and at the next login they choose a new password with the one-time password. It is shown only once, to pass on '
-      + 'in person or by phone. Your own password is changed in your settings.'),
+    el('h2', {}, 'Login help'),
+    el('p', { class: 'muted' }, `For ${viewer === 'root' ? 'an admin' : 'a user'} who forgot their password or lost their `
+      + `authenticator app (${viewer === 'root' ? 'users get help from an admin' : 'admins get help from root'}). A `
+      + 'one-time password logs them out; at the next login they choose a new password with it. It is shown only once, '
+      + 'to pass on in person or by phone. Your own login is changed in your settings.'),
     form);
 }
 
@@ -269,7 +294,7 @@ export async function renderAdminPage(doc: Document): Promise<void> {
   await renderEditablePage(doc, 'admin', 'admin-status', async (page) => {
     const [users, audit, status] = await Promise.all([api.adminUsers(), api.adminAudit(), api.authStatus()]);
     const viewer: Viewer = status.user?.role === 'root' ? 'root' : 'admin';
-    const shared = [usersSection(users, viewer, status.user?.id, page), oneTimePasswordSection(users, viewer, page),
+    const shared = [usersSection(users, viewer, status.user?.id, page), loginHelpSection(users, viewer, page),
       auditSection(audit)];
     if (viewer === 'root') {
       return [registrationSection((await api.adminSettings()).registration, page), ...shared];

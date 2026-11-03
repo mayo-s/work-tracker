@@ -40,6 +40,7 @@ class TwoFactor(DomainModel):
     secret: str
     enabled: bool = False  # False while being set up: a first code confirms it
     last_step: int = 0
+    recovery: list[str] = []  # SHA-256 hashes of the recovery codes not used yet
 
 
 def password_problem(password: str) -> str | None:

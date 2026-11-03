@@ -37,6 +37,18 @@ def login_off(monkeypatch):
     monkeypatch.setenv('WORK_TRACKER_AUTH', 'off')
 
 
+@pytest.fixture(autouse=True)
+def two_factor_optional(monkeypatch):
+    """Most tests are about other things: root and admins need no two-factor login unless a test asks for it."""
+    monkeypatch.setattr('src.modules.auth.two_factor.REQUIRED', ())
+
+
+@pytest.fixture
+def two_factor_required(monkeypatch):
+    """Root and admins must use two-factor login, as in the app."""
+    monkeypatch.setattr('src.modules.auth.two_factor.REQUIRED', ('root', 'admin'))
+
+
 @pytest.fixture
 def fresh_database(tmp_path):
     """A new migrated database, not set up yet."""

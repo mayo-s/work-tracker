@@ -1,5 +1,5 @@
 """Login endpoints: /api/auth/status, /login, /logout, /root, /root/reset, /register, /me, /me/password, /me/audit and
-/me/two-factor."""
+/me/two-factor (also /off and /recovery)."""
 
 import datetime as dt
 from collections.abc import Callable
@@ -11,13 +11,15 @@ from src.lib.totp import new_secret, provisioning_uri
 from src.models.users import Role, TwoFactor, User
 from src.modules.admin.audit import AuditView, record
 from src.modules.auth.schemas import (
-    AuthStatus, LoginInput, NewUserInput, PasswordInput, ProfileInput, RootInput, RootResetInput, TwoFactorCode,
-    TwoFactorOff, TwoFactorSetup, TwoFactorStatus, UserView,
+    AuthStatus, LoginInput, NewUserInput, PasswordInput, ProfileInput, RecoveryCodes, RootInput, RootResetInput,
+    TwoFactorCode, TwoFactorOff, TwoFactorSetup, TwoFactorStatus, UserView,
 )
 from src.modules.teams.schemas import TeamRef
 from src.modules.auth.sessions import COOKIE, PAUSED, clear_session_cookie, set_session_cookie
 from src.modules.auth.setup_token import SetupToken, check_setup_token
-from src.modules.auth.two_factor import WRONG_CODE, code_accepted, qr_code, second_factor
+from src.modules.auth.two_factor import (
+    WRONG_CODE, code_accepted, new_recovery_codes, qr_code, recovery_hash, required, second_factor,
+)
 from src.modules.storage.errors import ConflictError
 from src.modules.storage.store import Storage, Store
 from src.utils.spec import spec
@@ -159,8 +161,9 @@ def _use(store: Store, token_hash: str | None, now: dt.datetime) -> None:
 class RootResetResource(_AuthResource):
     @spec.validate(json=RootResetInput, resp=Response('HTTP_403', 'HTTP_409', 'HTTP_429', HTTP_200=UserView), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: RootResetInput) -> None:
-        """Reset root's login with a new setup token (AWS Lambda; root forgot its password): a new password, all of
-        root's sessions end, and root is logged in. The token then works no more (409 a second time); 403 if wrong
+        """Reset root's login with a new setup token (AWS Lambda; root forgot its password or lost its authenticator
+        app): a new password, two-factor login off until set up again (required), all of root's sessions end, and
+        root is logged in. The token then works no more (409 a second time); 403 if wrong
         (counts as a failed login). Locally there is no setup token (409): use the set-password command."""
         if self._setup_token is None:
             raise ConflictError('No setup token here; locally, reset the password with the set-password command')
@@ -170,6 +173,7 @@ class RootResetResource(_AuthResource):
             users, now = store.users(), self._clock()
             root_id = users.root_id()
             users.set_password(root_id, json.new_password)
+            users.save_two_factor(root_id, None)  # set up again right after, with a new authenticator app
             _use(store, used, now)
             record(store, now, root_id, 'root_login_reset', root_id)
             self._log_in(req, resp, store, users.get(root_id))
@@ -220,9 +224,13 @@ class MyAuditResource(_AuthResource):
 class TwoFactorResource(_AuthResource):
     @spec.validate(resp=Response('HTTP_401', HTTP_200=TwoFactorStatus), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
-        """Whether the logged-in user's login needs a code of an authenticator app."""
+        """Whether the logged-in user's login needs a code of an authenticator app, whether it must (root and admins),
+        and how many recovery codes are left."""
         with self._storage.transaction() as store:
-            resp.media = TwoFactorStatus(enabled=store.users().get(_user_id(req)).two_factor)
+            users = store.users()
+            user, state = users.get(_user_id(req)), users.two_factor(_user_id(req))
+            resp.media = TwoFactorStatus(enabled=user.two_factor, required=required(user),
+                                         recovery_left=len(state.recovery) if state and state.enabled else 0)
 
     @spec.validate(resp=Response('HTTP_401', 'HTTP_409', HTTP_201=TwoFactorSetup), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response) -> None:
@@ -239,26 +247,53 @@ class TwoFactorResource(_AuthResource):
         resp.status = falcon.HTTP_201
         resp.media = TwoFactorSetup(secret=secret, uri=uri, qr=qr_code(uri))
 
-    @spec.validate(json=TwoFactorCode, resp=Response('HTTP_401', 'HTTP_403', 'HTTP_409', HTTP_200=TwoFactorStatus),
+    @spec.validate(json=TwoFactorCode, resp=Response('HTTP_401', 'HTTP_403', 'HTTP_409', HTTP_200=RecoveryCodes),
                    tags=TAGS)
     def on_put(self, req: falcon.Request, resp: falcon.Response, json: TwoFactorCode) -> None:
         """Confirm the setup with the current code of the authenticator app (403 if wrong): from now on, the login needs
-        a code. 409 without a setup started or once it is on."""
+        a code. Answers the 10 recovery codes, shown only now. 409 without a setup started or once it is on."""
         with self._storage.transaction() as store:
-            state = store.users().two_factor(_user_id(req))
+            user_id = _user_id(req)
+            state = store.users().two_factor(user_id)
             if state is None or state.enabled:
                 raise ConflictError('Start the setup first' if state is None else 'Two-factor login is on already')
-            if not code_accepted(store, _user_id(req), json.code, self._clock(), enabled=False):
-                raise falcon.HTTPForbidden(description=WRONG_CODE)
-        resp.media = TwoFactorStatus(enabled=True)
+            if not code_accepted(store, user_id, json.code, self._clock(), enabled=False):
+                raise falcon.HTTPForbidden(description='The code is wrong; enter the current one of your authenticator app')
+            resp.media = RecoveryCodes(recovery_codes=_new_recovery_codes(store, user_id))
+
+
+def _new_recovery_codes(store: Store, user_id: str) -> list[str]:
+    """New recovery codes for the user, replacing the old ones; only their hashes are kept."""
+    users, codes = store.users(), new_recovery_codes()
+    hashes = [recovery_hash(code) for code in codes]
+    users.save_two_factor(user_id, users.two_factor(user_id).model_copy(update={'recovery': hashes}))
+    return codes
+
+
+class RecoveryCodesResource(_AuthResource):
+    @spec.validate(json=TwoFactorOff, resp=Response('HTTP_401', 'HTTP_403', 'HTTP_409', HTTP_201=RecoveryCodes), tags=TAGS)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, json: TwoFactorOff) -> None:
+        """New recovery codes, with the current password (403 if wrong); the old ones no longer work. 409 while
+        two-factor login is off."""
+        with self._storage.transaction() as store:
+            users, user_id = store.users(), _user_id(req)
+            if not users.check_password(user_id, json.password):
+                raise falcon.HTTPForbidden(description='The current password is wrong')
+            if not users.get(user_id).two_factor:
+                raise ConflictError('Two-factor login is off')
+            resp.media = RecoveryCodes(recovery_codes=_new_recovery_codes(store, user_id))
+        resp.status = falcon.HTTP_201
 
 
 class TwoFactorOffResource(_AuthResource):
     @spec.validate(json=TwoFactorOff, resp=Response('HTTP_204', 'HTTP_401', 'HTTP_403'), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: TwoFactorOff) -> None:
-        """Switch two-factor login off, with the current password (403 if wrong)."""
+        """Switch two-factor login off, with the current password (403 if wrong); not for root and admins (409), who
+        must use it."""
         with self._storage.transaction() as store:
             users = store.users()
+            if required(users.get(_user_id(req))):
+                raise ConflictError('Root and admins must use two-factor login')
             if not users.check_password(_user_id(req), json.password):
                 raise falcon.HTTPForbidden(description='The current password is wrong')
             users.save_two_factor(_user_id(req), None)
