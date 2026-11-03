@@ -7629,7 +7629,12 @@
               "auditor_assigned",
               "auditor_removed",
               "root_login_reset",
-              "two_factor_reset"
+              "two_factor_reset",
+              "password_changed",
+              "two_factor_on",
+              "two_factor_off",
+              "two_factor_new_app",
+              "recovery_codes_renewed"
             ],
             "title": "Action",
             "type": "string"

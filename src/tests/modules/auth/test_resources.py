@@ -185,6 +185,8 @@ def test_password_change_ends_other_sessions_and_keeps_this_one(app, cookies):
     assert app.simulate_get('/api/dashboard', cookies=other).status == falcon.HTTP_401
     assert app.simulate_get('/api/dashboard', cookies=session(result)).status == falcon.HTTP_200
     assert login(app, password='another long password 2#').status == falcon.HTTP_200
+    log = app.simulate_get('/api/auth/me/audit', cookies=session(result)).json
+    assert [(entry['action'], entry['detail']) for entry in log] == [('password_changed', '')]
 
 
 @pytest.mark.parametrize('body, status', [
@@ -207,8 +209,11 @@ def test_login_off_leaves_everything_open(unclaimed):
 def test_command_resets_a_forgotten_password(app, cookies, unclaimed):
     answers = iter(['a new long password 3$', 'a new long password 3$'])
     assert main(['set-password', 'rainer.zufall@example.com', '--db', str(unclaimed.path)], lambda prompt: next(answers)) == 0
-    assert login(app, password='a new long password 3$').status == falcon.HTTP_200
+    result = login(app, password='a new long password 3$')
+    assert result.status == falcon.HTTP_200
     assert app.simulate_get('/api/dashboard', cookies=cookies).status == falcon.HTTP_401
+    log = app.simulate_get('/api/auth/me/audit', cookies=session(result)).json
+    assert [(entry['action'], entry['detail']) for entry in log] == [('password_changed', 'command')]
 
 
 @pytest.mark.parametrize('answers', [

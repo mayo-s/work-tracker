@@ -354,7 +354,8 @@ corners, one accent color. Warnings are the only loud element.
   themselves; users are not deleted. Locally, a forgotten password is also reset with the command.
 - Audit log: every change of roles, team admins and auditors, deactivation and reactivation, one-time password,
   two-factor reset, registration switch, team change, full backup and restore is logged with who, what, whom and when
-  (no personal records). Root and admins see the whole log on `/admin`, every user the entries about their own
+  (no personal records); so are everyone's changes to their own login: a new password (also with the `set-password`
+  command), two-factor login switched on or off, new recovery codes, a new authenticator app. Root and admins see the whole log on `/admin`, every user the entries about their own
   account in the settings.
 - Teams: a user is in at most one team; the membership history (joined on, left on) keeps which team a user was in on
   each day. An admin creates, renames and deletes teams (only without members; a deleted team stays in the history)

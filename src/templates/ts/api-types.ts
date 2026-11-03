@@ -2693,7 +2693,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed" | "root_login_reset" | "two_factor_reset";
+            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed" | "root_login_reset" | "two_factor_reset" | "password_changed" | "two_factor_on" | "two_factor_off" | "two_factor_new_app" | "recovery_codes_renewed";
             /**
              * User
              * @description Name of whose account it is about

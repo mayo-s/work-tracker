@@ -33,6 +33,18 @@ test('a reset of the root login', () => {
     'Pascal Turbo reset the root login with a new setup token');
 });
 
+test('changes to the own login', () => {
+  const own = { ...ENTRY, actor: 'Hans Dampf', detail: '' };
+  assert.equal(auditText({ ...own, action: 'password_changed' }), 'Hans Dampf changed their password');
+  assert.equal(auditText({ ...own, action: 'password_changed', detail: 'command' }),
+    'The password of Hans Dampf was set with the set-password command');
+  assert.equal(auditText({ ...own, action: 'two_factor_on' }), 'Hans Dampf switched two-factor login on');
+  assert.equal(auditText({ ...own, action: 'two_factor_off' }), 'Hans Dampf switched two-factor login off');
+  assert.equal(auditText({ ...own, action: 'two_factor_new_app' }),
+    'Hans Dampf moved two-factor login to a new authenticator app');
+  assert.equal(auditText({ ...own, action: 'recovery_codes_renewed' }), 'Hans Dampf made new recovery codes');
+});
+
 test('a reset of two-factor login', () => {
   assert.equal(auditText({ ...ENTRY, actor: 'Klara Himmel', action: 'two_factor_reset', detail: '' }),
     'Klara Himmel reset the two-factor login of Hans Dampf');
