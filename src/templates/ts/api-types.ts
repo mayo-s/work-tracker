@@ -462,7 +462,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reset root's login with a new setup token (AWS Lambda; root forgot its password): a new password, all of root's sessions end, and root is logged in. The token then works no more (409 a second time); 403 if wrong (counts as a failed login). Locally there is no setup token (409): use the set-password command. */
+        /** Reset root's login with a new setup token (AWS Lambda; root forgot its password or lost its authenticator app): a new password, two-factor login off until set up again (required), all of root's sessions end, and root is logged in. The token then works no more (409 a second time); 403 if wrong (counts as a failed login). Locally there is no setup token (409): use the set-password command. */
         post: operations["post__api_auth_root_reset"];
         delete?: never;
         options?: never;
@@ -549,9 +549,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Whether the logged-in user's login needs a code of an authenticator app. */
+        /** Whether the logged-in user's login needs a code of an authenticator app, whether it must (root and admins), and how many recovery codes are left. */
         get: operations["get__api_auth_me_two-factor"];
-        /** Confirm the setup with the current code of the authenticator app (403 if wrong): from now on, the login needs a code. 409 without a setup started or once it is on. */
+        /** Confirm the setup with the current code of the authenticator app (403 if wrong): from now on, the login needs a code. Answers the 10 recovery codes, shown only now. 409 without a setup started or once it is on. */
         put: operations["put__api_auth_me_two-factor"];
         /** Start setting up two-factor login: a new secret, as QR code and as text, for the authenticator app; a first code confirms it (PUT). Starting again replaces an unconfirmed secret; 409 once it is on. */
         post: operations["post__api_auth_me_two-factor"];
@@ -570,8 +570,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Switch two-factor login off, with the current password (403 if wrong). */
+        /** Switch two-factor login off, with the current password (403 if wrong); not for root and admins (409), who must use it. */
         post: operations["post__api_auth_me_two-factor_off"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me/two-factor/recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** New recovery codes, with the current password (403 if wrong); the old ones no longer work. 409 while two-factor login is off. */
+        post: operations["post__api_auth_me_two-factor_recovery"];
         delete?: never;
         options?: never;
         head?: never;
@@ -629,6 +646,23 @@ export interface paths {
          * @description Root sets it for admins, admins for everyone else (403 otherwise). Not for the own account nor root's (409): those passwords are changed in the settings.
          */
         post: operations["post__api_admin_users_{user_id}_one-time-password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{user_id}/two-factor-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Switch a user's two-factor login off, e.g. after a lost phone: the next login needs no code (root and admins set it up again right after). Root for admins, admins for everyone else (403 otherwise); not for the own account, root's or one without two-factor login (409). */
+        post: operations["post__api_admin_users_{user_id}_two-factor-reset"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1258,6 +1292,12 @@ export interface components {
              * @description A one-time password is set; the user has not chosen their own yet
              */
             must_change_password: boolean;
+            /**
+             * Two Factor
+             * @description The login also needs a code of an authenticator app
+             * @default false
+             */
+            two_factor?: boolean;
         };
         /** OneTimePasswordView */
         OneTimePasswordView: {
@@ -1535,6 +1575,18 @@ export interface components {
              * @description Whether the login also needs a code of an authenticator app
              */
             enabled: boolean;
+            /**
+             * Required
+             * @description Root and admins must use it
+             * @default false
+             */
+            required?: boolean;
+            /**
+             * Recovery Left
+             * @description Recovery codes not used yet
+             * @default 0
+             */
+            recovery_left?: number;
         };
         /** TwoFactorSetup */
         TwoFactorSetup: {
@@ -1561,6 +1613,17 @@ export interface components {
              * @description The current code of the authenticator app
              */
             code: string;
+        };
+        /** RecoveryCodes */
+        RecoveryCodes: {
+            /**
+             * Recovery Codes
+             * @description Shown only now: each replaces a code of the app once, e.g. when the phone is lost
+             * @example [
+             *       "k7qm3-xtp9w"
+             *     ]
+             */
+            recovery_codes: string[];
         };
         /** TwoFactorOff */
         TwoFactorOff: {
@@ -2593,7 +2656,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed" | "root_login_reset";
+            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed" | "root_login_reset" | "two_factor_reset";
             /**
              * User
              * @description Name of whose account it is about
@@ -5056,7 +5119,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TwoFactorStatus"];
+                    "application/json": components["schemas"]["RecoveryCodes"];
                 };
             };
             /** @description Unauthorized */
@@ -5163,6 +5226,60 @@ export interface operations {
             };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_auth_me_two-factor_recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorOff"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodes"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5292,6 +5409,57 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OneTimePasswordView"];
                 };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_admin_users_{user_id}_two-factor-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id (UUID) of the user */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Forbidden */
             403: {

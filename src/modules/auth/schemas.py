@@ -73,6 +73,13 @@ class LoginInput(BaseModel):
 
 class TwoFactorStatus(BaseModel):
     enabled: bool = Field(description='Whether the login also needs a code of an authenticator app')
+    required: bool = Field(default=False, description='Root and admins must use it')
+    recovery_left: int = Field(default=0, description='Recovery codes not used yet')
+
+
+class RecoveryCodes(BaseModel):
+    recovery_codes: list[str] = Field(description='Shown only now: each replaces a code of the app once, e.g. when the '
+                                                  'phone is lost', examples=[['k7qm3-xtp9w']])
 
 
 class TwoFactorSetup(BaseModel):

@@ -2,6 +2,7 @@
 
 import datetime as dt
 import hashlib
+import json
 import secrets
 import sqlite3
 import uuid
@@ -110,17 +111,18 @@ class UserRepository:
         self._set_password(user_id, password, must_change=True)
 
     def two_factor(self, user_id: str) -> TwoFactor | None:
-        row = self._conn.execute('SELECT two_factor_secret, two_factor, two_factor_step FROM users WHERE id = ?',
-                                 (user_id,)).fetchone()
+        row = self._conn.execute('SELECT two_factor_secret, two_factor, two_factor_step, two_factor_recovery FROM users'
+                                 ' WHERE id = ?', (user_id,)).fetchone()
         if row is None or row[0] is None:
             return None
-        return TwoFactor(secret=row[0], enabled=bool(row[1]), last_step=row[2])
+        return TwoFactor(secret=row[0], enabled=bool(row[1]), last_step=row[2], recovery=json.loads(row[3]))
 
     def save_two_factor(self, user_id: str, state: TwoFactor | None) -> None:
         """The authenticator app being set up, confirmed or with a code used; None switches two-factor login off."""
-        values = (state.secret, int(state.enabled), state.last_step) if state else (None, 0, 0)
-        self._conn.execute('UPDATE users SET two_factor_secret = ?, two_factor = ?, two_factor_step = ? WHERE id = ?',
-                           (*values, user_id))
+        values = (state.secret, int(state.enabled), state.last_step, json.dumps(state.recovery)) if state \
+            else (None, 0, 0, '[]')
+        self._conn.execute('UPDATE users SET two_factor_secret = ?, two_factor = ?, two_factor_step = ?,'
+                           ' two_factor_recovery = ? WHERE id = ?', (*values, user_id))
 
     def _set_password(self, user_id: str, password: str, must_change: bool) -> None:
         self._conn.execute('UPDATE users SET password_hash = ?, must_change_password = ? WHERE id = ?',

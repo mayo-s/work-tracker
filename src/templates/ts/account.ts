@@ -1,6 +1,8 @@
 // The user's account: fields for name, username, e-mail address and password (login, registration, setup, settings).
 
-import { api, ApiError, type NewUserInput, type ProfileInput, type TwoFactorSetup, type UserView } from './api.ts';
+import {
+  api, ApiError, type NewUserInput, type ProfileInput, type TwoFactorSetup, type TwoFactorStatus, type UserView,
+} from './api.ts';
 import { el } from './dom.ts';
 import { field, submit } from './forms.ts';
 
@@ -280,36 +282,55 @@ export function accountSection(user: UserView | null, enabled: boolean, reload: 
   return section;
 }
 
-/** On: a note and switching it off with the password. Off: setting it up with an authenticator app (QR code or the
- * secret as text), confirmed by a first code. */
+/** On: the recovery codes left, new ones and (if not required) switching off, each with the password. Off: setting it
+ * up with an authenticator app (QR code or the secret as text), confirmed by a first code. */
 function twoFactorPart(user: UserView, reload: (message: string) => void): HTMLElement {
-  const part = el('div', { class: 'two-factor' });
-  if (user.two_factor) {
-    const password = el('input', { id: 'two-factor-password', type: 'password', autocomplete: 'current-password' });
-    const form = el('form', { class: 'balance-form', novalidate: true },
-      el('p', {}, 'On: every login also asks for the code of your authenticator app.'),
-      field('two-factor', 'password', 'Current password', password),
-      el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
-      el('div', { class: 'form-actions' }, el('button', { type: 'submit' }, 'Switch off')));
-    form.addEventListener('submit', (event) => {
-      event.preventDefault();
-      void submit(form, 'two-factor', ['password'], () => api.twoFactorOff(password.value),
-        () => reload('Two-factor login is off'));
-    });
-    part.append(form);
-    return part;
-  }
-  const start = el('button', { type: 'button' }, 'Set up two-factor login');
-  start.addEventListener('click', () => {
-    api.startTwoFactor().then((setup) => part.replaceChildren(twoFactorSetup(setup, reload)),
-      (failure: unknown) => part.append(el('p', { class: 'form-error' }, errorText(failure, 'The setup could not start.'))));
-  });
-  part.append(el('p', {}, 'Off. With it, every login also asks for a code of an authenticator app on your phone (e.g. '
-    + 'Google Authenticator, Microsoft Authenticator, 1Password).'), start);
+  const part = el('div', { class: 'two-factor' }, el('p', { class: 'muted' }, 'Loading…'));
+  api.twoFactor().then((status) => part.replaceChildren(...(user.two_factor ? twoFactorOn(status, reload, part)
+    : [el('p', {}, 'Off. With it, every login also asks for a code of an authenticator app on your phone (e.g. Google '
+      + 'Authenticator, Microsoft Authenticator, 1Password).'), setupButton(part, () => reload('Two-factor login is on'))])),
+  (failure: unknown) => part.replaceChildren(el('p', { class: 'form-error' }, errorText(failure, 'Could not be loaded.'))));
   return part;
 }
 
-function twoFactorSetup(setup: TwoFactorSetup, reload: (message: string) => void): HTMLFormElement {
+function twoFactorOn(status: TwoFactorStatus, reload: (message: string) => void, part: HTMLElement): HTMLElement[] {
+  const password = el('input', { id: 'two-factor-password', type: 'password', autocomplete: 'current-password' });
+  const fresh = el('button', { type: 'button' }, 'New recovery codes');
+  const off = el('button', { type: 'submit' }, 'Switch off');
+  const form = el('form', { class: 'balance-form', novalidate: true },
+    field('two-factor', 'password', 'Current password', password, 'For new recovery codes (the old ones stop working)'
+      + (status.required ? '.' : ' or switching off.')),
+    el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
+    el('div', { class: 'form-actions' }, fresh, status.required ? null : off));
+  fresh.addEventListener('click', () => {
+    void submit(form, 'two-factor', ['password'], () => api.newRecoveryCodes(password.value).then(({ recovery_codes: codes }) =>
+      part.replaceChildren(recoveryCodes(codes, () => reload('New recovery codes')))), () => undefined);
+  });
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    void submit(form, 'two-factor', ['password'], () => api.twoFactorOff(password.value),
+      () => reload('Two-factor login is off'));
+  });
+  return [
+    el('p', {}, `On: every login also asks for the code of your authenticator app. Recovery codes left: `
+      + `${status.recovery_left ?? 0} of 10.${status.required ? ' Root and admins must use it.' : ''}`),
+    form,
+  ];
+}
+
+/** Starts the setup in `part`: QR code and secret, a first code, then the recovery codes; `done` after those. */
+export function setupButton(part: HTMLElement, done: () => void): HTMLButtonElement {
+  const start = el('button', { type: 'button', class: 'primary' }, 'Set up two-factor login');
+  start.addEventListener('click', () => {
+    api.startTwoFactor().then((setup) => {
+      part.replaceChildren(twoFactorSetup(setup, (codes) => part.replaceChildren(recoveryCodes(codes, done))));
+      part.querySelector<HTMLElement>('input')?.focus();
+    }, (failure: unknown) => part.append(el('p', { class: 'form-error' }, errorText(failure, 'The setup could not start.'))));
+  });
+  return start;
+}
+
+function twoFactorSetup(setup: TwoFactorSetup, confirmed: (codes: string[]) => void): HTMLFormElement {
   const code = el('input', { id: 'two-factor-code', inputmode: 'numeric', autocomplete: 'one-time-code' });
   const form = el('form', { class: 'balance-form', novalidate: true },
     el('p', {}, '1. Scan the QR code with your authenticator app, or enter the secret by hand.'),
@@ -321,10 +342,22 @@ function twoFactorSetup(setup: TwoFactorSetup, reload: (message: string) => void
     el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Switch on')));
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    void submit(form, 'two-factor', ['code'], () => api.confirmTwoFactor(code.value.trim()),
-      () => reload('Two-factor login is on'));
+    let codes: string[] = [];
+    void submit(form, 'two-factor', ['code'],
+      () => api.confirmTwoFactor(code.value.trim()).then((result) => (codes = result.recovery_codes)), () => confirmed(codes));
   });
   return form;
+}
+
+/** The recovery codes, shown only once: each replaces a code of the app once, e.g. when the phone is lost. */
+export function recoveryCodes(codes: string[], done: () => void): HTMLElement {
+  const saved = el('button', { type: 'button', class: 'primary' }, 'I have saved them');
+  saved.addEventListener('click', done);
+  return el('div', { class: 'recovery-codes' },
+    el('p', {}, 'Your recovery codes, shown only now. Keep them apart from your phone (e.g. printed, or in a password '
+      + 'manager); each one replaces a code of the app once.'),
+    el('ul', { class: 'recovery-code-list' }, ...codes.map((code) => el('li', {}, el('code', {}, code)))),
+    el('div', { class: 'form-actions' }, saved));
 }
 
 function profileForm(user: UserView, reload: (message: string) => void): HTMLFormElement {

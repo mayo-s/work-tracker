@@ -1346,7 +1346,8 @@ button.button-danger {
 body:has(main[data-page='login']) .app-nav,
 body:has(main[data-page='register']) .app-nav,
 body:has(main[data-page='setup']) .app-nav,
-body:has(main[data-page='password']) .app-nav {
+body:has(main[data-page='password']) .app-nav,
+body:has(main[data-page='two-factor']) .app-nav {
   display: none;
 }
 
@@ -1380,6 +1381,13 @@ body:has(main[data-page='password']) .app-nav {
   margin: var(--space-2) 0;
   background: #fff;  /* a QR code needs a light background in the dark theme too */
   border-radius: var(--radius);
+}
+
+.recovery-code-list {
+  columns: 2;
+  margin: var(--space-3) 0;
+  padding-left: var(--space-5);
+  font-size: var(--font-size-large);
 }
 
 .root-reset {

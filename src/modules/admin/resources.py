@@ -151,6 +151,28 @@ class AdminOneTimePassword(_AdminResource):
         resp.media = OneTimePasswordView(password=password)
 
 
+class AdminTwoFactorReset(_AdminResource):
+    @spec.validate(resp=Response('HTTP_204', 'HTTP_403', 'HTTP_404', 'HTTP_409'), tags=TAGS,
+                   path_parameter_descriptions=ID_PARAMETER)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, user_id: str) -> None:
+        """Switch a user's two-factor login off, e.g. after a lost phone: the next login needs no code (root and admins
+        set it up again right after). Root for admins, admins for everyone else (403 otherwise); not for the own
+        account, root's or one without two-factor login (409)."""
+        with self._storage.transaction() as store:
+            actor, users = _staff(req, store), store.users()
+            if user_id == actor.id:
+                raise ConflictError('Not for your own account: log in with a recovery code instead')
+            target = users.get(user_id)
+            if target.role == 'root':
+                raise ConflictError("Root resets its own login with a new setup token")
+            _check_help(actor, target, 'reset two-factor login')
+            if not target.two_factor:
+                raise ConflictError('Two-factor login is off already')
+            users.save_two_factor(user_id, None)
+            record(store, self._clock(), actor.id, 'two_factor_reset', user_id)
+        resp.status = falcon.HTTP_204
+
+
 class AdminTeamCollection(_AdminResource):
     @spec.validate(resp=Response('HTTP_403', HTTP_200=list[AdminTeamView]), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:

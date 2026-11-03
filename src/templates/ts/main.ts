@@ -27,6 +27,7 @@ const PAGES: Record<string, () => Promise<void>> = {
   settings: async () => (await import('./settings.ts')).renderSettingsPage(document),
   setup: async () => (await import('./setup.ts')).renderSetupPage(document),
   password: async () => (await import('./password.ts')).renderPasswordPage(document),
+  'two-factor': async () => (await import('./two-factor.ts')).renderTwoFactorPage(document),
   login: async () => (await import('./account.ts')).renderLoginPage(document),
   register: async () => (await import('./account.ts')).renderRegisterPage(document),
   admin: async () => (await import('./admin.ts')).renderAdminPage(document),
@@ -85,12 +86,12 @@ async function showUser(header: Element, nav: Element | null): Promise<void> {
 
 const page = document.querySelector<HTMLElement>('#app')?.dataset.page;
 const nav = document.querySelector('.app-nav');
-if (nav && !['login', 'register', 'setup', 'password'].includes(page ?? '')) {
+if (nav && !['login', 'register', 'setup', 'password', 'two-factor'].includes(page ?? '')) {
   markCurrentPage(nav, window.location.pathname);
   showReviewCount(nav).catch(() => undefined);  // the count is a hint; pages work without it
   showUser(document.querySelector('.app-header')!, nav).catch(() => undefined);
 }
-if (page === 'setup' || page === 'password') {  // not set up yet, or a new password to choose: still able to log out
+if (['setup', 'password', 'two-factor'].includes(page ?? '')) {  // still to do first: still able to log out
   showUser(document.querySelector('.app-header')!, null).catch(() => undefined);
 }
 

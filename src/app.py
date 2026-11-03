@@ -8,11 +8,11 @@ import falcon
 from src.defaultresources.default import Default
 from src.modules.admin.resources import (
     AdminAuditorCollection, AdminAuditorItem, AdminAuditResource, AdminOneTimePassword, AdminSettingsResource,
-    AdminTeamCollection, AdminTeamItem, AdminUserCollection, AdminUserItem,
+    AdminTeamCollection, AdminTeamItem, AdminTwoFactorReset, AdminUserCollection, AdminUserItem,
 )
 from src.modules.auth.resources import (
     AuthStatusResource, LoginResource, LogoutResource, MeResource, MyAuditResource, PasswordResource, RegisterResource,
-    RootResetResource, RootResource, TwoFactorOffResource, TwoFactorResource,
+    RecoveryCodesResource, RootResetResource, RootResource, TwoFactorOffResource, TwoFactorResource,
 )
 from src.modules.auth.sessions import Authentication, LocalUser, auth_enabled
 from src.modules.auth.setup_token import SetupToken
@@ -73,6 +73,7 @@ def create_app(
     app.add_route('/settings', Page('settings', 'Settings'))
     app.add_route('/setup', Page('setup', 'Setup'))
     app.add_route('/password', Page('password', 'New password'))
+    app.add_route('/2fa', Page('two-factor', 'Two-factor login'))
     app.add_route('/login', Page('login', 'Log in'))
     app.add_route('/register', RegisterPage(storage, enabled))
     app.add_route('/admin', Page('admin', 'Admin'))
@@ -111,9 +112,11 @@ def create_app(
     app.add_route('/api/auth/me/audit', MyAuditResource(storage, clock))
     app.add_route('/api/auth/me/two-factor', TwoFactorResource(storage, clock))
     app.add_route('/api/auth/me/two-factor/off', TwoFactorOffResource(storage, clock))
+    app.add_route('/api/auth/me/two-factor/recovery', RecoveryCodesResource(storage, clock))
     app.add_route('/api/admin/users', AdminUserCollection(storage, clock))
     app.add_route('/api/admin/users/{user_id}', AdminUserItem(storage, clock))
     app.add_route('/api/admin/users/{user_id}/one-time-password', AdminOneTimePassword(storage, clock))
+    app.add_route('/api/admin/users/{user_id}/two-factor-reset', AdminTwoFactorReset(storage, clock))
     app.add_route('/api/admin/settings', AdminSettingsResource(storage, clock))
     app.add_route('/api/admin/audit', AdminAuditResource(storage, clock))
     app.add_route('/api/admin/teams', AdminTeamCollection(storage, clock))

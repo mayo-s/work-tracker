@@ -1769,7 +1769,7 @@
     },
     "/api/auth/root/reset": {
       "post": {
-        "summary": "Reset root's login with a new setup token (AWS Lambda; root forgot its password): a new password, all of root's sessions end, and root is logged in. The token then works no more (409 a second time); 403 if wrong (counts as a failed login). Locally there is no setup token (409): use the set-password command.",
+        "summary": "Reset root's login with a new setup token (AWS Lambda; root forgot its password or lost its authenticator app): a new password, two-factor login off until set up again (required), all of root's sessions end, and root is logged in. The token then works no more (409 a second time); 403 if wrong (counts as a failed login). Locally there is no setup token (409): use the set-password command.",
         "operationId": "post__api_auth_root_reset",
         "description": "",
         "tags": [
@@ -2034,7 +2034,7 @@
     },
     "/api/auth/me/two-factor": {
       "get": {
-        "summary": "Whether the logged-in user's login needs a code of an authenticator app.",
+        "summary": "Whether the logged-in user's login needs a code of an authenticator app, whether it must (root and admins), and how many recovery codes are left.",
         "operationId": "get__api_auth_me_two-factor",
         "description": "",
         "tags": [
@@ -2105,7 +2105,7 @@
         }
       },
       "put": {
-        "summary": "Confirm the setup with the current code of the authenticator app (403 if wrong): from now on, the login needs a code. 409 without a setup started or once it is on.",
+        "summary": "Confirm the setup with the current code of the authenticator app (403 if wrong): from now on, the login needs a code. Answers the 10 recovery codes, shown only now. 409 without a setup started or once it is on.",
         "operationId": "put__api_auth_me_two-factor",
         "description": "",
         "tags": [
@@ -2127,7 +2127,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TwoFactorStatus"
+                  "$ref": "#/components/schemas/RecoveryCodes"
                 }
               }
             }
@@ -2157,7 +2157,7 @@
     },
     "/api/auth/me/two-factor/off": {
       "post": {
-        "summary": "Switch two-factor login off, with the current password (403 if wrong).",
+        "summary": "Switch two-factor login off, with the current password (403 if wrong); not for root and admins (409), who must use it.",
         "operationId": "post__api_auth_me_two-factor_off",
         "description": "",
         "tags": [
@@ -2173,6 +2173,58 @@
           },
           "403": {
             "description": "Forbidden"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorOff"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/auth/me/two-factor/recovery": {
+      "post": {
+        "summary": "New recovery codes, with the current password (403 if wrong); the old ones no longer work. 409 while two-factor login is off.",
+        "operationId": "post__api_auth_me_two-factor_recovery",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodes"
+                }
+              }
+            }
           },
           "422": {
             "description": "Unprocessable Content",
@@ -2333,6 +2385,51 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}/two-factor-reset": {
+      "post": {
+        "summary": "Switch a user's two-factor login off, e.g. after a lost phone: the next login needs no code (root and admins set it up again right after). Root for admins, admins for everyone else (403 otherwise); not for the own account, root's or one without two-factor login (409).",
+        "operationId": "post__api_admin_users_{user_id}_two-factor-reset",
+        "description": "",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id (UUID) of the user"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
           },
           "422": {
             "description": "Unprocessable Content",
@@ -4578,6 +4675,12 @@
             "description": "A one-time password is set; the user has not chosen their own yet",
             "title": "Must Change Password",
             "type": "boolean"
+          },
+          "two_factor": {
+            "default": false,
+            "description": "The login also needs a code of an authenticator app",
+            "title": "Two Factor",
+            "type": "boolean"
           }
         },
         "required": [
@@ -5126,6 +5229,18 @@
             "description": "Whether the login also needs a code of an authenticator app",
             "title": "Enabled",
             "type": "boolean"
+          },
+          "required": {
+            "default": false,
+            "description": "Root and admins must use it",
+            "title": "Required",
+            "type": "boolean"
+          },
+          "recovery_left": {
+            "default": 0,
+            "description": "Recovery codes not used yet",
+            "title": "Recovery Left",
+            "type": "integer"
           }
         },
         "required": [
@@ -5175,6 +5290,28 @@
           "code"
         ],
         "title": "TwoFactorCode",
+        "type": "object"
+      },
+      "RecoveryCodes": {
+        "properties": {
+          "recovery_codes": {
+            "description": "Shown only now: each replaces a code of the app once, e.g. when the phone is lost",
+            "examples": [
+              [
+                "k7qm3-xtp9w"
+              ]
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Recovery Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "recovery_codes"
+        ],
+        "title": "RecoveryCodes",
         "type": "object"
       },
       "TwoFactorOff": {
@@ -7362,7 +7499,8 @@
               "member_removed",
               "auditor_assigned",
               "auditor_removed",
-              "root_login_reset"
+              "root_login_reset",
+              "two_factor_reset"
             ],
             "title": "Action",
             "type": "string"

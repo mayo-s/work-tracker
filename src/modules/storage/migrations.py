@@ -619,4 +619,8 @@ MIGRATIONS: tuple[Migration, ...] = (
     ALTER TABLE users ADD COLUMN two_factor INTEGER NOT NULL DEFAULT 0 CHECK (two_factor IN (0, 1));
     ALTER TABLE users ADD COLUMN two_factor_step INTEGER NOT NULL DEFAULT 0;
     """,
+    # 21: recovery codes of two-factor login (TASKS.md 9.1g2): the hashes of those not used yet, as a JSON list
+    """
+    ALTER TABLE users ADD COLUMN two_factor_recovery TEXT NOT NULL DEFAULT '[]';
+    """,
 )

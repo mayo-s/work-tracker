@@ -22,6 +22,7 @@ class AdminUserView(BaseModel):
     team: str | None = Field(description='Name of the team the user is in')
     team_role: TeamRole | None = Field(description='Their role in that team; null without a team')
     must_change_password: bool = Field(description='A one-time password is set; the user has not chosen their own yet')
+    two_factor: bool = Field(default=False, description='The login also needs a code of an authenticator app')
 
     @classmethod
     def of(cls, user: User, membership: Membership | None) -> Self:
