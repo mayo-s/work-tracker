@@ -291,3 +291,10 @@ def test_a_new_password_or_two_factor_off_forgets_the_browsers(storage, klara, c
     token = browsers(storage, lambda repository: repository.remember(klara.id, LOGIN))
     run(storage, lambda store: change(store.users(), klara.id))
     assert not browsers(storage, lambda repository: repository.known(klara.id, token, LOGIN))
+
+
+def test_the_password_hash_for_the_backup(storage, klara):
+    stored = run(storage, lambda store: store.users().password_hash(klara.id))
+    assert stored.startswith('scrypt$') and PASSWORD not in stored
+    with pytest.raises(NotFoundError):
+        run(storage, lambda store: store.users().password_hash(str(uuid.uuid4())))

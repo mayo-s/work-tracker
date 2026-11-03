@@ -5,7 +5,7 @@ import sqlite3
 from collections.abc import Callable
 
 from src.models.base import new_id
-from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRole
+from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRecord, TeamRole
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.store import Teams
 
@@ -68,6 +68,10 @@ class TeamRepository:
     def stays(self, team_id: str) -> list[Membership]:
         """Everyone who was ever in the team, each stay of theirs, oldest first."""
         return self._memberships('team_id', team_id)
+
+    def with_deleted(self) -> list[TeamRecord]:
+        """All teams, also the deleted ones, in the order they were created (for the full backup)."""
+        return [TeamRecord(**dict(row)) for row in self._conn.execute('SELECT id, name, deleted_at FROM teams ORDER BY id')]
 
     def _memberships(self, column: str, value: str) -> list[Membership]:
         rows = self._conn.execute(
@@ -211,6 +215,11 @@ class InvitationRepository:
     def decline(self, user_id: str, invitation_id: str) -> None:
         self._conn.execute('DELETE FROM team_invitations WHERE id = ?', (self._own(user_id, invitation_id).id,))
 
+    def all(self) -> list[Invitation]:
+        """All open invitations, oldest first (for the full backup)."""
+        rows = self._conn.execute(f'{self._SELECT} ORDER BY invited_at, team_invitations.id')
+        return [Invitation(**dict(row)) for row in rows]
+
     def _own(self, user_id: str, invitation_id: str) -> Invitation:
         """One of the user's open invitations; another user's is unknown (404)."""
         for invitation in self.of_user(user_id):
@@ -236,4 +245,11 @@ class ReportViewLog:
             "SELECT member_id, viewer_id, trim(first_name || ' ' || last_name) AS viewer_name, report, period, viewed_at"
             ' FROM report_views JOIN users ON users.id = viewer_id WHERE member_id = ?'
             ' ORDER BY viewed_at DESC, report_views.id DESC LIMIT ?', (member_id, limit))
+        return [ReportView(**dict(row)) for row in rows]
+
+    def all(self) -> list[ReportView]:
+        """All views of everyone's reports, oldest first (for the full backup)."""
+        rows = self._conn.execute(
+            "SELECT member_id, viewer_id, trim(first_name || ' ' || last_name) AS viewer_name, report, period, viewed_at"
+            ' FROM report_views JOIN users ON users.id = viewer_id ORDER BY viewed_at, report_views.id')
         return [ReportView(**dict(row)) for row in rows]

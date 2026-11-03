@@ -115,6 +115,10 @@ class DynamoUsers:
         item = self._unit.get(USERS, _profile_key(user_id))
         return item is not None and verify_password(password, item['password_hash'])
 
+    def password_hash(self, user_id: str) -> str:
+        """The stored hash, for the full backup only."""
+        return self._profile(user_id)['password_hash']
+
     def set_password(self, user_id: str, password: str) -> None:
         """A new password ends all sessions of the user."""
         self._change(user_id, password_hash=hash_password(password), must_change_password=False)

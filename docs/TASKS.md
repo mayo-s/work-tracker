@@ -271,7 +271,7 @@ L.16 (a–i) → 9.1 (a–i).
     - [x] **9.1g4** A new authenticator app (e.g. a new phone): in the settings, with the password and a current code (or
       a recovery code), a new secret replaces the old one once a code of the new app confirms it; also for root and
       admins, who cannot switch two-factor login off
-  - [ ] **9.1h** Full backup on `/admin`: the whole database, gzip and AES-256-GCM with root's passphrase (scrypt;
+  - [x] **9.1h** Full backup on `/admin`: the whole database, gzip and AES-256-GCM with root's passphrase (scrypt;
     `cryptography`)
   - [ ] **9.1i** Restore on `/admin`: at once when nobody but root exists, otherwise after confirming the purge;
     root stays; checked before writing; DynamoDB in resumable chunks, only root uses the app until it is done

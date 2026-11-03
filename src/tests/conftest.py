@@ -32,6 +32,12 @@ def fast_password_hashes(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def fast_backup_keys(monkeypatch):
+    """Cheap scrypt parameters for the key of the full backup (test_encryption checks the real ones too)."""
+    monkeypatch.setattr('src.lib.encryption._N', 2 ** 4)
+
+
+@pytest.fixture(autouse=True)
 def login_off(monkeypatch):
     """Most tests are about other things: the login is off unless a test switches it on (create_app(auth=True))."""
     monkeypatch.setenv('WORK_TRACKER_AUTH', 'off')

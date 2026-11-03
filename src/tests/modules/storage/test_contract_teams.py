@@ -289,3 +289,29 @@ def test_deleting_a_team_ends_its_auditors(teams, auditors, platform, hans):
     auditors.assign(auditor(platform.id, hans))
     teams.delete(platform.id)
     assert (auditors.all(), auditors.of_user(hans)) == ([], [])
+
+
+def test_all_teams_with_the_deleted_ones(teams, platform, clock):
+    billing = teams.add(Team(name='Billing'))
+    clock.now += dt.timedelta(hours=1)
+    teams.delete(platform.id)
+    assert [(team.name, team.deleted_at) for team in teams.with_deleted()] == [
+        ('Platform', clock.now), ('Billing', None)]  # in the order they were created
+    assert billing.id in [team.id for team in teams.with_deleted()]
+
+
+def test_all_open_invitations(teams, invitations, platform, clock, klara_id):
+    billing = teams.add(Team(name='Billing'))
+    invitations.invite(billing.id, 'hans.dampf@example.com', klara_id)
+    clock.now += dt.timedelta(minutes=1)
+    invitations.invite(platform.id, 'rainer.zufall@example.com', klara_id)
+    assert [(invitation.team_name, invitation.email) for invitation in invitations.all()] == [
+        ('Billing', 'hans.dampf@example.com'), ('Platform', 'rainer.zufall@example.com')]
+
+
+def test_all_report_views_oldest_first(per_call, klara_id, hans):
+    views = per_call(lambda store: store.report_views())
+    views.add(ReportView(member_id=hans, viewer_id=klara_id, report='week', period='2026-W45', viewed_at=MONDAY))
+    views.add(ReportView(member_id=klara_id, viewer_id=hans, report='dashboard', viewed_at=MONDAY - dt.timedelta(days=1)))
+    assert [(view.member_id, view.viewer_name, view.report) for view in views.all()] == [
+        (klara_id, 'Hans Dampf', 'dashboard'), (hans, 'Klara Himmel', 'week')]

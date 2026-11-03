@@ -1,9 +1,11 @@
-// Admin page (/admin), for root and admins (SPEC 5.7). Root: registration, appointing admins and looking after them
-// (status, one-time password). Admins: the teams, their auditors, team roles, and looking after everyone else. Both
+// Admin page (/admin), for root and admins (SPEC 5.7). Root: registration, the full backup, appointing admins and
+// looking after them (status, one-time password). Admins: the teams, their auditors, team roles, and looking after everyone else. Both
 // see the users with their role, team, team role and whether they can log in.
 
+import { PASSWORD_MIN_LENGTH } from './account.ts';
 import {
   ApiError, api, type AdminTeamView, type AdminUserInput, type AdminUserView, type AuditorView, type AuditView,
+  type DownloadedFile,
 } from './api.ts';
 import { auditTable } from './audit.ts';
 import { formatDate, formatTimestamp } from './dates.ts';
@@ -56,6 +58,51 @@ function registrationSection(open: boolean, page: Page): HTMLElement {
     el('p', { class: 'muted' }, 'While on, the login page links to /register, where anyone who reaches the app can create '
       + 'an account. New users start with empty data of their own and go through the setup.'),
     el('label', { class: 'checkbox-field', for: 'admin-registration' }, box, 'Allow registration'));
+}
+
+/** What keeps the passphrase of the full backup from being used, or null: at least 12 characters, entered twice. */
+export function passphraseError(passphrase: string, repeat: string): string | null {
+  if (passphrase.length < PASSWORD_MIN_LENGTH) {
+    return `The passphrase needs at least ${PASSWORD_MIN_LENGTH} characters.`;
+  }
+  return passphrase === repeat ? null : 'The two passphrases differ.';
+}
+
+/** Root downloads the whole database, encrypted with a passphrase that is stored nowhere. */
+function backupSection(page: Page): HTMLElement {
+  const passphrase = el('input', { id: 'backup-passphrase', type: 'password', autocomplete: 'new-password' });
+  const repeat = el('input', { id: 'backup-repeat', type: 'password', autocomplete: 'new-password' });
+  const form = el('form', { class: 'balance-form', novalidate: true },
+    field('backup', 'passphrase', 'Passphrase', passphrase, `At least ${PASSWORD_MIN_LENGTH} characters.`),
+    field('backup', 'repeat', 'Repeat the passphrase', repeat),
+    el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Download backup')));
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    void submit(form, 'backup', ['passphrase'], async () => {
+      const problem = passphraseError(passphrase.value, repeat.value);
+      if (problem) {
+        throw new ApiError(422, problem, null);
+      }
+      saveFile(await api.backup(passphrase.value));
+    }, () => page.reload('Downloaded the backup'));
+  });
+  return el('section', { class: 'review-section', id: 'backup' },
+    el('h2', {}, 'Full backup'),
+    el('p', { class: 'muted' }, 'One file of the whole database: all users with their passwords and two-factor login, '
+      + "the teams, everyone's records, the logs and the settings; not the sessions. It is compressed and encrypted with "
+      + 'the passphrase, which is stored nowhere: keep it apart from the file, without it the backup cannot be restored.'),
+    form);
+}
+
+/** Hands the file to the browser to save. */
+function saveFile({ blob, name }: DownloadedFile): void {
+  const url = URL.createObjectURL(blob);
+  const link = el('a', { href: url, download: name, hidden: true });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function roleSelect(user: AdminUserView, page: Page): HTMLSelectElement {
@@ -297,7 +344,7 @@ export async function renderAdminPage(doc: Document): Promise<void> {
     const shared = [usersSection(users, viewer, status.user?.id, page), loginHelpSection(users, viewer, page),
       auditSection(audit)];
     if (viewer === 'root') {
-      return [registrationSection((await api.adminSettings()).registration, page), ...shared];
+      return [registrationSection((await api.adminSettings()).registration, page), backupSection(page), ...shared];
     }
     const [teams, auditors] = await Promise.all([api.adminTeams(), api.adminAuditors()]);
     return [tableSection(teamsTable(teams), page), auditorsSection(auditors, users, teams, page), ...shared];

@@ -11,7 +11,7 @@ from collections.abc import Callable
 
 from src.models.base import new_id
 from src.models.catalog import Service
-from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRole
+from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRecord, TeamRole
 from src.modules.storage.dynamodb.catalog import DynamoServices, DynamoTeamServices
 from src.modules.storage.dynamodb.keys import USERS, user_partition
 from src.modules.storage.dynamodb.memberships import (
@@ -104,6 +104,12 @@ class DynamoTeams:
         stays = (self._unit.get(user_partition(item['user_id']), f'{MEMBERSHIP}{item["SK"].removeprefix("STAY#")}')
                  for item in self._unit.query_prefix(team_partition(team_id), 'STAY#'))
         return [_membership(self._unit, stay) for stay in stays if stay]
+
+    def with_deleted(self) -> list[TeamRecord]:
+        """All teams, also the deleted ones, in the order they were created (for the full backup; ids are UUIDv7s)."""
+        teams = [TeamRecord(id=item['id'], name=item['name'], deleted_at=item['deleted_at'])
+                 for item in self._unit.query_prefix(TEAMS, 'TEAM#')]
+        return sorted(teams, key=lambda team: team.id)
 
     def join(self, user_id: str, team_id: str) -> Membership:
         """The user joins the team today, leaving their current team first."""
@@ -255,6 +261,12 @@ class DynamoInvitations:
         invitation = self._own(user_id, invitation_id)
         _delete_invitation(self._unit, invitation.model_dump())
 
+    def all(self) -> list[Invitation]:
+        """All open invitations, oldest first (for the full backup)."""
+        teams = [item['id'] for item in self._unit.query_prefix(TEAMS, 'TEAM#') if item['deleted_at'] is None]
+        return sorted((invitation for team_id in teams for invitation in self.of_team(team_id)),
+                      key=lambda invitation: (invitation.invited_at, invitation.id))
+
     def _own(self, user_id: str, invitation_id: str) -> Invitation:
         """One of the user's open invitations; another user's is unknown (404)."""
         for invitation in self.of_user(user_id):
@@ -282,8 +294,17 @@ class DynamoReportViews:
 
     def of_member(self, member_id: str, limit: int = 50) -> list[ReportView]:
         """The latest views of the member's reports, newest first."""
+        return self._views(self._unit.newest(user_partition(member_id), 'VIEW#', limit))
+
+    def all(self) -> list[ReportView]:
+        """All views of everyone's reports, oldest first (for the full backup)."""
+        members = [item['id'] for item in self._unit.query_prefix(USERS, 'USER#')]
+        items = [item for member_id in members for item in self._unit.query_prefix(user_partition(member_id), 'VIEW#')]
+        return self._views(sorted(items, key=lambda item: item['SK']))  # the sort key starts with the time
+
+    def _views(self, items: list[Item]) -> list[ReportView]:
         views = []
-        for item in self._unit.newest(user_partition(member_id), 'VIEW#', limit):
+        for item in items:
             if viewer := _profile(self._unit, item['viewer_id']):
                 name = f'{viewer["first_name"]} {viewer["last_name"]}'.strip()
                 views.append(ReportView(**attributes(item), viewer_name=name))
