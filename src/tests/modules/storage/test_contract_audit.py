@@ -51,3 +51,10 @@ def test_the_latest_only(storage, klara_id, hans_id):
         add(storage, actor_id=klara_id, action='one_time_password', user_id=hans_id, at=AT + dt.timedelta(minutes=minute))
     assert [entry.at.minute for entry in read(storage, lambda log: log.latest(limit=2))] == [2, 1]
     assert [entry.at.minute for entry in read(storage, lambda log: log.of_user(hans_id, limit=2))] == [2, 1]
+
+
+def test_all_entries_oldest_first(storage, klara_id, hans_id):
+    for minute in (2, 0, 1):
+        add(storage, actor_id=klara_id, action='deactivated', user_id=hans_id, detail=str(minute),
+            at=AT + dt.timedelta(minutes=minute))
+    assert [entry.detail for entry in read(storage, lambda log: log.all())] == ['0', '1', '2']

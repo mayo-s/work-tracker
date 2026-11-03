@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, test } from 'node:test';
 
-import { api, ApiError, errorMessage } from '../ts/api.ts';
+import { api, ApiError, errorMessage, fileName } from '../ts/api.ts';
 
 type Call = { url: string; method: string; body: unknown; headers: Record<string, string> };
 
@@ -142,5 +142,28 @@ describe('errors', () => {
     assert.equal(errorMessage(409, { title: '409 Conflict' }), '409 Conflict');
     assert.equal(errorMessage(500, null), 'Request failed with status 500');
     assert.equal(errorMessage(422, []), 'Request failed with status 422');
+  });
+});
+
+describe('files', () => {
+  test('the backup comes as a file with its name', async () => {
+    nextResponse = new Response(new Uint8Array([1, 2, 3]), {
+      headers: { 'Content-Disposition': 'attachment; filename="work-tracker-backup-2026-11-03.wtbackup"' },
+    });
+    const file = await api.backup('a long backup passphrase');
+    assert.deepEqual([calls[0]?.method, calls[0]?.url, calls[0]?.body], ['POST', '/api/admin/backup',
+      { passphrase: 'a long backup passphrase' }]);
+    assert.equal(file.name, 'work-tracker-backup-2026-11-03.wtbackup');
+    assert.deepEqual([...new Uint8Array(await file.blob.arrayBuffer())], [1, 2, 3]);
+  });
+
+  test('a refused download is an ApiError', async () => {
+    respond(403, { description: 'Only root may do this' });
+    await assert.rejects(api.backup('a long backup passphrase'),
+      (error) => error instanceof ApiError && error.status === 403 && error.message === 'Only root may do this');
+  });
+
+  test('a file without a name', () => {
+    assert.equal(fileName(null), 'download');
   });
 });

@@ -2622,6 +2622,45 @@
         }
       }
     },
+    "/api/admin/backup": {
+      "post": {
+        "summary": "Root only: the whole database as one file to download, e.g. `work-tracker-backup-2026-11-03.wtbackup`: all users (with password hashes and two-factor secrets), teams, memberships, invitations, auditors, every user's records with their history, the report view log, the audit log and the app settings. Not in it: sessions, remembered browsers, failed logins, the used setup tokens.",
+        "operationId": "post__api_admin_backup",
+        "description": "Compressed (gzip) and encrypted with the passphrase (AES-256-GCM, key from scrypt), which is stored nowhere: without it the file cannot be restored. A header line before the encrypted part names the format and version.",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/admin/audit": {
       "get": {
         "summary": "The audit log, newest first (the latest 200): who changed whose role, team role or status, set a one-time password, switched registration or changed a team, and when.",
@@ -4963,6 +5002,23 @@
           "registration"
         ],
         "title": "AdminSettings",
+        "type": "object"
+      },
+      "BackupInput": {
+        "additionalProperties": false,
+        "properties": {
+          "passphrase": {
+            "description": "At least 12 characters; stored nowhere: without it the file cannot be restored",
+            "maxLength": 200,
+            "minLength": 12,
+            "title": "Passphrase",
+            "type": "string"
+          }
+        },
+        "required": [
+          "passphrase"
+        ],
+        "title": "BackupInput",
         "type": "object"
       },
       "AuditViewList": {
@@ -7634,7 +7690,8 @@
               "two_factor_on",
               "two_factor_off",
               "two_factor_new_app",
-              "recovery_codes_renewed"
+              "recovery_codes_renewed",
+              "backup_made"
             ],
             "title": "Action",
             "type": "string"

@@ -11,6 +11,7 @@ holidays = "*"
 gunicorn = "*"
 boto3 = "*"
 segno = "*"
+cryptography = "*"
 
 [dev-packages]
 flake8 = "*"

@@ -15,6 +15,12 @@ class Team(DomainModel):
     name: str = Field(min_length=1, max_length=50, description='e.g. Platform')
 
 
+class TeamRecord(Team):
+    """A team as the full backup keeps it: also a deleted one (it stays for the history), with when it was deleted."""
+
+    deleted_at: dt.datetime | None = None
+
+
 class Membership(DomainModel):
     """A user in a team from `joined_on` until the day before `left_on` (None: still a member)."""
 

@@ -120,6 +120,26 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
   return data as T;
 }
 
+/** A file the API answers (e.g. the full backup): its contents and the file name it suggests. */
+export type DownloadedFile = { blob: Blob; name: string };
+
+async function requestFile(path: string, body: unknown): Promise<DownloadedFile> {
+  const response = await fetch(path, {
+    method: 'POST', headers: { Accept: 'application/octet-stream', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const data: unknown = await response.json().catch(() => null);
+    throw new ApiError(response.status, errorMessage(response.status, data), data);
+  }
+  return { blob: await response.blob(), name: fileName(response.headers.get('Content-Disposition')) };
+}
+
+/** The file name of a `Content-Disposition` header, e.g. `attachment; filename="work-tracker-backup.wtbackup"`. */
+export function fileName(disposition: string | null): string {
+  return /filename="([^"]+)"/.exec(disposition ?? '')?.[1] ?? 'download';
+}
+
 /** The login page that returns to `next` afterwards. */
 export function loginLink(next: string): string {
   return `/login?next=${encodeURIComponent(next)}`;
@@ -203,6 +223,7 @@ export const api = {
     request<TwoFactorSetup>('POST', '/api/auth/me/two-factor/new-app', { password, code }),
   confirmNewApp: (code: string) => request<void>('PUT', '/api/auth/me/two-factor/new-app', { code }),
   resetTwoFactor: (userId: string) => request<void>('POST', `/api/admin/users/${segment(userId)}/two-factor-reset`),
+  backup: (passphrase: string) => requestFile('/api/admin/backup', { passphrase }),
   logout: () => request<void>('POST', '/api/auth/logout'),
   createRoot: (input: RootInput) => request<UserView>('POST', '/api/auth/root', input),
   resetRoot: (setupToken: string, newPassword: string) =>

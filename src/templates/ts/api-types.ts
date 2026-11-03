@@ -705,6 +705,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Root only: the whole database as one file to download, e.g. `work-tracker-backup-2026-11-03.wtbackup`: all users (with password hashes and two-factor secrets), teams, memberships, invitations, auditors, every user's records with their history, the report view log, the audit log and the app settings. Not in it: sessions, remembered browsers, failed logins, the used setup tokens.
+         * @description Compressed (gzip) and encrypted with the passphrase (AES-256-GCM, key from scrypt), which is stored nowhere: without it the file cannot be restored. A header line before the encrypted part names the format and version.
+         */
+        post: operations["post__api_admin_backup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/audit": {
         parameters: {
             query?: never;
@@ -1392,6 +1412,14 @@ export interface components {
              * @description Whether new users can register on /register (off by default)
              */
             registration: boolean;
+        };
+        /** BackupInput */
+        BackupInput: {
+            /**
+             * Passphrase
+             * @description At least 12 characters; stored nowhere: without it the file cannot be restored
+             */
+            passphrase: string;
         };
         /** AuditViewList */
         AuditViewList: components["schemas"]["AuditView"][];
@@ -2693,7 +2721,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed" | "root_login_reset" | "two_factor_reset" | "password_changed" | "two_factor_on" | "two_factor_off" | "two_factor_new_app" | "recovery_codes_renewed";
+            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed" | "root_login_reset" | "two_factor_reset" | "password_changed" | "two_factor_on" | "two_factor_off" | "two_factor_new_app" | "recovery_codes_renewed" | "backup_made";
             /**
              * User
              * @description Name of whose account it is about
@@ -5700,6 +5728,44 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminSettings"];
                 };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    post__api_admin_backup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Forbidden */
             403: {

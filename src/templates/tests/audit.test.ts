@@ -45,6 +45,10 @@ test('changes to the own login', () => {
   assert.equal(auditText({ ...own, action: 'recovery_codes_renewed' }), 'Hans Dampf made new recovery codes');
 });
 
+test('a full backup', () => {
+  assert.equal(auditText({ ...ENTRY, action: 'backup_made', user: null, detail: '' }), 'Pascal Turbo downloaded a full backup');
+});
+
 test('a reset of two-factor login', () => {
   assert.equal(auditText({ ...ENTRY, actor: 'Klara Himmel', action: 'two_factor_reset', detail: '' }),
     'Klara Himmel reset the two-factor login of Hans Dampf');

@@ -1,5 +1,6 @@
 """Admin endpoints (403 for others): /api/admin/users and /api/admin/audit (root and admins), /api/admin/teams, each
-also by id, and the auditors (admins), and /api/admin/settings (root). Every change goes into the audit log.
+also by id, and the auditors (admins), and /api/admin/settings and /api/admin/backup (root). Every change goes into the
+audit log.
 
 Root appoints and removes admins and helps them (one-time password, deactivate, reactivate); admins help users and
 team admins, give team roles and manage teams (SPEC 5.7)."""
@@ -16,6 +17,8 @@ from src.modules.admin.schemas import (
     AdminSettings, AdminTeamView, AdminUserInput, AdminUserView, AuditorInput, AuditorView, OneTimePasswordView,
 )
 from src.modules.auth.sessions import current_user
+from src.modules.backup.full import backup_file, make_backup
+from src.modules.backup.schemas import BackupInput
 from src.models.teams import Auditor, Membership
 from src.models.users import Role, User
 from src.modules.storage.errors import ConflictError, NotFoundError
@@ -273,6 +276,27 @@ class AdminSettingsResource(_AdminResource):
                 store.set_registration(json.registration)
                 record(store, self._clock(), actor.id, 'registration_switched', detail='on' if json.registration else 'off')
         resp.media = json
+
+
+class AdminBackupResource(_AdminResource):
+    @spec.validate(json=BackupInput, resp=Response('HTTP_200', 'HTTP_403'), tags=TAGS)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, json: BackupInput) -> None:
+        """Root only: the whole database as one file to download, e.g. `work-tracker-backup-2026-11-03.wtbackup`:
+        all users (with password hashes and two-factor secrets), teams, memberships, invitations, auditors, every
+        user's records with their history, the report view log, the audit log and the app settings. Not in it:
+        sessions, remembered browsers, failed logins, the used setup tokens.
+
+        Compressed (gzip) and encrypted with the passphrase (AES-256-GCM, key from scrypt), which is stored nowhere:
+        without it the file cannot be restored. A header line before the encrypted part names the format and version.
+        """
+        now = self._clock()
+        with self._storage.transaction() as store:
+            actor = _staff(req, store, ('root',))
+            backup = make_backup(store, now)
+            record(store, now, actor.id, 'backup_made')
+        resp.data = backup_file(backup, json.passphrase)
+        resp.content_type = 'application/octet-stream'
+        resp.downloadable_as = f'work-tracker-backup-{backup.made_at.date().isoformat()}.wtbackup'
 
 
 class AdminAuditResource(_AdminResource):

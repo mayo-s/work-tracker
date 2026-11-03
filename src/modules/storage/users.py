@@ -113,6 +113,11 @@ class UserRepository:
         row = self._conn.execute('SELECT password_hash FROM users WHERE id = ?', (user_id,)).fetchone()
         return row is not None and verify_password(password, row[0])
 
+    def password_hash(self, user_id: str) -> str:
+        """The stored hash, for the full backup only."""
+        self.get(user_id)
+        return self._conn.execute('SELECT password_hash FROM users WHERE id = ?', (user_id,)).fetchone()[0]
+
     def set_password(self, user_id: str, password: str) -> None:
         """A new password ends all sessions of the user."""
         self._set_password(user_id, password, must_change=False)

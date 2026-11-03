@@ -33,6 +33,10 @@ class DynamoAuditLog:
         """The latest entries about the user's account, newest first."""
         return [self._entry(item) for item in self._unit.newest(user_partition(user_id), 'AUDIT#', limit)]
 
+    def all(self) -> list[AuditEntry]:
+        """All entries, oldest first (for the full backup)."""
+        return [self._entry(item) for item in self._unit.query_prefix(AUDIT, 'AT#')]
+
     def _entry(self, item: Item) -> AuditEntry:
         team = team_item(self._unit, item['team_id']) if item['team_id'] else None
         return AuditEntry(**attributes(item), actor_name=self._name(item['actor_id']), user_name=self._name(item['user_id']),

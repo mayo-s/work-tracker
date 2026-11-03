@@ -34,3 +34,7 @@ class AuditLogRepository:
         rows = self._conn.execute(f'{_SELECT} WHERE user_id = ? ORDER BY at DESC, audit_log.id DESC LIMIT ?',
                                   (user_id, limit))
         return [AuditEntry(**dict(row)) for row in rows]
+
+    def all(self) -> list[AuditEntry]:
+        """All entries, oldest first (for the full backup)."""
+        return [AuditEntry(**dict(row)) for row in self._conn.execute(f'{_SELECT} ORDER BY at, audit_log.id')]

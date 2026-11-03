@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { editable, roleName, userByEmail, userInput } from '../ts/admin.ts';
+import { editable, passphraseError, roleName, userByEmail, userInput } from '../ts/admin.ts';
 import type { AdminUserView } from '../ts/api.ts';
 
 const HANS: AdminUserView = {
@@ -43,4 +43,10 @@ test('nobody changes their own row, and root stays', () => {
   assert.deepEqual(editable('admin', { ...HANS, role: 'admin', team: 'Platform', team_role: 'member' }, true), none);
   assert.deepEqual(editable('admin', { ...HANS, role: 'root' }, false), none);
   assert.deepEqual(editable('root', { ...HANS, role: 'root' }, true), none);
+});
+
+test('the passphrase of the backup needs 12 characters, entered twice', () => {
+  assert.equal(passphraseError('too short', 'too short'), 'The passphrase needs at least 12 characters.');
+  assert.equal(passphraseError('a long passphrase', 'a long passphrasE'), 'The two passphrases differ.');
+  assert.equal(passphraseError('a long passphrase', 'a long passphrase'), null);
 });

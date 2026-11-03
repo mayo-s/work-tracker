@@ -7,8 +7,8 @@ import falcon
 
 from src.defaultresources.default import Default
 from src.modules.admin.resources import (
-    AdminAuditorCollection, AdminAuditorItem, AdminAuditResource, AdminOneTimePassword, AdminSettingsResource,
-    AdminTeamCollection, AdminTeamItem, AdminTwoFactorReset, AdminUserCollection, AdminUserItem,
+    AdminAuditorCollection, AdminAuditorItem, AdminAuditResource, AdminBackupResource, AdminOneTimePassword,
+    AdminSettingsResource, AdminTeamCollection, AdminTeamItem, AdminTwoFactorReset, AdminUserCollection, AdminUserItem,
 )
 from src.modules.auth.resources import (
     AuthStatusResource, LoginResource, LogoutResource, MeResource, MyAuditResource, NewAppResource, PasswordResource,
@@ -119,6 +119,7 @@ def create_app(
     app.add_route('/api/admin/users/{user_id}/one-time-password', AdminOneTimePassword(storage, clock))
     app.add_route('/api/admin/users/{user_id}/two-factor-reset', AdminTwoFactorReset(storage, clock))
     app.add_route('/api/admin/settings', AdminSettingsResource(storage, clock))
+    app.add_route('/api/admin/backup', AdminBackupResource(storage, clock))
     app.add_route('/api/admin/audit', AdminAuditResource(storage, clock))
     app.add_route('/api/admin/teams', AdminTeamCollection(storage, clock))
     app.add_route('/api/admin/teams/{team_id}', AdminTeamItem(storage, clock))
