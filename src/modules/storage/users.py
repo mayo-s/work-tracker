@@ -15,10 +15,22 @@ from src.modules.storage.owners import start_with_defaults, take_over_unowned
 
 SESSION_LIFETIME = dt.timedelta(hours=24)
 SESSION_RENEWAL = dt.timedelta(minutes=30)  # the stored expiry is renewed at most this often
+ROOT_SESSION_LIFETIME = dt.timedelta(hours=1)  # root, the strongest account: a forgotten tab soon ends
+ROOT_SESSION_RENEWAL = dt.timedelta(minutes=5)
+BROWSER_LIFETIME = dt.timedelta(days=30)  # a remembered browser skips the code of two-factor login
 ATTEMPTS_ALLOWED = 5  # failed logins and registrations together
 ATTEMPT_PAUSE = dt.timedelta(minutes=1)
 _COLUMNS = ('id, username, email, first_name, last_name, role, active, registered_at, last_login_at, must_change_password,'
             ' two_factor')
+
+
+def session_lifetime(role: str) -> dt.timedelta:
+    """How long a session lasts since the last activity: 24 hours, root's 1 hour."""
+    return ROOT_SESSION_LIFETIME if role == 'root' else SESSION_LIFETIME
+
+
+def session_renewal(role: str) -> dt.timedelta:
+    return ROOT_SESSION_RENEWAL if role == 'root' else SESSION_RENEWAL
 
 
 def random_id() -> str:
@@ -118,16 +130,20 @@ class UserRepository:
         return TwoFactor(secret=row[0], enabled=bool(row[1]), last_step=row[2], recovery=json.loads(row[3]))
 
     def save_two_factor(self, user_id: str, state: TwoFactor | None) -> None:
-        """The authenticator app being set up, confirmed or with a code used; None switches two-factor login off."""
+        """The authenticator app being set up, confirmed or with a code used; None switches two-factor login off and
+        forgets the remembered browsers."""
         values = (state.secret, int(state.enabled), state.last_step, json.dumps(state.recovery)) if state \
             else (None, 0, 0, '[]')
         self._conn.execute('UPDATE users SET two_factor_secret = ?, two_factor = ?, two_factor_step = ?,'
                            ' two_factor_recovery = ? WHERE id = ?', (*values, user_id))
+        if state is None:
+            BrowserRepository(self._conn).forget(user_id)
 
     def _set_password(self, user_id: str, password: str, must_change: bool) -> None:
         self._conn.execute('UPDATE users SET password_hash = ?, must_change_password = ? WHERE id = ?',
                            (hash_password(password), int(must_change), user_id))
         self._conn.execute('DELETE FROM sessions WHERE user_id = ?', (user_id,))
+        BrowserRepository(self._conn).forget(user_id)
 
     def _write(self, sql: str, params: tuple) -> sqlite3.Cursor:
         try:
@@ -138,7 +154,8 @@ class UserRepository:
 
 
 class SessionRepository:
-    """Sessions valid for 24 h since the last activity; the cookie holds the token, the table only its hash."""
+    """Sessions valid for 24 h since the last activity (root's for 1 h); the cookie holds the token, the table only its
+    hash."""
 
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
@@ -146,21 +163,22 @@ class SessionRepository:
     def start(self, user_id: str, now: dt.datetime) -> str:
         """A new session (at a login, a registration or a password change), recorded as the user's last login."""
         token = secrets.token_urlsafe(32)
+        role = self._conn.execute('SELECT role FROM users WHERE id = ?', (user_id,)).fetchone()[0]
         self._conn.execute('INSERT INTO sessions (token_hash, user_id, expires_at, renewed_at) VALUES (?, ?, ?, ?)',
-                           (token_hash(token), user_id, (now + SESSION_LIFETIME).isoformat(), now.isoformat()))
+                           (token_hash(token), user_id, (now + session_lifetime(role)).isoformat(), now.isoformat()))
         self._conn.execute('UPDATE users SET last_login_at = ? WHERE id = ?', (now.isoformat(), user_id))
         return token
 
     def user_id(self, token: str, now: dt.datetime) -> tuple[str | None, bool]:
         """The user of a valid session and whether it was renewed now (the cookie then gets renewed too)."""
-        row = self._conn.execute('SELECT user_id, expires_at, renewed_at FROM sessions JOIN users ON users.id = user_id'
+        row = self._conn.execute('SELECT user_id, role, expires_at, renewed_at FROM sessions JOIN users ON users.id = user_id'
                                  ' WHERE token_hash = ? AND active', (token_hash(token),)).fetchone()
         if row is None or dt.datetime.fromisoformat(row['expires_at']) <= now:
             return None, False
-        if now - dt.datetime.fromisoformat(row['renewed_at']) < SESSION_RENEWAL:
+        if now - dt.datetime.fromisoformat(row['renewed_at']) < session_renewal(row['role']):
             return row['user_id'], False
         self._conn.execute('UPDATE sessions SET expires_at = ?, renewed_at = ? WHERE token_hash = ?',
-                           ((now + SESSION_LIFETIME).isoformat(), now.isoformat(), token_hash(token)))
+                           ((now + session_lifetime(row['role'])).isoformat(), now.isoformat(), token_hash(token)))
         return row['user_id'], True
 
     def end(self, token: str) -> None:
@@ -168,6 +186,29 @@ class SessionRepository:
 
     def end_expired(self, now: dt.datetime) -> None:
         self._conn.execute('DELETE FROM sessions WHERE expires_at <= ?', (now.isoformat(),))
+
+
+class BrowserRepository:
+    """Browsers that skip the code of two-factor login for 30 days ("Remember this browser"); their cookie holds the
+    token, the table only its hash. A new password or switching two-factor login off forgets them."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def remember(self, user_id: str, now: dt.datetime) -> str:
+        token = secrets.token_urlsafe(32)
+        self._conn.execute('DELETE FROM remembered_browsers WHERE expires_at <= ?', (now.isoformat(),))
+        self._conn.execute('INSERT INTO remembered_browsers (token_hash, user_id, expires_at) VALUES (?, ?, ?)',
+                           (token_hash(token), user_id, (now + BROWSER_LIFETIME).isoformat()))
+        return token
+
+    def known(self, user_id: str, token: str, now: dt.datetime) -> bool:
+        """Whether the browser with this token is remembered for the user, and not expired."""
+        return self._conn.execute('SELECT 1 FROM remembered_browsers WHERE token_hash = ? AND user_id = ? AND expires_at > ?',
+                                  (token_hash(token), user_id, now.isoformat())).fetchone() is not None
+
+    def forget(self, user_id: str) -> None:
+        self._conn.execute('DELETE FROM remembered_browsers WHERE user_id = ?', (user_id,))
 
 
 class LoginAttempts:

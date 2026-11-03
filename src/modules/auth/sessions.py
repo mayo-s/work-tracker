@@ -12,9 +12,10 @@ from src.models.users import User
 from src.modules.auth.two_factor import required
 from src.modules.storage.owners import NO_OWNER
 from src.modules.storage.store import Storage
-from src.modules.storage.users import SESSION_LIFETIME
+from src.modules.storage.users import BROWSER_LIFETIME, SESSION_LIFETIME, session_lifetime
 
 COOKIE = 'wt_session'
+BROWSER_COOKIE = 'wt_browser'  # a browser remembered for two-factor login
 PAUSED = 'Too many attempts; try again in a minute'
 OPEN_PATHS = {
     '/login', '/register', '/health', '/api/auth/status', '/api/auth/login', '/api/auth/logout', '/api/auth/root',
@@ -44,10 +45,20 @@ def current_user(req: falcon.Request) -> str:
     return user_id
 
 
-def set_session_cookie(req: falcon.Request, resp: falcon.Response, token: str) -> None:
+def set_session_cookie(req: falcon.Request, resp: falcon.Response, token: str,
+                       lifetime: dt.timedelta = SESSION_LIFETIME) -> None:
+    _set_cookie(req, resp, COOKIE, token, lifetime)
+
+
+def set_browser_cookie(req: falcon.Request, resp: falcon.Response, token: str) -> None:
+    """The browser skips the code of two-factor login for 30 days."""
+    _set_cookie(req, resp, BROWSER_COOKIE, token, BROWSER_LIFETIME)
+
+
+def _set_cookie(req: falcon.Request, resp: falcon.Response, name: str, token: str, lifetime: dt.timedelta) -> None:
     https = req.scheme == 'https' or req.get_header('X-Forwarded-Proto') == 'https'
-    resp.set_cookie(COOKIE, token, max_age=int(SESSION_LIFETIME.total_seconds()), path='/', secure=https,
-                    http_only=True, same_site='Strict')
+    resp.set_cookie(name, token, max_age=int(lifetime.total_seconds()), path='/', secure=https, http_only=True,
+                    same_site='Strict')
 
 
 def clear_session_cookie(resp: falcon.Response) -> None:
@@ -73,7 +84,7 @@ class Authentication:
             access = _Access(user, not store.users().count(), store.setup_done(NO_OWNER))
         req.context.user_id = user_id
         if renewed:
-            set_session_cookie(req, resp, token)
+            set_session_cookie(req, resp, token, session_lifetime(user.role))
         _check(req, access)
 
 

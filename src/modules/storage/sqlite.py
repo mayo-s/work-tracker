@@ -23,7 +23,7 @@ from src.modules.storage.settings import (
 from src.modules.storage.store import Clock, RenameResult, Theme
 from src.modules.storage.teams import AuditorRepository, InvitationRepository, ReportViewLog, TeamRepository
 from src.modules.storage.tickets import TicketRepository
-from src.modules.storage.users import LoginAttempts, SessionRepository, UserRepository
+from src.modules.storage.users import BrowserRepository, LoginAttempts, SessionRepository, UserRepository
 
 
 class SqliteStore:
@@ -61,6 +61,9 @@ class SqliteStore:
 
     def sessions(self) -> SessionRepository:
         return SessionRepository(self._conn)
+
+    def browsers(self) -> BrowserRepository:
+        return BrowserRepository(self._conn)
 
     def attempts(self) -> LoginAttempts:
         return LoginAttempts(self._conn)

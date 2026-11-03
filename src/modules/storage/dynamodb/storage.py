@@ -17,7 +17,7 @@ from src.modules.storage.dynamodb.table import Table
 from src.modules.storage.dynamodb.teams import DynamoAuditors, DynamoInvitations, DynamoReportViews, DynamoTeams
 from src.modules.storage.dynamodb.tickets import DynamoTickets
 from src.modules.storage.dynamodb.unit import Unit
-from src.modules.storage.dynamodb.users import DynamoAttempts, DynamoSessions, DynamoUsers
+from src.modules.storage.dynamodb.users import DynamoAttempts, DynamoBrowsers, DynamoSessions, DynamoUsers
 from src.modules.storage.errors import USED_TOKEN, SchemaVersionError
 from src.modules.storage.store import Clock, RenameResult, Theme
 
@@ -64,6 +64,9 @@ class DynamoStore:
 
     def sessions(self) -> DynamoSessions:
         return DynamoSessions(self._unit)
+
+    def browsers(self) -> DynamoBrowsers:
+        return DynamoBrowsers(self._unit)
 
     def attempts(self) -> DynamoAttempts:
         return DynamoAttempts(self._unit)

@@ -69,6 +69,7 @@ class LoginInput(BaseModel):
     password: str = Field(min_length=1, max_length=200)
     code: str | None = Field(default=None, max_length=20,
                              description='With two-factor login: the code of the authenticator app')
+    remember: bool = Field(default=False, description='With a code: this browser needs none for 30 days (not for root)')
 
 
 class TwoFactorStatus(BaseModel):

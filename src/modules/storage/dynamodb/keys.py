@@ -22,7 +22,8 @@ In a user's partition: `SETTINGS` (balance, setup, theme), `SESSION#<hash>` (to 
 `SERVICE#<id>` and `ACTIVITY_TYPE#<id>` (names unique by `SERVICE_NAME#…` / `ACTIVITY_TYPE_NAME#<lower case>`),
 `TICKET#<key>`, `DAY#<date>`, `ENTRY#<date>#<id>` with `ENTRY_ID#<id>` (its date), `HISTORY#<entry id>#<id>`,
 `FLAG#<id>`, `SCHEDULE#<id>` (one per day by `SCHEDULE_FROM#<date>`), `PTO#<year>`, `MEMBERSHIP#<id>` (the teams they
-were in), `VIEW#<time>#<id>` (who looked at their reports) and `AUDIT#<time>#<id>` (changes to their account). Ids
+were in), `VIEW#<time>#<id>` (who looked at their reports), `AUDIT#<time>#<id>` (changes to their account) and
+`BROWSER#<hash>` (browsers remembered for two-factor login, time to live). Ids
 are UUIDv7s (SPEC 7.2a), so sort keys holding them keep the order of creation.
 """
 

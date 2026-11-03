@@ -191,8 +191,8 @@ export const api = {
   dashboard: (member: string | null = null) => request<DashboardView>('GET', `/api/dashboard${memberQuery(member)}`),
 
   authStatus: () => request<AuthStatus>('GET', '/api/auth/status'),
-  login: (login: string, password: string, code: string | null = null) =>
-    request<UserView>('POST', '/api/auth/login', { login, password, code }),
+  login: (login: string, password: string, code: string | null = null, remember = false) =>
+    request<UserView>('POST', '/api/auth/login', { login, password, code, remember }),
   twoFactor: () => request<TwoFactorStatus>('GET', '/api/auth/me/two-factor'),
   startTwoFactor: () => request<TwoFactorSetup>('POST', '/api/auth/me/two-factor'),
   confirmTwoFactor: (code: string) => request<RecoveryCodes>('PUT', '/api/auth/me/two-factor', { code }),

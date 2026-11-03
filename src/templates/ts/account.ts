@@ -156,7 +156,12 @@ function loginForm(
   const password = el('input', { id: 'login-password', name: 'password', type: 'password', autocomplete: 'current-password',
     required: true });
   const code = el('input', { id: 'login-code', name: 'code', inputmode: 'numeric', autocomplete: 'one-time-code' });
-  const codeField = field('login', 'code', 'Code of your authenticator app', code, 'Six digits; a new one every 30 seconds.');
+  const remember = el('input', { id: 'login-remember', type: 'checkbox' });
+  const codeField = el('div', {},
+    field('login', 'code', 'Code of your authenticator app', code, 'Six digits, a new one every 30 seconds; or a recovery '
+      + 'code.'),
+    el('label', { class: 'checkbox-field', for: 'login-remember' }, remember,
+      'Remember this browser for 30 days (not for root)'));
   codeField.hidden = true;  // shown once the password is right and the account uses two-factor login
   const form = el('form', { class: 'card login-form' },
     field('login', 'name', 'Username or e-mail address', name),
@@ -172,7 +177,7 @@ function loginForm(
         + 'the computer running the app: ', el('code', {}, 'pipenv run python -m src.modules.auth set-password USERNAME')));
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    api.login(name.value.trim(), password.value, codeField.hidden ? null : code.value.trim())
+    api.login(name.value.trim(), password.value, codeField.hidden ? null : code.value.trim(), remember.checked)
       .then(() => window.location.assign(next), (failure: unknown) => {
         if (needsCode(failure)) {
           codeField.hidden = false;
