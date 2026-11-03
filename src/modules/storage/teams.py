@@ -73,6 +73,18 @@ class TeamRepository:
         """All teams, also the deleted ones, in the order they were created (for the full backup)."""
         return [TeamRecord(**dict(row)) for row in self._conn.execute('SELECT id, name, deleted_at FROM teams ORDER BY id')]
 
+    def restore(self, team: TeamRecord) -> None:
+        """A team of the full backup with its id, also a deleted one."""
+        self._write('INSERT INTO teams (id, name, deleted_at) VALUES (?, ?, ?)',
+                    (team.id, team.name, team.deleted_at.isoformat() if team.deleted_at else None), team.name)
+
+    def restore_membership(self, membership: Membership) -> None:
+        """A stay of the full backup, current or former, in the order they come."""
+        self._conn.execute(
+            'INSERT INTO team_memberships (id, team_id, user_id, joined_on, left_on, team_role) VALUES (?, ?, ?, ?, ?, ?)',
+            (new_id(), membership.team_id, membership.user_id, membership.joined_on.isoformat(),
+             membership.left_on.isoformat() if membership.left_on else None, membership.team_role))
+
     def _memberships(self, column: str, value: str) -> list[Membership]:
         rows = self._conn.execute(
             'SELECT team_id, teams.name AS team_name, user_id, joined_on, left_on, team_role FROM team_memberships'
@@ -219,6 +231,12 @@ class InvitationRepository:
         """All open invitations, oldest first (for the full backup)."""
         rows = self._conn.execute(f'{self._SELECT} ORDER BY invited_at, team_invitations.id')
         return [Invitation(**dict(row)) for row in rows]
+
+    def restore(self, invitation: Invitation) -> None:
+        """An invitation of the full backup as it was."""
+        self._conn.execute('INSERT INTO team_invitations (id, team_id, email, invited_by, invited_at) VALUES (?, ?, ?, ?, ?)',
+                           (invitation.id, invitation.team_id, invitation.email, invitation.invited_by,
+                            invitation.invited_at.isoformat()))
 
     def _own(self, user_id: str, invitation_id: str) -> Invitation:
         """One of the user's open invitations; another user's is unknown (404)."""

@@ -27,6 +27,7 @@ export function auditText(entry: AuditView): string {
     two_factor_new_app: () => `${actor} moved two-factor login to a new authenticator app`,
     recovery_codes_renewed: () => `${actor} made new recovery codes`,
     backup_made: () => `${actor} downloaded a full backup`,
+    backup_restored: () => `${actor} restored a full backup`,
     registration_switched: () => `${actor} switched registration ${detail}`,
     team_created: () => `${actor} created the team ${team}`,
     team_renamed: () => `${actor} renamed the team ${detail} to ${team}`,

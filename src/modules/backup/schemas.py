@@ -51,3 +51,19 @@ class BackupInput(BaseModel):
     passphrase: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=200,
                             description=f'At least {PASSWORD_MIN_LENGTH} characters; stored nowhere: without it the file '
                                         'cannot be restored')
+
+
+class RestoreInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    file: str = Field(min_length=1, description='The backup file, base64-encoded')
+    passphrase: str = Field(min_length=1, max_length=200)
+    confirm: str | None = Field(default=None, description="'purge' while anyone but root exists: everything but root "
+                                                          'goes before the backup comes in')
+
+
+class RestoreSummary(BaseModel):
+    users: int = Field(description='Restored users, without root')
+    teams: int
+    entries: int
+    audit_entries: int

@@ -11,6 +11,7 @@ from src.modules.storage.dynamodb.catalog import DynamoActivityTypes, DynamoServ
 from src.modules.storage.dynamodb.days import DynamoDays
 from src.modules.storage.dynamodb.entries import DynamoEntries
 from src.modules.storage.dynamodb.keys import APP, META, SCHEMA, user_partition
+from src.modules.storage.dynamodb.purge import purge
 from src.modules.storage.dynamodb.renames import rename_ticket
 from src.modules.storage.dynamodb.schedules import DynamoPtoYears, DynamoSchedules
 from src.modules.storage.dynamodb.table import Table
@@ -133,6 +134,21 @@ class DynamoStore:
     def use_setup_token(self, token_hash: str, at: dt.datetime) -> None:
         """Marks the setup token used (by its hash): it works only once (409 for a second time)."""
         self._unit.put({'PK': APP, 'SK': f'TOKEN#{token_hash}', 'used_at': at.isoformat()}, unique=USED_TOKEN)
+
+    def purge(self, root_id: str) -> None:
+        """Everything but root goes (in chunks), before a full backup is restored."""
+        purge(self._unit, root_id)
+
+    def start_restore(self) -> None:
+        """Written at once, so a restore that stops halfway leaves the mark."""
+        stored_settings.start_restore(self._unit)
+        self._unit.flush()
+
+    def restore_unfinished(self) -> bool:
+        return stored_settings.restore_unfinished(self._unit)
+
+    def finish_restore(self) -> None:
+        stored_settings.finish_restore(self._unit)
 
 
 class DynamoStorage:

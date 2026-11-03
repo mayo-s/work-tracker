@@ -81,7 +81,7 @@ class Authentication:
         with self._storage.transaction() as store:
             user_id, renewed = store.sessions().user_id(token, self._clock()) if token else (None, False)
             user = store.users().get(user_id) if user_id is not None else None
-            access = _Access(user, not store.users().count(), store.setup_done(NO_OWNER))
+            access = _Access(user, not store.users().count(), store.setup_done(NO_OWNER), store.restore_unfinished())
         req.context.user_id = user_id
         if renewed:
             set_session_cookie(req, resp, token, session_lifetime(user.role))
@@ -92,6 +92,7 @@ class _Access(NamedTuple):
     user: User | None  # logged in
     first_user_missing: bool
     set_up: bool  # the database (not logged in)
+    restoring: bool = False  # a restore of the full backup is unfinished: only root uses the app
 
 
 def _check(req: falcon.Request, access: _Access) -> None:
@@ -99,6 +100,8 @@ def _check(req: falcon.Request, access: _Access) -> None:
     admins without two-factor login, only the page to set it up; root only its own pages."""
     if access.user is None:
         allowed, refuse = _open(req.path, access.first_user_missing, access.set_up), _refuse
+    elif access.restoring and access.user.role != 'root':
+        allowed, refuse = _open_until(req.path, set()), _wait_for_restore
     else:
         allowed, refuse = _rule(access.user, req.path)
     if not allowed:
@@ -144,6 +147,13 @@ def _ask_for_new_password(req: falcon.Request) -> None:
     if req.path.startswith('/api/'):
         raise falcon.HTTPForbidden(description='Choose your own password first, on /password')
     raise falcon.HTTPSeeOther('/password')
+
+
+RESTORING = 'A restore of the full backup is not finished yet; until then, only root can use the app'
+
+
+def _wait_for_restore(req: falcon.Request) -> None:
+    raise falcon.HTTPServiceUnavailable(description=RESTORING)
 
 
 def _refuse(req: falcon.Request) -> None:

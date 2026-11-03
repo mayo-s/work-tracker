@@ -72,3 +72,17 @@ def registration_open(conn: sqlite3.Connection) -> bool:
 def set_registration(conn: sqlite3.Connection, enabled: bool) -> None:
     conn.execute("INSERT INTO settings (key, value) VALUES ('registration', ?) "
                  'ON CONFLICT (key) DO UPDATE SET value = excluded.value', ('1' if enabled else '0',))
+
+
+def start_restore(conn: sqlite3.Connection) -> None:
+    """A full restore has begun: until it finishes, only root uses the app."""
+    conn.execute("INSERT INTO settings (key, value) VALUES ('restore_unfinished', '1') "
+                 'ON CONFLICT (key) DO UPDATE SET value = excluded.value')
+
+
+def restore_unfinished(conn: sqlite3.Connection) -> bool:
+    return conn.execute("SELECT 1 FROM settings WHERE key = 'restore_unfinished'").fetchone() is not None
+
+
+def finish_restore(conn: sqlite3.Connection) -> None:
+    conn.execute("DELETE FROM settings WHERE key = 'restore_unfinished'")

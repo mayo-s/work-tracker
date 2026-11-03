@@ -16,7 +16,7 @@ from src.modules.auth.schemas import (
 )
 from src.modules.teams.schemas import TeamRef
 from src.modules.auth.sessions import (
-    BROWSER_COOKIE, COOKIE, PAUSED, clear_session_cookie, set_browser_cookie, set_session_cookie,
+    BROWSER_COOKIE, COOKIE, PAUSED, RESTORING, clear_session_cookie, set_browser_cookie, set_session_cookie,
 )
 from src.modules.auth.setup_token import SetupToken, check_setup_token
 from src.modules.auth.two_factor import (
@@ -127,13 +127,20 @@ class LoginResource(_AuthResource):
         if user is None or not users.check_password(user.id, json.password):
             attempts.add(now)
             return None, WRONG_LOGIN
-        if not user.active:
-            raise falcon.HTTPForbidden(description='This account is deactivated; ask an admin')
+        _check_access(store, user)
         if not second_factor(store, user, json.code, now, browser):
             attempts.add(now)
             return None, WRONG_CODE
         attempts.clear_failed(now)
         return user, None
+
+
+def _check_access(store: Store, user: User) -> None:
+    """A deactivated user is refused (403), and anyone but root while a restore is unfinished (503)."""
+    if not user.active:
+        raise falcon.HTTPForbidden(description='This account is deactivated; ask an admin')
+    if user.role != 'root' and store.restore_unfinished():
+        raise falcon.HTTPServiceUnavailable(description=RESTORING)
 
 
 class LogoutResource(_AuthResource):

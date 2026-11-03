@@ -406,8 +406,9 @@ corners, one accent color. Warnings are the only loud element.
   nonce, nothing personal. The passphrase is stored nowhere: without it the file is useless.
 - Restore, on `/admin` with the file and its passphrase: a database holding nobody but root restores at once.
   Otherwise root is asked whether to purge the current state first and confirms by typing `purge`; everything but
-  root goes, then the backup comes in. Root stays as it is (the backup's root is skipped); everyone else has their
-  password and two-factor login from the backup, and all other sessions end.
+  root goes, then the backup comes in. Root stays as it is (the backup's root is skipped, and what it did is credited
+  to the current root); everyone else has their password and two-factor login from the backup, and all other sessions
+  end.
 - A wrong passphrase, a damaged file, an unknown format or a newer version is refused before anything is written.
   SQLite restores in one transaction. DynamoDB purges and restores in atomic chunks; one that stops halfway marks the
   database: only root can use the app until restoring the file again finishes it.

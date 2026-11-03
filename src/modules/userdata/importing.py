@@ -14,28 +14,31 @@ from src.modules.userdata.schemas import ImportSummary, UserData
 ROOM = 4  # the most items one record of the file takes, e.g. an entry with its pointer and its new ticket on DynamoDB
 
 
-def import_data(store: Store, user_id: str, data: UserData) -> ImportSummary:
+def import_data(store: Store, user_id: str, data: UserData, team_services: dict[str, str] | None = None) -> ImportSummary:
     """Write the file's records for the user, with new record ids in place of the file's. Team services become personal
-    ones (an own service with the same short name is used instead), and the file's activity types replace the user's.
+    ones (an own service with the same short name is used instead), except those in `team_services` (short name in
+    lower case → id of the service of the user's team; the full restore), and the file's activity types replace the
+    user's.
 
     Refused (ConflictError) for a user who has days or entries, and for a file referring to records it does not hold
     (checked before anything is written). On SQLite it runs in the caller's transaction, all or nothing; on DynamoDB
     it writes atomic chunks, and an import that stopped halfway (the setup is still open) is replaced by the next one.
     """
-    return _Import(store, user_id, data).run()
+    return _Import(store, user_id, data, team_services or {}).run()
 
 
 class _Import:
-    def __init__(self, store: Store, user_id: str, data: UserData) -> None:
+    def __init__(self, store: Store, user_id: str, data: UserData, team_services: dict[str, str]) -> None:
         self._store = store
         self._user = user_id
         self._data = data
+        self._team_services = team_services
         self._services: dict[str, str] = {}  # file id (as text) → record id
         self._activity_types: dict[str, str] = {}
         self._entries: dict[str, str] = {}
 
     def run(self) -> ImportSummary:
-        _check_references(self._data)
+        check_references(self._data)
         self._start()
         self._settings()
         self._services_of_file()
@@ -86,6 +89,9 @@ class _Import:
         by_name = {service.short_name.casefold(): service.id for service in services.all()}
         for service in sorted(self._data.services, key=lambda service: service.team is not None):
             name = service.short_name.casefold()
+            if service.team is not None and name in self._team_services:
+                self._services[service.id] = self._team_services[name]
+                continue
             if name not in by_name:
                 self._store.make_room(ROOM)
                 by_name[name] = services.add(Service(short_name=service.short_name, name=service.name)).id
@@ -159,7 +165,7 @@ class _Import:
                 entries.add_flag(self._entries[flag.entry_id], flag.reason, flag.detail)
 
 
-def _check_references(data: UserData) -> None:
+def check_references(data: UserData) -> None:
     """Every service, activity type and entry the file refers to is in it (before anything is written)."""
     activity_entries = [entry for entry in data.entries if isinstance(entry, ActivityEntry)]
     for references, held, label in (
