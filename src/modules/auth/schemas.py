@@ -95,6 +95,14 @@ class TwoFactorCode(BaseModel):
     code: str = Field(min_length=6, max_length=20, description='The current code of the authenticator app')
 
 
+class NewAppInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    password: str = Field(min_length=1, max_length=200, description='The current password')
+    code: str = Field(min_length=6, max_length=20, description='The current code of the old authenticator app, or a '
+                                                               'recovery code')
+
+
 class TwoFactorOff(BaseModel):
     model_config = ConfigDict(extra='forbid')
 

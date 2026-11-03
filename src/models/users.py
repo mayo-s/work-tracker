@@ -35,12 +35,14 @@ class User(DomainModel):
 
 class TwoFactor(DomainModel):
     """A user's authenticator app (TOTP): its secret, whether it is confirmed, and the last time step used (a code
-    works only once). Never shown again after the setup, and not part of `User`."""
+    works only once); a new app (e.g. on a new phone) until a code of it confirms it. Never shown again after the setup,
+    and not part of `User`."""
 
     secret: str
     enabled: bool = False  # False while being set up: a first code confirms it
     last_step: int = 0
     recovery: list[str] = []  # SHA-256 hashes of the recovery codes not used yet
+    new_secret: str | None = None  # a new authenticator app: replaces `secret` once a code of it confirms it
 
 
 def password_problem(password: str) -> str | None:

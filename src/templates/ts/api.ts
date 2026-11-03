@@ -199,6 +199,9 @@ export const api = {
   twoFactorOff: (password: string) => request<void>('POST', '/api/auth/me/two-factor/off', { password }),
   newRecoveryCodes: (password: string) =>
     request<RecoveryCodes>('POST', '/api/auth/me/two-factor/recovery', { password }),
+  startNewApp: (password: string, code: string) =>
+    request<TwoFactorSetup>('POST', '/api/auth/me/two-factor/new-app', { password, code }),
+  confirmNewApp: (code: string) => request<void>('PUT', '/api/auth/me/two-factor/new-app', { code }),
   resetTwoFactor: (userId: string) => request<void>('POST', `/api/admin/users/${segment(userId)}/two-factor-reset`),
   logout: () => request<void>('POST', '/api/auth/logout'),
   createRoot: (input: RootInput) => request<UserView>('POST', '/api/auth/root', input),
