@@ -54,15 +54,21 @@ def code_accepted(store: Store, user_id: str, code: str, now: dt.datetime, enabl
     return True
 
 
-def second_factor(store: Store, user: User, code: str | None, now: dt.datetime) -> bool:
+def second_factor(store: Store, user: User, code: str | None, now: dt.datetime, browser: str | None = None) -> bool:
     """With two-factor login, the code is needed (401 with `code` two_factor_required without one); whether it fits.
-    Without two-factor login, nothing is needed."""
-    if not user.two_factor:
+    Without two-factor login, or in a browser remembered for the user (`browser`: its token; never for root), nothing is
+    needed."""
+    if not user.two_factor or remembered(store, user, browser, now):
         return True
     if not code:
         raise falcon.HTTPUnauthorized(title='401 Unauthorized', code=CODE_NEEDED,
                                       description='Enter the code of your authenticator app')
     return code_accepted(store, user.id, code, now) or _recovery_accepted(store, user.id, code)
+
+
+def remembered(store: Store, user: User, browser: str | None, now: dt.datetime) -> bool:
+    """Whether this browser skips the code for the user: remembered at a login with a code, for 30 days; not for root."""
+    return user.role != 'root' and browser is not None and store.browsers().known(user.id, browser, now)
 
 
 def _recovery_accepted(store: Store, user_id: str, code: str) -> bool:

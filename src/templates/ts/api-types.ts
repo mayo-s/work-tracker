@@ -410,7 +410,7 @@ export interface paths {
         put?: never;
         /**
          * Log in with username or e-mail address; sets the session cookie (valid 24 h since the last activity).
-         * @description After 5 failed logins or registrations within a minute, logins pause (429). A deactivated user is refused (403). With two-factor login, the right password without `code` answers 401 with the code `two_factor_required` (not counted as failed); a wrong code counts as a failed login.
+         * @description After 5 failed logins or registrations within a minute, logins pause (429). A deactivated user is refused (403). With two-factor login, the right password without `code` answers 401 with the code `two_factor_required` (not counted as failed); a wrong code counts as a failed login. With `remember` and a code, the browser needs no code for 30 days (its own cookie; not for root).
          */
         post: operations["post__api_auth_login"];
         delete?: never;
@@ -1441,6 +1441,12 @@ export interface components {
              * @default null
              */
             code?: string | null;
+            /**
+             * Remember
+             * @description With a code: this browser needs none for 30 days (not for root)
+             * @default false
+             */
+            remember?: boolean;
         };
         /** UserView */
         UserView: {

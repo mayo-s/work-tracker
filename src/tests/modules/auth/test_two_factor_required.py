@@ -110,3 +110,13 @@ def test_admins_do_not_reset_admins(app, database, ids):
     result = reset(app, klara, ids['hans'])
     assert (result.status, result.json['description']) == (falcon.HTTP_403, 'Only root for admins may reset two-factor '
                                                                             'login')
+
+
+def test_root_has_an_hour_and_no_remembered_browser(app):
+    first = app.simulate_post('/api/auth/login', json={'login': 'pascal', 'password': PASSWORD})
+    assert first.cookies['wt_session'].max_age == 3600
+    secret = switch_on(app, {'wt_session': first.cookies['wt_session'].value})
+    code = code_at(secret, time_step(NOW) + 1)
+    result = app.simulate_post('/api/auth/login', json={'login': 'pascal', 'password': PASSWORD, 'code': code,
+                                                        'remember': True})
+    assert result.status == falcon.HTTP_200 and 'wt_browser' not in result.cookies

@@ -135,3 +135,34 @@ def test_new_recovery_codes_replace_the_old_ones(app, klara, clock):
     assert new.status == falcon.HTTP_201
     assert login(app, old['recovery_codes'][0]).status == falcon.HTTP_401
     assert login(app, new.json['recovery_codes'][0]).status == falcon.HTTP_200
+
+
+def login_remembering(app, code):
+    return app.simulate_post('/api/auth/login', json={'login': 'klara', 'password': PASSWORD, 'code': code, 'remember': True})
+
+
+def test_a_remembered_browser_needs_no_code_for_30_days(app, secret, clock):
+    first = login_remembering(app, clock.code(secret))
+    browser = first.cookies['wt_browser']
+    assert (browser.http_only, browser.same_site, browser.max_age) == (True, 'Strict', 30 * 24 * 3600)
+    again = app.simulate_post('/api/auth/login', cookies={'wt_browser': browser.value},
+                              json={'login': 'klara', 'password': PASSWORD})
+    assert again.status == falcon.HTTP_200
+    clock.now += dt.timedelta(days=31)
+    later = app.simulate_post('/api/auth/login', cookies={'wt_browser': browser.value},
+                              json={'login': 'klara', 'password': PASSWORD})
+    assert later.json['code'] == 'two_factor_required'
+
+
+def test_a_new_password_forgets_the_browser(app, klara, secret, clock):
+    browser = login_remembering(app, clock.code(secret)).cookies['wt_browser'].value
+    session = {'wt_session': login(app, clock.code(secret, 1)).cookies['wt_session'].value}
+    app.simulate_put('/api/auth/me/password', cookies=session,
+                     json={'current_password': PASSWORD, 'new_password': 'another long password 2#'})
+    again = app.simulate_post('/api/auth/login', cookies={'wt_browser': browser},
+                              json={'login': 'klara', 'password': 'another long password 2#'})
+    assert again.json['code'] == 'two_factor_required'
+
+
+def test_without_remember_no_browser_is_remembered(app, secret, clock):
+    assert 'wt_browser' not in login(app, clock.code(secret)).cookies

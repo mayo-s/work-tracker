@@ -1641,7 +1641,7 @@
       "post": {
         "summary": "Log in with username or e-mail address; sets the session cookie (valid 24 h since the last activity).",
         "operationId": "post__api_auth_login",
-        "description": "After 5 failed logins or registrations within a minute, logins pause (429). A deactivated user is refused (403). With two-factor login, the right password without `code` answers 401 with the code `two_factor_required` (not counted as failed); a wrong code counts as a failed login.",
+        "description": "After 5 failed logins or registrations within a minute, logins pause (429). A deactivated user is refused (403). With two-factor login, the right password without `code` answers 401 with the code `two_factor_required` (not counted as failed); a wrong code counts as a failed login. With `remember` and a code, the browser needs no code for 30 days (its own cookie; not for root).",
         "tags": [
           "Login"
         ],
@@ -4977,6 +4977,12 @@
             "default": null,
             "description": "With two-factor login: the code of the authenticator app",
             "title": "Code"
+          },
+          "remember": {
+            "default": false,
+            "description": "With a code: this browser needs none for 30 days (not for root)",
+            "title": "Remember",
+            "type": "boolean"
           }
         },
         "required": [

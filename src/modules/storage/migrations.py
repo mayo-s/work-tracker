@@ -623,4 +623,13 @@ MIGRATIONS: tuple[Migration, ...] = (
     """
     ALTER TABLE users ADD COLUMN two_factor_recovery TEXT NOT NULL DEFAULT '[]';
     """,
+    # 22: remembered browsers (TASKS.md 9.1g3): they skip the code of two-factor login for 30 days
+    """
+    CREATE TABLE remembered_browsers (
+        token_hash TEXT PRIMARY KEY,  -- SHA-256 of the cookie's token
+        user_id    TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        expires_at TEXT NOT NULL
+    );
+    CREATE INDEX remembered_browsers_by_user ON remembered_browsers (user_id);
+    """,
 )

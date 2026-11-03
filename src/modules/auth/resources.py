@@ -15,13 +15,16 @@ from src.modules.auth.schemas import (
     TwoFactorCode, TwoFactorOff, TwoFactorSetup, TwoFactorStatus, UserView,
 )
 from src.modules.teams.schemas import TeamRef
-from src.modules.auth.sessions import COOKIE, PAUSED, clear_session_cookie, set_session_cookie
+from src.modules.auth.sessions import (
+    BROWSER_COOKIE, COOKIE, PAUSED, clear_session_cookie, set_browser_cookie, set_session_cookie,
+)
 from src.modules.auth.setup_token import SetupToken, check_setup_token
 from src.modules.auth.two_factor import (
     WRONG_CODE, code_accepted, new_recovery_codes, qr_code, recovery_hash, required, second_factor,
 )
 from src.modules.storage.errors import ConflictError
 from src.modules.storage.store import Storage, Store
+from src.modules.storage.users import session_lifetime
 from src.utils.spec import spec
 
 TAGS = ['Login']
@@ -38,7 +41,7 @@ class _AuthResource:
         self._setup_token = setup_token
 
     def _log_in(self, req: falcon.Request, resp: falcon.Response, store: Store, user: User) -> None:
-        set_session_cookie(req, resp, store.sessions().start(user.id, self._clock()))
+        set_session_cookie(req, resp, store.sessions().start(user.id, self._clock()), session_lifetime(user.role))
 
     def _create(self, req: falcon.Request, resp: falcon.Response, store: Store, json: NewUserInput, role: Role = 'user',
                 ) -> User:
@@ -96,17 +99,24 @@ class LoginResource(_AuthResource):
 
         After 5 failed logins or registrations within a minute, logins pause (429). A deactivated user is refused (403).
         With two-factor login, the right password without `code` answers 401 with the code `two_factor_required`
-        (not counted as failed); a wrong code counts as a failed login.
+        (not counted as failed); a wrong code counts as a failed login. With `remember` and a code, the browser needs
+        no code for 30 days (its own cookie; not for root).
         """
         with self._storage.transaction() as store:
-            user, refusal = self._check(store, json)
+            user, refusal = self._check(store, json, req.cookies.get(BROWSER_COOKIE))
             if user:
                 self._log_in(req, resp, store, user)
+                self._remember(req, resp, store, user, json)
         if refusal:  # answered after the transaction, so the failed login is stored
             raise falcon.HTTPUnauthorized(title='401 Unauthorized', description=refusal)
         resp.media = UserView.of(user)
 
-    def _check(self, store: Store, json: LoginInput) -> tuple[User | None, str | None]:
+    def _remember(self, req: falcon.Request, resp: falcon.Response, store: Store, user: User, json: LoginInput) -> None:
+        """With `remember` and a code: the browser needs no code for 30 days; not for root."""
+        if json.remember and json.code and user.two_factor and user.role != 'root':
+            set_browser_cookie(req, resp, store.browsers().remember(user.id, self._clock()))
+
+    def _check(self, store: Store, json: LoginInput, browser: str | None) -> tuple[User | None, str | None]:
         """The user, or why the login failed (counted as a failed login)."""
         now = self._clock()
         attempts, users = store.attempts(), store.users()
@@ -118,7 +128,7 @@ class LoginResource(_AuthResource):
             return None, WRONG_LOGIN
         if not user.active:
             raise falcon.HTTPForbidden(description='This account is deactivated; ask an admin')
-        if not second_factor(store, user, json.code, now):
+        if not second_factor(store, user, json.code, now, browser):
             attempts.add(now)
             return None, WRONG_CODE
         attempts.clear_failed(now)

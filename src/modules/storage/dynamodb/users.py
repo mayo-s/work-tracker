@@ -13,7 +13,7 @@ from src.modules.storage.dynamodb.table import Item
 from src.modules.storage.dynamodb.unit import Unit
 from src.modules.storage.errors import NotFoundError
 from src.modules.storage.users import (
-    ATTEMPT_PAUSE, ATTEMPTS_ALLOWED, SESSION_LIFETIME, SESSION_RENEWAL, random_id, token_hash,
+    ATTEMPT_PAUSE, ATTEMPTS_ALLOWED, BROWSER_LIFETIME, random_id, session_lifetime, session_renewal, token_hash,
 )
 
 _PROFILE = ('username', 'email', 'first_name', 'last_name')
@@ -119,11 +119,13 @@ class DynamoUsers:
         """A new password ends all sessions of the user."""
         self._change(user_id, password_hash=hash_password(password), must_change_password=False)
         end_sessions(self._unit, user_id)
+        DynamoBrowsers(self._unit).forget(user_id)
 
     def set_one_time_password(self, user_id: str, password: str) -> None:
         """A password from an admin: it ends all sessions, and the user chooses their own at the next login."""
         self._change(user_id, password_hash=hash_password(password), must_change_password=True)
         end_sessions(self._unit, user_id)
+        DynamoBrowsers(self._unit).forget(user_id)
 
     def two_factor(self, user_id: str) -> TwoFactor | None:
         item = self._profile(user_id)
@@ -133,9 +135,12 @@ class DynamoUsers:
                          recovery=item.get('two_factor_recovery', []))
 
     def save_two_factor(self, user_id: str, state: TwoFactor | None) -> None:
-        """The authenticator app being set up, confirmed or with a code used; None switches two-factor login off."""
+        """The authenticator app being set up, confirmed or with a code used; None switches two-factor login off and
+        forgets the remembered browsers."""
         self._change(user_id, two_factor_secret=state.secret if state else None, two_factor_on=bool(state and state.enabled),
                      two_factor_step=state.last_step if state else 0, two_factor_recovery=state.recovery if state else [])
+        if state is None:
+            DynamoBrowsers(self._unit).forget(user_id)
 
     def _profiles(self) -> list[Item]:
         return sorted(self._unit.query_prefix(USERS, 'USER#'), key=lambda item: item['order'])
@@ -166,7 +171,8 @@ def end_sessions(unit: Unit, user_id: str) -> None:
 
 
 class DynamoSessions:
-    """Sessions valid for 24 h since the last activity; the cookie holds the token, the table only its hash."""
+    """Sessions valid for 24 h since the last activity (root's for 1 h); the cookie holds the token, the table only its
+    hash."""
 
     def __init__(self, unit: Unit) -> None:
         self._unit = unit
@@ -182,9 +188,10 @@ class DynamoSessions:
     def user_id(self, token: str, now: dt.datetime) -> tuple[str | None, bool]:
         """The user of a valid session and whether it was renewed now (the cookie then gets renewed too)."""
         session = self._unit.get(f'SESSION#{token_hash(token)}', 'SESSION')
-        if session is None or dt.datetime.fromisoformat(session['valid_until']) <= now or not self._active(session):
+        profile = self._active_profile(session, now)
+        if profile is None:
             return None, False
-        if now - dt.datetime.fromisoformat(session['renewed_at']) < SESSION_RENEWAL:
+        if now - dt.datetime.fromisoformat(session['renewed_at']) < session_renewal(profile['role']):
             return session['user_id'], False
         self._save(token_hash(token), session['user_id'], now)
         return session['user_id'], True
@@ -197,16 +204,43 @@ class DynamoSessions:
     def end_expired(self, now: dt.datetime) -> None:
         """Nothing to do: time to live deletes expired sessions, and `user_id` refuses them until then."""
 
-    def _active(self, session: Item) -> bool:
+    def _active_profile(self, session: Item | None, now: dt.datetime) -> Item | None:
+        """The profile of the session's user if the session is valid and the user active."""
+        if session is None or dt.datetime.fromisoformat(session['valid_until']) <= now:
+            return None
         profile = self._unit.get(USERS, _profile_key(session['user_id']))
-        return bool(profile and profile['active'])
+        return profile if profile and profile['active'] else None
 
     def _save(self, hashed: str, user_id: str, now: dt.datetime) -> None:
-        valid_until = now + SESSION_LIFETIME
+        profile = self._unit.get(USERS, _profile_key(user_id))
+        valid_until = now + session_lifetime(profile['role'] if profile else 'user')
         expiry = {'valid_until': valid_until.isoformat(), 'expires_at': _epoch(valid_until)}
         self._unit.put({'PK': f'SESSION#{hashed}', 'SK': 'SESSION', 'user_id': user_id,
                         'renewed_at': now.isoformat()} | expiry)
         self._unit.put({'PK': user_partition(user_id), 'SK': f'SESSION#{hashed}'} | expiry)
+
+
+class DynamoBrowsers:
+    """Browsers that skip the code of two-factor login for 30 days, in the user's partition (`BROWSER#<hash>`, time to
+    live); their cookie holds the token. A new password or switching two-factor login off forgets them."""
+
+    def __init__(self, unit: Unit) -> None:
+        self._unit = unit
+
+    def remember(self, user_id: str, now: dt.datetime) -> str:
+        token = secrets.token_urlsafe(32)
+        valid_until = now + BROWSER_LIFETIME
+        self._unit.put({'PK': user_partition(user_id), 'SK': f'BROWSER#{token_hash(token)}',
+                        'valid_until': valid_until.isoformat(), 'expires_at': _epoch(valid_until)})
+        return token
+
+    def known(self, user_id: str, token: str, now: dt.datetime) -> bool:
+        item = self._unit.get(user_partition(user_id), f'BROWSER#{token_hash(token)}')
+        return item is not None and dt.datetime.fromisoformat(item['valid_until']) > now
+
+    def forget(self, user_id: str) -> None:
+        for item in self._unit.query_prefix(user_partition(user_id), 'BROWSER#'):
+            self._unit.delete(item['PK'], item['SK'])
 
 
 class DynamoAttempts:

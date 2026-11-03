@@ -238,3 +238,44 @@ def test_two_factor_is_set_up_confirmed_and_switched_off(storage, klara):
     assert users(lambda repository: repository.get(klara.id)).two_factor is True
     users(lambda repository: repository.save_two_factor(klara.id, None))
     assert users(lambda repository: repository.two_factor(klara.id)) is None
+
+
+def test_root_sessions_end_after_an_hour_without_activity(storage):
+    root = add(storage, PASCAL.model_copy(update={'role': 'root'}))
+    token = start_session(storage, root.id)
+    assert session_user(storage, token, LOGIN + dt.timedelta(minutes=59)) == (root.id, True)  # renewed after 5 minutes
+    assert session_user(storage, token, LOGIN + dt.timedelta(minutes=59 + 61))[0] is None
+
+
+def test_other_sessions_last_a_day(storage, klara):
+    token = start_session(storage, klara.id)
+    assert session_user(storage, token, LOGIN + dt.timedelta(minutes=10)) == (klara.id, False)  # renewed after 30 minutes
+    assert session_user(storage, token, LOGIN + dt.timedelta(hours=23))[0] == klara.id
+
+
+def browsers(storage, action):
+    return run(storage, lambda store: action(store.browsers()))
+
+
+def test_a_browser_is_remembered_for_30_days(storage, klara):
+    token = browsers(storage, lambda repository: repository.remember(klara.id, LOGIN))
+    assert browsers(storage, lambda repository: repository.known(klara.id, token, LOGIN + dt.timedelta(days=29)))
+    assert not browsers(storage, lambda repository: repository.known(klara.id, token, LOGIN + dt.timedelta(days=31)))
+    assert not browsers(storage, lambda repository: repository.known(klara.id, 'another token', LOGIN))
+
+
+def test_a_browser_is_only_for_its_user(storage, klara):
+    rainer = add(storage, RAINER)
+    token = browsers(storage, lambda repository: repository.remember(klara.id, LOGIN))
+    assert not browsers(storage, lambda repository: repository.known(rainer.id, token, LOGIN))
+
+
+@pytest.mark.parametrize('change', [
+    lambda users, user_id: users.set_password(user_id, 'another long password 2#'),
+    lambda users, user_id: users.set_one_time_password(user_id, 'k7Qm-3xTp-9wLs-Rf2c'),
+    lambda users, user_id: users.save_two_factor(user_id, None),
+])
+def test_a_new_password_or_two_factor_off_forgets_the_browsers(storage, klara, change):
+    token = browsers(storage, lambda repository: repository.remember(klara.id, LOGIN))
+    run(storage, lambda store: change(store.users(), klara.id))
+    assert not browsers(storage, lambda repository: repository.known(klara.id, token, LOGIN))
