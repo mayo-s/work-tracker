@@ -132,13 +132,12 @@ class DynamoUsers:
         if not item.get('two_factor_secret'):
             return None
         return TwoFactor(secret=item['two_factor_secret'], enabled=item['two_factor_on'], last_step=item['two_factor_step'],
-                         recovery=item.get('two_factor_recovery', []))
+                         recovery=item.get('two_factor_recovery', []), new_secret=item.get('two_factor_new_secret'))
 
     def save_two_factor(self, user_id: str, state: TwoFactor | None) -> None:
-        """The authenticator app being set up, confirmed or with a code used; None switches two-factor login off and
-        forgets the remembered browsers."""
-        self._change(user_id, two_factor_secret=state.secret if state else None, two_factor_on=bool(state and state.enabled),
-                     two_factor_step=state.last_step if state else 0, two_factor_recovery=state.recovery if state else [])
+        """The authenticator app being set up, confirmed, with a code used or a new app; None switches two-factor
+        login off and forgets the remembered browsers."""
+        self._change(user_id, **_two_factor_values(state))
         if state is None:
             DynamoBrowsers(self._unit).forget(user_id)
 
@@ -161,6 +160,14 @@ class DynamoUsers:
 def _values(user: User) -> Item:
     return {'id': user.id, **{field: getattr(user, field) for field in _PROFILE}, 'role': user.role, 'active': user.active,
             'registered_at': user.registered_at.isoformat() if user.registered_at else None, 'last_login_at': None}
+
+
+def _two_factor_values(state: TwoFactor | None) -> Item:
+    if state is None:
+        return {'two_factor_secret': None, 'two_factor_on': False, 'two_factor_step': 0, 'two_factor_recovery': [],
+                'two_factor_new_secret': None}
+    return {'two_factor_secret': state.secret, 'two_factor_on': state.enabled, 'two_factor_step': state.last_step,
+            'two_factor_recovery': state.recovery, 'two_factor_new_secret': state.new_secret}
 
 
 def end_sessions(unit: Unit, user_id: str) -> None:

@@ -595,6 +595,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/me/two-factor/new-app": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Confirm the new authenticator app with its current code (403 if wrong): it replaces the old one, whose codes no longer work; the recovery codes stay. 409 without a new app started. */
+        put: operations["put__api_auth_me_two-factor_new-app"];
+        /** Start a new authenticator app (e.g. on a new phone), with the current password and a current code of the old app or a recovery code (403 if wrong; counts as a failed login, 429 after 5 within a minute): a new secret, as QR code and as text. The old app keeps working until a code of the new one confirms it (PUT); starting again replaces an unconfirmed new secret. 409 while two-factor login is off. Also for root and admins. */
+        post: operations["post__api_auth_me_two-factor_new-app"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users": {
         parameters: {
             query?: never;
@@ -1638,6 +1656,19 @@ export interface components {
              * @description The current password
              */
             password: string;
+        };
+        /** NewAppInput */
+        NewAppInput: {
+            /**
+             * Password
+             * @description The current password
+             */
+            password: string;
+            /**
+             * Code
+             * @description The current code of the old authenticator app, or a recovery code
+             */
+            code: string;
         };
         /** PasswordInput */
         PasswordInput: {
@@ -5299,6 +5330,119 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ValidationError"];
                 };
+            };
+        };
+    };
+    "put__api_auth_me_two-factor_new-app": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorCode"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_auth_me_two-factor_new-app": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewAppInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoFactorSetup"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

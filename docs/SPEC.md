@@ -305,6 +305,10 @@ corners, one accent color. Warnings are the only loud element.
   - Setting it up shows 10 recovery codes once, stored only as hashes; each replaces a code once. Without them, an
     admin resets two-factor login for a user or team admin, root for an admin, and root its own with a new setup
     token (7.4); it is then set up again at the next login.
+  - A new authenticator app (e.g. a new phone) in the settings, also for root and admins: with the password and a
+    current code (or a recovery code; a wrong one counts as a failed login), a new secret is shown as for the setup;
+    it replaces the old one once a code of the new app confirms it, until then the old app keeps working. The
+    recovery codes stay.
   - "Remember this browser" skips the code for 30 days in that browser (its own `HttpOnly` cookie, a random token
     stored as a hash), never for root. A new password or a reset of two-factor login forgets all browsers.
 - `WORK_TRACKER_AUTH=off` switches the login off for local development (`STAGE=Local` only, see 7.1); the app then

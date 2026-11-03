@@ -1,5 +1,5 @@
 """Login endpoints: /api/auth/status, /login, /logout, /root, /root/reset, /register, /me, /me/password, /me/audit and
-/me/two-factor (also /off and /recovery)."""
+/me/two-factor (also /off, /recovery and /new-app)."""
 
 import datetime as dt
 from collections.abc import Callable
@@ -11,7 +11,7 @@ from src.lib.totp import new_secret, provisioning_uri
 from src.models.users import Role, TwoFactor, User
 from src.modules.admin.audit import AuditView, record
 from src.modules.auth.schemas import (
-    AuthStatus, LoginInput, NewUserInput, PasswordInput, ProfileInput, RecoveryCodes, RootInput, RootResetInput,
+    AuthStatus, LoginInput, NewAppInput, NewUserInput, PasswordInput, ProfileInput, RecoveryCodes, RootInput, RootResetInput,
     TwoFactorCode, TwoFactorOff, TwoFactorSetup, TwoFactorStatus, UserView,
 )
 from src.modules.teams.schemas import TeamRef
@@ -20,7 +20,8 @@ from src.modules.auth.sessions import (
 )
 from src.modules.auth.setup_token import SetupToken, check_setup_token
 from src.modules.auth.two_factor import (
-    WRONG_CODE, code_accepted, new_recovery_codes, qr_code, recovery_hash, required, second_factor,
+    WRONG_CODE, code_accepted, code_or_recovery_accepted, new_app_accepted, new_recovery_codes, qr_code, recovery_hash,
+    required, second_factor,
 )
 from src.modules.storage.errors import ConflictError
 from src.modules.storage.store import Storage, Store
@@ -253,9 +254,8 @@ class TwoFactorResource(_AuthResource):
                 raise ConflictError('Two-factor login is on already')
             secret = new_secret()
             users.save_two_factor(user.id, TwoFactor(secret=secret))
-        uri = provisioning_uri(secret, user.username)
         resp.status = falcon.HTTP_201
-        resp.media = TwoFactorSetup(secret=secret, uri=uri, qr=qr_code(uri))
+        resp.media = _setup(secret, user.username)
 
     @spec.validate(json=TwoFactorCode, resp=Response('HTTP_401', 'HTTP_403', 'HTTP_409', HTTP_200=RecoveryCodes),
                    tags=TAGS)
@@ -270,6 +270,12 @@ class TwoFactorResource(_AuthResource):
             if not code_accepted(store, user_id, json.code, self._clock(), enabled=False):
                 raise falcon.HTTPForbidden(description='The code is wrong; enter the current one of your authenticator app')
             resp.media = RecoveryCodes(recovery_codes=_new_recovery_codes(store, user_id))
+
+
+def _setup(secret: str, username: str) -> TwoFactorSetup:
+    """The secret for the authenticator app, as text and as QR code."""
+    uri = provisioning_uri(secret, username)
+    return TwoFactorSetup(secret=secret, uri=uri, qr=qr_code(uri))
 
 
 def _new_recovery_codes(store: Store, user_id: str) -> list[str]:
@@ -293,6 +299,54 @@ class RecoveryCodesResource(_AuthResource):
                 raise ConflictError('Two-factor login is off')
             resp.media = RecoveryCodes(recovery_codes=_new_recovery_codes(store, user_id))
         resp.status = falcon.HTTP_201
+
+
+class NewAppResource(_AuthResource):
+    @spec.validate(json=NewAppInput, resp=Response('HTTP_401', 'HTTP_403', 'HTTP_409', 'HTTP_429', HTTP_201=TwoFactorSetup),
+                   tags=TAGS)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, json: NewAppInput) -> None:
+        """Start a new authenticator app (e.g. on a new phone), with the current password and a current code of the old
+        app or a recovery code (403 if wrong; counts as a failed login, 429 after 5 within a minute): a new secret, as
+        QR code and as text. The old app keeps working until a code of the new one confirms it (PUT); starting again
+        replaces an unconfirmed new secret. 409 while two-factor login is off. Also for root and admins."""
+        with self._storage.transaction() as store:
+            setup, refusal = self._start(store, _user_id(req), json)
+        if refusal:  # answered after the transaction, so the failed attempt is stored
+            raise falcon.HTTPForbidden(description=refusal)
+        resp.status = falcon.HTTP_201
+        resp.media = setup
+
+    def _start(self, store: Store, user_id: str, json: NewAppInput) -> tuple[TwoFactorSetup | None, str | None]:
+        """The new secret, or why it was refused (counted as a failed login)."""
+        now, attempts, users = self._clock(), store.attempts(), store.users()
+        if attempts.paused(now):
+            raise falcon.HTTPTooManyRequests(description=PAUSED)
+        user = users.get(user_id)
+        if not user.two_factor:
+            raise ConflictError('Two-factor login is off')
+        if not users.check_password(user_id, json.password):
+            attempts.add(now)
+            return None, 'The current password is wrong'
+        if not code_or_recovery_accepted(store, user_id, json.code, now):
+            attempts.add(now)
+            return None, WRONG_CODE
+        secret = new_secret()
+        users.save_two_factor(user_id, users.two_factor(user_id).model_copy(update={'new_secret': secret}))
+        return _setup(secret, user.username), None
+
+    @spec.validate(json=TwoFactorCode, resp=Response('HTTP_204', 'HTTP_401', 'HTTP_403', 'HTTP_409'), tags=TAGS)
+    def on_put(self, req: falcon.Request, resp: falcon.Response, json: TwoFactorCode) -> None:
+        """Confirm the new authenticator app with its current code (403 if wrong): it replaces the old one, whose codes
+        no longer work; the recovery codes stay. 409 without a new app started."""
+        with self._storage.transaction() as store:
+            user_id = _user_id(req)
+            state = store.users().two_factor(user_id)
+            if state is None or state.new_secret is None:
+                raise ConflictError('Start with the password and a current code first')
+            if not new_app_accepted(store, user_id, json.code, self._clock()):
+                raise falcon.HTTPForbidden(description='The code is wrong; enter the current one of your new authenticator '
+                                                       'app')
+        resp.status = falcon.HTTP_204
 
 
 class TwoFactorOffResource(_AuthResource):

@@ -1,5 +1,5 @@
 """Two-factor login (SPEC 5.6, TASKS.md 9.1g): the code of an authenticator app at login, its setup with a QR code,
-and recovery codes for a lost app. Root and admins must use it."""
+recovery codes for a lost app, and a new app (e.g. on a new phone). Root and admins must use it."""
 
 import datetime as dt
 import hashlib
@@ -63,7 +63,25 @@ def second_factor(store: Store, user: User, code: str | None, now: dt.datetime, 
     if not code:
         raise falcon.HTTPUnauthorized(title='401 Unauthorized', code=CODE_NEEDED,
                                       description='Enter the code of your authenticator app')
-    return code_accepted(store, user.id, code, now) or _recovery_accepted(store, user.id, code)
+    return code_or_recovery_accepted(store, user.id, code, now)
+
+
+def code_or_recovery_accepted(store: Store, user_id: str, code: str, now: dt.datetime) -> bool:
+    """Whether the code fits the user's confirmed authenticator app or is a recovery code not used yet; used up then."""
+    return code_accepted(store, user_id, code, now) or _recovery_accepted(store, user_id, code)
+
+
+def new_app_accepted(store: Store, user_id: str, code: str, now: dt.datetime) -> bool:
+    """Whether the code fits the user's new authenticator app; it then replaces the old one, whose codes no longer
+    work. The recovery codes stay."""
+    users = store.users()
+    state = users.two_factor(user_id)
+    step = matching_step(state.new_secret, code, now, 0)
+    if step is None:
+        return False
+    confirmed = state.model_copy(update={'secret': state.new_secret, 'new_secret': None, 'last_step': step})
+    users.save_two_factor(user_id, confirmed)
+    return True
 
 
 def remembered(store: Store, user: User, browser: str | None, now: dt.datetime) -> bool:

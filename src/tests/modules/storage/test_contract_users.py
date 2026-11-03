@@ -240,6 +240,18 @@ def test_two_factor_is_set_up_confirmed_and_switched_off(storage, klara):
     assert users(lambda repository: repository.two_factor(klara.id)) is None
 
 
+def test_a_new_authenticator_app_is_kept_until_confirmed(storage, klara):
+    def users(action):
+        return run(storage, lambda store: action(store.users()))
+
+    with_new_app = TwoFactor(secret='ABC', enabled=True, last_step=7, new_secret='DEF')
+    users(lambda repository: repository.save_two_factor(klara.id, with_new_app))
+    assert users(lambda repository: repository.two_factor(klara.id)) == with_new_app
+    users(lambda repository: repository.save_two_factor(klara.id, None))
+    users(lambda repository: repository.save_two_factor(klara.id, TwoFactor(secret='GHI')))
+    assert users(lambda repository: repository.two_factor(klara.id)).new_secret is None
+
+
 def test_root_sessions_end_after_an_hour_without_activity(storage):
     root = add(storage, PASCAL.model_copy(update={'role': 'root'}))
     token = start_session(storage, root.id)

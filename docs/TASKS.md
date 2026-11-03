@@ -262,13 +262,13 @@ L.16 (a–i) → 9.1 (a–i).
     the team view read-only for everyone who was in the team, for the days of each stay; shown to members with the
     team admins, views in the view log
   - [x] **9.1f** Setup token once only (hashes of used tokens); "Reset root login" on `/login` with a new token
-  - [ ] **9.1g** Two-factor login (TOTP), in steps:
+  - [x] **9.1g** Two-factor login (TOTP), in steps:
     - [x] **9.1g1** TOTP core: setting it up in the settings (QR code with `segno`, the secret as text, a first code
       confirms it), the code at login, each code only once, switching it off with the password; optional for everyone
     - [x] **9.1g2** Required for root and admins (forwarded to `/2fa` until set up), 10 recovery codes, resets (an
       admin for users, root for admins, root's own with the setup token), audit log entries
     - [x] **9.1g3** "Remember this browser" for 30 days (not root); root's session ends after 1 hour without activity
-    - [ ] **9.1g4** A new authenticator app (e.g. a new phone): in the settings, with the password and a current code (or
+    - [x] **9.1g4** A new authenticator app (e.g. a new phone): in the settings, with the password and a current code (or
       a recovery code), a new secret replaces the old one once a code of the new app confirms it; also for root and
       admins, who cannot switch two-factor login off
   - [ ] **9.1h** Full backup on `/admin`: the whole database, gzip and AES-256-GCM with root's passphrase (scrypt;

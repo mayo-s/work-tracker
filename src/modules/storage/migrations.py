@@ -632,4 +632,8 @@ MIGRATIONS: tuple[Migration, ...] = (
     );
     CREATE INDEX remembered_browsers_by_user ON remembered_browsers (user_id);
     """,
+    # 23: a new authenticator app (TASKS.md 9.1g4): its secret, until a code of it confirms it
+    """
+    ALTER TABLE users ADD COLUMN two_factor_new_secret TEXT;
+    """,
 )
