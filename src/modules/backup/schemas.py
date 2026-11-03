@@ -60,6 +60,8 @@ class RestoreInput(BaseModel):
     passphrase: str = Field(min_length=1, max_length=200)
     confirm: str | None = Field(default=None, description="'purge' while anyone but root exists: everything but root "
                                                           'goes before the backup comes in')
+    root_login: bool = Field(default=False, description="Take over the login of the backup's root (username, e-mail "
+                                                        'address, name, password, two-factor login); root logs in again')
 
 
 class RestoreSummary(BaseModel):

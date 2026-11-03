@@ -408,7 +408,8 @@ corners, one accent color. Warnings are the only loud element.
   Otherwise root is asked whether to purge the current state first and confirms by typing `purge`; everything but
   root goes, then the backup comes in. Root stays as it is (the backup's root is skipped, and what it did is credited
   to the current root); everyone else has their password and two-factor login from the backup, and all other sessions
-  end.
+  end. Optionally root takes over the login of the backup's root (username, e-mail address, name, password, two-factor
+  login): it keeps its account and what it did, its sessions end, and it logs in again with that login.
 - A wrong passphrase, a damaged file, an unknown format or a newer version is refused before anything is written.
   SQLite restores in one transaction. DynamoDB purges and restores in atomic chunks; one that stops halfway marks the
   database: only root can use the app until restoring the file again finishes it.

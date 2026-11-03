@@ -61,9 +61,10 @@ def test_the_passphrase_needs_12_characters(app):
     assert download(app, logged_in(app, 'pascal'), 'too short').status_code == 422
 
 
-def restore(app, cookies, content, passphrase=PASSPHRASE, confirm=None):
+def restore(app, cookies, content, passphrase=PASSPHRASE, confirm=None, root_login=False):
     return app.simulate_post('/api/admin/restore', cookies=cookies, json={
-        'file': base64.b64encode(content).decode(), 'passphrase': passphrase, 'confirm': confirm})
+        'file': base64.b64encode(content).decode(), 'passphrase': passphrase, 'confirm': confirm,
+        'root_login': root_login})
 
 
 @pytest.fixture
@@ -131,3 +132,22 @@ def test_until_an_unfinished_restore_is_done_only_root_uses_the_app(app, databas
         falcon.HTTP_503, 'A restore of the full backup is not finished yet; until then, only root can use the app')
     root = logged_in(app, 'pascal')
     assert app.simulate_get('/api/admin/settings', cookies=root).json['restore_unfinished'] is True
+
+
+def test_taking_over_the_root_login_logs_root_out(database, tmp_path):
+    with database.transaction() as conn:
+        UserRepository(conn).add(PASCAL.model_copy(update={'role': 'root'}), PASSWORD)
+    source = testing.TestClient(create_app(database, auth=True, clock=lambda: NOW))
+    content = download(source, logged_in(source, 'pascal')).content
+    fresh = Database(tmp_path / 'fresh.db')
+    fresh.migrate()
+    with fresh.transaction() as conn:
+        UserRepository(conn).add(RAINER.model_copy(update={'role': 'root'}), 'rainers own password 1!')
+    target = testing.TestClient(create_app(fresh, auth=True, clock=lambda: NOW))
+    rainer = {'wt_session': target.simulate_post('/api/auth/login', json={
+        'login': 'rainer', 'password': 'rainers own password 1!'}).cookies['wt_session'].value}
+    result = restore(target, rainer, content, root_login=True)
+    assert result.status == falcon.HTTP_200 and result.cookies['wt_session'].value == ''
+    assert target.simulate_get('/api/admin/users', cookies=rainer).status == falcon.HTTP_401
+    pascal = logged_in(target, 'pascal')
+    assert target.simulate_get('/api/admin/audit', cookies=pascal).json[0]['detail'] == 'root login'

@@ -80,7 +80,7 @@ function backupSection(settings: AdminSettingsView, users: AdminUserView[], page
     downloadForm(page),
     el('h3', { class: 'account-heading' }, 'Restore'),
     el('p', { class: 'muted' }, 'Everyone but you goes first, then the backup comes in: its users log in with their '
-      + 'passwords from then; you stay as you are.'),
+      + "passwords from then. You stay as you are, unless you take over the backup's root login."),
     restoreForm(users.length > 1, page));
 }
 
@@ -109,9 +109,13 @@ function downloadForm(page: Page): HTMLFormElement {
 function restoreForm(othersExist: boolean, page: Page): HTMLFormElement {
   const file = el('input', { id: 'restore-file', type: 'file', accept: '.wtbackup' });
   const passphrase = el('input', { id: 'restore-passphrase', type: 'password', autocomplete: 'off' });
+  const rootLogin = el('input', { id: 'restore-root-login', type: 'checkbox' });
   const form = el('form', { class: 'balance-form', novalidate: true },
     field('restore', 'file', 'Backup file', file),
     field('restore', 'passphrase', 'Passphrase', passphrase),
+    el('label', { class: 'checkbox-field', for: 'restore-root-login' }, rootLogin,
+      "Take over the backup's root login (username, e-mail address, name, password, two-factor login); you log in "
+      + 'again with it afterwards'),
     el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
     el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'button-danger' }, 'Restore backup')));
   let summary: RestoreSummary | null = null;
@@ -127,9 +131,12 @@ function restoreForm(othersExist: boolean, page: Page): HTMLFormElement {
       if (othersExist && confirm === null) {
         return;
       }
-      summary = await api.restore(toBase64(new Uint8Array(await chosen.arrayBuffer())), passphrase.value, confirm);
+      summary = await api.restore(toBase64(new Uint8Array(await chosen.arrayBuffer())), passphrase.value, confirm,
+        rootLogin.checked);
     }, () => {
-      if (summary) {
+      if (summary && rootLogin.checked) {
+        window.location.assign('/login');  // this session ended with the login of the backup's root
+      } else if (summary) {
         page.reload(restoredText(summary));
       } else {
         form.querySelectorAll('button').forEach((item) => (item.disabled = false));  // the purge was not confirmed
