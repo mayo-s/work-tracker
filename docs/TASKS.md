@@ -246,7 +246,7 @@ L.16 (a–i) → 9.1 (a–i).
 
 ## 9. Roles for running the app
 
-- [ ] **9.1** Roles for running the app (SPEC 5.6, 5.7, 5.9, 7.4), in steps:
+- [x] **9.1** Roles for running the app (SPEC 5.6, 5.7, 5.9, 7.4), in steps:
   - [x] **9.1a** Team role on the membership: member or team admin, for admins and users alike (migration: a
     `team_admin` becomes a user and team admin of their team); the team view checks the membership
   - [x] **9.1b** Root: the app role `root` (exactly one, not demoted or deactivated); the setup of a new database
@@ -273,7 +273,7 @@ L.16 (a–i) → 9.1 (a–i).
       admins, who cannot switch two-factor login off
   - [x] **9.1h** Full backup on `/admin`: the whole database, gzip and AES-256-GCM with root's passphrase (scrypt;
     `cryptography`)
-  - [ ] **9.1i** Restore on `/admin`: at once when nobody but root exists, otherwise after confirming the purge;
+  - [x] **9.1i** Restore on `/admin`: at once when nobody but root exists, otherwise after confirming the purge;
     root stays; checked before writing; DynamoDB in resumable chunks, only root uses the app until it is done
 
 ## Later (to be discussed)

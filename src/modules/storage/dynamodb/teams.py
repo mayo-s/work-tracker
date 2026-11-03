@@ -111,6 +111,26 @@ class DynamoTeams:
                  for item in self._unit.query_prefix(TEAMS, 'TEAM#')]
         return sorted(teams, key=lambda team: team.id)
 
+    def restore(self, team: TeamRecord) -> None:
+        """A team of the full backup with its id, also a deleted one (whose name is free)."""
+        if team.deleted_at is None:
+            self._claim(team.name, team.id)
+        self._unit.put({'PK': TEAMS, 'SK': team_key(team.id), 'id': team.id, 'name': team.name,
+                        'deleted_at': team.deleted_at.isoformat() if team.deleted_at else None})
+
+    def restore_membership(self, membership: Membership) -> None:
+        """A stay of the full backup, current or former, in the order they come."""
+        membership_id, team_role = new_id(), membership.team_role
+        values = {'team_id': membership.team_id, 'user_id': membership.user_id, 'joined_on': membership.joined_on.isoformat()}
+        left_on = membership.left_on.isoformat() if membership.left_on else None
+        self._unit.put({'PK': user_partition(membership.user_id), 'SK': f'{MEMBERSHIP}{membership_id}', **values,
+                        'left_on': left_on, 'team_role': team_role})
+        self._unit.put({'PK': team_partition(membership.team_id), 'SK': f'STAY#{membership_id}',
+                        'user_id': membership.user_id})
+        if left_on is None:
+            self._unit.put({'PK': team_partition(membership.team_id), 'SK': f'MEMBER#{membership.user_id}',
+                            'user_id': membership.user_id, 'joined_on': values['joined_on'], 'team_role': team_role})
+
     def join(self, user_id: str, team_id: str) -> Membership:
         """The user joins the team today, leaving their current team first."""
         team = self.get(team_id)
@@ -266,6 +286,12 @@ class DynamoInvitations:
         teams = [item['id'] for item in self._unit.query_prefix(TEAMS, 'TEAM#') if item['deleted_at'] is None]
         return sorted((invitation for team_id in teams for invitation in self.of_team(team_id)),
                       key=lambda invitation: (invitation.invited_at, invitation.id))
+
+    def restore(self, invitation: Invitation) -> None:
+        """An invitation of the full backup as it was, in both places."""
+        values = invitation.model_dump(mode='json', exclude={'team_name'})
+        self._unit.put({'PK': team_partition(invitation.team_id), 'SK': f'INVITE#{invitation.id}', **values})
+        self._unit.put({'PK': _invites_partition(invitation.email), 'SK': team_key(invitation.team_id), **values})
 
     def _own(self, user_id: str, invitation_id: str) -> Invitation:
         """One of the user's open invitations; another user's is unknown (404)."""

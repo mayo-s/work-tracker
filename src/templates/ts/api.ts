@@ -41,6 +41,8 @@ export type AuditView = Schemas['AuditView'];
 export type OneTimePasswordView = Schemas['OneTimePasswordView'];
 export type AdminUserInput = Schemas['AdminUserInput'];
 export type AdminSettings = Schemas['AdminSettings'];
+export type AdminSettingsView = Schemas['AdminSettingsView'];
+export type RestoreSummary = Schemas['RestoreSummary'];
 export type AdminTeamView = Schemas['AdminTeamView'];
 export type TeamPageView = Schemas['TeamPageView'];
 export type MemberView = Schemas['MemberView'];
@@ -224,6 +226,8 @@ export const api = {
   confirmNewApp: (code: string) => request<void>('PUT', '/api/auth/me/two-factor/new-app', { code }),
   resetTwoFactor: (userId: string) => request<void>('POST', `/api/admin/users/${segment(userId)}/two-factor-reset`),
   backup: (passphrase: string) => requestFile('/api/admin/backup', { passphrase }),
+  restore: (file: string, passphrase: string, confirm: string | null = null) =>
+    request<RestoreSummary>('POST', '/api/admin/restore', { file, passphrase, confirm }),
   logout: () => request<void>('POST', '/api/auth/logout'),
   createRoot: (input: RootInput) => request<UserView>('POST', '/api/auth/root', input),
   resetRoot: (setupToken: string, newPassword: string) =>
@@ -240,7 +244,7 @@ export const api = {
     request<OneTimePasswordView>('POST', `/api/admin/users/${segment(userId)}/one-time-password`),
   updateAdminUser: (id: string, input: AdminUserInput) =>
     request<AdminUserView>('PUT', `/api/admin/users/${segment(id)}`, input),
-  adminSettings: () => request<AdminSettings>('GET', '/api/admin/settings'),
+  adminSettings: () => request<AdminSettingsView>('GET', '/api/admin/settings'),
   saveAdminSettings: (input: AdminSettings) => request<AdminSettings>('PUT', '/api/admin/settings', input),
   adminTeams: () => request<AdminTeamView[]>('GET', '/api/admin/teams'),
   addTeam: (name: string) => request<AdminTeamView>('POST', '/api/admin/teams', { name }),

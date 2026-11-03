@@ -12,13 +12,13 @@ from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.errors import USED_TOKEN, ConflictError
-from src.modules.storage.owners import clear_records
+from src.modules.storage.owners import clear_records, purge
 from src.modules.storage.pto_years import PtoYearRepository
 from src.modules.storage.renames import rename_ticket
 from src.modules.storage.schedules import ScheduleRepository
 from src.modules.storage.settings import (
-    finish_setup, import_unfinished, load_settings, load_theme, registration_open, save_settings, save_theme,
-    set_registration, setup_done, start_import,
+    finish_restore, finish_setup, import_unfinished, load_settings, load_theme, registration_open, restore_unfinished,
+    save_settings, save_theme, set_registration, setup_done, start_import, start_restore,
 )
 from src.modules.storage.store import Clock, RenameResult, Theme
 from src.modules.storage.teams import AuditorRepository, InvitationRepository, ReportViewLog, TeamRepository
@@ -128,6 +128,19 @@ class SqliteStore:
             self._conn.execute('INSERT INTO used_setup_tokens (hash, used_at) VALUES (?, ?)', (token_hash, at.isoformat()))
         except sqlite3.IntegrityError as error:
             raise ConflictError(USED_TOKEN) from error
+
+    def purge(self, root_id: str) -> None:
+        """Everything but root goes, before a full backup is restored."""
+        purge(self._conn, root_id)
+
+    def start_restore(self) -> None:
+        start_restore(self._conn)
+
+    def restore_unfinished(self) -> bool:
+        return restore_unfinished(self._conn)
+
+    def finish_restore(self) -> None:
+        finish_restore(self._conn)
 
 
 class SqliteStorage:

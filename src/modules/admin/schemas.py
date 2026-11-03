@@ -45,6 +45,11 @@ class AdminSettings(BaseModel):
     registration: bool = Field(description='Whether new users can register on /register (off by default)')
 
 
+class AdminSettingsView(AdminSettings):
+    restore_unfinished: bool = Field(default=False, description='A restore of the full backup stopped halfway: only root '
+                                                                'uses the app until restoring the file again finishes it')
+
+
 class AdminTeamView(BaseModel):
     id: str
     name: str

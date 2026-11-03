@@ -1,4 +1,5 @@
-"""Owners of the data: what a new user starts with, and the first user taking over records without an owner."""
+"""Owners of the data: what a new user starts with, the first user taking over records without an owner, and everyone
+but root going before a full backup is restored."""
 
 import sqlite3
 
@@ -23,6 +24,20 @@ def clear_records(conn: sqlite3.Connection, user_id: str) -> None:
     for table in ('review_flags', 'entry_history', 'entries', 'days', 'tickets', 'services', 'activity_types', 'pto_years',
                   'work_schedules'):
         conn.execute(f'DELETE FROM {table} WHERE user_id = ?', (user_id,))
+
+
+def purge(conn: sqlite3.Connection, root_id: str) -> None:
+    """Everything but root goes (SPEC 5.9): every other user with their records, settings, sessions and browsers, the
+    teams with their members, invitations, services and auditors, the report view log, the audit log and the failed
+    logins. Root (settings, sessions), the records without an owner, the app settings and the used setup tokens stay."""
+    for table in ('report_views', 'audit_log', 'team_auditors', 'team_invitations', 'team_memberships'):
+        conn.execute(f'DELETE FROM {table}')
+    for table in ('review_flags', 'entry_history', 'entries', 'days', 'tickets', 'services', 'activity_types', 'pto_years',
+                  'work_schedules', 'user_settings'):  # team services have no user: they go too
+        conn.execute(f'DELETE FROM {table} WHERE user_id IS NULL OR user_id NOT IN (?, ?)', (root_id, NO_OWNER))
+    conn.execute('DELETE FROM teams')
+    conn.execute('DELETE FROM login_attempts')
+    conn.execute('DELETE FROM users WHERE id != ?', (root_id,))  # their sessions and browsers with them
 
 
 def start_with_defaults(conn: sqlite3.Connection, user_id: str) -> None:

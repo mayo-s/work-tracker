@@ -2544,7 +2544,7 @@
     },
     "/api/admin/settings": {
       "get": {
-        "summary": "App-wide settings: whether new users can register.",
+        "summary": "App-wide settings: whether new users can register, and whether a restore stopped halfway.",
         "operationId": "get__api_admin_settings",
         "description": "",
         "tags": [
@@ -2560,7 +2560,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminSettings"
+                  "$ref": "#/components/schemas/AdminSettingsView"
                 }
               }
             }
@@ -2654,6 +2654,55 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/BackupInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/admin/restore": {
+      "post": {
+        "summary": "Root only: restore the full backup from its file (base64) and passphrase. Everything but root goes first, then the backup comes in; root stays as it is (the backup's root is skipped), everyone else has their password and two-factor login from the backup, and all other sessions end.",
+        "operationId": "post__api_admin_restore",
+        "description": "While anyone but root exists, only with `confirm` 'purge' (409 with the code `purge_required` otherwise). A wrong passphrase, a damaged file, another format, a newer version or a backup that does not hold together is refused before anything is written (422). On DynamoDB the restore writes chunks; one that stops halfway leaves only root using the app until restoring the file again finishes it.",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreSummary"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreInput"
               }
             }
           },
@@ -4989,6 +5038,27 @@
         "title": "AuditorView",
         "type": "object"
       },
+      "AdminSettingsView": {
+        "additionalProperties": false,
+        "properties": {
+          "registration": {
+            "description": "Whether new users can register on /register (off by default)",
+            "title": "Registration",
+            "type": "boolean"
+          },
+          "restore_unfinished": {
+            "default": false,
+            "description": "A restore of the full backup stopped halfway: only root uses the app until restoring the file again finishes it",
+            "title": "Restore Unfinished",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "registration"
+        ],
+        "title": "AdminSettingsView",
+        "type": "object"
+      },
       "AdminSettings": {
         "additionalProperties": false,
         "properties": {
@@ -5019,6 +5089,71 @@
           "passphrase"
         ],
         "title": "BackupInput",
+        "type": "object"
+      },
+      "RestoreInput": {
+        "additionalProperties": false,
+        "properties": {
+          "file": {
+            "description": "The backup file, base64-encoded",
+            "minLength": 1,
+            "title": "File",
+            "type": "string"
+          },
+          "passphrase": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Passphrase",
+            "type": "string"
+          },
+          "confirm": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "'purge' while anyone but root exists: everything but root goes before the backup comes in",
+            "title": "Confirm"
+          }
+        },
+        "required": [
+          "file",
+          "passphrase"
+        ],
+        "title": "RestoreInput",
+        "type": "object"
+      },
+      "RestoreSummary": {
+        "properties": {
+          "users": {
+            "description": "Restored users, without root",
+            "title": "Users",
+            "type": "integer"
+          },
+          "teams": {
+            "title": "Teams",
+            "type": "integer"
+          },
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          },
+          "audit_entries": {
+            "title": "Audit Entries",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "users",
+          "teams",
+          "entries",
+          "audit_entries"
+        ],
+        "title": "RestoreSummary",
         "type": "object"
       },
       "AuditViewList": {
@@ -7691,7 +7826,8 @@
               "two_factor_off",
               "two_factor_new_app",
               "recovery_codes_renewed",
-              "backup_made"
+              "backup_made",
+              "backup_restored"
             ],
             "title": "Action",
             "type": "string"

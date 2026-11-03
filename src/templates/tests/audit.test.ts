@@ -47,6 +47,7 @@ test('changes to the own login', () => {
 
 test('a full backup', () => {
   assert.equal(auditText({ ...ENTRY, action: 'backup_made', user: null, detail: '' }), 'Pascal Turbo downloaded a full backup');
+  assert.equal(auditText({ ...ENTRY, action: 'backup_restored', user: null, detail: '' }), 'Pascal Turbo restored a full backup');
 });
 
 test('a reset of two-factor login', () => {

@@ -119,6 +119,16 @@ class DynamoUsers:
         """The stored hash, for the full backup only."""
         return self._profile(user_id)['password_hash']
 
+    def restore(self, user: User, password_hash: str) -> None:
+        """A user of the full backup as they were (id, role, status, times, password); no defaults."""
+        if user.role == 'root':
+            self._unit.put({'PK': USERS, 'SK': ROOT, 'user_id': user.id}, unique='There is a root already')
+        for field in ('username', 'email'):
+            self._claim(field, getattr(user, field), user.id)
+        self._unit.put({'PK': USERS, 'SK': _profile_key(user.id), 'order': new_record_id(), 'password_hash': password_hash}
+                       | _values(user) | {'last_login_at': user.last_login_at.isoformat() if user.last_login_at else None,
+                                          'must_change_password': user.must_change_password})
+
     def set_password(self, user_id: str, password: str) -> None:
         """A new password ends all sessions of the user."""
         self._change(user_id, password_hash=hash_password(password), must_change_password=False)

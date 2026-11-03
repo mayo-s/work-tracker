@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { editable, passphraseError, roleName, userByEmail, userInput } from '../ts/admin.ts';
+import { editable, passphraseError, restoredText, roleName, toBase64, userByEmail, userInput } from '../ts/admin.ts';
 import type { AdminUserView } from '../ts/api.ts';
 
 const HANS: AdminUserView = {
@@ -49,4 +49,17 @@ test('the passphrase of the backup needs 12 characters, entered twice', () => {
   assert.equal(passphraseError('too short', 'too short'), 'The passphrase needs at least 12 characters.');
   assert.equal(passphraseError('a long passphrase', 'a long passphrasE'), 'The two passphrases differ.');
   assert.equal(passphraseError('a long passphrase', 'a long passphrase'), null);
+});
+
+test('the backup file goes as base64, also when large', () => {
+  assert.equal(toBase64(new Uint8Array([0, 255, 16])), 'AP8Q');
+  const large = new Uint8Array(200_000).map((_, index) => index % 251);
+  assert.equal(toBase64(large), Buffer.from(large).toString('base64'));
+});
+
+test('what a restore brought back', () => {
+  assert.equal(restoredText({ users: 3, teams: 1, entries: 120, audit_entries: 9 }),
+    'Restored the backup: 3 users, 1 team, 120 entries');
+  assert.equal(restoredText({ users: 1, teams: 0, entries: 1, audit_entries: 0 }),
+    'Restored the backup: 1 user, 0 teams, 1 entry');
 });

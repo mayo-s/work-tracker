@@ -1,24 +1,28 @@
 """Admin endpoints (403 for others): /api/admin/users and /api/admin/audit (root and admins), /api/admin/teams, each
-also by id, and the auditors (admins), and /api/admin/settings and /api/admin/backup (root). Every change goes into the
-audit log.
+also by id, and the auditors (admins), and /api/admin/settings, /api/admin/backup and /api/admin/restore (root). Every
+change goes into the audit log.
 
 Root appoints and removes admins and helps them (one-time password, deactivate, reactivate); admins help users and
 team admins, give team roles and manage teams (SPEC 5.7)."""
 
+import base64
 import datetime as dt
 from collections.abc import Callable
 
 import falcon
+from pydantic import ValidationError
 from spectree import Response
 
 from src.lib.passwords import one_time_password
 from src.modules.admin.audit import AuditView, record
 from src.modules.admin.schemas import (
-    AdminSettings, AdminTeamView, AdminUserInput, AdminUserView, AuditorInput, AuditorView, OneTimePasswordView,
+    AdminSettings, AdminSettingsView, AdminTeamView, AdminUserInput, AdminUserView, AuditorInput, AuditorView,
+    OneTimePasswordView,
 )
 from src.modules.auth.sessions import current_user
-from src.modules.backup.full import backup_file, make_backup
-from src.modules.backup.schemas import BackupInput
+from src.modules.backup.full import backup_file, make_backup, read_backup_file
+from src.modules.backup.restore import BackupError, check_backup, restore_backup
+from src.modules.backup.schemas import Backup, BackupInput, RestoreInput, RestoreSummary
 from src.models.teams import Auditor, Membership
 from src.models.users import Role, User
 from src.modules.storage.errors import ConflictError, NotFoundError
@@ -260,12 +264,13 @@ class AdminAuditorItem(_AdminResource):
 
 
 class AdminSettingsResource(_AdminResource):
-    @spec.validate(resp=Response('HTTP_403', HTTP_200=AdminSettings), tags=TAGS)
+    @spec.validate(resp=Response('HTTP_403', HTTP_200=AdminSettingsView), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
-        """App-wide settings: whether new users can register."""
+        """App-wide settings: whether new users can register, and whether a restore stopped halfway."""
         with self._storage.transaction() as store:
             _staff(req, store, ('root',))
-            resp.media = AdminSettings(registration=store.registration_open())
+            resp.media = AdminSettingsView(registration=store.registration_open(),
+                                           restore_unfinished=store.restore_unfinished())
 
     @spec.validate(json=AdminSettings, resp=Response('HTTP_403', HTTP_200=AdminSettings), tags=TAGS)
     def on_put(self, req: falcon.Request, resp: falcon.Response, json: AdminSettings) -> None:
@@ -297,6 +302,51 @@ class AdminBackupResource(_AdminResource):
         resp.data = backup_file(backup, json.passphrase)
         resp.content_type = 'application/octet-stream'
         resp.downloadable_as = f'work-tracker-backup-{backup.made_at.date().isoformat()}.wtbackup'
+
+
+PURGE_NEEDED = 'purge_required'  # the `code` of the 409 answer that asks to confirm the purge
+
+
+class AdminRestoreResource(_AdminResource):
+    @spec.validate(json=RestoreInput, resp=Response('HTTP_403', 'HTTP_409', 'HTTP_422', HTTP_200=RestoreSummary), tags=TAGS)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, json: RestoreInput) -> None:
+        """Root only: restore the full backup from its file (base64) and passphrase. Everything but root goes first,
+        then the backup comes in; root stays as it is (the backup's root is skipped), everyone else has their password
+        and two-factor login from the backup, and all other sessions end.
+
+        While anyone but root exists, only with `confirm` 'purge' (409 with the code `purge_required` otherwise). A
+        wrong passphrase, a damaged file, another format, a newer version or a backup that does not hold together is
+        refused before anything is written (422). On DynamoDB the restore writes chunks; one that stops halfway leaves
+        only root using the app until restoring the file again finishes it.
+        """
+        with self._storage.transaction() as store:
+            _staff(req, store, ('root',))  # before the costly decryption
+        backup = _read_backup(json)
+        with self._storage.transaction() as store:
+            root = _staff(req, store, ('root',))
+            if store.users().count() > 1 and json.confirm != 'purge':
+                raise falcon.HTTPConflict(code=PURGE_NEEDED, description='Everyone but root goes before the backup comes '
+                                                                         "in; confirm with 'purge'")
+            _check(backup, root)
+            resp.media = restore_backup(store, backup, root.id)
+            record(store, self._clock(), root.id, 'backup_restored')
+
+
+def _read_backup(json: RestoreInput) -> Backup:
+    """The backup in the file; 422 if it cannot be read."""
+    try:
+        return read_backup_file(base64.b64decode(json.file, validate=True), json.passphrase)
+    except (ValidationError, OSError, EOFError) as error:
+        raise falcon.HTTPUnprocessableEntity(description='The backup file is damaged') from error
+    except ValueError as error:
+        raise falcon.HTTPUnprocessableEntity(description=str(error)) from error
+
+
+def _check(backup: Backup, root: User) -> None:
+    try:
+        check_backup(backup, root)
+    except BackupError as error:
+        raise falcon.HTTPUnprocessableEntity(description=str(error)) from error
 
 
 class AdminAuditResource(_AdminResource):

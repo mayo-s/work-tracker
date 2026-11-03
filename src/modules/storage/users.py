@@ -118,6 +118,13 @@ class UserRepository:
         self.get(user_id)
         return self._conn.execute('SELECT password_hash FROM users WHERE id = ?', (user_id,)).fetchone()[0]
 
+    def restore(self, user: User, password_hash: str) -> None:
+        """A user of the full backup as they were (id, role, status, times, password); no defaults, no take-over."""
+        sql = 'INSERT INTO users (id, username, email, first_name, last_name, role, active, registered_at, last_login_at,' \
+              ' must_change_password, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        self._write(sql, (user.id, *_profile(user), user.role, int(user.active), _iso(user.registered_at),
+                          _iso(user.last_login_at), int(user.must_change_password), password_hash))
+
     def set_password(self, user_id: str, password: str) -> None:
         """A new password ends all sessions of the user."""
         self._set_password(user_id, password, must_change=False)
@@ -240,6 +247,10 @@ class LoginAttempts:
 
 def _profile(user: User) -> tuple:
     return user.username, user.email, user.first_name, user.last_name
+
+
+def _iso(moment: dt.datetime | None) -> str | None:
+    return moment.isoformat() if moment else None
 
 
 def token_hash(token: str) -> str:

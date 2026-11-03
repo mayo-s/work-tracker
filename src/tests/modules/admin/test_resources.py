@@ -162,7 +162,7 @@ def test_only_members_of_a_team_can_be_team_admins(app, klara, hans_id):
 
 
 def test_root_switches_registration_on(app, root):
-    assert app.simulate_get('/api/admin/settings', cookies=root).json == {'registration': False}
+    assert app.simulate_get('/api/admin/settings', cookies=root).json == {'registration': False, 'restore_unfinished': False}
     assert app.simulate_put('/api/admin/settings', cookies=root, json={'registration': True}).json == {'registration': True}
     assert app.simulate_get('/api/auth/status').json['registration'] is True
 

@@ -1,11 +1,11 @@
-// Admin page (/admin), for root and admins (SPEC 5.7). Root: registration, the full backup, appointing admins and
-// looking after them (status, one-time password). Admins: the teams, their auditors, team roles, and looking after everyone else. Both
-// see the users with their role, team, team role and whether they can log in.
+// Admin page (/admin), for root and admins (SPEC 5.7). Root: registration, the full backup and its restore,
+// appointing admins and looking after them (status, one-time password). Admins: the teams, their auditors, team roles,
+// and looking after everyone else. Both see the users with their role, team, team role and whether they can log in.
 
 import { PASSWORD_MIN_LENGTH } from './account.ts';
 import {
-  ApiError, api, type AdminTeamView, type AdminUserInput, type AdminUserView, type AuditorView, type AuditView,
-  type DownloadedFile,
+  ApiError, api, type AdminSettingsView, type AdminTeamView, type AdminUserInput, type AdminUserView, type AuditorView,
+  type AuditView, type DownloadedFile, type RestoreSummary,
 } from './api.ts';
 import { auditTable } from './audit.ts';
 import { formatDate, formatTimestamp } from './dates.ts';
@@ -68,8 +68,23 @@ export function passphraseError(passphrase: string, repeat: string): string | nu
   return passphrase === repeat ? null : 'The two passphrases differ.';
 }
 
-/** Root downloads the whole database, encrypted with a passphrase that is stored nowhere. */
-function backupSection(page: Page): HTMLElement {
+/** Root downloads the whole database, encrypted with a passphrase that is stored nowhere, and restores it. */
+function backupSection(settings: AdminSettingsView, users: AdminUserView[], page: Page): HTMLElement {
+  return el('section', { class: 'review-section', id: 'backup' },
+    el('h2', {}, 'Full backup'),
+    settings.restore_unfinished ? el('p', { class: 'form-error', role: 'alert' }, 'A restore stopped halfway: only you '
+      + 'can use the app until it is finished. Restore the file again.') : null,
+    el('p', { class: 'muted' }, 'One file of the whole database: all users with their passwords and two-factor login, '
+      + "the teams, everyone's records, the logs and the settings; not the sessions. It is compressed and encrypted with "
+      + 'the passphrase, which is stored nowhere: keep it apart from the file, without it the backup cannot be restored.'),
+    downloadForm(page),
+    el('h3', { class: 'account-heading' }, 'Restore'),
+    el('p', { class: 'muted' }, 'Everyone but you goes first, then the backup comes in: its users log in with their '
+      + 'passwords from then; you stay as you are.'),
+    restoreForm(users.length > 1, page));
+}
+
+function downloadForm(page: Page): HTMLFormElement {
   const passphrase = el('input', { id: 'backup-passphrase', type: 'password', autocomplete: 'new-password' });
   const repeat = el('input', { id: 'backup-repeat', type: 'password', autocomplete: 'new-password' });
   const form = el('form', { class: 'balance-form', novalidate: true },
@@ -87,12 +102,71 @@ function backupSection(page: Page): HTMLElement {
       saveFile(await api.backup(passphrase.value));
     }, () => page.reload('Downloaded the backup'));
   });
-  return el('section', { class: 'review-section', id: 'backup' },
-    el('h2', {}, 'Full backup'),
-    el('p', { class: 'muted' }, 'One file of the whole database: all users with their passwords and two-factor login, '
-      + "the teams, everyone's records, the logs and the settings; not the sessions. It is compressed and encrypted with "
-      + 'the passphrase, which is stored nowhere: keep it apart from the file, without it the backup cannot be restored.'),
-    form);
+  return form;
+}
+
+/** The file of a backup and its passphrase; with anyone but root there, typing `purge` confirms that they go. */
+function restoreForm(othersExist: boolean, page: Page): HTMLFormElement {
+  const file = el('input', { id: 'restore-file', type: 'file', accept: '.wtbackup' });
+  const passphrase = el('input', { id: 'restore-passphrase', type: 'password', autocomplete: 'off' });
+  const form = el('form', { class: 'balance-form', novalidate: true },
+    field('restore', 'file', 'Backup file', file),
+    field('restore', 'passphrase', 'Passphrase', passphrase),
+    el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'button-danger' }, 'Restore backup')));
+  let summary: RestoreSummary | null = null;
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    summary = null;
+    void submit(form, 'restore', ['file', 'passphrase'], async () => {
+      const chosen = file.files?.[0];
+      if (!chosen || !passphrase.value) {
+        throw new ApiError(422, 'Choose the backup file and enter its passphrase.', null);
+      }
+      const confirm = othersExist ? await askPurge() : null;
+      if (othersExist && confirm === null) {
+        return;
+      }
+      summary = await api.restore(toBase64(new Uint8Array(await chosen.arrayBuffer())), passphrase.value, confirm);
+    }, () => {
+      if (summary) {
+        page.reload(restoredText(summary));
+      } else {
+        form.querySelectorAll('button').forEach((item) => (item.disabled = false));  // the purge was not confirmed
+      }
+    });
+  });
+  return form;
+}
+
+/** `purge` once root typed it in the dialog; null when cancelled. */
+async function askPurge(): Promise<string | null> {
+  const typed = el('input', { id: 'purge-confirm', autocomplete: 'off' });
+  const go = await ask('Replace everything with the backup', [
+    'Everyone but you goes, with all their records, the teams and the logs; then the backup comes in. This cannot be undone.',
+    field('purge', 'confirm', 'Type purge to confirm', typed)], [{ label: 'Restore backup', value: true, primary: true }]);
+  if (!go) {
+    return null;
+  }
+  if (typed.value.trim() !== 'purge') {
+    throw new ApiError(422, 'Type purge to confirm the restore.', null);
+  }
+  return 'purge';
+}
+
+export function restoredText(summary: RestoreSummary): string {
+  const count = (number: number, one: string, more: string): string => `${number} ${number === 1 ? one : more}`;
+  return `Restored the backup: ${count(summary.users, 'user', 'users')}, ${count(summary.teams, 'team', 'teams')}, `
+    + `${count(summary.entries, 'entry', 'entries')}`;
+}
+
+/** The bytes as base64, in slices (a large file would overflow the arguments of one call). */
+export function toBase64(bytes: Uint8Array): string {
+  let text = '';
+  for (let start = 0; start < bytes.length; start += 0x8000) {
+    text += String.fromCharCode(...bytes.subarray(start, start + 0x8000));
+  }
+  return btoa(text);
 }
 
 /** Hands the file to the browser to save. */
@@ -344,7 +418,8 @@ export async function renderAdminPage(doc: Document): Promise<void> {
     const shared = [usersSection(users, viewer, status.user?.id, page), loginHelpSection(users, viewer, page),
       auditSection(audit)];
     if (viewer === 'root') {
-      return [registrationSection((await api.adminSettings()).registration, page), backupSection(page), ...shared];
+      const settings = await api.adminSettings();
+      return [registrationSection(settings.registration, page), backupSection(settings, users, page), ...shared];
     }
     const [teams, auditors] = await Promise.all([api.adminTeams(), api.adminAuditors()]);
     return [tableSection(teamsTable(teams), page), auditorsSection(auditors, users, teams, page), ...shared];

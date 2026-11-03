@@ -66,3 +66,16 @@ def registration_open(unit: Unit) -> bool:
 
 def set_registration(unit: Unit, enabled: bool) -> None:
     _save(unit, APP, registration=enabled)
+
+
+def start_restore(unit: Unit) -> None:
+    """A full restore has begun: until it finishes (it may take several requests), only root uses the app."""
+    _save(unit, APP, restore_unfinished=True)
+
+
+def restore_unfinished(unit: Unit) -> bool:
+    return bool(_values(unit, APP).get('restore_unfinished'))
+
+
+def finish_restore(unit: Unit) -> None:
+    _save(unit, APP, restore_unfinished=False)

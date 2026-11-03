@@ -694,7 +694,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** App-wide settings: whether new users can register. */
+        /** App-wide settings: whether new users can register, and whether a restore stopped halfway. */
         get: operations["get__api_admin_settings"];
         /** Switch registration on or off; the login page links to /register only while it is on. */
         put: operations["put__api_admin_settings"];
@@ -719,6 +719,26 @@ export interface paths {
          * @description Compressed (gzip) and encrypted with the passphrase (AES-256-GCM, key from scrypt), which is stored nowhere: without it the file cannot be restored. A header line before the encrypted part names the format and version.
          */
         post: operations["post__api_admin_backup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Root only: restore the full backup from its file (base64) and passphrase. Everything but root goes first, then the backup comes in; root stays as it is (the backup's root is skipped), everyone else has their password and two-factor login from the backup, and all other sessions end.
+         * @description While anyone but root exists, only with `confirm` 'purge' (409 with the code `purge_required` otherwise). A wrong passphrase, a damaged file, another format, a newer version or a backup that does not hold together is refused before anything is written (422). On DynamoDB the restore writes chunks; one that stops halfway leaves only root using the app until restoring the file again finishes it.
+         */
+        post: operations["post__api_admin_restore"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1405,6 +1425,20 @@ export interface components {
              */
             assigned_at: string;
         };
+        /** AdminSettingsView */
+        AdminSettingsView: {
+            /**
+             * Registration
+             * @description Whether new users can register on /register (off by default)
+             */
+            registration: boolean;
+            /**
+             * Restore Unfinished
+             * @description A restore of the full backup stopped halfway: only root uses the app until restoring the file again finishes it
+             * @default false
+             */
+            restore_unfinished?: boolean;
+        };
         /** AdminSettings */
         AdminSettings: {
             /**
@@ -1420,6 +1454,36 @@ export interface components {
              * @description At least 12 characters; stored nowhere: without it the file cannot be restored
              */
             passphrase: string;
+        };
+        /** RestoreInput */
+        RestoreInput: {
+            /**
+             * File
+             * @description The backup file, base64-encoded
+             */
+            file: string;
+            /** Passphrase */
+            passphrase: string;
+            /**
+             * Confirm
+             * @description 'purge' while anyone but root exists: everything but root goes before the backup comes in
+             * @default null
+             */
+            confirm?: string | null;
+        };
+        /** RestoreSummary */
+        RestoreSummary: {
+            /**
+             * Users
+             * @description Restored users, without root
+             */
+            users: number;
+            /** Teams */
+            teams: number;
+            /** Entries */
+            entries: number;
+            /** Audit Entries */
+            audit_entries: number;
         };
         /** AuditViewList */
         AuditViewList: components["schemas"]["AuditView"][];
@@ -2721,7 +2785,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed" | "root_login_reset" | "two_factor_reset" | "password_changed" | "two_factor_on" | "two_factor_off" | "two_factor_new_app" | "recovery_codes_renewed" | "backup_made";
+            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed" | "root_login_reset" | "two_factor_reset" | "password_changed" | "two_factor_on" | "two_factor_off" | "two_factor_new_app" | "recovery_codes_renewed" | "backup_made" | "backup_restored";
             /**
              * User
              * @description Name of whose account it is about
@@ -5686,7 +5750,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminSettings"];
+                    "application/json": components["schemas"]["AdminSettingsView"];
                 };
             };
             /** @description Forbidden */
@@ -5769,6 +5833,53 @@ export interface operations {
             };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    post__api_admin_restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreSummary"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
