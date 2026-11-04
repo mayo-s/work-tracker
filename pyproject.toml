@@ -1,3 +1,5 @@
 [tool.pytest.ini_options]
 testpaths = ["src/tests"]
 pythonpath = ["."]
+addopts = '-m "not e2e" --browser-channel chrome'
+markers = ['e2e: end-to-end tests in the browser (pytest -m e2e, after npm run build)']

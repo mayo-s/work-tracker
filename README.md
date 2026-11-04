@@ -226,6 +226,16 @@ pipenv run flake8 --count --exit-zero --radon-max-cc 6 --radon-no-assert --max-l
 npm test           # frontend tests (Node runs the TypeScript tests directly)
 ```
 
+```shell
+npm run build && pipenv run pytest -m e2e   # end-to-end tests in the browser
+```
+
+The end-to-end tests (`src/tests/e2e`, Playwright in the installed Google Chrome) run the app with the test personas
+and go through the main flows: login with two-factor code, setup, recording a day and its entries, splitting and
+renaming a guessed ticket, a service in the settings, a one-time password, the team view. axe-core checks the pages
+for WCAG 2.2 AA in the light and the dark theme. `pipenv run pytest` leaves them out (`-m "not e2e"` in
+`pyproject.toml`).
+
 The DynamoDB tests run on a table simulated by moto, without AWS account or network. Contract tests
 (`test_contract_*.py`) run once per backend, and the isolation tests (`test_isolation.py`) run the whole app on both:
 another user's ids answer 404, team and admin routes 403.

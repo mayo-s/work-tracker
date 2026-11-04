@@ -302,12 +302,12 @@ L.16 (a–i) → 9.1 (a–i).
   longer queue
 - [x] **11.2** A readable message for an invalid ticket key, e.g. when renaming a ticket: today pydantic's "String should
   match pattern '^[A-Z][A-Z0-9]*-[1-9]\d*$'"; instead e.g. "A ticket key is letters, a dash and a number, e.g. TNG-4138"
-- [ ] **11.3** End-to-end tests in the browser, with Playwright (`pytest-playwright`, Chromium, headless) rather than
-  Cypress: they run in pytest with the fixtures and personas of the API tests, a browser context per user (team
-  admin, auditor, root and admin with 2FA), native `confirm()` handled, and axe-core for the WCAG checks of 6.5.
-  A few flows, not every page: login with 2FA, setup, week (record a day, add, edit and split an entry), review
-  (rename, split), settings (a table row, delete), admin (one-time password dialog), team view; marked `e2e` so the
-  quick suite stays quick. The run skill's driver stays for screenshots and before/after comparisons
+- [x] **11.3** End-to-end tests in the browser, with Playwright (`pytest-playwright`, the installed Chrome, headless)
+  rather than Cypress: they run in pytest with the fixtures and personas of the API tests, a browser context per user
+  (team admin, root and admin with 2FA), native `confirm()` handled, and axe-core for the WCAG checks of 6.5. A few
+  flows, not every page: login with 2FA, setup, week (record a day, add and change an entry), review (split, rename),
+  settings (a table row, delete), admin (one-time password dialog), team view; marked `e2e` so the quick suite stays
+  quick. The run skill's driver stays for screenshots and before/after comparisons
 
 ## Later (to be discussed)
 

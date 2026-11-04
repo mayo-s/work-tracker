@@ -22,6 +22,7 @@ pytest-cov = "*"
 pytest-github-report = "*"
 pdbpp = "*"
 moto = {extras = ["dynamodb"], version = "*"}
+pytest-playwright = "*"
 
 [requires]
 python_version = "3.14"
