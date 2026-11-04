@@ -79,28 +79,20 @@ class DashboardView(BaseModel):
     visible_from: VisibleFrom = None
 
 
-class Dashboard:
-    """Builds the dashboard within the transaction of the given store."""
+class Dashboard(Reports):
+    """Builds the dashboard within the transaction of the given store: the reports' figures of today's week and year,
+    the balance over time and the days off coming up."""
 
     def __init__(self, store: Store, user_id: str, today: dt.date, stays: Stays | None = None) -> None:
-        self._store = store
-        self._user = user_id
-        self._today = today
-        self._visible_from = stays.first if stays else None
-        self._shows = stays.shows if stays else None  # team view: whether a day is one of the member's in the team
-        self._settings = store.load_settings(user_id)
-        self._first = max(self._settings.balance_start, self._visible_from or dt.date.min)
-        self._schedules = store.schedules(user_id).schedules()
-        last = today + dt.timedelta(days=COMING_UP_DAYS)
-        self._records = store.days(user_id).records(self._settings.balance_start, last)
-        self._reports = Reports(store, user_id, today, stays)
+        super().__init__(store, user_id, today, stays)
+        self._day_records = self._records(today + dt.timedelta(days=COMING_UP_DAYS))
         self._balances = self._daily_balances()
 
     def view(self) -> DashboardView:
         iso_year, iso_week, _ = self._today.isocalendar()
         week = f'{iso_year}-W{iso_week:02d}'
         monday = self._today - dt.timedelta(days=self._today.weekday())
-        year = self._reports.year(self._today.year)
+        year = self.year(self._today.year)
         return DashboardView(
             today=self._today,
             balance=format_duration(self._balance_on(self._today)),
@@ -108,7 +100,7 @@ class Dashboard:
                 self._balance_on(self._today) - self._balance_on(dt.date(self._today.year - 1, 12, 31))),
             pto=year.pto,
             week=week,
-            this_week=self._reports.week(week, monday).totals,
+            this_week=self.week(week, monday).totals,
             week_target=format_duration(sum(day.target for day in self._shown(max(monday, self._first),
                                                                               monday + dt.timedelta(days=6)))),
             review_open=0 if self._visible_from else sum(review(self._store, self._user).counts.model_dump().values()),
@@ -125,12 +117,11 @@ class Dashboard:
         return dict(zip((day.date for day in days), list(totals)[1:]))
 
     def _summaries(self, start: dt.date, end: dt.date) -> list[DaySummary]:
-        return summarize_period(self._records, start, end, self._schedules) if start <= end else []
+        return summarize_period(self._day_records, start, end, self._schedules) if start <= end else []
 
     def _shown(self, start: dt.date, end: dt.date) -> list[DaySummary]:
         """The days of the period; in the team view only those shown."""
-        days = self._summaries(start, end)
-        return [day for day in days if self._shows(day.date)] if self._shows else days
+        return self._only_shown(self._summaries(start, end))
 
     def _balance_on(self, date: dt.date) -> int:
         """The balance at the end of the day; before the balance start, the opening balance."""

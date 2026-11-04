@@ -154,7 +154,10 @@ class Reports:
         """Days of the period from the balance start on (days before it are ignored; in the team view also those not
         shown)."""
         first = max(start, self._first)
-        days = summarize_period(records, first, end, self._schedules) if first <= end else []
+        return self._only_shown(summarize_period(records, first, end, self._schedules) if first <= end else [])
+
+    def _only_shown(self, days: list[DaySummary]) -> list[DaySummary]:
+        """In the team view only the days shown, all others otherwise."""
         return [day for day in days if self._shows(day.date)] if self._shows else days
 
     def _counted_days(self, records: Records, start: dt.date, end: dt.date) -> list[DaySummary]:
