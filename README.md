@@ -378,7 +378,7 @@ Pydantic models; times in minutes, validated on creation and assignment.
 |-------------|------------------------------------------------------------------------------------------------------------------------------------------------|
 | `days`      | `Day`: date, day type (empty = automatic), start / end, break (empty = legal minimum), note; provides worked time                              |
 | `entries`   | `TicketEntry` (ticket, duration, description, coding) and `ActivityEntry` (activity type, duration, note); durations in quarter hours          |
-| `catalog`   | `Service`, `ServiceChoice` (with its team), `ActivityType` and `Ticket` (key like `ENGINE-461`, remembers its service)                         |
+| `catalog`   | `Service`, `ServiceChoice` (with its team), `ActivityType` and `Ticket` (key like `ENGINE-461`, remembers its service; an invalid key is refused with a message to show) |
 | `history`   | `EntryChange`: one line of an entry's history (created, imported, updated, renamed, merged, split, deleted) with the changed fields, old → new |
 | `review`    | `ReviewFlag`: import flag on an entry or a day (uncertain ticket, weekend hours)                                                               |
 | `schedules` | `Schedule`: valid from, minutes per week, work days (ISO weekdays), federal state, company half days                                           |

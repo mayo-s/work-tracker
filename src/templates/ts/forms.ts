@@ -1,14 +1,9 @@
 // Shared form helpers: fields with hint and error, validation errors from the API, saving state.
 
-import { ApiError, errorText } from './api.ts';
+import { ApiError, cleanMessage, errorText } from './api.ts';
 import { el } from './dom.ts';
 
 export type FieldErrors = { fields: Record<string, string>; general: string[] };
-
-/** Validation messages without pydantic's "Value error, " prefix. */
-export function cleanMessage(message: string): string {
-  return message.replace(/^(Value error, )+/, '');
-}
 
 /** Validation errors of a 422 response, by field; errors not about one of the fields are general. */
 export function fieldErrors(details: unknown, fields: readonly string[]): FieldErrors {
