@@ -11,21 +11,13 @@ from src.app import create_app
 from src.lib.totp import code_at, time_step
 from src.modules.storage.users import UserRepository
 from src.tests.helpers import logged_in, login, session
-from src.tests.users import HANS, PASCAL, PASSWORD
+from src.tests.users import PASSWORD
 
 NOW = dt.datetime(2026, 11, 2, 9, 0)
 
 
 @pytest.fixture
-def ids(database, two_factor_required):
-    with database.transaction() as conn:
-        users = UserRepository(conn)
-        return {'hans': users.add(HANS, PASSWORD).id,
-                'pascal': users.add(PASCAL.model_copy(update={'role': 'root'}), PASSWORD).id}
-
-
-@pytest.fixture
-def app(database, ids):
+def app(database, people, two_factor_required):
     return testing.TestClient(create_app(database, auth=True, clock=lambda: NOW))
 
 
@@ -63,18 +55,18 @@ def reset(app, cookies, user_id):
     return app.simulate_post(f'/api/admin/users/{user_id}/two-factor-reset', cookies=cookies)
 
 
-def test_an_admin_resets_it_for_a_user(app, ids):
+def test_an_admin_resets_it_for_a_user(app, people):
     hans = logged_in(app, 'hans')
     switch_on(app, hans)
     klara = logged_in(app, 'klara')
     switch_on(app, klara, steps_later=1)
-    assert reset(app, klara, ids['hans']).status == falcon.HTTP_204
+    assert reset(app, klara, people['hans']).status == falcon.HTTP_204
     assert app.simulate_get('/api/auth/me/two-factor', cookies=hans).json['enabled'] is False
     assert [entry['action'] for entry in app.simulate_get('/api/admin/audit', cookies=klara).json][0] == 'two_factor_reset'
-    assert reset(app, klara, ids['hans']).status == falcon.HTTP_409  # off already
+    assert reset(app, klara, people['hans']).status == falcon.HTTP_409  # off already
 
 
-def test_root_resets_it_for_an_admin_and_the_admin_sets_it_up_again(app, database, ids):
+def test_root_resets_it_for_an_admin_and_the_admin_sets_it_up_again(app, database, people):
     klara = logged_in(app, 'klara')
     switch_on(app, klara)
     root = logged_in(app, 'pascal')
@@ -98,12 +90,12 @@ def test_refused(app, database, name, target, message):
     assert (result.status, result.json['description']) == (falcon.HTTP_409, message)
 
 
-def test_admins_do_not_reset_admins(app, database, ids):
+def test_admins_do_not_reset_admins(app, database, people):
     with database.transaction() as conn:
-        UserRepository(conn).set_role(ids['hans'], 'admin')
+        UserRepository(conn).set_role(people['hans'], 'admin')
     klara = logged_in(app, 'klara')
     switch_on(app, klara)
-    result = reset(app, klara, ids['hans'])
+    result = reset(app, klara, people['hans'])
     assert (result.status, result.json['description']) == (falcon.HTTP_403, 'Only root for admins may reset two-factor '
                                                                             'login')
 

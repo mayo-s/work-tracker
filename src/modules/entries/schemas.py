@@ -13,6 +13,7 @@ from src.models.entries import ActivityEntry, Entry, TicketEntry
 from src.models.history import HistoryAction
 from src.models.review import FlagReason
 from src.modules.storage.store import Store
+from src.modules.tickets.schemas import TicketServices
 from src.utils.api import DurationText, check_domain
 
 
@@ -108,8 +109,7 @@ class EntryViewer:
 
     def __init__(self, store: Store, user_id: str) -> None:
         self._entries = store.entries(user_id)
-        self._ticket_services = {ticket.key: ticket.service_id for ticket in store.tickets(user_id).all()}
-        self._services = {service.id: service.short_name for service in store.services(user_id).choices()}
+        self._services = TicketServices(store, user_id)
         self._activity_types = {activity.id: activity.name for activity in store.activity_types(user_id).all()}
 
     def views(self, entries: Iterable[Entry]) -> list[EntryView]:
@@ -129,9 +129,9 @@ class EntryViewer:
             'changed': changed, 'flags': flags,
         }
         if isinstance(entry, TicketEntry):
-            service_id = self._ticket_services.get(entry.ticket_key)
+            service_id = self._services.of_ticket(entry.ticket_key)
             return EntryView(
-                **common, ticket_key=entry.ticket_key, service_id=service_id, service=self._services.get(service_id),
+                **common, ticket_key=entry.ticket_key, service_id=service_id, service=self._services.name(service_id),
                 description=entry.description, coding=entry.coding,
             )
         return EntryView(
