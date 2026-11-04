@@ -1,6 +1,6 @@
 // Month report (/month): totals, days off and the monthly work report (coding hours by service and ticket).
 
-import { api, ApiError, type DayType, type MonthReport } from './api.ts';
+import { api, errorText, type DayType, type MonthReport } from './api.ts';
 import { formatMonth, isoDate, isoMonth, isValidMonth, shiftMonth, type IsoDate } from './dates.ts';
 import { el } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
@@ -77,6 +77,6 @@ export async function renderMonthPage(doc: Document): Promise<void> {
     root.replaceChildren(periodSummary(report.totals, daysOff(report)), workReport(report));
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },
-      error instanceof ApiError ? error.message : 'The month could not be loaded.'));
+      errorText(error, 'The month could not be loaded.')));
   }
 }

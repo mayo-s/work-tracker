@@ -1,6 +1,6 @@
 // Booking days off as a range (week page): a form with a live preview, and a popup for days that hold times or entries.
 
-import { api, ApiError, type DayRangeInput, type DayRangeResult } from './api.ts';
+import { api, errorText, type DayRangeInput, type DayRangeResult } from './api.ts';
 import { addDays, formatDate, formatDay, isoWeek, type IsoDate } from './dates.ts';
 import { ask } from './dialog.ts';
 import { el, onEscape } from './dom.ts';
@@ -89,10 +89,6 @@ function askAboutConflicts(conflicts: Conflict[]): Promise<'skip' | 'include' | 
   );
 }
 
-function errorText(error: unknown): string {
-  return error instanceof ApiError ? error.message : 'The days could not be booked.';
-}
-
 /** The form to book a full-day type on the work days of a range; `onClose` removes it. */
 export function daysOffForm(monday: IsoDate, onClose: () => void): HTMLElement {
   const start = dateInput('start', monday);
@@ -130,7 +126,7 @@ export function daysOffForm(monday: IsoDate, onClose: () => void): HTMLElement {
       preview.className = 'days-off-preview muted';
       book.disabled = !current.days.length && !current.conflicts.length;
     } catch (error) {
-      preview.textContent = errorText(error);
+      preview.textContent = errorText(error, 'The days could not be booked.');
       preview.className = 'days-off-preview field-error';
     }
   };
@@ -151,7 +147,7 @@ export function daysOffForm(monday: IsoDate, onClose: () => void): HTMLElement {
         const first = result.days[0];
         window.location.assign(first ? `/week?week=${isoWeek(first)}` : window.location.href);
       } catch (error) {
-        preview.textContent = errorText(error);
+        preview.textContent = errorText(error, 'The days could not be booked.');
         preview.className = 'days-off-preview field-error';
       }
     })();

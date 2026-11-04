@@ -2,8 +2,8 @@
 
 import { api, type InvitationView, type MemberView, type Service, type TeamPageView } from './api.ts';
 import { formatDate, formatTimestamp } from './dates.ts';
-import { el } from './dom.ts';
-import { button, renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
+import { button, el } from './dom.ts';
+import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 import { field, submit } from './forms.ts';
 
 const ROLE_LABELS: Record<MemberView['team_role'], string> = { team_admin: 'Team admin', member: 'Member' };

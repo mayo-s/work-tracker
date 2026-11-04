@@ -1,10 +1,10 @@
 // Review page (/review): tickets without service, entries and days that need attention after the import.
 
 import {
-  api, ApiError, type DayView, type ReviewEntry, type ReviewReason, type ReviewView, type ServiceChoice, type TicketView,
+  api, errorText, type DayView, type ReviewEntry, type ReviewReason, type ReviewView, type ServiceChoice, type TicketView,
 } from './api.ts';
-import { formatDay, isoWeek, type IsoDate } from './dates.ts';
-import { el, onEscape } from './dom.ts';
+import { formatDate, formatDay, isoWeek, type IsoDate } from './dates.ts';
+import { button, el, onEscape } from './dom.ts';
 import { serviceOptions } from './lists.ts';
 import { entryContent } from './week.ts';
 
@@ -76,16 +76,6 @@ export function splitSuggestion(group: GuessedTicket): string[] | null {
 }
 
 type Page = { data: ReviewView; services: ServiceChoice[]; reload: (message: string) => void; fail: (error: unknown) => void };
-
-function button(label: string, onClick: () => void, className = 'button-small'): HTMLButtonElement {
-  const element = el('button', { type: 'button', class: className }, label);
-  element.addEventListener('click', onClick);
-  return element;
-}
-
-function errorText(error: unknown): string {
-  return error instanceof ApiError ? error.message : 'The action failed.';
-}
 
 function act(page: Page, action: () => Promise<unknown>, message: string): void {
   action().then(() => page.reload(message), page.fail);
@@ -200,10 +190,6 @@ function ticketsSection(page: Page): HTMLElement {
 
 function flagActions(flags: { id: string }[], page: Page): HTMLElement[] {
   return flags.map((flag) => button('Done', () => act(page, () => api.clearFlag(flag.id), 'Flag cleared')));
-}
-
-function formatDate(date: IsoDate): string {
-  return date.split('-').reverse().join('.');
 }
 
 /** An inline form to split all entries of a guessed ticket among several tickets; clears their flags afterwards. */

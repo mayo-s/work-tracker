@@ -2,10 +2,11 @@
 // saved at once with "Start", or from the file of "Export my data".
 
 import { rootForm } from './account.ts';
-import { api, ApiError, type ImportSummary, type SetupImportInput, type SetupInput } from './api.ts';
+import { api, errorText, type ImportSummary, type SetupImportInput, type SetupInput } from './api.ts';
 import { formatDate, isoDate, type IsoDate } from './dates.ts';
-import { el } from './dom.ts';
+import { button, el } from './dom.ts';
 import { checkDuration, normalizeOnLeave, type DurationRules } from './duration-input.ts';
+import { field } from './forms.ts';
 import { STATE_NAMES, WEEKDAY_NAMES } from './labels.ts';
 
 type Weekday = (typeof WEEKDAY_NAMES)[number];
@@ -121,11 +122,6 @@ export function summary(state: SetupState): [string, string][] {
   ];
 }
 
-function field(label: string, control: HTMLElement, hint = ''): HTMLElement {
-  return el('div', { class: 'field' }, el('label', { for: control.id }, label), control,
-    hint ? el('p', { class: 'field-hint muted' }, hint) : null);
-}
-
 function input(id: string, value: string, onInput: (value: string) => void, attributes = {}): HTMLInputElement {
   const element = el('input', { id, value, autocomplete: 'off', ...attributes });
   element.addEventListener('input', () => onInput(element.value));
@@ -150,8 +146,8 @@ function fileImport(onImport: (file: File | undefined) => void): HTMLElement {
   return el('div', { class: 'card card-surface setup-note' },
     el('strong', {}, 'Moving from another Work Tracker? '),
     'Import the file of "Export my data" (settings page) instead of the next steps: it sets up everything at once.',
-    field('Export file', file),
-    button('Import', () => onImport(file.files?.[0])));
+    field('setup', 'import-file', 'Export file', file),
+    button('Import', () => onImport(file.files?.[0]), { class: null }));
 }
 
 function startStep(state: SetupState, onImport: (file: File | undefined) => void): HTMLElement[] {
@@ -159,8 +155,8 @@ function startStep(state: SetupState, onImport: (file: File | undefined) => void
   return [
     el('p', {}, 'The overtime balance counts from the first day on, e.g. the first day at a new job.'),
     el('div', { class: 'setup-fields' },
-      field('First day', start),
-      field('Opening balance', duration(input('setup-opening', state.opening, (value) => (state.opening = value)), OPENING),
+      field('setup', 'start', 'First day', start),
+      field('setup', 'opening', 'Opening balance', duration(input('setup-opening', state.opening, (value) => (state.opening = value)), OPENING),
         'Overtime taken over, e.g. 12:30, -1:45 or 1.5; otherwise 0:00.')),
     importNote(),
     fileImport(onImport),
@@ -183,11 +179,11 @@ function scheduleStep(state: SetupState): HTMLElement[] {
   return [
     el('p', {}, 'The hours per week are split evenly over the work days (40 h / 5 days = 8:00 per day).'),
     el('div', { class: 'setup-fields' },
-      field('Hours per week',
+      field('setup', 'hours', 'Hours per week',
         duration(input('setup-hours', state.weeklyHours, (value) => (state.weeklyHours = value)), WEEKLY_HOURS)),
       el('div', { class: 'field' }, el('span', { class: 'field-label' }, 'Work days'),
         el('fieldset', { class: 'weekday-picker' }, el('legend', { class: 'visually-hidden' }, 'Work days'), ...days)),
-      field('Public holidays of', region),
+      field('setup', 'state', 'Public holidays of', region),
       el('div', { class: 'field' }, el('label', { class: 'checkbox-field' }, halfDays,
         '24.12. and 31.12. are company half days (half PTO, half free)'))),
   ];
@@ -211,8 +207,8 @@ function ptoStep(state: SetupState): HTMLElement[] {
   return [
     el('p', {}, `PTO days are entered per year; ${year} and ${year + 1} are set up now, later years on the settings page.`),
     el('div', { class: 'setup-fields' },
-      field('PTO days per year', perYear),
-      field(`PTO days in ${year}`, first,
+      field('setup', 'per-year', 'PTO days per year', perYear),
+      field('setup', 'first-year', `PTO days in ${year}`, first,
         `Proposed: ${months} of 12 months counted (the start month counts if starting by the 15th), rounded up to half `
         + `days: ${proposal()}. Change it to what was agreed.`)),
   ];
@@ -227,7 +223,7 @@ function servicesStep(state: SetupState, redraw: () => void): HTMLElement[] {
     button('Remove', () => {
       state.services.splice(index, 1);
       redraw();
-    }, 'button-small')));
+    })));
   return [
     el('p', {}, 'The services the coding work is for; the month report groups it by service. Optional: they can also be '
       + 'added later on the settings page.'),
@@ -235,7 +231,7 @@ function servicesStep(state: SetupState, redraw: () => void): HTMLElement[] {
     button('+ Add service', () => {
       state.services.push({ short_name: '', name: '' });
       redraw();
-    }, 'button-small setup-add'),
+    }, { class: 'button-small setup-add' }),
   ];
 }
 
@@ -245,12 +241,6 @@ function summaryStep(state: SetupState): HTMLElement[] {
     el('table', { class: 'card-table setup-summary' },
       el('tbody', {}, ...summary(state).map(([label, value]) => el('tr', {}, el('th', {}, label), el('td', {}, value))))),
   ];
-}
-
-function button(label: string, onClick: () => void, className = ''): HTMLButtonElement {
-  const element = el('button', { type: 'button', class: className || null }, label);
-  element.addEventListener('click', onClick);
-  return element;
 }
 
 function progress(names: Step[], step: number): HTMLElement {
@@ -304,7 +294,7 @@ export async function renderSetupPage(doc: Document): Promise<void> {
   };
   const startCounting = (): void => {
     api.setup(setupInput(state)).then(() => window.location.assign('/'),
-      (failure: unknown) => fail(failure instanceof ApiError ? failure.message : 'The setup could not be saved.'));
+      (failure: unknown) => fail(errorText(failure, 'The setup could not be saved.')));
   };
   const imported = (summary: ImportSummary): void => {
     root.replaceChildren(el('section', { class: 'card setup-step', 'aria-labelledby': 'setup-step-title' },
@@ -312,7 +302,7 @@ export async function renderSetupPage(doc: Document): Promise<void> {
       el('p', {}, 'Your data is set up from the file. Everything can be changed later on the settings page.'),
       el('table', { class: 'card-table setup-summary' }, el('tbody', {},
         ...importSummary(summary).map(([label, count]) => el('tr', {}, el('th', {}, label), el('td', {}, count))))),
-      el('div', { class: 'form-actions' }, button('Open the dashboard', () => window.location.assign('/'), 'primary'))));
+      el('div', { class: 'form-actions' }, button('Open the dashboard', () => window.location.assign('/'), { class: 'primary' }))));
     root.querySelector<HTMLElement>('.setup-step button')?.focus();
   };
   const importFile = (file: File | undefined): void => {
@@ -324,7 +314,7 @@ export async function renderSetupPage(doc: Document): Promise<void> {
       const parsed = parseExportFile(text);
       return 'problem' in parsed ? fail(parsed.problem)
         : api.importSetup({ data: parsed.data }).then(imported);
-    }).catch((failure: unknown) => fail(failure instanceof ApiError ? failure.message : 'The file could not be imported.'));
+    }).catch((failure: unknown) => fail(errorText(failure, 'The file could not be imported.')));
   };
   const draw = (): void => {
     if (!state.firstYearChanged) {
@@ -336,9 +326,9 @@ export async function renderSetupPage(doc: Document): Promise<void> {
       el('section', { class: 'card setup-step', 'aria-labelledby': 'setup-step-title' },
         el('h2', { id: 'setup-step-title' }, `${step + 1}. ${names[step]}`), ...content, error,
         el('div', { class: 'form-actions' },
-          step > 0 ? button('Back', () => go(step - 1)) : null,
-          step < names.length - 1 ? button('Next', () => go(step + 1), 'primary')
-            : button('Start', startCounting, 'primary'))));
+          step > 0 ? button('Back', () => go(step - 1), { class: null }) : null,
+          step < names.length - 1 ? button('Next', () => go(step + 1), { class: 'primary' })
+            : button('Start', startCounting, { class: 'primary' }))));
     root.querySelector<HTMLElement>('.setup-step input, .setup-step select')?.focus();
   };
   draw();

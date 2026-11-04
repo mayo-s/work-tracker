@@ -24,6 +24,13 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   return element;
 }
 
+/** A button that calls `onClick`; small unless `attributes` give another class. */
+export function button(label: string, onClick: () => void, attributes: Attributes = {}): HTMLButtonElement {
+  const element = el('button', { type: 'button', class: 'button-small', ...attributes }, label);
+  element.addEventListener('click', onClick);
+  return element;
+}
+
 /** Calls `handler` when Escape is pressed within `element`, e.g. to cancel an inline form. */
 export function onEscape(element: HTMLElement, handler: () => void): void {
   element.addEventListener('keydown', (event) => {

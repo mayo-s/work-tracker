@@ -10,8 +10,8 @@ import {
 import { auditTable } from './audit.ts';
 import { formatDate, formatTimestamp } from './dates.ts';
 import { ask } from './dialog.ts';
-import { el } from './dom.ts';
-import { button, renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
+import { button, el } from './dom.ts';
+import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 import { field, submit } from './forms.ts';
 
 type TeamRole = NonNullable<AdminUserInput['team_role']>;

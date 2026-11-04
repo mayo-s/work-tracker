@@ -1,6 +1,6 @@
 // The change history of an entry, as readable lines.
 
-import { api, ApiError, type ChangeView } from './api.ts';
+import { api, errorText, type ChangeView } from './api.ts';
 import { formatDate, formatTimestamp } from './dates.ts';
 import { el } from './dom.ts';
 import { fromMinutes } from './durations.ts';
@@ -63,7 +63,7 @@ export function historyPanel(entryId: string, activityNames: Map<string, string>
   api.entryHistory(entryId).then(
     (changes) => panel.replaceChildren(el('ol', { class: 'history-list' }, ...changes.map((item) => historyItem(item, activityNames)))),
     (error: unknown) => panel.replaceChildren(el('p', { class: 'field-error' },
-      error instanceof ApiError ? error.message : 'The history could not be loaded.')),
+      errorText(error, 'The history could not be loaded.'))),
   );
   return panel;
 }

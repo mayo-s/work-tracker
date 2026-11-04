@@ -1,6 +1,6 @@
 // Shared form helpers: fields with hint and error, validation errors from the API, saving state.
 
-import { ApiError } from './api.ts';
+import { ApiError, errorText } from './api.ts';
 import { el } from './dom.ts';
 
 export type FieldErrors = { fields: Record<string, string>; general: string[] };
@@ -65,7 +65,7 @@ export async function submit(
     await action();
     onDone();
   } catch (error) {
-    const fallback = error instanceof ApiError ? error.message : 'Could not be saved.';
+    const fallback = errorText(error, 'Could not be saved.');
     showErrors(form, prefix, fields, error instanceof ApiError ? error.details : null, fallback);
     form.querySelectorAll('button').forEach((button) => (button.disabled = false));
   }

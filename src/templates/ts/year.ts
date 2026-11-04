@@ -1,6 +1,6 @@
 // Year report (/year): totals, PTO account, days off and the months with their running balance.
 
-import { api, ApiError, type DayType, type YearReport } from './api.ts';
+import { api, errorText, type DayType, type YearReport } from './api.ts';
 import { isoDate, isoMonth, type IsoDate } from './dates.ts';
 import { el } from './dom.ts';
 import { fromMinutes, toMinutes } from './durations.ts';
@@ -106,6 +106,6 @@ export async function renderYearPage(doc: Document): Promise<void> {
       el('h2', {}, 'Months'), monthsTable(report));
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },
-      error instanceof ApiError ? error.message : 'The year could not be loaded.'));
+      errorText(error, 'The year could not be loaded.')));
   }
 }
