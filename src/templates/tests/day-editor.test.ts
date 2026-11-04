@@ -14,27 +14,17 @@ function day(changes: Partial<DayView> = {}): DayView {
   };
 }
 
-test('form values leave an automatic type and a legal break empty', () => {
+test('form values leave an automatic type and a legal break empty, keep a chosen type and an explicit one', () => {
   assert.deepEqual(formValues(day()), { day_type: '', start: '07:15', end: '16:00', break_time: '', note: 'OFFICE DAY' });
-});
-
-test('form values keep a chosen type and an explicit break', () => {
-  const values = formValues(day({ day_type: 'pto_half', automatic: false, break_default: false, break_time: '0:00' }));
-  assert.equal(values.day_type, 'pto_half');
-  assert.equal(values.break_time, '0:00');
-});
-
-test('form values of an unrecorded day', () => {
-  const values = formValues(day({ recorded: false, start: null, end: null, break_time: null, break_default: false, note: '' }));
-  assert.deepEqual(values, { day_type: '', start: '', end: '', break_time: '', note: '' });
+  const chosen = formValues(day({ day_type: 'pto_half', automatic: false, break_default: false, break_time: '0:00' }));
+  assert.deepEqual([chosen.day_type, chosen.break_time], ['pto_half', '0:00']);
+  const unrecorded = formValues(day({ recorded: false, start: null, end: null, break_time: null, break_default: false, note: '' }));
+  assert.deepEqual(unrecorded, { day_type: '', start: '', end: '', break_time: '', note: '' });
 });
 
 test('day input leaves out empty fields and trims', () => {
   assert.deepEqual(dayInput({ day_type: '', start: ' 7:15 ', end: '16:00', break_time: '', note: ' Anreise ' }),
     { note: 'Anreise', start: '7:15', end: '16:00' });
-});
-
-test('day input with a day type and an explicit break', () => {
   assert.deepEqual(dayInput({ day_type: 'pto', start: '', end: '', break_time: '0:00', note: '' }),
     { note: '', day_type: 'pto', break_time: '0:00' });
 });

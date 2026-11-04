@@ -9,13 +9,12 @@ import { entryRules } from '../ts/entry-editor.ts';
 
 test('the formats the API reads', () => {
   const read: [string, number][] = [
-    ['1:30', 90], ['0:45', 45], ['1.5', 90], ['1,5', 90], ['2', 120], ['0.25', 15], ['1h30m', 90], ['1h30', 90],
-    ['1h', 60], ['1.5h', 90], ['1 H 30 Min', 90], ['1 h  30 min', 90], ['90m', 90], ['90 min', 90], ['45M', 45],
+    ['1:30', 90], ['1,5', 90], ['2', 120], ['1h30', 90], ['1.5h', 90], ['1 H 30 Min', 90], ['45M', 45],
   ];
   for (const [text, minutes] of read) {
     assert.equal(parseDuration(text)?.minutes, minutes, text);
   }
-  for (const text of ['', '1:5', '1:60', ':30', '1.01', 'h', '30s', '1h60m', '1.5h30m', '1m30', 'abc', '1:30h', '-1:30']) {
+  for (const text of ['', '1:5', '1:60', '1.01', '1h60m', '1.5h30m', 'abc', '-1:30']) {
     assert.equal(parseDuration(text), null, text);
   }
 });

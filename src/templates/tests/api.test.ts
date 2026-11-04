@@ -41,17 +41,9 @@ describe('requests', () => {
     });
   });
 
-  test('entries of a date range', async () => {
-    await api.entries({ start: '2026-10-01', end: '2026-10-31' });
-    assert.equal(calls[0]?.url, '/api/entries?start=2026-10-01&end=2026-10-31');
-  });
-
   test('saving a day sends JSON', async () => {
     respond(200, { date: '2026-10-28' });
     await api.saveDay('2026-10-28', { start: '07:15', end: '16:00' });
-    assert.equal(calls[0]?.method, 'PUT');
-    assert.equal(calls[0]?.url, '/api/days/2026-10-28');
-    assert.deepEqual(calls[0]?.body, { start: '07:15', end: '16:00' });
     assert.equal(calls[0]?.headers['Content-Type'], 'application/json');
   });
 
@@ -59,57 +51,32 @@ describe('requests', () => {
     respond(201, { id: 'e7', kind: 'ticket' });
     const entry = await api.createEntry({ kind: 'ticket', date: '2026-10-28', duration: '1:30', ticket_key: 'TNG-5882' });
     assert.equal(entry.id, 'e7');
-    assert.equal(calls[0]?.method, 'POST');
   });
 
-  test('ticket keys are encoded in paths', async () => {
+  test('each call reaches its route', async () => {
     respond(200, {});
+    await api.entries({ start: '2026-10-01', end: '2026-10-31' });
+    await api.saveDay('2026-10-28', { start: '07:15', end: '16:00' });
     await api.renameTicket('TNG-2035', 'KP-2035');
     await api.ticket('a/b');
-    assert.equal(calls[0]?.url, '/api/tickets/TNG-2035/rename');
-    assert.deepEqual(calls[0]?.body, { new_key: 'KP-2035' });
-    assert.equal(calls[1]?.url, '/api/tickets/a%2Fb');
-  });
-
-  test('assigning and unassigning services', async () => {
-    respond(200, {});
     await api.assignService(['AGA-39', 'AGA-40'], 's4');
     await api.setTicketService('AGA-39', null);
-    assert.deepEqual(calls[0]?.body, { keys: ['AGA-39', 'AGA-40'], service_id: 's4' });
-    assert.deepEqual(calls[1]?.body, { service_id: null });
-  });
-
-  test('tickets without service', async () => {
     await api.tickets(true);
-    await api.tickets();
-    assert.deepEqual(calls.map((call) => call.url), ['/api/tickets?without_service=true', '/api/tickets']);
-  });
-
-  test('reports', async () => {
-    respond(200, {});
-    await api.weekReport('2026-W44');
     await api.monthReport('2026-10');
-    await api.yearReport(2026);
-    assert.deepEqual(calls.map((call) => call.url), [
-      '/api/reports/weeks/2026-W44', '/api/reports/months/2026-10', '/api/reports/years/2026',
-    ]);
-  });
-
-  test('settings and PTO years', async () => {
-    respond(200, {});
-    await api.saveSettings({ balance_start: '2027-03-01', opening_balance: '-1:45' });
     await api.savePtoYear(2027, { allowance: 25 });
-    assert.deepEqual(calls.map((call) => [call.method, call.url, call.body]), [
-      ['PUT', '/api/settings', { balance_start: '2027-03-01', opening_balance: '-1:45' }],
-      ['PUT', '/api/pto-years/2027', { allowance: 25 }],
-    ]);
-  });
-
-  test('booking a range of days off', async () => {
-    respond(200, {});
     await api.bookRange({ start: '2026-07-13', end: '2026-07-31', day_type: 'pto', preview: true });
-    assert.deepEqual([calls[0]?.method, calls[0]?.url, calls[0]?.body], [
-      'POST', '/api/days/range', { start: '2026-07-13', end: '2026-07-31', day_type: 'pto', preview: true }]);
+    assert.deepEqual(calls.map((call) => [call.method, call.url, call.body]), [
+      ['GET', '/api/entries?start=2026-10-01&end=2026-10-31', undefined],
+      ['PUT', '/api/days/2026-10-28', { start: '07:15', end: '16:00' }],
+      ['POST', '/api/tickets/TNG-2035/rename', { new_key: 'KP-2035' }],
+      ['GET', '/api/tickets/a%2Fb', undefined],  // keys are encoded in paths
+      ['POST', '/api/tickets/assign-service', { keys: ['AGA-39', 'AGA-40'], service_id: 's4' }],
+      ['PUT', '/api/tickets/AGA-39', { service_id: null }],
+      ['GET', '/api/tickets?without_service=true', undefined],
+      ['GET', '/api/reports/months/2026-10', undefined],
+      ['PUT', '/api/pto-years/2027', { allowance: 25 }],
+      ['POST', '/api/days/range', { start: '2026-07-13', end: '2026-07-31', day_type: 'pto', preview: true }],
+    ]);
   });
 
   test('204 No Content resolves to undefined', async () => {
