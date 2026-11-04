@@ -5,7 +5,7 @@ import { formatMonth, isoDate, isoMonth, isValidMonth, shiftMonth, type IsoDate 
 import { el } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
-import { periodSummary } from './week.ts';
+import { periodHeader, periodSummary } from './week.ts';
 
 type ServiceWork = MonthReport['coding'][number];
 
@@ -18,13 +18,6 @@ export function monthFromSearch(search: string, today: IsoDate): string {
 /** `PTO 2 · PTO ½ 1` */
 export function describeDaysOff(daysOff: Partial<Record<DayType, number>>): string {
   return Object.entries(daysOff).map(([type, count]) => `${DAY_TYPE_LABELS[type as DayType]} ${count}`).join(' · ');
-}
-
-function renderHeader(doc: Document, month: string, today: IsoDate): void {
-  doc.querySelector('#month-title')!.textContent = formatMonth(month);
-  doc.querySelector<HTMLAnchorElement>('#month-previous')!.href = `/month?month=${shiftMonth(month, -1)}`;
-  doc.querySelector<HTMLAnchorElement>('#month-next')!.href = `/month?month=${shiftMonth(month, 1)}`;
-  doc.querySelector<HTMLAnchorElement>('#month-current')!.toggleAttribute('aria-disabled', month === isoMonth(today));
 }
 
 function daysOff(report: MonthReport): HTMLElement | null {
@@ -70,7 +63,8 @@ export async function renderMonthPage(doc: Document): Promise<void> {
   }
   const today = isoDate(new Date());
   const month = monthFromSearch(doc.location.search, today);
-  renderHeader(doc, month, today);
+  periodHeader(doc, 'month', formatMonth(month), (shift) => `/month?month=${shiftMonth(month, shift)}`,
+    month === isoMonth(today));
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
     const report = await api.monthReport(month, viewedMember(doc.location.search));
