@@ -90,9 +90,14 @@ export function errorText(error: unknown, fallback = 'The action failed.'): stri
 }
 
 /** The message of an error body: Falcon's `description`, or the validation messages of spectree. */
+/** Validation messages without pydantic's "Value error, " prefix. */
+export function cleanMessage(message: string): string {
+  return message.replace(/^(Value error, )+/, '');
+}
+
 export function errorMessage(status: number, body: unknown): string {
   if (Array.isArray(body)) {
-    const messages = body.map((item: { msg?: unknown }) => String(item?.msg ?? '')).filter(Boolean);
+    const messages = body.map((item: { msg?: unknown }) => cleanMessage(String(item?.msg ?? ''))).filter(Boolean);
     if (messages.length) {
       return messages.join('; ');
     }

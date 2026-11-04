@@ -3,13 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { cleanMessage, fieldErrors } from '../ts/forms.ts';
-
-test('messages without the pydantic prefix', () => {
-  assert.equal(cleanMessage('Value error, End 08:00 is before start 16:00'), 'End 08:00 is before start 16:00');
-  assert.equal(cleanMessage('Value error, Value error, x'), 'x');
-  assert.equal(cleanMessage('Field required'), 'Field required');
-});
+import { fieldErrors } from '../ts/forms.ts';
 
 test('validation errors by field and general ones', () => {
   const errors = fieldErrors([

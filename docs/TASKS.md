@@ -300,7 +300,7 @@ L.16 (a–i) → 9.1 (a–i).
   drops what waits beyond 5, so a page that loads its ~20 modules at once sometimes stays empty ("Failed to fetch
   dynamically imported module", 3–4 of 10 dashboard loads; gunicorn with threads: 0 of 10). A threaded server with a
   longer queue
-- [ ] **11.2** A readable message for an invalid ticket key, e.g. when renaming a ticket: today pydantic's "String should
+- [x] **11.2** A readable message for an invalid ticket key, e.g. when renaming a ticket: today pydantic's "String should
   match pattern '^[A-Z][A-Z0-9]*-[1-9]\d*$'"; instead e.g. "A ticket key is letters, a dash and a number, e.g. TNG-4138"
 - [ ] **11.3** End-to-end tests in the browser, with Playwright (`pytest-playwright`, Chromium, headless) rather than
   Cypress: they run in pytest with the fixtures and personas of the API tests, a browser context per user (team

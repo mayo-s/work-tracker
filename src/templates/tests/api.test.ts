@@ -97,11 +97,14 @@ describe('errors', () => {
     });
   });
 
-  test('validation errors join their messages', async () => {
-    respond(422, [{ loc: ['start'], msg: 'Value error, End 480 is before start 960', type: 'value_error' }]);
+  test('validation errors join their messages, without pydantic\'s "Value error, " prefix', async () => {
+    respond(422, [
+      { loc: ['start'], msg: 'Value error, Value error, End 480 is before start 960', type: 'value_error' },
+      { loc: ['end'], msg: 'Field required', type: 'missing' },
+    ]);
     await assert.rejects(api.saveDay('2026-10-28', { start: '16:00', end: '08:00' }), {
       name: 'ApiError',
-      message: 'Value error, End 480 is before start 960',
+      message: 'End 480 is before start 960; Field required',
     });
   });
 
