@@ -20,6 +20,7 @@ from src.modules.storage.sqlite import SqliteStore
 from src.modules.userdata import importing
 from src.modules.userdata.export import export_data
 from src.modules.userdata.importing import import_data
+from src.tests.helpers import session
 from src.tests.users import HANS, PASSWORD, USER
 
 MONDAY = dt.date(2026, 10, 26)
@@ -216,9 +217,9 @@ NEW_USER = {'username': 'hans', 'email': 'hans.dampf@example.com', 'first_name':
 def new_database(fresh_database):
     """A new database run by root, Rainer, where Hans has just registered (logged in, not set up)."""
     client = testing.TestClient(create_app(fresh_database, auth=True))
-    root = {'wt_session': client.simulate_post('/api/auth/root', json=ROOT).cookies['wt_session'].value}
+    root = session(client.simulate_post('/api/auth/root', json=ROOT))
     client.simulate_put('/api/admin/settings', cookies=root, json={'registration': True})
-    hans = {'wt_session': client.simulate_post('/api/auth/register', json=NEW_USER).cookies['wt_session'].value}
+    hans = session(client.simulate_post('/api/auth/register', json=NEW_USER))
     return client, hans
 
 

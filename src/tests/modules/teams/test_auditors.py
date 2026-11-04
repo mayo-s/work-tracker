@@ -17,6 +17,7 @@ from src.modules.storage.entries import EntryRepository
 from src.modules.storage.settings import finish_setup, save_settings
 from src.modules.storage.teams import TeamRepository
 from src.modules.storage.users import UserRepository
+from src.tests.helpers import logged_in
 from src.tests.users import HANS, PASCAL, PASSWORD, RAINER, USER
 
 MONDAY = dt.date(2026, 11, 2)
@@ -56,11 +57,6 @@ def client(database, today=TODAY):
 @pytest.fixture
 def app(database, ids):
     return client(database)
-
-
-def logged_in(app, name):
-    result = app.simulate_post('/api/auth/login', json={'login': name, 'password': PASSWORD})
-    return {'wt_session': result.cookies['wt_session'].value}
 
 
 def assign(app, cookies, team_id, user_id, until=None):

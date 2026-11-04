@@ -15,6 +15,7 @@ from src.models.pto import PtoYear
 from src.models.review import FlagReason
 from src.models.schedules import Schedule
 from src.models.settings import Settings
+from src.tests.helpers import logged_in
 from src.tests.users import HANS, KLARA, PASSWORD
 
 
@@ -37,11 +38,6 @@ def klara_id(storage):
 @pytest.fixture
 def app(storage, klara_id):
     return testing.TestClient(create_app(storage=storage, auth=True))
-
-
-def logged_in(app, name):
-    result = app.simulate_post('/api/auth/login', json={'login': name, 'password': PASSWORD})
-    return {'wt_session': result.cookies['wt_session'].value}
 
 
 @pytest.fixture

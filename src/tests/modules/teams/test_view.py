@@ -16,6 +16,7 @@ from src.modules.storage.settings import finish_setup, save_settings
 from src.models.settings import Settings
 from src.modules.storage.teams import TeamRepository
 from src.modules.storage.users import UserRepository
+from src.tests.helpers import logged_in
 from src.tests.users import HANS, PASCAL, PASSWORD, RAINER
 
 JOINED = dt.datetime(2026, 11, 4, 9, 0)  # a Wednesday
@@ -47,11 +48,6 @@ def ids(database):
 def app(database, ids):
     return testing.TestClient(create_app(database, auth=True, today=lambda: TODAY,
                                          clock=lambda: dt.datetime(2026, 11, 6, 12, 0)))
-
-
-def logged_in(app, name):
-    result = app.simulate_post('/api/auth/login', json={'login': name, 'password': PASSWORD})
-    return {'wt_session': result.cookies['wt_session'].value}
 
 
 @pytest.fixture
