@@ -20,7 +20,7 @@ from src.modules.storage.dynamodb.keys import user_partition
 from src.modules.storage.dynamodb.table import Item, attributes
 from src.modules.storage.dynamodb.tickets import ensure_ticket
 from src.modules.storage.dynamodb.unit import Unit
-from src.modules.storage.entries import EntryRules, check_fits, entry_fields, field_changes, history_time
+from src.modules.storage.entries import EntryRules, check_fits, history_time
 from src.modules.storage.errors import ConflictError, NotFoundError
 
 _ENTRY = TypeAdapter(Entry)
@@ -84,14 +84,6 @@ class DynamoEntries(EntryRules):
         """Entries with 0:00, ticket entries without ticket and flagged entries, by date."""
         flagged = {flag.entry_id for flag in all_flags(self._unit, self._pk) if flag.entry_id is not None}
         return [entry for entry in self.between(dt.date.min, dt.date.max) if entry.id in flagged or _incomplete(entry)]
-
-    def delete(self, entry_id: str) -> None:
-        """Delete an entry and its review flags; its history is kept."""
-        old = self.get(entry_id)
-        self._unit.delete(self._pk, _entry_key(old.date.isoformat(), entry_id))
-        self._unit.delete(self._pk, _id_key(entry_id))
-        delete_flags(self._unit, self._pk, lambda flag: flag.entry_id == entry_id)
-        self.add_history(entry_id, HistoryAction.DELETED, field_changes(entry_fields(old), {}))
 
     def restore(self, entry: Entry) -> Entry:
         """Store an entry without a history line (its history comes along, e.g. from an export file); its ticket is
@@ -161,6 +153,11 @@ class DynamoEntries(EntryRules):
     def _replace(self, old: Entry, entry: Entry) -> None:
         self._unit.delete(self._pk, _entry_key(old.date.isoformat(), old.id))  # the date is in the key
         self._save(entry)
+
+    def _remove(self, old: Entry) -> None:
+        self._unit.delete(self._pk, _entry_key(old.date.isoformat(), old.id))
+        self._unit.delete(self._pk, _id_key(old.id))
+        delete_flags(self._unit, self._pk, lambda flag: flag.entry_id == old.id)
 
     def _save(self, entry: Entry) -> None:
         self._unit.put({'PK': self._pk, 'SK': _entry_key(entry.date.isoformat(), entry.id), **entry.model_dump(mode='json')})

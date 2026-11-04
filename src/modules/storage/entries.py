@@ -60,9 +60,9 @@ def _to_flag(row: sqlite3.Row) -> ReviewFlag:
 
 
 class EntryRules:
-    """The rules of entries on every backend: creating, changing and splitting write the history, the kind of an entry
-    stays. A backend's repository stores them: `get`, `restore`, `restore_history`, `_check_references` and `_replace`
-    (an entry in place of its old version)."""
+    """The rules of entries on every backend: creating, changing, splitting and deleting write the history, the kind of
+    an entry stays. A backend's repository stores them: `get`, `restore`, `restore_history`, `_check_references`,
+    `_replace` (an entry in place of its old version) and `_remove` (an entry and its review flags)."""
 
     _clock: Callable[[], dt.datetime]
 
@@ -103,6 +103,12 @@ class EntryRules:
             for key, share in zip(keys[1:], shares[1:])
         ]
         return [first, *others]
+
+    def delete(self, entry_id: str) -> None:
+        """Delete an entry and its review flags; its history is kept."""
+        old = self.get(entry_id)
+        self._remove(old)
+        self.add_history(entry_id, HistoryAction.DELETED, field_changes(entry_fields(old), {}))
 
     def reserve_id(self) -> str:
         """An id no entry will get, for an entry known only from its history (deleted before an export)."""
@@ -164,12 +170,6 @@ class EntryRepository(EntryRules):
             (self._user,),
         )
         return [_to_entry(row) for row in rows]
-
-    def delete(self, entry_id: str) -> None:
-        """Delete an entry and its review flags; its history is kept."""
-        old = self.get(entry_id)
-        self._conn.execute('DELETE FROM entries WHERE id = ? AND user_id = ?', (entry_id, self._user))
-        self.add_history(entry_id, HistoryAction.DELETED, field_changes(entry_fields(old), {}))
 
     def restore(self, entry: Entry) -> Entry:
         """Store an entry without a history line (its history comes along, e.g. from an export file); its ticket is
@@ -259,6 +259,9 @@ class EntryRepository(EntryRules):
             'coding = ? WHERE id = ? AND user_id = ?',
             (*_to_values(entry), entry.id, self._user),
         )
+
+    def _remove(self, old: Entry) -> None:
+        self._conn.execute('DELETE FROM entries WHERE id = ? AND user_id = ?', (old.id, self._user))  # flags cascade
 
     def _owned(self, table: str, row_id: str) -> bool:
         row = self._conn.execute(f'SELECT 1 FROM {table} WHERE id = ? AND user_id = ?', (row_id, self._user)).fetchone()
