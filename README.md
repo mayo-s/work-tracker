@@ -77,7 +77,8 @@ pipenv run gunicorn 'src.app:create_app()' --reload  # alternative with auto-rel
 ```
 
 The database (`$WORK_TRACKER_DB`, default `work_tracker.db`) is migrated on start; `$WORK_TRACKER_HOST` and
-`$WORK_TRACKER_PORT` change the address.
+`$WORK_TRACKER_PORT` change the address. The local server answers requests side by side, as a page loads its scripts
+all at once.
 
 - `/`: dashboard with key figures (balance, PTO left, this week, open review items), the balance over time, days off
   coming up and this year's figures.
