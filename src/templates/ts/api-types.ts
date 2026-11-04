@@ -3142,6 +3142,11 @@ export interface components {
              * @description All entries the import made from the same spreadsheet line, if it named several tickets
              */
             split_on_import: components["schemas"]["SplitPart"][];
+            /**
+             * Split Suggestion
+             * @description Tickets to split the entry among, if its spreadsheet line named an alias or "ff"; empty otherwise
+             */
+            split_suggestion: string[];
         };
         /**
          * ReviewReason

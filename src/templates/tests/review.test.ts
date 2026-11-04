@@ -5,7 +5,7 @@ import { test } from 'node:test';
 
 import type { ReviewEntry, TicketView } from '../ts/api.ts';
 import {
-  describeSplit, filterTickets, groupReview, mentionedTickets, reviewTotal, splitSuggestion, weekLink, type GuessedTicket,
+  describeSplit, filterTickets, groupReview, reviewTotal, splitSuggestion, weekLink,
 } from '../ts/review.ts';
 
 const TICKETS: TicketView[] = ['AGA-39', 'AGA-40', 'TNG-4950', 'TNG-5214'].map((key) => ({ key, service_id: null, service: null, entries: 1 }));
@@ -30,10 +30,11 @@ test('filtering tickets by part of the key, case-insensitive', () => {
 
 function reviewEntry(
   id: number, date: string, key: string | null, reasons: ReviewEntry['reasons'], flags: [number, string][] = [],
-  split: ReviewEntry['split_on_import'] = [],
+  split: ReviewEntry['split_on_import'] = [], suggestion: string[] = [],
 ): ReviewEntry {
   return {
     split_on_import: split,
+    split_suggestion: suggestion,
     entry: {
       id, kind: 'ticket', date, duration: '1:00', ticket_key: key, changed: false,
       flags: flags.map(([flagId, detail]) => ({ id: flagId, reason: 'uncertain_ticket', detail })),
@@ -58,23 +59,14 @@ test('guessed tickets are grouped by key, other reasons stay per entry', () => {
   assert.deepEqual(others.map((item) => [item.entry.id, item.reasons]), [[3, ['no_ticket']], [4, ['zero_duration']]]);
 });
 
-test('tickets mentioned in a spreadsheet line, mapped like the import', () => {
-  assert.deepEqual(mentionedTickets('6,0 #4347 aka #1482 check permission'), ['TNG-4347', 'KP-1482']);
-  assert.deepEqual(mentionedTickets('2,0 #4347/#1482 Logging'), ['TNG-4347', 'KP-1482']);
-  assert.deepEqual(mentionedTickets('1,0 TNG-2035ff PR and deployment'), ['TNG-2035']);
-  assert.deepEqual(mentionedTickets('1,5 #KP-1494 Discuss, TNG 5212 and # 4251'), ['KP-1494', 'TNG-5212', 'TNG-4251']);
-});
-
-function group(key: string, originals: string[]): GuessedTicket {
-  return { key, entries: [], originals, flagIds: [], splits: {} };
-}
-
-test('split is offered for aliases and "ff", not for lines the import already split', () => {
-  assert.deepEqual(splitSuggestion(group('TNG-4347', ['6,0 #4347 aka #1482 check permission'])), ['TNG-4347', 'KP-1482']);
-  assert.deepEqual(splitSuggestion(group('TNG-4347', ['2,0 #4347/#1482 Logging'])), ['TNG-4347', 'KP-1482']);
-  assert.deepEqual(splitSuggestion(group('TNG-2035', ['1,0 TNG-2035ff PR and deployment'])), ['TNG-2035']);
-  assert.equal(splitSuggestion(group('TNG-4138', ['6,0 #4138, #4139 create meeting service'])), null);
-  assert.equal(splitSuggestion(group('TNG-4057', ['6,0 #4057 update appointment status'])), null);
+test('a split is offered when the API suggests one, starting with the guessed ticket', () => {
+  const alias = '6,0 #4347 aka #1482 check permission';
+  const { guessed } = groupReview([
+    reviewEntry(1, '2024-07-01', 'TNG-4347', ['uncertain_ticket'], [[11, alias]], [], ['KP-1482', 'TNG-4347']),
+    reviewEntry(2, '2024-07-02', 'TNG-4347', ['uncertain_ticket'], [[12, alias]], [], ['KP-1482', 'TNG-4347']),
+    reviewEntry(3, '2024-07-03', 'TNG-4057', ['uncertain_ticket'], [[13, '6,0 #4057 update appointment status']]),
+  ]);
+  assert.deepEqual(guessed.map(splitSuggestion), [['TNG-4347', 'KP-1482'], null]);
 });
 
 test('the split of the import is kept per original line', () => {

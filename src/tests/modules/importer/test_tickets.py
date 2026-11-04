@@ -1,6 +1,6 @@
 import pytest
 
-from src.modules.importer.tickets import CleanedText, bare_key, clean_tickets, find_tickets
+from src.modules.importer.tickets import CleanedText, bare_key, clean_tickets, find_tickets, split_keys
 
 
 @pytest.mark.parametrize('text, cleaned', [
@@ -20,10 +20,14 @@ def test_obvious_typos_are_corrected_without_flag(text, cleaned):
     ('#4138, #4139 create meeting service', 'TNG-4138, TNG-4139 create meeting service'),
     ('# 4251 refine needed information', 'TNG-4251 refine needed information'),
     ('#1482 fix tests', 'KP-1482 fix tests'),
-    ('TNG-2035ff PR and deployment', 'TNG-2035 PR and deployment'),
 ])
 def test_guessed_keys_are_flagged(text, cleaned):
     assert clean_tickets(text) == CleanedText(cleaned, uncertain=True)
+
+
+def test_following_tickets_are_flagged():
+    cleaned = CleanedText('TNG-2035 PR and deployment', uncertain=True, following=True)
+    assert clean_tickets('TNG-2035ff PR and deployment') == cleaned
 
 
 @pytest.mark.parametrize('text, cleaned', [
@@ -52,3 +56,12 @@ def test_bare_key(number, key):
 
 def test_find_tickets_distinct_in_order():
     assert find_tickets('PR AGA-39 and AGA-40 (merge AGA-39), see KP-2035') == ['AGA-39', 'AGA-40', 'KP-2035']
+
+
+@pytest.mark.parametrize('line, keys', [
+    ('6,0 #4347 aka #1482 check permission', ['TNG-4347', 'KP-1482']),
+    ('1,0 TNG-2035ff PR and deployment', ['TNG-2035']),
+    ('6,0 #4138, #4139 create meeting service', []),  # several tickets, split by the import already
+])
+def test_split_keys(line, keys):
+    assert split_keys(line) == keys

@@ -8569,12 +8569,21 @@
             },
             "title": "Split On Import",
             "type": "array"
+          },
+          "split_suggestion": {
+            "description": "Tickets to split the entry among, if its spreadsheet line named an alias or \"ff\"; empty otherwise",
+            "items": {
+              "type": "string"
+            },
+            "title": "Split Suggestion",
+            "type": "array"
           }
         },
         "required": [
           "entry",
           "reasons",
-          "split_on_import"
+          "split_on_import",
+          "split_suggestion"
         ],
         "title": "ReviewEntry",
         "type": "object"

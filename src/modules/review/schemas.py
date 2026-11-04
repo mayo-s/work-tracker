@@ -10,6 +10,7 @@ from src.lib.durations import format_duration
 from src.models.review import FlagReason
 from src.modules.days.schemas import DayView, day_view
 from src.modules.entries.schemas import EntryView, EntryViewer
+from src.modules.importer.tickets import split_keys
 from src.modules.storage.store import Entries, Store
 from src.modules.tickets.schemas import TicketView, ticket_views
 
@@ -30,6 +31,8 @@ class ReviewEntry(BaseModel):
     reasons: list[ReviewReason]
     split_on_import: list[SplitPart] = Field(
         description='All entries the import made from the same spreadsheet line, if it named several tickets')
+    split_suggestion: list[str] = Field(
+        description='Tickets to split the entry among, if its spreadsheet line named an alias or "ff"; empty otherwise')
 
 
 class ReviewCounts(BaseModel):
@@ -52,7 +55,9 @@ def review(store: Store, user_id: str) -> ReviewView:
     repository = store.entries(user_id)
     views = EntryViewer(store, user_id).views(repository.for_review())
     entries = [
-        ReviewEntry(entry=view, reasons=_reasons(view), split_on_import=_split_on_import(repository, view)) for view in views
+        ReviewEntry(entry=view, reasons=_reasons(view), split_on_import=_split_on_import(repository, view),
+                    split_suggestion=_split_suggestion(view))
+        for view in views
     ]
     days = _flagged_days(store, user_id)
     return ReviewView(
@@ -68,6 +73,11 @@ def _split_on_import(repository: Entries, entry: EntryView) -> list[SplitPart]:
     if len(together) < 2:
         return []
     return [SplitPart(ticket_key=part.ticket_key, duration=format_duration(part.duration)) for part in together]
+
+
+def _split_suggestion(entry: EntryView) -> list[str]:
+    keys = [key for flag in entry.flags if flag.reason == FlagReason.UNCERTAIN_TICKET for key in split_keys(flag.detail)]
+    return list(dict.fromkeys(keys))
 
 
 def _reasons(entry: EntryView) -> list[ReviewReason]:
