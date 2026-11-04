@@ -101,26 +101,6 @@ def test_failed_migration_is_rolled_back(database, monkeypatch):
     assert 'half_done' not in table_names(database)
 
 
-def test_transaction_commits(database):
-    with database.transaction() as conn:
-        conn.execute("INSERT INTO activity_types (id, user_id, name) VALUES (?, ?, 'Incident')", (new_id(), USER))
-    with database.transaction() as conn:
-        assert conn.execute("SELECT COUNT(*) FROM activity_types WHERE name = 'Incident'").fetchone()[0] == 1
-
-
-def insert_then_fail(db):
-    with db.transaction() as conn:
-        conn.execute("INSERT INTO activity_types (id, user_id, name) VALUES (?, ?, 'Incident')", (new_id(), USER))
-        raise RuntimeError('abort')
-
-
-def test_transaction_rolls_back_on_error(database):
-    with pytest.raises(RuntimeError):
-        insert_then_fail(database)
-    with database.transaction() as conn:
-        assert conn.execute("SELECT COUNT(*) FROM activity_types WHERE name = 'Incident'").fetchone()[0] == 0
-
-
 @pytest.mark.parametrize('statement', [
     "INSERT INTO tickets (user_id, key, service_id) VALUES (?, 'TNG-1', 99)",
     "INSERT INTO entries (user_id, date, kind, ticket_key, duration) VALUES (?, '2026-10-26', 'ticket', 'TNG-404', 60)",

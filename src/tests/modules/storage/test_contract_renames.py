@@ -34,53 +34,29 @@ def ticket_entry(key, day=1):
     return TicketEntry(date=dt.date(2026, 3, day), ticket_key=key, duration=60, description=f'work on {key}')
 
 
-def test_rename_moves_entries_and_keeps_service(rename, entries, tickets, service_ids):
+def test_rename_moves_the_entries_with_a_history_line_each(rename, entries, tickets, service_ids, activity_type_ids):
     first, second = entries.create(ticket_entry('TNG-2035')), entries.create(ticket_entry('TNG-2035', 2))
+    other = entries.create(ticket_entry('TNG-5214'))
+    activity = entries.create(ActivityEntry(date=dt.date(2026, 3, 1), activity_type_id=activity_type_ids['Meeting'],
+                                            duration=60))
     tickets.set_service('TNG-2035', service_ids['ImmoDrop'])
-    result = rename('TNG-2035', 'KP-2035')
-    assert result.action is HistoryAction.RENAMED
-    assert result.moved == 2
+    result = rename(' tng-2035', 'kp-2035 ')
+    assert (result.action, result.moved, result.ticket.key) == (HistoryAction.RENAMED, 2, 'KP-2035')
     assert result.ticket.service_id == service_ids['ImmoDrop']
     assert tickets.get('TNG-2035') is None
-    assert [entries.get(entry.id).ticket_key for entry in (first, second)] == ['KP-2035', 'KP-2035']
-
-
-def test_rename_writes_history_line_per_entry(rename, entries):
-    created = entries.create(ticket_entry('TNG-2035'))
-    rename('TNG-2035', 'KP-2035')
-    change = entries.history(created.id)[-1]
-    assert change.action is HistoryAction.RENAMED
-    assert change.changed_at == NOW
-    assert change.changes == {'ticket_key': ('TNG-2035', 'KP-2035')}
-    assert entries.changed([created.id]) == {created.id}
-
-
-def test_rename_keeps_other_fields(rename, entries):
-    created = entries.create(ticket_entry('TNG-2035'))
-    rename('TNG-2035', 'KP-2035')
-    assert entries.get(created.id) == created.model_copy(update={'ticket_key': 'KP-2035'})
+    assert [entries.get(entry.id) for entry in (first, second)] == [
+        entry.model_copy(update={'ticket_key': 'KP-2035'}) for entry in (first, second)]
+    change = entries.history(first.id)[-1]
+    assert (change.action, change.changed_at, change.changes) == (
+        HistoryAction.RENAMED, NOW, {'ticket_key': ('TNG-2035', 'KP-2035')})
+    assert entries.changed([first.id]) == {first.id}
+    assert (entries.get(other.id), entries.get(activity.id), len(entries.history(other.id))) == (other, activity, 1)
 
 
 def test_rename_ticket_without_entries(rename, tickets):
     tickets.ensure('TNG-4138')
     result = rename('TNG-4138', 'KP-4138')
     assert (result.ticket.key, result.moved) == ('KP-4138', 0)
-
-
-def test_rename_normalizes_keys(rename, entries):
-    entries.create(ticket_entry('TNG-2035'))
-    assert rename(' tng-2035', 'kp-2035 ').ticket.key == 'KP-2035'
-
-
-def test_rename_leaves_other_entries_untouched(rename, entries, activity_type_ids):
-    other = entries.create(ticket_entry('TNG-5214'))
-    activity = entries.create(ActivityEntry(date=dt.date(2026, 3, 1), activity_type_id=activity_type_ids['Meeting'],
-                                            duration=60))
-    entries.create(ticket_entry('TNG-2035'))
-    rename('TNG-2035', 'KP-2035')
-    assert entries.get(other.id) == other
-    assert entries.get(activity.id) == activity
-    assert len(entries.history(other.id)) == 1
 
 
 def test_merge_into_existing_ticket_keeps_its_service(rename, entries, tickets, service_ids):

@@ -17,15 +17,7 @@ def names(conn, user_id):
     return [activity.name for activity in ActivityTypeRepository(conn, user_id).all()]
 
 
-def test_first_user_takes_over_the_records_without_owner(fresh_database):
-    with fresh_database.transaction() as conn:
-        assert names(conn, NO_OWNER) == ['Tool Management', 'Meeting', 'Travel', 'Other']
-        user = UserRepository(conn).add(HANS, PASSWORD)
-        assert (user.role, names(conn, NO_OWNER)) == ('user', [])
-        assert names(conn, user.id) == ['Tool Management', 'Meeting', 'Travel', 'Other']
-
-
-def test_root_takes_nothing_over_and_starts_with_nothing(fresh_database):
+def test_root_takes_nothing_over_and_the_first_user_takes_over_the_records_without_owner(fresh_database):
     with fresh_database.transaction() as conn:
         users = UserRepository(conn)
         root = users.add(RAINER.model_copy(update={'role': 'root'}), PASSWORD)

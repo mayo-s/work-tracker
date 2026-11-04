@@ -11,13 +11,8 @@ def test_registration_is_off_until_switched_on(storage):
     with storage.transaction() as store:
         assert store.registration_open() is False
         store.set_registration(True)
+        assert store.registration_open() is True  # a transaction sees its own changes
     with storage.transaction() as store:
-        assert store.registration_open() is True
-
-
-def test_a_transaction_sees_its_own_changes(storage):
-    with storage.transaction() as store:
-        store.set_registration(True)
         assert store.registration_open() is True
 
 

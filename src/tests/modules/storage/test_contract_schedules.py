@@ -34,12 +34,6 @@ def test_update(schedules):
     assert schedules.get(added.id) == changed
 
 
-def test_update_missing_schedule(schedules):
-    missing = PART_TIME.model_copy(update={'id': 404})
-    with pytest.raises(NotFoundError):
-        schedules.update(missing)
-
-
 def test_delete(schedules):
     added = schedules.add(PART_TIME)
     schedules.delete(added.id)
@@ -52,7 +46,9 @@ def test_only_schedule_cannot_be_deleted(schedules):
         schedules.delete(only.id)
 
 
-def test_delete_missing_schedule(schedules):
+def test_missing_schedule(schedules):
+    with pytest.raises(NotFoundError):
+        schedules.update(PART_TIME.model_copy(update={'id': 404}))
     with pytest.raises(NotFoundError):
         schedules.delete(404)
 
