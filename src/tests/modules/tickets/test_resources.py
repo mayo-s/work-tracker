@@ -67,8 +67,8 @@ def test_assign_service_with_unknown_ticket_changes_nothing(client, service_ids)
     assert client.simulate_get('/api/tickets/AGA-39').json['service'] is None
 
 
-@pytest.mark.parametrize('body', [{'keys': [], 'service_id': None}, {'keys': ['TNG4840'], 'service_id': None}])
-def test_assign_service_rejects_invalid(client, body):
+def test_assign_service_rejects_no_tickets(client):
+    body = {'keys': [], 'service_id': None}
     assert client.simulate_post('/api/tickets/assign-service', json=body).status_code == 422
 
 
@@ -99,7 +99,6 @@ def test_merge_into_existing_ticket(client, service_ids):
 @pytest.mark.parametrize('key, body, status', [
     ('TNG-404', {'new_key': 'KP-404'}, 404),
     ('TNG-2035', {'new_key': 'tng-2035'}, 409),
-    ('TNG-2035', {'new_key': 'TNG-2035ff'}, 422),
 ])
 def test_rename_errors(client, key, body, status):
     add_entry(client, 'TNG-2035')

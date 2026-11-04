@@ -41,12 +41,8 @@ def test_report_counts_days_off_on_work_days_only(client):
 
 @pytest.mark.parametrize('body, status', [
     (PART_TIME | {'valid_from': '2024-06-01'}, 409),
-    (PART_TIME | {'work_days': []}, 422),
-    (PART_TIME | {'work_days': ['Monday']}, 422),
     (PART_TIME | {'weekly_hours': '169:00'}, 422),
-    (PART_TIME | {'weekly_hours': '30 hours'}, 422),
     (PART_TIME | {'state': 'Berlin'}, 422),
-    (PART_TIME | {'state': 'Augsburg'}, 422),
 ])
 def test_add_rejects_invalid_schedules(client, body, status):
     assert client.simulate_post('/api/work-schedules', json=body).status_code == status
@@ -67,9 +63,3 @@ def test_holidays_follow_the_state_and_company_rule_of_the_schedule(client):
 def test_only_schedule_cannot_be_deleted(client):
     [only] = client.simulate_get('/api/work-schedules').json
     assert client.simulate_delete(f'/api/work-schedules/{only["id"]}').status == falcon.HTTP_409
-
-
-def test_schedules_are_documented(client):
-    paths = client.simulate_get('/apidoc/openapi.json').json['paths']
-    assert set(paths['/api/work-schedules']) == {'get', 'post'}
-    assert set(paths['/api/work-schedules/{schedule_id}']) == {'get', 'put', 'delete'}

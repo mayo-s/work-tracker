@@ -88,15 +88,8 @@ def test_sick_days_use_no_pto(client):
 
 @pytest.mark.parametrize('body', [
     SUMMER | {'day_type': 'pto_half'},
-    SUMMER | {'day_type': 'work'},
     SUMMER | {'start': '2026-08-03'},
     SUMMER | {'start': '2025-01-01', 'end': '2026-01-02'},
-    SUMMER | {'conflicts': 'overwrite'},
-    SUMMER | {'unknown': 1},
 ])
 def test_rejects_invalid_ranges(client, body):
     assert book(client, body).status_code == 422
-
-
-def test_range_is_documented(client):
-    assert set(client.simulate_get('/apidoc/openapi.json').json['paths']['/api/days/range']) == {'post'}

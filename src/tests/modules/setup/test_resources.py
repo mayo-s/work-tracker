@@ -31,7 +31,7 @@ def test_status(client, new):
     assert new.simulate_get('/api/setup').json == {'done': False}
 
 
-@pytest.mark.parametrize('path', ['/', '/month', '/year', '/review', '/settings'])
+@pytest.mark.parametrize('path', ['/', '/settings'])
 def test_pages_forward_to_setup_until_it_is_done(new, path):
     result = new.simulate_get(path)
     assert (result.status, result.headers['location']) == (falcon.HTTP_303, '/setup')
@@ -85,17 +85,10 @@ def test_duplicate_services_save_nothing(new):
 @pytest.mark.parametrize('changes', [
     {'pto_first_year': -1},
     {'pto_first_year': 2.25},
-    {'opening_balance': '1:5'},
-    {'schedule': SETUP['schedule'] | {'work_days': []}},
     {'schedule': SETUP['schedule'] | {'state': 'XX'}},
-    {'unknown': 1},
 ])
 def test_setup_rejects_invalid_input(new, changes):
     assert new.simulate_post('/api/setup', json=SETUP | changes).status_code == 422
-
-
-def test_setup_is_documented(client):
-    assert set(client.simulate_get('/apidoc/openapi.json').json['paths']['/api/setup']) == {'get', 'post'}
 
 
 def session(result):

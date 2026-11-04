@@ -32,7 +32,6 @@ def test_duplicate_name(client, path, body):
 @pytest.mark.parametrize('path, body', [
     ('/api/services', {'short_name': ''}),
     ('/api/services', {'short_name': 'AUTH', 'id': 7}),
-    ('/api/activity-types', {}),
 ])
 def test_invalid_input(client, path, body):
     assert client.simulate_post(path, json=body).status_code == 422

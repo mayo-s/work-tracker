@@ -40,17 +40,16 @@ def test_system_dark_mode_and_chosen_dark_mode_are_the_same():
     assert SYSTEM_DARK == DARK
 
 
-@pytest.mark.parametrize('palette', [LIGHT, DARK], ids=['light', 'dark'])
-@pytest.mark.parametrize('color', TEXT_COLORS)
-def test_text_colors_are_readable_on_the_background(palette, color):
-    assert contrast(palette[color], palette['background']) >= 4.5
-
-
-@pytest.mark.parametrize('palette', [LIGHT, DARK], ids=['light', 'dark'])
-@pytest.mark.parametrize('foreground, background', [
-    *[(color, 'surface') for color in TEXT_COLORS],
+# Text colors and the backgrounds they are shown on
+PAIRS = [
+    *[(color, background) for color in TEXT_COLORS for background in ('background', 'surface')],
     ('on-accent', 'accent'), ('accent', 'accent-light'), ('warning-text', 'warning-light'), ('positive', 'positive-light'),
     ('text', 'warning-light'),  # muted text in warning rows shows as text
-])
-def test_text_is_readable_on_surfaces_and_tints(palette, foreground, background):
-    assert contrast(palette[foreground], palette[background]) >= 4.5
+]
+
+
+@pytest.mark.parametrize('palette', [LIGHT, DARK], ids=['light', 'dark'])
+def test_text_is_readable_on_its_backgrounds(palette):
+    unreadable = [(foreground, background) for foreground, background in PAIRS
+                  if contrast(palette[foreground], palette[background]) < 4.5]
+    assert unreadable == []

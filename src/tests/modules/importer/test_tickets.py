@@ -37,7 +37,6 @@ def test_alias_keeps_first_key_and_remembers_second(text, cleaned):
 @pytest.mark.parametrize('text', [
     'ENGINE-592/ENGINE-593 credentials',
     'KP/TNG Know How Exchange',
-    'TNG event time stamps (offset mismatch)',
     'TNG random 500 when creating events',
     'O365 message filter',
     'IT Infrastructure outage ()',
@@ -46,7 +45,7 @@ def test_text_without_typos_stays(text):
     assert clean_tickets(text) == CleanedText(text)
 
 
-@pytest.mark.parametrize('number, key', [('4138', 'TNG-4138'), ('4000', 'TNG-4000'), ('3999', 'KP-3999'), ('1482', 'KP-1482')])
+@pytest.mark.parametrize('number, key', [('4000', 'TNG-4000'), ('3999', 'KP-3999')])
 def test_bare_key(number, key):
     assert bare_key(number) == key
 

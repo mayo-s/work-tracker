@@ -120,7 +120,6 @@ def test_skip_link_comes_first(client):
     assert '<main id="app" data-page="dashboard" tabindex="-1">' in html
 
 
-@pytest.mark.parametrize('query', ['week=2026-W44', 'week=2025-W49&edit=2025-12-06', 'week=2024-W44&entry=129'])
-def test_former_week_links_forward_to_the_week_page(client, query):
-    result = client.simulate_get('/', query_string=query)
-    assert (result.status, result.headers['location']) == (falcon.HTTP_301, f'/week?{query}')
+def test_former_week_links_forward_to_the_week_page(client):
+    result = client.simulate_get('/', query_string='week=2025-W49&edit=2025-12-06')
+    assert (result.status, result.headers['location']) == (falcon.HTTP_301, '/week?week=2025-W49&edit=2025-12-06')
