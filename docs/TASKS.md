@@ -284,7 +284,7 @@ L.16 (a–i) → 9.1 (a–i).
   - [x] **10.1b** Storage: merge contract tests with the same setup and action, the interface check and the access
     matrix in one test per backend (actual statuses against an explicit table)
   - [x] **10.1c** Auth, admin, backup: representative paths and names in place of lists of them
-  - [ ] **10.1d** The other modules: no `*_is_documented` tests (the OpenAPI file test covers them), the isolation
+  - [x] **10.1d** The other modules: no `*_is_documented` tests (the OpenAPI file test covers them), the isolation
     matrix in one test per backend, merged checks
   - [ ] **10.1e** Frontend tests (`src/templates/tests`)
 

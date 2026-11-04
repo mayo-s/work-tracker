@@ -145,7 +145,8 @@ SERVICE = {'short_name': 'MSB', 'name': 'changed'}
 ENTRY = {'kind': 'ticket', 'date': '2026-10-28', 'duration': '2:00', 'ticket_key': 'TNG-4138'}
 SCHEDULE = {'valid_from': '2027-01-01', 'weekly_hours': '20:00', 'work_days': ['Mon']}
 
-# Hans tries every route with an id of one of Klara's records: each is unknown to Hans (404) or not Hans's to manage (403)
+# Hans tries every route with an id of one of Klara's records, and what he should get: unknown to him (404) or not his
+# to manage (403)
 ATTEMPTS = [
     ('GET', '/api/entries/{entry}', None, falcon.HTTP_404),
     ('PUT', '/api/entries/{entry}', ENTRY, falcon.HTTP_404),
@@ -186,18 +187,12 @@ ATTEMPTS = [
 ]
 
 
-@pytest.mark.parametrize('method, path, body, status', ATTEMPTS)
-def test_records_of_others_are_unknown_or_not_to_manage(app, klaras_records, hans, method, path, body, status):
-    url = path.format(**klaras_records)
-    route, _, query = url.partition('?')
-    result = app.simulate_request(method, route, query_string=query, cookies=hans, json=body)
-    assert result.status == status
-
-
-def test_klaras_records_stay_as_they_were(app, klaras_records, klara, hans):
+def test_records_of_others_are_unknown_or_not_to_manage_and_stay_as_they_were(app, klaras_records, klara, hans):
+    actual = {}
     for method, path, body, _ in ATTEMPTS:
         route, _, query = path.format(**klaras_records).partition('?')
-        app.simulate_request(method, route, query_string=query, cookies=hans, json=body)
+        actual[f'{method} {path}'] = app.simulate_request(method, route, query_string=query, cookies=hans, json=body).status
+    assert actual == {f'{method} {path}': status for method, path, _, status in ATTEMPTS}
     records = klaras_records
     assert app.simulate_get(f'/api/entries/{records["entry"]}', cookies=klara).json['description'] == 'secret'
     assert app.simulate_get(f'/api/services/{records["service"]}', cookies=klara).json['name'] == ''

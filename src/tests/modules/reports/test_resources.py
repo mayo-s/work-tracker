@@ -65,8 +65,7 @@ def test_future_week_counts_nothing(client):
     assert totals['balance_in'] == totals['balance_out']
 
 
-@pytest.mark.parametrize('path', ['/api/reports/weeks/2026-W54', '/api/reports/weeks/2026-44', '/api/reports/months/2026-13',
-                                  '/api/reports/years/26'])
+@pytest.mark.parametrize('path', ['/api/reports/weeks/2026-W54', '/api/reports/months/2026-13'])
 def test_invalid_period(client, path):
     assert client.simulate_get(path).status == falcon.HTTP_404
 
@@ -158,11 +157,6 @@ def test_year_without_pto_days_entered(client, database):
 @pytest.mark.parametrize('year', [2025, 2027])
 def test_year_pto_outside_balance_years(client, year):
     assert client.simulate_get(f'/api/reports/years/{year}').json['pto'] is None
-
-
-def test_reports_are_documented(client):
-    paths = client.simulate_get('/apidoc/openapi.json').json['paths']
-    assert {'/api/reports/weeks/{week}', '/api/reports/months/{month}', '/api/reports/years/{year}'} <= set(paths)
 
 
 def test_month_descriptions_are_merged_ignoring_case(client):

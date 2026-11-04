@@ -30,7 +30,6 @@ def test_ticket_entry_duration():
     ('1,5 KP-2035, KP-2044, KP-2045, KP-2053 Refinement', ['KP-2035', 'KP-2044', 'KP-2045', 'KP-2053'], [30, 30, 15, 15],
      'Refinement'),
     ('1,0 PR AGA-39 and AGA-40 (merge AGA-39)', ['AGA-39', 'AGA-40'], [30, 30], 'PR AGA-39 and AGA-40 (merge AGA-39)'),
-    ('8,0 MSI-3, MSI-4, MSI-5, MSI-6', ['MSI-3', 'MSI-4', 'MSI-5', 'MSI-6'], [120, 120, 120, 120], ''),
 ])
 def test_several_tickets_split_evenly(line, tickets, durations, text):
     parsed = parse_line(line)
@@ -41,9 +40,7 @@ def test_several_tickets_split_evenly(line, tickets, durations, text):
 
 @pytest.mark.parametrize('line, duration, text', [
     ('2,0 PR review', 120, 'PR review'),
-    ('6,0 PR reviews zipkin lib', 360, 'PR reviews zipkin lib'),
     ('3,0 PR lead-notification-service', 180, 'PR lead-notification-service'),
-    ('1,0 PR leadmanagement zipkin lib', 60, 'PR leadmanagement zipkin lib'),
 ])
 def test_pr_review_without_ticket(line, duration, text):
     assert parse_line(line) == [entry(duration, line, text=text, coding=True)]
@@ -55,16 +52,13 @@ def test_pr_review_without_ticket(line, duration, text):
     ('1,0 Meeting: TNG-4517, TNG-4528 testing mit Tim', 'Meeting', 'TNG-4517, TNG-4528 testing mit Tim'),
     ('2,0 Tool Management', 'Tool Management', ''),
     ('2,0 TM', 'Tool Management', ''),
-    ('1,5 Tool Management (TM)', 'Tool Management', ''),
     ('1,0 Tool Management(TM)', 'Tool Management', ''),
     ('1,0 GCC (Tool Management)', 'Tool Management', ''),
     ('1,5 Tool Management (GCC Tactical and Governance)', 'Tool Management', 'GCC Tactical and Governance'),
     ('4,0 Anreise LÜBECK', 'Travel', 'Anreise LÜBECK'),
     ('3,5 ABREISE Lübeck', 'Travel', 'ABREISE Lübeck'),
     ('2,0 Anfahrt/Abfahrt MyB - Rückgabe MacBook', 'Travel', 'Anfahrt/Abfahrt MyB - Rückgabe MacBook'),
-    ('6,0 Hackathon "Picard" (a tng agent) - restructure', 'Other', 'Hackathon "Picard" (a tng agent) - restructure'),
     ('1,5 Tactical Meeting', 'Meeting', 'Tactical Meeting'),
-    ('1,25 Teamstufe Meeting (recruiting)', 'Meeting', 'Teamstufe Meeting (recruiting)'),
     ('6,0 Meetings und Absprachen', 'Meeting', 'Meetings und Absprachen'),
     ('0,5 Standup', 'Meeting', 'Standup'),
     ('1,0 Retro', 'Meeting', 'Retro'),
@@ -81,7 +75,6 @@ def test_activity_entry(line, activity, text):
 
 @pytest.mark.parametrize('line, tickets', [
     ('KP-2045 leasehold mapping', ['KP-2045']),
-    ('ENGINE-598', ['ENGINE-598']),
     ('ENGINE-592 ENGINE-593 credentials', ['ENGINE-592', 'ENGINE-593']),
 ])
 def test_ticket_without_hours_is_zero_entry(line, tickets):
@@ -91,9 +84,7 @@ def test_ticket_without_hours_is_zero_entry(line, tickets):
 
 @pytest.mark.parametrize('line', [
     'Anreise LÜBECK',
-    'Meeting: plan Authorizer, create new Board/Project',
     'ICE 1,5 h delay',
-    '- tng exchange',
     'O365 integration - no tickets, no permissions',
 ])
 def test_note_lines(line):

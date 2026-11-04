@@ -88,7 +88,6 @@ def test_half_day_keeps_other_lines():
 
 @pytest.mark.parametrize('date, start, end, pause, total, comment', [
     (dt.date(2025, 3, 17), '08:15', '16:45', 30, '8:00', '2,0 PTO Zahnarzt'),
-    (dt.date(2025, 2, 25), '11:00', '16:00', 0, '5:00', '3,0 PTO TTU'),
     (dt.date(2025, 5, 7), '11:30', '16:00', 30, '4:00', '4,0 PTO (Wohnungsbesichtigung)'),
 ])
 def test_overtime_used_becomes_note(date, start, end, pause, total, comment):

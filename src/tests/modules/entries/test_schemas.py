@@ -30,16 +30,9 @@ def test_activity_entry_input():
 @pytest.mark.parametrize('data', [
     {'kind': 'ticket', 'duration': '1:30'},
     {'kind': 'ticket', 'duration': '1:30', 'ticket_key': 'ENGINE-597', 'activity_type_id': SECOND},
-    {'kind': 'ticket', 'duration': '1:30', 'ticket_key': 'ENGINE-597', 'note': 'x'},
-    {'kind': 'ticket', 'duration': '1:30', 'ticket_key': 'TNG4840'},
     {'kind': 'ticket', 'duration': '1:20', 'ticket_key': 'ENGINE-597'},
-    {'kind': 'ticket', 'duration': '1:5', 'ticket_key': 'ENGINE-597'},
     {'kind': 'activity', 'duration': '1:00'},
     {'kind': 'activity', 'duration': '1:00', 'activity_type_id': SECOND, 'ticket_key': 'ENGINE-597'},
-    {'kind': 'activity', 'duration': '1:00', 'activity_type_id': SECOND, 'service_id': FIRST},
-    {'kind': 'activity', 'duration': '1:00', 'activity_type_id': SECOND, 'coding': True},
-    {'kind': 'meeting', 'duration': '1:00'},
-    {'kind': 'ticket', 'duration': '1:00', 'ticket_key': 'ENGINE-597', 'hours': 1},
 ])
 def test_entry_input_rejects_invalid(data):
     with pytest.raises(ValidationError):

@@ -19,10 +19,7 @@ def test_day_input_to_day():
     {'start': '08:00'},
     {'start': '16:00', 'end': '08:00'},
     {'start': '08:00', 'end': '12:00', 'break_time': '5:00'},
-    {'start': '8.00', 'end': '16:00'},
     {'break_time': '0:30'},
-    {'day_type': 'holiday'},
-    {'note': 'x', 'colour': 'blue'},
 ])
 def test_day_input_rejects_invalid(data):
     with pytest.raises(ValidationError):

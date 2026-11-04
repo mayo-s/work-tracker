@@ -86,10 +86,6 @@ def test_before_the_balance_start(client, database):
     assert (result['balance'], result['balance_series']['all'], result['balance_series']['month']) == ('2:00', [], [])
 
 
-def test_dashboard_is_documented(client):
-    assert set(client.simulate_get('/apidoc/openapi.json').json['paths']['/api/dashboard']) == {'get'}
-
-
 def test_week_target_counts_planned_days_off(client):
     client.simulate_put('/api/days/2026-10-30', json={'day_type': 'pto'})  # Friday
     assert dashboard(client)['week_target'] == '32:00'
