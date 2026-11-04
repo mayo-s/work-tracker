@@ -6,7 +6,7 @@ import { el } from './dom.ts';
 import { fromMinutes, toMinutes } from './durations.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
-import { periodSummary, value } from './week.ts';
+import { periodHeader, periodSummary, value } from './week.ts';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -32,13 +32,6 @@ export function daysOffRows(daysOff: Partial<Record<DayType, number>>): [string,
 /** `2.5` → `2.5`, `17` → `17` (PTO days without trailing zeros) */
 export function formatDays(days: number): string {
   return String(Number(days.toFixed(1)));
-}
-
-function renderHeader(doc: Document, year: number, today: IsoDate): void {
-  doc.querySelector('#year-title')!.textContent = String(year);
-  doc.querySelector<HTMLAnchorElement>('#year-previous')!.href = `/year?year=${year - 1}`;
-  doc.querySelector<HTMLAnchorElement>('#year-next')!.href = `/year?year=${year + 1}`;
-  doc.querySelector<HTMLAnchorElement>('#year-current')!.toggleAttribute('aria-disabled', year === Number(today.slice(0, 4)));
 }
 
 function cardRow(label: string, value: string): HTMLElement {
@@ -95,7 +88,7 @@ export async function renderYearPage(doc: Document): Promise<void> {
   }
   const today = isoDate(new Date());
   const year = yearFromSearch(doc.location.search, today);
-  renderHeader(doc, year, today);
+  periodHeader(doc, 'year', String(year), (shift) => `/year?year=${year + shift}`, year === Number(today.slice(0, 4)));
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
     const report = await api.yearReport(year, viewedMember(doc.location.search));

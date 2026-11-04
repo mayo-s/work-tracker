@@ -74,14 +74,22 @@ export function value(duration: string, withSign = false): HTMLElement {
   return el('span', { class: `num ${valueClass(duration)}`.trim() }, withSign ? signed(duration) : duration);
 }
 
+/** The header of the week, month or year page (`page`): its title, the links to the period before (`link(-1)`) and
+ * after (`link(1)`), and the link to the current period, disabled while that is shown. */
+export function periodHeader(doc: Document, page: string, title: string, link: (shift: number) => string,
+  current: boolean): void {
+  doc.querySelector(`#${page}-title`)!.textContent = title;
+  doc.querySelector<HTMLAnchorElement>(`#${page}-previous`)!.href = link(-1);
+  doc.querySelector<HTMLAnchorElement>(`#${page}-next`)!.href = link(1);
+  doc.querySelector<HTMLAnchorElement>(`#${page}-current`)!.toggleAttribute('aria-disabled', current);
+}
+
 function renderHeader(doc: Document, week: string, today: IsoDate): void {
   const monday = mondayOf(week);
   const [year, number] = week.split('-W');
-  doc.querySelector('#week-title')!.textContent = `Week ${Number(number)} · ${year}`;
+  periodHeader(doc, 'week', `Week ${Number(number)} · ${year}`, (shift) => `/week?week=${shiftWeek(week, shift)}`,
+    week === isoWeek(today));
   doc.querySelector('#week-period')!.textContent = `${formatDate(monday)} – ${formatDate(addDays(monday, 6))}`;
-  doc.querySelector<HTMLAnchorElement>('#week-previous')!.href = `/week?week=${shiftWeek(week, -1)}`;
-  doc.querySelector<HTMLAnchorElement>('#week-next')!.href = `/week?week=${shiftWeek(week, 1)}`;
-  doc.querySelector<HTMLAnchorElement>('#week-today')!.toggleAttribute('aria-disabled', week === isoWeek(today));
 }
 
 /** Worked of target, overtime and balance of a week, month or year (shared by the week view and the reports). */
