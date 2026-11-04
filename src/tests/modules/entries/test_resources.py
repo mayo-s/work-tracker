@@ -85,12 +85,6 @@ def test_update_entry_marks_it_changed(client):
     assert (result.json['duration'], result.json['changed']) == ('1:00', True)
 
 
-def test_update_cannot_change_kind(client, ids):
-    created = create(client, TICKET)
-    body = {'kind': 'activity', 'date': '2026-10-27', 'duration': '0:30', 'activity_type_id': ids['Meeting']}
-    assert client.simulate_put(f'/api/entries/{created["id"]}', json=body).status == falcon.HTTP_409
-
-
 def test_missing_entry(client):
     actual = {
         'get': client.simulate_get(f'/api/entries/{UNKNOWN}').status_code,

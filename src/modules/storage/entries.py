@@ -59,7 +59,61 @@ def _to_flag(row: sqlite3.Row) -> ReviewFlag:
     return ReviewFlag(id=row['id'], entry_id=row['entry_id'], reason=row['reason'], detail=row['detail'])
 
 
-class EntryRepository:
+class EntryRules:
+    """The rules of entries on every backend: creating, changing and splitting write the history, the kind of an entry
+    stays. A backend's repository stores them: `get`, `restore`, `restore_history`, `_check_references` and `_replace`
+    (an entry in place of its old version)."""
+
+    _clock: Callable[[], dt.datetime]
+
+    def create(self, entry: Entry, action: HistoryAction = HistoryAction.CREATED, detail: str = '') -> Entry:
+        """Store a new entry; its ticket is created if needed. `action` is `created` or `imported`."""
+        created = self.restore(entry)
+        self.add_history(created.id, action, field_changes({}, entry_fields(created)), detail)
+        return created
+
+    def update(self, entry: Entry, action: HistoryAction = HistoryAction.UPDATED, detail: str = '') -> Entry:
+        """Replace an entry; only changed fields are recorded. The kind of an entry cannot change."""
+        old = self.get(entry.id)
+        if old.kind != entry.kind:
+            raise ConflictError(f'Entry {entry.id} is a {old.kind} entry, not a {entry.kind} entry')
+        if changes := field_changes(entry_fields(old), entry_fields(entry)):
+            self._check_references(entry)
+            self._replace(old, entry)
+            self.add_history(entry.id, action, changes, detail)
+        return entry
+
+    def split(self, entry_id: str, ticket_keys: Sequence[str]) -> list[Entry]:
+        """Divide a ticket entry among several tickets, the hours split evenly in quarter hours.
+
+        The entry itself gets the first ticket; the others become new entries with the same date and description.
+        """
+        entry = self.get(entry_id)
+        keys = list(dict.fromkeys(Ticket(key=key).key for key in ticket_keys))
+        if not isinstance(entry, TicketEntry) or len(keys) < 2:
+            raise ConflictError('Only a ticket entry can be split, into at least two different tickets')
+        shares = split_evenly(entry.duration, len(keys))
+        first = self.update(
+            entry.model_copy(update={'ticket_key': keys[0], 'duration': shares[0]}), HistoryAction.SPLIT,
+            f'Split into {", ".join(keys)}',
+        )
+        others = [
+            self.create(entry.model_copy(update={'id': None, 'ticket_key': key, 'duration': share}), HistoryAction.SPLIT,
+                        f'Split from entry {entry_id}')
+            for key, share in zip(keys[1:], shares[1:])
+        ]
+        return [first, *others]
+
+    def reserve_id(self) -> str:
+        """An id no entry will get, for an entry known only from its history (deleted before an export)."""
+        return new_id()
+
+    def add_history(self, entry_id: str, action: HistoryAction, changes: Changes, detail: str = '') -> EntryChange:
+        return self.restore_history(
+            EntryChange(entry_id=entry_id, changed_at=self._clock(), action=action, changes=changes, detail=detail))
+
+
+class EntryRepository(EntryRules):
     """Ticket and activity entries of one user; every change is written to the entry's history.
 
     Works within the transaction of the given connection. `clock` provides the history timestamps.
@@ -111,48 +165,6 @@ class EntryRepository:
         )
         return [_to_entry(row) for row in rows]
 
-    def create(self, entry: Entry, action: HistoryAction = HistoryAction.CREATED, detail: str = '') -> Entry:
-        """Store a new entry; its ticket is created if needed. `action` is `created` or `imported`."""
-        created = self.restore(entry)
-        self.add_history(created.id, action, field_changes({}, entry_fields(created)), detail)
-        return created
-
-    def update(self, entry: Entry, action: HistoryAction = HistoryAction.UPDATED, detail: str = '') -> Entry:
-        """Replace an entry; only changed fields are recorded. The kind of an entry cannot change."""
-        old = self.get(entry.id)
-        if old.kind != entry.kind:
-            raise ConflictError(f'Entry {entry.id} is a {old.kind} entry, not a {entry.kind} entry')
-        if changes := field_changes(entry_fields(old), entry_fields(entry)):
-            self._check_references(entry)
-            self._write(
-                'UPDATE entries SET date = ?, kind = ?, ticket_key = ?, activity_type_id = ?, duration = ?, text = ?, '
-                'coding = ? WHERE id = ? AND user_id = ?',
-                (*_to_values(entry), entry.id, self._user),
-            )
-            self.add_history(entry.id, action, changes, detail)
-        return entry
-
-    def split(self, entry_id: str, ticket_keys: Sequence[str]) -> list[Entry]:
-        """Divide a ticket entry among several tickets, the hours split evenly in quarter hours.
-
-        The entry itself gets the first ticket; the others become new entries with the same date and description.
-        """
-        entry = self.get(entry_id)
-        keys = list(dict.fromkeys(Ticket(key=key).key for key in ticket_keys))
-        if not isinstance(entry, TicketEntry) or len(keys) < 2:
-            raise ConflictError('Only a ticket entry can be split, into at least two different tickets')
-        shares = split_evenly(entry.duration, len(keys))
-        first = self.update(
-            entry.model_copy(update={'ticket_key': keys[0], 'duration': shares[0]}), HistoryAction.SPLIT,
-            f'Split into {", ".join(keys)}',
-        )
-        others = [
-            self.create(entry.model_copy(update={'id': None, 'ticket_key': key, 'duration': share}), HistoryAction.SPLIT,
-                        f'Split from entry {entry_id}')
-            for key, share in zip(keys[1:], shares[1:])
-        ]
-        return [first, *others]
-
     def delete(self, entry_id: str) -> None:
         """Delete an entry and its review flags; its history is kept."""
         old = self.get(entry_id)
@@ -171,10 +183,6 @@ class EntryRepository:
         )
         return restored
 
-    def reserve_id(self) -> str:
-        """An id no entry will get, for an entry known only from its history (deleted before an export)."""
-        return new_id()
-
     def restore_history(self, change: EntryChange) -> EntryChange:
         """Store a history line as it was, with its own time."""
         stored = change.model_copy(update={'id': new_id()})
@@ -185,10 +193,6 @@ class EntryRepository:
              json.dumps(change.changes), change.detail),
         )
         return stored
-
-    def add_history(self, entry_id: str, action: HistoryAction, changes: Changes, detail: str = '') -> EntryChange:
-        return self.restore_history(
-            EntryChange(entry_id=entry_id, changed_at=self._clock(), action=action, changes=changes, detail=detail))
 
     def history(self, entry_id: str) -> list[EntryChange]:
         sql = f'SELECT {_HISTORY_COLUMNS} FROM entry_history WHERE entry_id = ? AND user_id = ? ORDER BY id'
@@ -248,6 +252,13 @@ class EntryRepository:
             self._tickets.ensure(entry.ticket_key)
         if isinstance(entry, ActivityEntry) and not self._owned('activity_types', entry.activity_type_id):
             raise ConflictError(f'Cannot save entry: unknown activity type {entry.activity_type_id}')
+
+    def _replace(self, old: Entry, entry: Entry) -> None:
+        self._write(
+            'UPDATE entries SET date = ?, kind = ?, ticket_key = ?, activity_type_id = ?, duration = ?, text = ?, '
+            'coding = ? WHERE id = ? AND user_id = ?',
+            (*_to_values(entry), entry.id, self._user),
+        )
 
     def _owned(self, table: str, row_id: str) -> bool:
         row = self._conn.execute(f'SELECT 1 FROM {table} WHERE id = ? AND user_id = ?', (row_id, self._user)).fetchone()
