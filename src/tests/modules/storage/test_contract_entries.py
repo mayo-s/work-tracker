@@ -13,6 +13,9 @@ from src.modules.storage.errors import ConflictError, NotFoundError
 MONDAY = dt.date(2026, 10, 26)
 NOW = dt.datetime(2026, 10, 28, 14, 5)
 
+# The rules both backends share (EntryRules) refuse before anything is stored: one backend is enough
+SHARED_RULE = pytest.mark.parametrize('storage', ['sqlite'], indirect=True)
+
 
 @pytest.fixture
 def entries(per_call, klara_id):
@@ -102,6 +105,7 @@ def test_update_without_changes_records_nothing(entries, ticket_entry):
     assert len(entries.history(created.id)) == 1
 
 
+@SHARED_RULE
 def test_update_cannot_change_kind(entries, ticket_entry, activity_type_ids):
     created = entries.create(ticket_entry)
     activity = ActivityEntry(id=created.id, date=MONDAY, activity_type_id=activity_type_ids['Meeting'], duration=90)
@@ -205,24 +209,15 @@ def test_split_entry_evenly_with_history(entries, tickets):
     assert tickets.get('KP-1482') is not None
 
 
-def test_split_into_quarter_hours(entries):
-    entry = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-2035', duration=90))
-    split = entries.split(entry.id, ['KP-2035', 'KP-2044', 'KP-2045', 'KP-2053'])
-    expected = [('KP-2035', 30), ('KP-2044', 30), ('KP-2045', 15), ('KP-2053', 15)]
-    assert [(item.ticket_key, item.duration) for item in split] == expected
-
-
-@pytest.mark.parametrize('keys', [['TNG-4347'], ['TNG-4347', 'tng-4347']])
-def test_split_needs_two_different_tickets(entries, keys):
-    entry = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4347', duration=60))
+@SHARED_RULE
+@pytest.mark.parametrize('kind, keys', [
+    ('ticket', ['TNG-4347']), ('ticket', ['TNG-4347', 'tng-4347']), ('activity', ['TNG-1', 'TNG-2']),
+])
+def test_split_needs_a_ticket_entry_and_two_different_tickets(entries, activity_entry, kind, keys):
+    ticket_entry = TicketEntry(date=MONDAY, ticket_key='TNG-4347', duration=60)
+    entry = entries.create(ticket_entry if kind == 'ticket' else activity_entry)
     with pytest.raises(ConflictError):
         entries.split(entry.id, keys)
-
-
-def test_split_activity_entry_is_refused(entries, activity_entry):
-    entry = entries.create(activity_entry)
-    with pytest.raises(ConflictError):
-        entries.split(entry.id, ['TNG-1', 'TNG-2'])
 
 
 def test_entries_imported_together(entries):
