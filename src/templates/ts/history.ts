@@ -1,8 +1,9 @@
 // The change history of an entry, as readable lines.
 
 import { api, ApiError, type ChangeView } from './api.ts';
-import { formatTimestamp } from './dates.ts';
+import { formatDate, formatTimestamp } from './dates.ts';
 import { el } from './dom.ts';
+import { fromMinutes } from './durations.ts';
 
 const FIELD_LABELS: Record<string, string> = {
   date: 'date', ticket_key: 'ticket', activity_type_id: 'activity', duration: 'duration', description: 'description',
@@ -13,20 +14,16 @@ const ACTION_LABELS: Record<string, string> = {
   deleted: 'Deleted',
 };
 
-function minutes(value: number): string {
-  return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`;
-}
-
 /** A stored value as text: durations in h:mm, dates as DD.MM.YYYY, activity type names instead of ids. */
 export function formatValue(field: string, value: unknown, activityNames: Map<string, string>): string {
   if (value === null || value === undefined || value === '') {
     return '—';
   }
   if (field === 'duration' && typeof value === 'number') {
-    return minutes(value);
+    return fromMinutes(value);
   }
   if (field === 'date' && typeof value === 'string') {
-    return value.split('-').reverse().join('.');
+    return formatDate(value);
   }
   if (field === 'activity_type_id' && typeof value === 'string') {
     return activityNames.get(value) ?? 'deleted activity type';
