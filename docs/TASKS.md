@@ -290,7 +290,7 @@ L.16 (a–i) → 9.1 (a–i).
 - [ ] **10.2** One place for each rule, in steps:
   - [x] **10.2a** Storage: the rules of entries (create, update, split, history) shared by both backends, as the rename
     rules already are (the one-liners for days, PTO years and schedules stay: sharing them would take as many lines)
-  - [ ] **10.2b** Review: the API suggests how to split a guessed ticket (the import's ticket rules), the frontend no
+  - [x] **10.2b** Review: the API suggests how to split a guessed ticket (the import's ticket rules), the frontend no
     longer maps old numbers to keys itself
   - [ ] **10.2c** Frontend: one `errorText`, one `button`, `formatDate` from `dates.ts`, the setup's fields from `forms.ts`
 

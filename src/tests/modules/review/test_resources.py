@@ -124,3 +124,13 @@ def test_entry_imported_alone_has_no_split(client, database):
                                     HistoryAction.IMPORTED, '1,0 #4156')
         repository.add_flag(created.id, FlagReason.UNCERTAIN_TICKET, '1,0 #4156')
     assert get_review(client)['entries'][0]['split_on_import'] == []
+
+
+def test_an_alias_is_suggested_for_a_split(client, database):
+    line = '6,0 #4347 aka #1482 check permission'
+    with database.transaction() as conn:
+        repository = EntryRepository(conn, USER)
+        created = repository.create(TicketEntry(date=dt.date(2024, 7, 1), ticket_key='TNG-4347', duration=360),
+                                    HistoryAction.IMPORTED, line)
+        repository.add_flag(created.id, FlagReason.UNCERTAIN_TICKET, line)
+    assert get_review(client)['entries'][0]['split_suggestion'] == ['TNG-4347', 'KP-1482']

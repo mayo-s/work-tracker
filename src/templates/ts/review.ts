@@ -35,6 +35,8 @@ export type GuessedTicket = {
   entries: ReviewEntry['entry'][];
   originals: string[];
   flagIds: string[];
+  /** Tickets to split into, from aliases or "ff" in the original lines (suggested by the API). */
+  suggested: string[];
   /** Per original line: all entries the import made from it, if it named several tickets. */
   splits: Record<string, ReviewEntry['split_on_import']>;
 };
@@ -46,8 +48,9 @@ export function groupReview(entries: ReviewEntry[]): { guessed: GuessedTicket[];
   for (const item of entries) {
     const key = item.entry.ticket_key;
     if (key && item.reasons.includes('uncertain_ticket')) {
-      const group = guessed.get(key) ?? { key, entries: [], originals: [], flagIds: [], splits: {} };
+      const group = guessed.get(key) ?? { key, entries: [], originals: [], flagIds: [], suggested: [], splits: {} };
       group.entries.push(item.entry);
+      group.suggested.push(...item.split_suggestion);
       group.flagIds.push(...item.entry.flags.map((flag) => flag.id));
       for (const detail of item.entry.flags.map((flag) => flag.detail)) {
         if (!group.originals.includes(detail)) {
@@ -67,25 +70,9 @@ export function groupReview(entries: ReviewEntry[]): { guessed: GuessedTicket[];
   return { guessed: [...guessed.values()], others };
 }
 
-const MENTIONED = /\b(KP|TNG|ENGINE|AGA|MSI)[- ]?(\d+)|#\s?(\d+)/gi;
-const ALIAS = /\baka\b|#\s?\d+\s*\/\s*#\s?\d+/i;
-const FOLLOWING = /\d+ff\b/i;
-
-/** Ticket keys mentioned in a spreadsheet line, e.g. `#4347 aka #1482` → TNG-4347, KP-1482 (as in the import). */
-export function mentionedTickets(line: string): string[] {
-  const keys = [...line.matchAll(MENTIONED)].map(([, prefix, number, bare]) => prefix
-    ? `${prefix.toUpperCase()}-${Number(number)}`
-    : `${Number(bare) >= 4000 ? 'TNG' : 'KP'}-${Number(bare)}`);
-  return [...new Set(keys)];
-}
-
 /** Tickets to split a guessed ticket into, if its spreadsheet line had an alias or "ff"; null if there is nothing to split. */
 export function splitSuggestion(group: GuessedTicket): string[] | null {
-  const originals = group.originals.filter((line) => ALIAS.test(line) || FOLLOWING.test(line));
-  if (!originals.length) {
-    return null;
-  }
-  return [...new Set([group.key, ...originals.flatMap(mentionedTickets)])];
+  return group.suggested.length ? [...new Set([group.key, ...group.suggested])] : null;
 }
 
 type Page = { data: ReviewView; services: ServiceChoice[]; reload: (message: string) => void; fail: (error: unknown) => void };

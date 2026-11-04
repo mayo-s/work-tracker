@@ -28,6 +28,7 @@ class CleanedText:
     uncertain: bool = False  # a ticket key was guessed: flag the entries for review
     corrected: bool = False  # an obvious typo was corrected
     aliases: tuple[str, ...] = ()  # second keys of the same ticket ('#4347 aka #1482' → 'KP-1482')
+    following: bool = False  # 'TNG-2035ff': the work was on the following tickets too
 
 
 def bare_key(number: str) -> str:
@@ -45,9 +46,18 @@ def clean_tickets(text: str) -> CleanedText:
     text, following = _FOLLOWING.subn(r'\1', text)
     text, aliased = _ALIAS.subn(lambda match: bare_key(match[1]), text)
     text, bare = _BARE.subn(lambda match: bare_key(match[1]), text)
-    return CleanedText(text, bool(following or aliased or bare), corrected, aliases)
+    return CleanedText(text, bool(following or aliased or bare), corrected, aliases, bool(following))
 
 
 def find_tickets(text: str) -> list[str]:
     """Distinct ticket keys in order of appearance."""
     return list(dict.fromkeys(TICKET.findall(text)))
+
+
+def split_keys(line: str) -> list[str]:
+    """The tickets to split the entries of a spreadsheet line among, if it names an alias or "ff", e.g.
+    '#4347 aka #1482 check permission' → TNG-4347, KP-1482; empty for other lines."""
+    cleaned = clean_tickets(line)
+    if not (cleaned.aliases or cleaned.following):
+        return []
+    return list(dict.fromkeys([*find_tickets(cleaned.text), *cleaned.aliases]))
