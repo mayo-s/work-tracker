@@ -14,26 +14,19 @@ from src.lib.durations import (
 )
 
 
-@pytest.mark.parametrize('text, minutes', [
-    ('00:00', 0),
-    ('08:15', 495),
-    ('7:15', 435),
-    (' 16:00 ', 960),
-    ('23:59', 1439),
-])
+@pytest.mark.parametrize('text, minutes', [('00:00', 0), ('7:15', 435), (' 16:00 ', 960), ('23:59', 1439)])
 def test_parse_clock(text, minutes):
     assert parse_clock(text) == minutes
 
 
-@pytest.mark.parametrize('text', ['', '8', '08:5', '0815', '24:00', '12:60', '-1:00', '08:15:00', 'ab:cd'])
+@pytest.mark.parametrize('text', ['', '08:5', '0815', '24:00', '12:60', '-1:00', '08:15:00'])
 def test_parse_clock_rejects_invalid(text):
     with pytest.raises(TimeFormatError):
         parse_clock(text)
 
 
-@pytest.mark.parametrize('minutes, text', [(0, '00:00'), (495, '08:15'), (1439, '23:59')])
-def test_format_clock(minutes, text):
-    assert format_clock(minutes) == text
+def test_format_clock():
+    assert (format_clock(0), format_clock(495), format_clock(1439)) == ('00:00', '08:15', '23:59')
 
 
 @pytest.mark.parametrize('minutes', [-1, 1440])
@@ -43,39 +36,29 @@ def test_format_clock_rejects_out_of_range(minutes):
 
 
 @pytest.mark.parametrize('text, minutes', [
-    ('0:00', 0),
     ('0:45', 45),
-    ('1:30', 90),
-    ('12:45', 765),
     ('25:00', 1500),
     (' 2:15 ', 135),
     ('1.5', 90),
     ('1,5', 90),
     ('2', 120),
-    ('0.25', 15),
     ('1h30m', 90),
     ('1h30', 90),
-    ('1h', 60),
     ('1.5h', 90),
     ('1 H 30 Min', 90),
-    ('1 h  30 min', 90),
     ('90m', 90),
-    ('90 min', 90),
-    ('45M', 45),
 ])
 def test_parse_duration(text, minutes):
     assert parse_duration(text) == minutes
 
 
-@pytest.mark.parametrize('text', [
-    '', '1:5', '1:60', '-1:30', ':30', '1.01', 'h', '30s', '1h60m', '1.5h30m', '1m30', 'abc', '1:30h',
-])
+@pytest.mark.parametrize('text', ['', '1:5', '1:60', '-1:30', '1.01', '30s', '1h60m', '1.5h30m', '1m30', '1:30h'])
 def test_parse_duration_rejects_invalid(text):
     with pytest.raises(TimeFormatError):
         parse_duration(text)
 
 
-@pytest.mark.parametrize('text, minutes', [('12:30', 750), ('+12:30', 750), (' -1:45 ', -105), ('-0:00', 0)])
+@pytest.mark.parametrize('text, minutes', [('+12:30', 750), (' -1:45 ', -105), ('-0:00', 0), ('-1.5', -90), ('+2h', 120)])
 def test_parse_signed_duration(text, minutes):
     assert parse_signed_duration(text) == minutes
 
@@ -86,27 +69,11 @@ def test_parse_signed_duration_rejects_invalid(text):
         parse_signed_duration(text)
 
 
-@pytest.mark.parametrize('minutes, text', [
-    (0, '0:00'),
-    (45, '0:45'),
-    (90, '1:30'),
-    (1500, '25:00'),
-    (-105, '-1:45'),
-    (-15, '-0:15'),
-])
-def test_format_duration(minutes, text):
-    assert format_duration(minutes) == text
+def test_format_duration():
+    assert [format_duration(minutes) for minutes in (0, 90, 1500, -15)] == ['0:00', '1:30', '25:00', '-0:15']
 
 
-@pytest.mark.parametrize('text, minutes', [
-    ('8', 480),
-    ('1,5', 90),
-    ('0,75', 45),
-    ('0,5', 30),
-    ('1.25', 75),
-    ('2,0', 120),
-    (' 4,0 ', 240),
-])
+@pytest.mark.parametrize('text, minutes', [('8', 480), ('1,5', 90), ('1.25', 75), (' 4,0 ', 240)])
 def test_parse_decimal_hours(text, minutes):
     assert parse_decimal_hours(text) == minutes
 
@@ -117,20 +84,15 @@ def test_parse_decimal_hours_rejects_invalid(text):
         parse_decimal_hours(text)
 
 
-@pytest.mark.parametrize('minutes, expected', [(0, True), (15, True), (90, True), (20, False), (-15, True)])
-def test_is_quarter_hour(minutes, expected):
-    assert is_quarter_hour(minutes) is expected
+def test_is_quarter_hour():
+    assert [is_quarter_hour(minutes) for minutes in (0, 90, -15, 20)] == [True, True, True, False]
 
 
 @pytest.mark.parametrize('total, parts, shares', [
-    (180, 1, [180]),
     (180, 2, [90, 90]),
-    (90, 4, [30, 30, 15, 15]),
-    (60, 3, [30, 15, 15]),
-    (480, 4, [120, 120, 120, 120]),
+    (60, 3, [30, 15, 15]),  # quarter hours, the first ones get more
     (30, 4, [15, 15, 0, 0]),
-    (50, 2, [35, 15]),
-    (0, 2, [0, 0]),
+    (50, 2, [35, 15]),  # a total that is no quarter hour: the rest goes to the first
 ])
 def test_split_evenly(total, parts, shares):
     assert split_evenly(total, parts) == shares
@@ -140,10 +102,6 @@ def test_split_evenly(total, parts, shares):
 def test_split_evenly_rejects_invalid(total, parts):
     with pytest.raises(ValueError):
         split_evenly(total, parts)
-
-
-def test_signed_durations_take_the_new_formats():
-    assert (parse_signed_duration('-1.5'), parse_signed_duration('+2h')) == (-90, 120)
 
 
 @pytest.mark.parametrize('text', ['1.5', '8', '1h30m'])

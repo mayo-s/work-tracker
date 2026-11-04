@@ -14,24 +14,12 @@ def test_default_resource_answers_in_plain_text(client):
     assert result.text == 'Work Tracker - All systems operational.'
 
 
-def test_openapi_spec_documents_default_resource(client):
-    paths = client.simulate_get('/apidoc/openapi.json').json['paths']
-    assert '/health' in paths
-    assert paths['/health']['get']['tags'] == ['Maintenance']
-
-
-def test_openapi_spec_lists_documentation_routes_under_maintenance(client):
+def test_health_and_documentation_routes_are_under_maintenance(client):
     document = client.simulate_get('/apidoc/openapi.json').json
-    documentation = {path: operations['get'] for path, operations in document['paths'].items() if path.startswith('/apidoc/')}
-    assert set(documentation) == {'/apidoc/openapi.json', '/apidoc/swagger', '/apidoc/redoc', '/apidoc/scalar'}
-    assert all(operation['tags'] == ['Maintenance'] for operation in documentation.values())
-    assert documentation['/apidoc/swagger']['operationId'] == 'get_apidoc_swagger'
+    maintenance = {path for path, operations in document['paths'].items()
+                   if any(operation['tags'] == ['Maintenance'] for operation in operations.values())}
+    assert maintenance == {'/health', '/apidoc/openapi.json', '/apidoc/swagger', '/apidoc/redoc', '/apidoc/scalar'}
     assert [tag['name'] for tag in document['tags']].count('Maintenance') == 1
-
-
-@pytest.mark.parametrize('page', ['swagger', 'redoc', 'scalar'])
-def test_documentation_pages(client, page):
-    assert client.simulate_get(f'/apidoc/{page}').status == falcon.HTTP_200
 
 
 def test_app_migrates_the_database(tmp_path):

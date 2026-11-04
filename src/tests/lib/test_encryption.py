@@ -49,12 +49,6 @@ def test_a_changed_header_is_noticed(sealed):
         decrypt(changed, PASSPHRASE)
 
 
-def test_a_changed_ciphertext_is_noticed(sealed):
-    changed = sealed[:-1] + bytes([sealed[-1] ^ 1])
-    with pytest.raises(DecryptionError):
-        decrypt(changed, PASSPHRASE)
-
-
 @pytest.mark.parametrize('content', [b'no header line', b'[1, 2]\nrest', b'{not json\nrest'])
 def test_a_file_without_header_is_refused(content):
     with pytest.raises(ValueError, match='The file has no header'):

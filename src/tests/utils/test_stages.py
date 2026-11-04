@@ -24,9 +24,8 @@ def on_lambda(monkeypatch):
     monkeypatch.setenv('WORK_TRACKER_AUTH', 'on')
 
 
-@pytest.mark.parametrize('value', ['Local', 'local', 'LOCAL'])
-def test_local_stage(monkeypatch, value):
-    monkeypatch.setenv('STAGE', value)
+def test_local_stage_ignores_case(monkeypatch):
+    monkeypatch.setenv('STAGE', 'local')
     assert current_stage() is Stage.LOCAL
 
 

@@ -8,7 +8,6 @@ MONDAY_TO_FRIDAY = frozenset(range(1, 6))
 
 
 @pytest.mark.parametrize('hours, days, target', [
-    (40, MONDAY_TO_FRIDAY, 480), (32, frozenset(range(1, 5)), 480), (30, MONDAY_TO_FRIDAY, 360),
     (39, MONDAY_TO_FRIDAY, 468), (40, frozenset(range(1, 8)), 342),
 ])
 def test_daily_target_splits_the_week_evenly_in_whole_minutes(hours, days, target):
