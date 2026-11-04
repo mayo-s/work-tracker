@@ -70,14 +70,13 @@ def test_a_first_code_confirms_it(app, klara, clock):
     assert app.simulate_get('/api/auth/status', cookies=klara).json['user']['two_factor'] is True
 
 
-def test_the_login_asks_for_the_code(app, secret):
+def test_the_login_asks_for_the_code(app, secret, clock):
     result = login(app)
     assert (result.status, result.json['code']) == (falcon.HTTP_401, 'two_factor_required')
-    assert login(app, '000000' if code_at(secret, 0) != '000000' else '111111').status == falcon.HTTP_401
-
-
-def test_the_login_with_the_code(app, secret, clock):
-    assert login(app, clock.code(secret)).status == falcon.HTTP_200
+    assert login(app, clock.code(secret, 10)).status == falcon.HTTP_401
+    right = login(app, clock.code(secret))
+    assert right.status == falcon.HTTP_200
+    assert 'wt_browser' not in right.cookies  # without `remember`, no browser is remembered
 
 
 def test_each_code_works_once(app, secret, clock):
@@ -164,10 +163,6 @@ def test_a_new_password_forgets_the_browser(app, klara, secret, clock):
     assert again.json['code'] == 'two_factor_required'
 
 
-def test_without_remember_no_browser_is_remembered(app, secret, clock):
-    assert 'wt_browser' not in login(app, clock.code(secret)).cookies
-
-
 def new_app(app, cookies, code, password=PASSWORD):
     return app.simulate_post('/api/auth/me/two-factor/new-app', cookies=cookies, json={'password': password, 'code': code})
 
@@ -185,12 +180,9 @@ def test_a_new_app_replaces_the_old_one_once_a_code_of_it_confirms_it(app, klara
     assert login(app, clock.code(fresh)).status == falcon.HTTP_200
 
 
-def test_a_new_app_needs_the_password(app, klara, secret, clock):
+def test_a_new_app_needs_the_password_and_a_current_code(app, klara, secret, clock):
     result = new_app(app, klara, clock.code(secret), password='not it')
     assert (result.status, result.json['description']) == (falcon.HTTP_403, 'The current password is wrong')
-
-
-def test_a_new_app_needs_a_current_code(app, klara, secret, clock):
     result = new_app(app, klara, clock.code(secret, 10))
     assert (result.status, result.json['description']) == (
         falcon.HTTP_403, 'The code is wrong; enter the current one of your authenticator app, or a recovery code')

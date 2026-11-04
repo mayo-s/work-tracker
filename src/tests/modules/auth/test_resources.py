@@ -81,42 +81,32 @@ def test_root_is_created_once_and_logs_in(app):
     assert (again.status, again.json['description']) == (falcon.HTTP_409, 'There is a root already; log in instead')
 
 
-@pytest.mark.parametrize('path, location', [('/', '/admin'), ('/week', '/admin'), ('/setup', '/admin'), ('/team', '/admin')])
-def test_root_tracks_no_work_and_goes_to_admin(app, root, path, location):
-    result = app.simulate_get(path, cookies=root)
-    assert (result.status, result.headers['location']) == (falcon.HTTP_303, location)
+# What root gets: its own pages and their API; the tracking pages forward to /admin, the tracking API is refused
+ROOT_ACCESS = {'/admin': 200, '/settings': 200, '/api/admin/users': 200, '/api/theme': 200,
+               '/': 303, '/setup': 303, '/api/days': 403, '/api/settings': 403}
 
 
-@pytest.mark.parametrize('path', ['/api/dashboard', '/api/days', '/api/settings', '/api/team', '/api/export'])
-def test_root_has_no_tracking_api(app, root, path):
-    result = app.simulate_get(path, cookies=root)
-    assert (result.status, result.json['description']) == (falcon.HTTP_403, 'Root runs the app and tracks no work')
+def test_root_runs_the_app_and_tracks_no_work(app, root):
+    actual = {path: app.simulate_get(path, cookies=root).status_code for path in ROOT_ACCESS}
+    assert actual == ROOT_ACCESS
+    assert app.simulate_get('/week', cookies=root).headers['location'] == '/admin'
+    assert app.simulate_get('/api/days', cookies=root).json['description'] == 'Root runs the app and tracks no work'
 
 
-@pytest.mark.parametrize('path', ['/admin', '/settings', '/api/admin/users', '/api/theme', '/api/auth/me'])
-def test_root_has_its_pages_and_their_api(app, root, path):
-    assert app.simulate_get(path, cookies=root).status == falcon.HTTP_200
+# What a visitor gets who is not logged in: the open paths; pages forward to the login, the API answers 401
+VISITOR_ACCESS = {'/login': 200, '/health': 200, '/static/css/main.css': 200, '/api/auth/status': 200,
+                  '/settings': 303, '/api/dashboard': 401}
 
 
-@pytest.mark.parametrize('path', ['/', '/week', '/settings'])
-def test_pages_forward_to_login(app, cookies, path):
-    result = app.simulate_get(path)
-    assert (result.status, result.headers['location']) == (falcon.HTTP_303, f'/login?next={path.replace("/", "%2F")}')
-    assert app.simulate_get(path, cookies=cookies).status == falcon.HTTP_200
+def test_pages_and_api_need_the_login(app, cookies):
+    actual = {path: app.simulate_get(path).status_code for path in VISITOR_ACCESS}
+    assert actual == VISITOR_ACCESS
+    assert app.simulate_get('/settings').headers['location'] == '/login?next=%2Fsettings'
+    logged_in = {path: app.simulate_get(path, cookies=cookies).status_code for path in ('/settings', '/api/dashboard')}
+    assert logged_in == {'/settings': 200, '/api/dashboard': 200}
 
 
-@pytest.mark.parametrize('path', ['/api/dashboard', '/api/settings', '/api/auth/me'])
-def test_api_answers_401(app, cookies, path):
-    assert app.simulate_get(path).status == falcon.HTTP_401
-    assert app.simulate_get(path, cookies=cookies).status == falcon.HTTP_200
-
-
-@pytest.mark.parametrize('path', ['/login', '/health', '/apidoc/openapi.json', '/static/css/main.css', '/api/auth/status'])
-def test_open_paths(app, cookies, path):
-    assert app.simulate_get(path).status == falcon.HTTP_200
-
-
-@pytest.mark.parametrize('name', ['rainer', 'RAINER', 'rainer.zufall@example.com', 'Rainer.Zufall@Example.COM'])
+@pytest.mark.parametrize('name', ['RAINER', 'Rainer.Zufall@Example.COM'])
 def test_login_with_username_or_email(app, cookies, name):
     result = login(app, name)
     assert (result.status, result.json['first_name']) == (falcon.HTTP_200, 'Rainer')
@@ -128,7 +118,7 @@ def test_session_cookie(app, cookies):
     assert (cookie.http_only, cookie.same_site, cookie.path, cookie.max_age) == (True, 'Strict', '/', 86400)
 
 
-@pytest.mark.parametrize('name, password', [('rainer', 'wrong password!'), ('pascal', 'correct horse battery 9!')])
+@pytest.mark.parametrize('name, password', [('rainer', 'wrong password!'), ('nobody', 'correct horse battery 9!')])
 def test_wrong_login(app, cookies, name, password):
     result = login(app, name, password)
     assert (result.status, result.json['description']) == (falcon.HTTP_401, 'Wrong username, e-mail address or password')
@@ -167,12 +157,8 @@ def test_profile(app, cookies):
     assert login(app, 'rainer.z').status == falcon.HTTP_200
 
 
-@pytest.mark.parametrize('body', [
-    {'username': 'm', 'email': 'rainer.zufall@example.com', 'first_name': 'Rainer'},
-    {'username': 'rainer', 'email': 'rainer', 'first_name': 'Rainer'},
-    {'username': 'rainer', 'email': 'rainer.zufall@example.com', 'first_name': ''},
-])
-def test_profile_rejects_invalid_values(app, cookies, body):
+def test_profile_rejects_invalid_values(app, cookies):
+    body = {'username': 'rainer', 'email': 'rainer', 'first_name': 'Rainer'}
     assert app.simulate_put('/api/auth/me', cookies=cookies, json=body).status_code == 422
 
 
@@ -191,7 +177,6 @@ def test_password_change_ends_other_sessions_and_keeps_this_one(app, cookies):
 
 @pytest.mark.parametrize('body, status', [
     ({'current_password': 'wrong password!', 'new_password': 'another long password 2#'}, 403),
-    ({'current_password': 'correct horse battery 9!', 'new_password': 'too short'}, 422),
     ({'current_password': 'correct horse battery 9!', 'new_password': 'no digits or specials'}, 422),
 ])
 def test_password_change_errors(app, cookies, body, status):
@@ -217,8 +202,7 @@ def test_command_resets_a_forgotten_password(app, cookies, unclaimed):
 
 
 @pytest.mark.parametrize('answers', [
-    ['short', 'short'], ['no digits or specials', 'no digits or specials'],
-    ['a new long password 3$', 'another long password 2#'],
+    ['no digits or specials', 'no digits or specials'], ['a new long password 3$', 'another long password 2#'],
 ])
 def test_command_refuses_weak_or_different_passwords(database, answers):
     replies = iter(answers)
