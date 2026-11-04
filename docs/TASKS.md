@@ -281,7 +281,7 @@ L.16 (a–i) → 9.1 (a–i).
 - [ ] **10.1** Trim the tests to our own behaviour and contracts (README, "Tests and code quality"), in steps:
   - [x] **10.1a** `lib`, `models`, `utils`, `test_app`: no tests of `holidays`, `uuid`, pydantic or spectree, fewer
     parametrized cases (one per rule and boundary), no generated grid
-  - [ ] **10.1b** Storage: merge contract tests with the same setup and action, the interface check and the access
+  - [x] **10.1b** Storage: merge contract tests with the same setup and action, the interface check and the access
     matrix in one test per backend (actual statuses against an explicit table)
   - [ ] **10.1c** Auth, admin, backup: representative paths and names in place of lists of them
   - [ ] **10.1d** The other modules: no `*_is_documented` tests (the OpenAPI file test covers them), the isolation

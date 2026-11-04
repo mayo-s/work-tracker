@@ -33,40 +33,28 @@ def test_get_service(services):
     assert services.get(msb.id) == Service(id=msb.id, short_name='MSB', name='microsoft-bookings-service')
 
 
-def test_get_missing_service(services):
+def test_missing_service(services):
     with pytest.raises(NotFoundError):
         services.get(404)
+    with pytest.raises(NotFoundError):
+        services.update(Service(id=404, short_name='AUTH'))
+    with pytest.raises(NotFoundError):
+        services.delete(404)
 
 
-def test_add_service(services):
-    added = services.add(Service(short_name='AUTH', name='auth-service'))
-    assert added.id is not None
-    assert services.get(added.id) == added
-
-
-def test_add_duplicate_service_ignoring_case(services):
-    duplicate = Service(short_name='msb')
-    with pytest.raises(ConflictError):
-        services.add(duplicate)
-
-
-def test_update_service(services):
+def test_add_and_update_service(services):
     added = services.add(Service(short_name='AUTH'))
+    assert services.get(added.id) == added
     updated = services.update(added.model_copy(update={'name': 'auth-service'}))
     assert services.get(added.id) == updated
 
 
-def test_update_missing_service(services):
-    missing = Service(id=404, short_name='AUTH')
-    with pytest.raises(NotFoundError):
-        services.update(missing)
-
-
-def test_update_service_to_duplicate_name(services):
+def test_short_names_are_unique_ignoring_case(services):
     added = services.add(Service(short_name='AUTH'))
-    renamed = added.model_copy(update={'short_name': 'TTS'})
     with pytest.raises(ConflictError):
-        services.update(renamed)
+        services.add(Service(short_name='msb'))
+    with pytest.raises(ConflictError):
+        services.update(added.model_copy(update={'short_name': 'tts'}))
 
 
 def test_delete_service_unassigns_tickets(services, tickets):
@@ -78,20 +66,11 @@ def test_delete_service_unassigns_tickets(services, tickets):
     assert tickets.get('AGA-39').service_id is None
 
 
-def test_a_deleted_name_is_free_again(services):
+def test_deleted_and_renamed_services_free_their_names(services):
     services.delete(services.add(Service(short_name='AUTH')).id)
-    assert services.add(Service(short_name='auth')).short_name == 'auth'
-
-
-def test_a_renamed_service_frees_its_old_name(services):
-    added = services.add(Service(short_name='AUTH'))
-    services.update(added.model_copy(update={'short_name': 'IAM'}))
+    renamed = services.add(Service(short_name='auth'))
+    services.update(renamed.model_copy(update={'short_name': 'IAM'}))
     assert services.add(Service(short_name='AUTH')).short_name == 'AUTH'
-
-
-def test_delete_missing_service(services):
-    with pytest.raises(NotFoundError):
-        services.delete(404)
 
 
 def test_add_rename_and_delete_activity_type(activity_types):

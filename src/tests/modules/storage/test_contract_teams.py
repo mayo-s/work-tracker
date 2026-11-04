@@ -292,12 +292,11 @@ def test_deleting_a_team_ends_its_auditors(teams, auditors, platform, hans):
 
 
 def test_all_teams_with_the_deleted_ones(teams, platform, clock):
-    billing = teams.add(Team(name='Billing'))
+    teams.add(Team(name='Billing'))
     clock.now += dt.timedelta(hours=1)
     teams.delete(platform.id)
     assert [(team.name, team.deleted_at) for team in teams.with_deleted()] == [
         ('Platform', clock.now), ('Billing', None)]  # in the order they were created
-    assert billing.id in [team.id for team in teams.with_deleted()]
 
 
 def test_all_open_invitations(teams, invitations, platform, clock, klara_id):

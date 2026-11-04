@@ -21,13 +21,13 @@ def days(per_call, klara_id):
     return per_call(lambda store: store.days(klara_id))
 
 
-def test_get_missing_day(days):
+def test_save_get_and_replace(days):
     assert days.get(MONDAY) is None
-
-
-def test_save_and_get(days):
     days.save(WORK_DAY)
     assert days.get(MONDAY) == WORK_DAY
+    pto = Day(date=MONDAY, day_type=DayType.PTO)
+    days.save(pto)
+    assert days.get(MONDAY) == pto
 
 
 def test_save_keeps_empty_break_and_explicit_break(days):
@@ -36,13 +36,6 @@ def test_save_keeps_empty_break_and_explicit_break(days):
     days.save(explicit)
     assert days.get(MONDAY).break_minutes is None
     assert days.get(explicit.date).break_minutes == 0
-
-
-def test_save_replaces_day(days):
-    days.save(WORK_DAY)
-    pto = Day(date=MONDAY, day_type=DayType.PTO)
-    days.save(pto)
-    assert days.get(MONDAY) == pto
 
 
 def test_between_in_date_order(days):
@@ -69,18 +62,21 @@ def test_delete_day_and_its_flags(days):
     assert days.flags_on(MONDAY) == []
 
 
-def test_delete_missing_day(days):
+def test_missing_day_and_flag(days):
     with pytest.raises(NotFoundError):
         days.delete(MONDAY)
+    with pytest.raises(NotFoundError):
+        days.clear_flag(404)
 
 
-def test_add_and_list_flags(days):
+def test_add_list_and_clear_flags(days):
     saturday = dt.date(2024, 11, 9)
     flag = days.add_flag(saturday, FlagReason.WEEKEND_HOURS, '5,0 Secretary - Holacracy Constitution')
     days.add_flag(dt.date(2024, 1, 6), FlagReason.WEEKEND_HOURS)
-    assert flag.id is not None
     assert days.flags_on(saturday) == [flag]
     assert [found.date for found in days.day_flags()] == [dt.date(2024, 1, 6), saturday]
+    days.clear_flag(flag.id)
+    assert days.flags_on(saturday) == []
 
 
 def test_day_flags_ignore_entry_flags(days, per_call, klara_id, activity_type_ids):
@@ -88,14 +84,3 @@ def test_day_flags_ignore_entry_flags(days, per_call, klara_id, activity_type_id
     entry = entries.create(ActivityEntry(date=MONDAY, activity_type_id=activity_type_ids['Meeting'], duration=0))
     entries.add_flag(entry.id, FlagReason.UNCERTAIN_TICKET)
     assert days.day_flags() == []
-
-
-def test_clear_flag(days):
-    flag = days.add_flag(MONDAY, FlagReason.WEEKEND_HOURS)
-    days.clear_flag(flag.id)
-    assert days.flags_on(MONDAY) == []
-
-
-def test_clear_missing_flag(days):
-    with pytest.raises(NotFoundError):
-        days.clear_flag(404)

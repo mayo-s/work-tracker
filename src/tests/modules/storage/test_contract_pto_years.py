@@ -27,17 +27,14 @@ def test_save_inserts_and_replaces(years):
     assert years.get(2030).carried_over is None
 
 
-def test_get_missing_year(years):
-    with pytest.raises(NotFoundError):
-        years.get(2023)
-
-
 def test_delete(years):
     years.delete(2027)
     assert 2027 not in years.terms()
 
 
-def test_delete_missing_year(years):
+def test_missing_year(years):
+    with pytest.raises(NotFoundError):
+        years.get(2023)
     with pytest.raises(NotFoundError):
         years.delete(2023)
 

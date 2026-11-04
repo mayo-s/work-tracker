@@ -25,6 +25,11 @@ def days(per_call, klara_id):
 
 
 @pytest.fixture
+def tickets(per_call, klara_id):
+    return per_call(lambda store: store.tickets(klara_id))
+
+
+@pytest.fixture
 def ticket_entry():
     return TicketEntry(date=MONDAY, ticket_key='ENGINE-597', duration=90, description='europace permissions', coding=True)
 
@@ -35,20 +40,12 @@ def activity_entry(activity_type_ids):
                          note='GCC Tactical')
 
 
-def test_create_and_get_ticket_entry(entries, ticket_entry):
-    created = entries.create(ticket_entry)
-    assert created.id is not None
-    assert entries.get(created.id) == created
-
-
-def test_create_ticket_entry_without_ticket(entries):
-    created = entries.create(TicketEntry(date=MONDAY, duration=360, description='PR reviews zipkin lib', coding=True))
-    assert entries.get(created.id).ticket_key is None
-
-
-def test_create_and_get_activity_entry(entries, activity_entry):
-    created = entries.create(activity_entry)
-    assert entries.get(created.id) == created
+def test_create_and_get(entries, tickets, ticket_entry, activity_entry):
+    without_ticket = TicketEntry(date=MONDAY, duration=360, description='PR reviews zipkin lib', coding=True)
+    for entry in (ticket_entry, without_ticket, activity_entry):
+        created = entries.create(entry)
+        assert entries.get(created.id) == created
+    assert [ticket.key for ticket in tickets.all()] == ['ENGINE-597']  # the entry's ticket is created with it
 
 
 def test_create_with_unknown_activity_type(entries):
@@ -77,11 +74,6 @@ def test_import_records_original_line(entries):
     [change] = entries.history(created.id)
     assert change.action is HistoryAction.IMPORTED
     assert change.detail == '3,0 TNG-5213, TNG-5214'
-
-
-def test_get_missing_entry(entries):
-    with pytest.raises(NotFoundError):
-        entries.get(404)
 
 
 def test_between_by_date_and_creation_order(entries, ticket_entry, activity_entry):
@@ -117,15 +109,22 @@ def test_update_cannot_change_kind(entries, ticket_entry, activity_type_ids):
         entries.update(activity)
 
 
-def test_update_missing_entry(entries, ticket_entry):
-    missing = ticket_entry.model_copy(update={'id': 404})
+def test_missing_entry(entries, ticket_entry):
     with pytest.raises(NotFoundError):
-        entries.update(missing)
+        entries.get(404)
+    with pytest.raises(NotFoundError):
+        entries.update(ticket_entry.model_copy(update={'id': 404}))
+    with pytest.raises(NotFoundError):
+        entries.delete(404)
+    with pytest.raises(ConflictError):
+        entries.add_flag(404, FlagReason.UNCERTAIN_TICKET)
 
 
-def test_delete_keeps_history_with_last_values(entries, activity_entry):
+def test_delete_removes_entry_and_flags_and_keeps_history_with_last_values(entries, activity_entry):
     created = entries.create(activity_entry)
+    entries.add_flag(created.id, FlagReason.UNCERTAIN_TICKET)
     entries.delete(created.id)
+    assert (entries.between(MONDAY, MONDAY), entries.flags_of(created.id)) == ([], [])
     actions = [change.action for change in entries.history(created.id)]
     assert actions == [HistoryAction.CREATED, HistoryAction.DELETED]
     assert entries.history(created.id)[-1].changes['note'] == ('GCC Tactical', None)
@@ -139,14 +138,10 @@ def test_all_history_includes_deleted_entries_in_written_order(entries, ticket_e
                      (deleted.id, HistoryAction.DELETED)]
 
 
-def test_restore_writes_no_history_line(entries, ticket_entry):
+def test_restore_writes_no_history_line_and_restored_history_keeps_its_time(entries, ticket_entry):
     restored = entries.restore(ticket_entry)
     assert entries.get(restored.id) == restored
     assert entries.history(restored.id) == []
-
-
-def test_restore_history_keeps_its_time(entries, ticket_entry):
-    restored = entries.restore(ticket_entry)
     change = EntryChange(entry_id=restored.id, changed_at=dt.datetime(2025, 3, 4, 8, 15), action=HistoryAction.IMPORTED,
                          changes={'duration': (None, 90)}, detail='3,0 ENGINE-597')
     entries.restore_history(change)
@@ -160,19 +155,6 @@ def test_reserved_ids_are_never_given_to_entries(entries, ticket_entry):
     assert entries.create(ticket_entry).id > reserved
 
 
-def test_delete_removes_entry_and_its_flags(entries, ticket_entry):
-    created = entries.create(ticket_entry)
-    entries.add_flag(created.id, FlagReason.UNCERTAIN_TICKET)
-    entries.delete(created.id)
-    assert entries.between(MONDAY, MONDAY) == []
-    assert entries.flags_of(created.id) == []
-
-
-def test_delete_missing_entry(entries):
-    with pytest.raises(NotFoundError):
-        entries.delete(404)
-
-
 def test_changed_marks_entries_changed_after_creation(entries, ticket_entry, activity_entry):
     unchanged = entries.create(ticket_entry)
     imported = entries.create(activity_entry, HistoryAction.IMPORTED)
@@ -182,22 +164,12 @@ def test_changed_marks_entries_changed_after_creation(entries, ticket_entry, act
     assert entries.changed([]) == set()
 
 
-def test_entry_flags(entries, days, ticket_entry):
+def test_add_list_and_clear_entry_flags(entries, days, ticket_entry):
     created = entries.create(ticket_entry)
     flag = entries.add_flag(created.id, FlagReason.UNCERTAIN_TICKET, '#4347 aka #1482')
     days.add_flag(MONDAY, FlagReason.WEEKEND_HOURS)
     assert entries.flags_of(created.id) == [flag]
     assert entries.entry_flags() == [flag]
-
-
-def test_flag_on_missing_entry(entries):
-    with pytest.raises(ConflictError):
-        entries.add_flag(404, FlagReason.UNCERTAIN_TICKET)
-
-
-def test_clear_entry_flag(entries, ticket_entry):
-    created = entries.create(ticket_entry)
-    flag = entries.add_flag(created.id, FlagReason.UNCERTAIN_TICKET)
     entries.clear_flag(flag.id)
     assert entries.flags_of(created.id) == []
 
@@ -218,7 +190,7 @@ def test_entries_for_review(entries, ticket_entry, activity_entry):
     assert [entry.id for entry in entries.for_review()] == [no_ticket.id, flagged.id, zero.id]
 
 
-def test_split_entry_evenly_with_history(entries):
+def test_split_entry_evenly_with_history(entries, tickets):
     entry = entries.create(
         TicketEntry(date=MONDAY, ticket_key='TNG-4347', duration=360, description='adapt tests', coding=True)
     )
@@ -230,6 +202,7 @@ def test_split_entry_evenly_with_history(entries):
         HistoryAction.SPLIT, {'duration': (360, 180)}, 'Split into TNG-4347, KP-1482')
     [created] = entries.history(second.id)
     assert (created.action, created.detail) == (HistoryAction.SPLIT, f'Split from entry {entry.id}')
+    assert tickets.get('KP-1482') is not None
 
 
 def test_split_into_quarter_hours(entries):
@@ -265,24 +238,8 @@ def test_entries_imported_together(entries):
     assert entries.imported_together(created.id) == []
 
 
-@pytest.fixture
-def tickets(per_call, klara_id):
-    return per_call(lambda store: store.tickets(klara_id))
-
-
-def test_create_ticket_entry_creates_ticket(entries, tickets, ticket_entry):
-    entries.create(ticket_entry)
-    assert tickets.get('ENGINE-597') is not None
-
-
 def test_update_to_new_ticket_creates_ticket(entries, tickets, ticket_entry):
     created = entries.create(ticket_entry)
     entries.update(created.model_copy(update={'ticket_key': 'ENGINE-598'}))
     assert tickets.get('ENGINE-598') is not None
     assert entries.history(created.id)[-1].changes == {'ticket_key': ('ENGINE-597', 'ENGINE-598')}
-
-
-def test_split_creates_the_tickets(entries, tickets):
-    entry = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4347', duration=360))
-    entries.split(entry.id, ['tng-4347', 'KP-1482'])
-    assert tickets.get('KP-1482') is not None

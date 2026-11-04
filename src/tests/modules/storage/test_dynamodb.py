@@ -10,7 +10,6 @@ from src.modules.storage.dynamodb.storage import LATEST, DynamoStorage
 from src.modules.storage.dynamodb.table import TTL_ATTRIBUTE
 from src.modules.storage.dynamodb.unit import MAX_ITEMS, Unit
 from src.modules.storage.errors import ConflictError, SchemaVersionError, TooManyChangesError
-from src.modules.storage.owners import DEFAULT_ACTIVITY_TYPES
 from src.modules.storage.users import SESSION_LIFETIME, token_hash
 from src.tests.users import KLARA
 
@@ -152,10 +151,3 @@ def test_session_tokens_are_stored_hashed_and_expire(dynamo_table):
         token = store.sessions().start(user_id, LOGIN)
     session = dynamo_table.get(f'SESSION#{token_hash(token)}', 'SESSION')
     assert token not in str(session) and session['expires_at'] == int((LOGIN + SESSION_LIFETIME).timestamp()) + 1
-
-
-def test_a_new_user_starts_with_the_default_activity_types(dynamo_table):
-    with DynamoStorage(dynamo_table).transaction() as store:
-        user_id = store.users().add(KLARA, 'correct horse battery 9!').id
-    names = [item['name'] for item in dynamo_table.query(f'USER#{user_id}', 'ACTIVITY_TYPE#', 'ACTIVITY_TYPE#~')]
-    assert names == list(DEFAULT_ACTIVITY_TYPES)

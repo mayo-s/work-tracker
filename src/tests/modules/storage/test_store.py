@@ -50,16 +50,11 @@ def _parameters(function: object) -> list[tuple[str, object, object]]:
     return [(p.name, p.kind, p.default) for p in inspect.signature(function).parameters.values()]
 
 
-@pytest.mark.parametrize('protocol, implementation', IMPLEMENTATIONS)
-def test_sqlite_backend_implements_the_interfaces(protocol, implementation):
-    for name in _methods(protocol):
-        assert _parameters(getattr(implementation, name)) == _parameters(getattr(protocol, name)), name
-
-
-@pytest.mark.parametrize('protocol, implementation', DYNAMODB)
-def test_dynamodb_backend_implements_the_interfaces(protocol, implementation):
-    for name in _methods(protocol):
-        assert _parameters(getattr(implementation, name)) == _parameters(getattr(protocol, name)), name
+@pytest.mark.parametrize('backend', [IMPLEMENTATIONS, DYNAMODB], ids=['sqlite', 'dynamodb'])
+def test_the_backend_implements_the_interfaces(backend):
+    differing = [f'{implementation.__name__}.{name}' for protocol, implementation in backend for name in _methods(protocol)
+                 if _parameters(getattr(implementation, name)) != _parameters(getattr(protocol, name))]
+    assert differing == []
 
 
 def test_the_sqlite_store_hands_out_repositories_of_its_transaction(database):

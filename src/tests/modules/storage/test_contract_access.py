@@ -38,39 +38,38 @@ def klaras(storage, klara_id, klara_schedule, klara_pto_years, service_ids, acti
         }
 
 
-# What Hans tries with Klara's ids (`k`: Klara's records), and what the attempt gives
+# What Hans tries with Klara's ids (`k`: Klara's records)
 ATTEMPTS = {
-    'get the entry': (lambda store, k, hans: store.entries(hans).get(k['entry'].id), NotFoundError),
-    'change the entry': (lambda store, k, hans: store.entries(hans).update(k['entry'].model_copy(
-        update={'description': 'mine'})), NotFoundError),
-    'delete the entry': (lambda store, k, hans: store.entries(hans).delete(k['entry'].id), NotFoundError),
-    'split the entry': (lambda store, k, hans: store.entries(hans).split(k['entry'].id, ['TNG-1', 'TNG-2']), NotFoundError),
-    'flag the entry': (lambda store, k, hans: store.entries(hans).add_flag(k['entry'].id, FlagReason.UNCERTAIN_TICKET),
-                       ConflictError),
-    'clear the entry flag': (lambda store, k, hans: store.entries(hans).clear_flag(k['entry_flag'].id), NotFoundError),
-    'clear the day flag': (lambda store, k, hans: store.days(hans).clear_flag(k['day_flag'].id), NotFoundError),
-    'delete the day': (lambda store, k, hans: store.days(hans).delete(MONDAY), NotFoundError),
-    'get the service': (lambda store, k, hans: store.services(hans).get(k['service'].id), NotFoundError),
-    'change the service': (lambda store, k, hans: store.services(hans).update(
-        Service(id=k['service'].id, short_name='MINE')), NotFoundError),
-    'delete the service': (lambda store, k, hans: store.services(hans).delete(k['service'].id), NotFoundError),
-    'get the activity type': (lambda store, k, hans: store.activity_types(hans).get(k['activity_type'].id), NotFoundError),
-    'change the activity type': (lambda store, k, hans: store.activity_types(hans).update(
-        ActivityType(id=k['activity_type'].id, name='Mine')), NotFoundError),
-    'delete the activity type': (lambda store, k, hans: store.activity_types(hans).delete(k['activity_type'].id),
-                                 NotFoundError),
-    'get the schedule': (lambda store, k, hans: store.schedules(hans).get(k['schedule'].id), NotFoundError),
-    'change the schedule': (lambda store, k, hans: store.schedules(hans).update(k['schedule'].model_copy(
-        update={'weekly_minutes': 60})), NotFoundError),
-    'delete the schedule': (lambda store, k, hans: store.schedules(hans).delete(k['schedule'].id), NotFoundError),
-    'get the PTO year': (lambda store, k, hans: store.pto_years(hans).get(2026), NotFoundError),
-    'delete the PTO year': (lambda store, k, hans: store.pto_years(hans).delete(2026), NotFoundError),
-    'set the service of the ticket': (lambda store, k, hans: store.tickets(hans).set_service('TNG-4138', None),
-                                      NotFoundError),
-    'accept the invitation': (lambda store, k, hans: store.invitations().accept(hans, k['invitation'].id, store.teams()),
-                              NotFoundError),
-    'decline the invitation': (lambda store, k, hans: store.invitations().decline(hans, k['invitation'].id), NotFoundError),
+    'get the entry': lambda store, k, hans: store.entries(hans).get(k['entry'].id),
+    'change the entry': lambda store, k, hans: store.entries(hans).update(k['entry'].model_copy(
+        update={'description': 'mine'})),
+    'delete the entry': lambda store, k, hans: store.entries(hans).delete(k['entry'].id),
+    'split the entry': lambda store, k, hans: store.entries(hans).split(k['entry'].id, ['TNG-1', 'TNG-2']),
+    'flag the entry': lambda store, k, hans: store.entries(hans).add_flag(k['entry'].id, FlagReason.UNCERTAIN_TICKET),
+    'clear the entry flag': lambda store, k, hans: store.entries(hans).clear_flag(k['entry_flag'].id),
+    'clear the day flag': lambda store, k, hans: store.days(hans).clear_flag(k['day_flag'].id),
+    'delete the day': lambda store, k, hans: store.days(hans).delete(MONDAY),
+    'get the service': lambda store, k, hans: store.services(hans).get(k['service'].id),
+    'change the service': lambda store, k, hans: store.services(hans).update(
+        Service(id=k['service'].id, short_name='MINE')),
+    'delete the service': lambda store, k, hans: store.services(hans).delete(k['service'].id),
+    'get the activity type': lambda store, k, hans: store.activity_types(hans).get(k['activity_type'].id),
+    'change the activity type': lambda store, k, hans: store.activity_types(hans).update(
+        ActivityType(id=k['activity_type'].id, name='Mine')),
+    'delete the activity type': lambda store, k, hans: store.activity_types(hans).delete(k['activity_type'].id),
+    'get the schedule': lambda store, k, hans: store.schedules(hans).get(k['schedule'].id),
+    'change the schedule': lambda store, k, hans: store.schedules(hans).update(k['schedule'].model_copy(
+        update={'weekly_minutes': 60})),
+    'delete the schedule': lambda store, k, hans: store.schedules(hans).delete(k['schedule'].id),
+    'get the PTO year': lambda store, k, hans: store.pto_years(hans).get(2026),
+    'delete the PTO year': lambda store, k, hans: store.pto_years(hans).delete(2026),
+    'set the service of the ticket': lambda store, k, hans: store.tickets(hans).set_service('TNG-4138', None),
+    'accept the invitation': lambda store, k, hans: store.invitations().accept(hans, k['invitation'].id, store.teams()),
+    'decline the invitation': lambda store, k, hans: store.invitations().decline(hans, k['invitation'].id),
 }
+
+# What each attempt gives: Klara's records are unknown to Hans (flagging an unknown entry is a conflict)
+EXPECTED = dict.fromkeys(ATTEMPTS, NotFoundError) | {'flag the entry': ConflictError}
 
 
 def run(storage, action):
@@ -78,11 +77,18 @@ def run(storage, action):
         return action(store)
 
 
-@pytest.mark.parametrize('attempt', ATTEMPTS)
-def test_another_users_ids_are_unknown(storage, klaras, hans, attempt):
-    action, error = ATTEMPTS[attempt]
-    with pytest.raises(error):
-        run(storage, lambda store: action(store, klaras, hans))
+def outcome(storage, action):
+    """The error the attempt raises, each in a transaction of its own; None if it succeeds."""
+    try:
+        run(storage, action)
+    except (NotFoundError, ConflictError) as error:
+        return type(error)
+    return None
+
+
+def test_another_users_ids_are_unknown(storage, klaras, hans):
+    actual = {attempt: outcome(storage, lambda store: action(store, klaras, hans)) for attempt, action in ATTEMPTS.items()}
+    assert actual == EXPECTED
 
 
 def test_another_users_records_cannot_be_used_or_seen(storage, klaras, hans, klara_id):

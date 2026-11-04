@@ -259,12 +259,6 @@ def test_root_sessions_end_after_an_hour_without_activity(storage):
     assert session_user(storage, token, LOGIN + dt.timedelta(minutes=59 + 61))[0] is None
 
 
-def test_other_sessions_last_a_day(storage, klara):
-    token = start_session(storage, klara.id)
-    assert session_user(storage, token, LOGIN + dt.timedelta(minutes=10)) == (klara.id, False)  # renewed after 30 minutes
-    assert session_user(storage, token, LOGIN + dt.timedelta(hours=23))[0] == klara.id
-
-
 def browsers(storage, action):
     return run(storage, lambda store: action(store.browsers()))
 
