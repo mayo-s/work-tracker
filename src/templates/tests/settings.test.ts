@@ -5,12 +5,9 @@ import { test } from 'node:test';
 
 import { acceptQuestion, applyTheme, auditorText, formatWorkDays, ptoYearInput, reportLabel, scheduleInput } from '../ts/settings.ts';
 
-test('PTO year input: empty extra days are 0, an empty carry-over is calculated', () => {
+test('PTO year input: empty extra days are 0, an empty carry-over is calculated, a fixed one may be negative', () => {
   assert.deepEqual(ptoYearInput({ year: '2027', allowance: '25', extra_days: '', carried_over: '', note: 'pro rata' }),
     { allowance: 25, extra_days: 0, carried_over: null, note: 'pro rata' });
-});
-
-test('PTO year input with extra days and a fixed, also negative, carry-over', () => {
   assert.deepEqual(ptoYearInput({ allowance: '30', extra_days: '1', carried_over: '-2.5', note: '' }),
     { allowance: 30, extra_days: 1, carried_over: -2.5, note: '' });
 });

@@ -15,26 +15,18 @@ function values(changes: Partial<EntryFormValues> = {}): EntryFormValues {
   return { ...entryFormValues(null), duration: '1:30', ...changes };
 }
 
-test('form values of a new entry', () => {
+test('form values of a new, a ticket and an activity entry', () => {
   assert.deepEqual(entryFormValues(null), {
     kind: 'ticket', duration: '', ticket_key: '', service_id: '', description: '', coding: false, activity_type_id: '', note: '',
   });
-});
-
-test('form values of a ticket entry', () => {
   assert.deepEqual(entryFormValues(TICKET), {
     kind: 'ticket', duration: '0:30', ticket_key: 'TNG-5882', service_id: 's2', description: 'PR Review', coding: true,
     activity_type_id: '', note: '',
   });
-});
-
-test('form values of an activity entry', () => {
   const activity: EntryView = { ...TICKET, kind: 'activity', ticket_key: null, service_id: null, service: null, description: null,
     coding: false, activity_type_id: 'a1', activity_type: 'Tool Management', note: 'GCC' };
   const result = entryFormValues(activity);
-  assert.equal(result.kind, 'activity');
-  assert.equal(result.activity_type_id, 'a1');
-  assert.equal(result.note, 'GCC');
+  assert.deepEqual([result.kind, result.activity_type_id, result.note], ['activity', 'a1', 'GCC']);
 });
 
 test('ticket input: trimmed, upper-case key, service left out unless changed', () => {

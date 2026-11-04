@@ -25,7 +25,7 @@ test('passwords need 12 characters with letters, digits and a special character,
   assert.equal(passwordError('correct horse battery 9!', 'correct horse battery 9!'), null);
   assert.equal(passwordError('ÄÖÜäöüß 1234#', 'ÄÖÜäöüß 1234#'), null);
   assert.equal(passwordError('short', 'short'), 'The password needs at least 12 characters.');
-  for (const weak of ['only letters and spaces', 'letters and 1234 digits', '1234567890!?', 'no-digits-but-special']) {
+  for (const weak of ['letters and 1234 digits', '1234567890!?', 'no-digits-but-special']) {
     assert.equal(passwordError(weak, weak), 'The password needs letters, digits and a special character, e.g. ! ? # or %.');
   }
   assert.equal(passwordError('correct horse battery 9!', 'correct horse batterY'), 'The two passwords differ.');

@@ -24,10 +24,7 @@ test('delete question names the tickets that lose their service', () => {
 const AUTH: ServiceChoice = { id: 's1', short_name: 'AUTH', name: '', team: 'Platform' };
 const MSB: ServiceChoice = { id: 's2', short_name: 'MSB', name: '', team: null };
 
-test('services to choose: the team first, then the personal ones', () => {
+test('services to choose: the team first, then the personal ones, which need no group without a team', () => {
   assert.deepEqual(serviceGroups([AUTH, MSB]), [['Team Platform', [AUTH]], ['Personal', [MSB]]]);
-});
-
-test('without a team, the personal services need no group', () => {
   assert.deepEqual(serviceGroups([MSB]), [['', [MSB]]]);
 });

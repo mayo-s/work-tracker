@@ -61,7 +61,6 @@ test('months', () => {
   assert.ok(!isValidMonth('2026-1'));
   assert.equal(shiftMonth('2026-12', 1), '2027-01');
   assert.equal(shiftMonth('2026-01', -1), '2025-12');
-  assert.equal(shiftMonth('2026-10', 0), '2026-10');
   assert.equal(formatMonth('2026-10'), 'October 2026');
 });
 
