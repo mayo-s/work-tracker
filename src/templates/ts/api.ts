@@ -84,6 +84,11 @@ export class ApiError extends Error {
   }
 }
 
+/** The API's message for a failed request; `fallback` for other failures, e.g. without network. */
+export function errorText(error: unknown, fallback = 'The action failed.'): string {
+  return error instanceof ApiError ? error.message : fallback;
+}
+
 /** The message of an error body: Falcon's `description`, or the validation messages of spectree. */
 export function errorMessage(status: number, body: unknown): string {
   if (Array.isArray(body)) {

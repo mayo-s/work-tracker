@@ -1,7 +1,7 @@
 // An editable table of records (add, edit inline, delete) and the page frame around such tables, with a status line.
 
-import { ApiError } from './api.ts';
-import { el, onEscape } from './dom.ts';
+import { errorText } from './api.ts';
+import { button, el, onEscape } from './dom.ts';
 import { normalizeOnLeave, settleDuration, type DurationRules } from './duration-input.ts';
 import { WEEKDAY_NAMES } from './labels.ts';
 
@@ -49,12 +49,6 @@ export type EditableTable = {
 };
 
 export type Page = { reload: (message: string) => void; fail: (error: unknown) => void };
-
-export function button(label: string, onClick: () => void, className = 'button-small'): HTMLButtonElement {
-  const element = el('button', { type: 'button', class: className }, label);
-  element.addEventListener('click', onClick);
-  return element;
-}
 
 /** The element to enter a field's value, how to read the value back as text, and for durations how to settle it
  * before saving (false: cancelled). */
@@ -208,10 +202,6 @@ export function tableSection(table: EditableTable, page: Page): HTMLElement {
       : el('p', {}, `No ${table.noun}s yet.`),
     itemForm(table, null, page, el('button', { type: 'submit', class: 'primary' }, `Add ${table.noun}`)),
   );
-}
-
-export function errorText(error: unknown): string {
-  return error instanceof ApiError ? error.message : 'The action failed.';
 }
 
 /** Renders the sections built by `build` into `#rootId`, reloading them after each change with a message in `#statusId`. */

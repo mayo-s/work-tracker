@@ -1,6 +1,6 @@
 // Dashboard (start page /): key figures, the overtime balance over time, days off coming up and this year's figures.
 
-import { api, ApiError, type DashboardView } from './api.ts';
+import { api, errorText, type DashboardView } from './api.ts';
 import { formatDate, formatDay, formatMonth, type IsoDate } from './dates.ts';
 import { el } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
@@ -324,7 +324,7 @@ export async function renderDashboardPage(doc: Document): Promise<void> {
       el('div', { class: 'dashboard-columns' }, comingUpSection(data.coming_up), yearSection(data.this_year)));
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },
-      error instanceof ApiError ? error.message : 'The dashboard could not be loaded.'));
+      errorText(error, 'The dashboard could not be loaded.')));
   }
 }
 

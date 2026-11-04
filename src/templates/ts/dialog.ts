@@ -1,6 +1,6 @@
 // A modal question with buttons: a native <dialog> keeps the focus inside, Escape cancels.
 
-import { el } from './dom.ts';
+import { button, el } from './dom.ts';
 
 export type Choice<T> = { label: string; value: T; primary?: boolean };
 
@@ -13,18 +13,13 @@ export function ask<T>(title: string, body: (string | HTMLElement)[], choices: C
       dialog.remove();
       resolve(value);
     };
-    const button = (label: string, value: T | null, className = ''): HTMLButtonElement => {
-      const element = el('button', { type: 'button', class: className }, label);
-      element.addEventListener('click', choose(value));
-      return element;
-    };
     dialog.addEventListener('cancel', choose(null));
     dialog.append(
       el('h2', { id: 'dialog-title' }, title),
       ...body.map((part) => (typeof part === 'string' ? el('p', { class: 'muted' }, part) : part)),
       el('div', { class: 'form-actions' },
-        ...choices.map((choice) => button(choice.label, choice.value, choice.primary ? 'primary' : '')),
-        button('Cancel', null)),
+        ...choices.map((choice) => button(choice.label, choose(choice.value), { class: choice.primary ? 'primary' : null })),
+        button('Cancel', choose(null), { class: null })),
     );
     document.body.append(dialog);
     dialog.showModal();

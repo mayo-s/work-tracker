@@ -1,12 +1,12 @@
 // Week view (/): the days of a week with times, balance and task entries (read-only).
 
 import {
-  api, ApiError, type ActivityType, type DayView, type EntryView, type PeriodTotals, type ServiceChoice, type WeekReport,
+  api, errorText, type ActivityType, type DayView, type EntryView, type PeriodTotals, type ServiceChoice, type WeekReport,
 } from './api.ts';
 import { addDays, formatDate, formatDay, isoDate, isoWeek, isValidWeek, mondayOf, shiftWeek, type IsoDate } from './dates.ts';
 import { dayEditor } from './day-editor.ts';
 import { daysOffForm } from './days-off.ts';
-import { el } from './dom.ts';
+import { button, el } from './dom.ts';
 import { entryEditor, type EntryEditorOptions } from './entry-editor.ts';
 import { historyPanel } from './history.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
@@ -120,12 +120,6 @@ export function openerKey(editing: Editing): string | null {
     return null;
   }
   return editing.kind === 'day' ? `day-${editing.date}` : editing.id === null ? `add-${editing.date}` : `entry-${editing.id}`;
-}
-
-function button(label: string, onClick: () => void, attributes: Record<string, string> = {}): HTMLButtonElement {
-  const element = el('button', { type: 'button', class: 'button-small', ...attributes }, label);
-  element.addEventListener('click', onClick);
-  return element;
 }
 
 /** Duration, ticket or activity, service, text and badges of an entry (also used by the review page). */
@@ -273,7 +267,7 @@ function weekendLinks(view: View): HTMLElement | null {
 }
 
 function errorCard(error: unknown): HTMLElement {
-  const message = error instanceof ApiError ? error.message : 'The week could not be loaded.';
+  const message = errorText(error, 'The week could not be loaded.');
   return el('div', { class: 'card is-warning', role: 'alert' }, message);
 }
 

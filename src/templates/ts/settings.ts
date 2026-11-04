@@ -7,8 +7,8 @@ import {
 } from './api.ts';
 import { auditTable } from './audit.ts';
 import { formatDate, formatMonth, formatTimestamp } from './dates.ts';
-import { el } from './dom.ts';
-import { button, renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
+import { button, el } from './dom.ts';
+import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 import { accountSection } from './account.ts';
 import { normalizeOnLeave, type DurationRules } from './duration-input.ts';
 import { field, submit } from './forms.ts';
@@ -217,7 +217,7 @@ function invitationItem(invitation: MyInvitationView, current: string | null, pa
       if (window.confirm(acceptQuestion(invitation, current))) {
         api.acceptInvitation(invitation.id).then(() => page.reload(`You joined ${team}`), page.fail);
       }
-    }, 'button-small primary'),
+    }, { class: 'button-small primary' }),
     button('Decline', () => {
       api.declineInvitation(invitation.id).then(() => page.reload(`Declined the invitation to ${team}`), page.fail);
     }));

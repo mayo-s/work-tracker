@@ -1,7 +1,7 @@
 // The user's account: fields for name, username, e-mail address and password (login, registration, setup, settings).
 
 import {
-  api, ApiError, type NewUserInput, type ProfileInput, type TwoFactorSetup, type TwoFactorStatus, type UserView,
+  api, ApiError, errorText, type NewUserInput, type ProfileInput, type TwoFactorSetup, type TwoFactorStatus, type UserView,
 } from './api.ts';
 import { el } from './dom.ts';
 import { field, submit } from './forms.ts';
@@ -77,10 +77,6 @@ export function accountFields(prefix: string, values: AccountValues, withPasswor
         { type: 'password', autocomplete: 'new-password' })));
   }
   return fields;
-}
-
-function errorText(error: unknown, fallback: string): string {
-  return error instanceof ApiError ? error.message : fallback;
 }
 
 /** The login page: log in, then on to `next`; while the database has no root, also "Create root admin"; on AWS
