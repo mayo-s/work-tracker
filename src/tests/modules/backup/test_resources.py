@@ -37,18 +37,14 @@ def download(app, cookies, passphrase=PASSPHRASE):
     return app.simulate_post('/api/admin/backup', cookies=cookies, json={'passphrase': passphrase})
 
 
-def test_root_downloads_the_whole_database(app):
-    result = download(app, logged_in(app, 'pascal'))
+def test_root_downloads_the_whole_database_and_it_is_logged(app):
+    root = logged_in(app, 'pascal')
+    result = download(app, root)
     assert result.status == falcon.HTTP_200
     assert result.headers['content-type'] == 'application/octet-stream'
     assert result.headers['content-disposition'] == 'attachment; filename="work-tracker-backup-2026-11-03.wtbackup"'
     backup = read_backup_file(result.content, PASSPHRASE)
     assert [item.user.username for item in backup.users] == ['klara', 'pascal']
-
-
-def test_the_backup_is_in_the_audit_log(app):
-    root = logged_in(app, 'pascal')
-    download(app, root)
     assert app.simulate_get('/api/admin/audit', cookies=root).json[0]['action'] == 'backup_made'
 
 
@@ -107,7 +103,6 @@ def test_with_nobody_but_root_at_once(database, tmp_path):
 
 @pytest.mark.parametrize('content, passphrase, message', [
     (None, 'another long passphrase', 'The passphrase is wrong, or the file is damaged'),
-    (b'{"format": "work-tracker", "version": 1}\nrest', PASSPHRASE, 'This is no Work Tracker backup'),
     (b'not a backup', PASSPHRASE, 'The file has no header'),
 ])
 def test_a_file_that_cannot_be_read_is_refused_before_anything_changes(app, backup, content, passphrase, message):

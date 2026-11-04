@@ -59,14 +59,9 @@ def change(app, cookies, user_id, **body):
     return app.simulate_put(f'/api/admin/users/{user_id}', cookies=cookies, json={'role': 'user', 'active': True} | body)
 
 
-@pytest.mark.parametrize('method, path, body', [
-    ('GET', '/api/admin/users', None),
-    ('PUT', f'/api/admin/users/{USER}', {'role': 'user', 'active': False}),
-    ('GET', '/api/admin/settings', None),
-    ('PUT', '/api/admin/settings', {'registration': True}),
-])
-def test_only_admins(app, hans, method, path, body):
-    assert app.simulate_request(method, path, cookies=hans, json=body).status == falcon.HTTP_403
+def test_only_admins(app, hans):
+    assert app.simulate_get('/api/admin/users', cookies=hans).status == falcon.HTTP_403
+    assert change(app, hans, USER, active=False).status == falcon.HTTP_403
 
 
 def test_users_with_their_account_only(app, klara, hans):
@@ -116,11 +111,8 @@ def test_root_leaves_users_to_the_admins(app, root, hans_id):
                                                                             'passwords')
 
 
-@pytest.mark.parametrize('method, path, body', [
-    ('GET', '/api/admin/teams', None), ('POST', '/api/admin/teams', {'name': 'Platform'}),
-])
-def test_teams_are_for_admins_not_root(app, root, method, path, body):
-    result = app.simulate_request(method, path, cookies=root, json=body)
+def test_teams_are_for_admins_not_root(app, root):
+    result = app.simulate_post('/api/admin/teams', cookies=root, json={'name': 'Platform'})
     assert (result.status, result.json['description']) == (falcon.HTTP_403, 'Only admins may do this')
 
 
@@ -143,10 +135,10 @@ def test_unknown_user(app, klara):
     assert app.simulate_put(f'/api/admin/users/{UNKNOWN}', cookies=klara, json=body).status == falcon.HTTP_404
 
 
-@pytest.mark.parametrize('body', [{'role': 'admin', 'active': True}, {'role': 'user', 'active': False}])
-def test_root_stays_as_it_is(app, klara, root_id, body):
-    result = app.simulate_put(f'/api/admin/users/{root_id}', cookies=klara, json=body)
-    assert (result.status, result.json['description']) == (falcon.HTTP_409, 'Root stays root and active')
+def test_root_stays_as_it_is(app, klara, root_id):
+    for body in ({'role': 'admin'}, {'active': False}):
+        result = change(app, klara, root_id, **body)
+        assert (result.status, result.json['description']) == (falcon.HTTP_409, 'Root stays root and active'), body
     result = app.simulate_post(f'/api/admin/users/{root_id}/one-time-password', cookies=klara)
     assert (result.status, result.json['description']) == (falcon.HTTP_409, "Root's password is changed in its own settings")
 

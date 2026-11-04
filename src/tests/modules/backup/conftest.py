@@ -9,7 +9,10 @@ from src.models.catalog import Service
 from src.models.entries import TicketEntry
 from src.models.teams import Auditor, ReportView, Team
 from src.models.users import TwoFactor
-from src.tests.users import HANS, PASCAL, PASSWORD
+from src.modules.backup.full import make_backup
+from src.modules.storage.database import Database
+from src.modules.storage.sqlite import SqliteStorage
+from src.tests.users import HANS, KLARA, PASCAL, PASSWORD
 
 NOW = dt.datetime(2026, 11, 3, 9, 0, 30, 123456)
 MONDAY = dt.date(2026, 11, 2)
@@ -41,3 +44,15 @@ def add_everything(storage, klara_id):
 @pytest.fixture
 def people(storage, klara_id):
     return add_everything(storage, klara_id)
+
+
+@pytest.fixture
+def sqlite_backup(tmp_path):
+    """The backup of such a database on SQLite, for what does not depend on the backend (the file, the checks)."""
+    storage = SqliteStorage(Database(tmp_path / 'source.db'))
+    storage.migrate()
+    with storage.transaction() as store:
+        klara_id = store.users().add(KLARA, PASSWORD).id
+    add_everything(storage, klara_id)
+    with storage.transaction() as store:
+        return make_backup(store, NOW)

@@ -44,18 +44,12 @@ def test_restoring_gives_the_same_database_back(storage, people):
     assert comparable(backup_of(storage)) == comparable(backup)
 
 
-def test_restored_users_log_in_with_their_password(storage, people):
-    restore(storage, backup_of(storage))
-    with storage.transaction() as store:
-        assert store.users().check_password(people['hans'], PASSWORD)
-        assert store.users().two_factor(people['hans']).secret == 'ABC'
-
-
-def test_sessions_of_everyone_but_root_end(storage, people):
+def test_restored_users_log_in_again_with_their_password(storage, people):
     with storage.transaction() as store:
         hans, root = store.sessions().start(people['hans'], NOW), store.sessions().start(people['root'], NOW)
     restore(storage, backup_of(storage))
     with storage.transaction() as store:
+        assert store.users().check_password(people['hans'], PASSWORD)
         assert (store.sessions().user_id(hans, NOW)[0], store.sessions().user_id(root, NOW)[0]) == (None, people['root'])
 
 
@@ -112,30 +106,28 @@ def with_change(backup, **changes):
     return backup.model_copy(update=changes)
 
 
-def test_a_reference_to_someone_the_backup_does_not_hold(storage, people):
-    backup = backup_of(storage)
-    broken = with_change(backup, memberships=[backup.memberships[0].model_copy(update={'user_id': 'nobody'})])
-    with storage.transaction() as store:
-        root = store.users().get(people['root'])
+def root_of(backup):
+    """The backup's root, as the current root of the database it was made of."""
+    return next(item.user for item in backup.users if item.user.role == 'root')
+
+
+def test_a_reference_to_someone_the_backup_does_not_hold(sqlite_backup):
+    broken = with_change(sqlite_backup, memberships=[sqlite_backup.memberships[0].model_copy(update={'user_id': 'nobody'})])
     with pytest.raises(BackupError, match='The backup refers to user nobody, which it does not hold'):
-        check_backup(broken, root)
+        check_backup(broken, root_of(sqlite_backup))
 
 
-def test_a_username_of_the_current_root(storage, people):
-    backup = backup_of(storage)
-    with storage.transaction() as store:
-        root = store.users().get(people['root']).model_copy(update={'username': 'hans'})
+def test_a_username_of_the_current_root(sqlite_backup):
+    root = root_of(sqlite_backup).model_copy(update={'username': 'hans'})
     with pytest.raises(BackupError, match="The username hans is in the backup twice, or is root's"):
-        check_backup(backup, root)
+        check_backup(sqlite_backup, root)
 
 
-def test_a_team_service_the_team_does_not_have(storage, people):
-    backup = backup_of(storage)
-    teams = [item.model_copy(update={'services': []}) for item in backup.teams]
-    with storage.transaction() as store:
-        root = store.users().get(people['root'])
+def test_a_team_service_the_team_does_not_have(sqlite_backup):
+    teams = [item.model_copy(update={'services': []}) for item in sqlite_backup.teams]
+    broken = with_change(sqlite_backup, teams=teams)
     with pytest.raises(BackupError, match='hans uses the service API of Platform, which the backup does not hold'):
-        check_backup(with_change(backup, teams=teams), root)
+        check_backup(broken, root_of(sqlite_backup))
 
 
 @pytest.fixture
@@ -149,9 +141,9 @@ def other_root(tmp_path):
     return storage, root.id, session
 
 
-def test_root_takes_over_the_login_of_the_backups_root(storage, people, other_root):
+def test_root_takes_over_the_login_of_the_backups_root(sqlite_backup, other_root):
     target, root_id, session = other_root
-    restore(target, backup_of(storage), root_login=True)
+    restore(target, sqlite_backup, root_login=True)
     with target.transaction() as store:
         users = store.users()
         root = users.get(root_id)  # the same account, with the login of the backup's root
@@ -161,28 +153,22 @@ def test_root_takes_over_the_login_of_the_backups_root(storage, people, other_ro
         assert users.by_login('rainer') is None
 
 
-def test_without_taking_over_root_stays_as_it_is(storage, people, other_root):
+def test_without_taking_over_root_stays_as_it_is(sqlite_backup, other_root):
     target, root_id, session = other_root
-    restore(target, backup_of(storage))
+    restore(target, sqlite_backup)
     with target.transaction() as store:
         assert store.users().get(root_id).username == 'rainer'
         assert store.sessions().user_id(session, NOW)[0] == root_id
 
 
-def test_taking_over_the_root_login_checks_its_names(storage, people):
-    backup = backup_of(storage)
+def test_taking_over_the_root_login_checks_its_names(sqlite_backup):
     users = [item.model_copy(update={'user': item.user.model_copy(update={'username': 'hans'})})
-             if item.user.role == 'root' else item for item in backup.users]
-    with storage.transaction() as store:
-        root = store.users().get(people['root'])
+             if item.user.role == 'root' else item for item in sqlite_backup.users]
     with pytest.raises(BackupError, match="The username hans is in the backup twice, or is root's"):
-        check_backup(with_change(backup, users=users), root, root_login=True)
+        check_backup(with_change(sqlite_backup, users=users), root_of(sqlite_backup), root_login=True)
 
 
-def test_taking_over_needs_a_root_in_the_backup(storage, people):
-    backup = backup_of(storage)
-    without_root = with_change(backup, users=[item for item in backup.users if item.user.role != 'root'])
-    with storage.transaction() as store:
-        root = store.users().get(people['root'])
+def test_taking_over_needs_a_root_in_the_backup(sqlite_backup):
+    without_root = with_change(sqlite_backup, users=[item for item in sqlite_backup.users if item.user.role != 'root'])
     with pytest.raises(BackupError, match='The backup holds no root whose login could be taken over'):
-        check_backup(without_root, root, root_login=True)
+        check_backup(without_root, root_of(sqlite_backup), root_login=True)

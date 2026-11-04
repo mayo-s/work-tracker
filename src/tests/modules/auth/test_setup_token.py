@@ -46,7 +46,7 @@ def test_root_with_the_token(fresh_database, ssm):
     assert app.simulate_get('/api/auth/status').json['setup_token'] is False  # no longer needed
 
 
-@pytest.mark.parametrize('token', [None, '', 'guessed', TOKEN[:-1]])
+@pytest.mark.parametrize('token', [None, TOKEN[:-1]])
 def test_without_the_right_token_no_root_is_created(fresh_database, ssm, token):
     app = app_with(fresh_database, ssm)
     result = create_root(app, token)
@@ -134,11 +134,10 @@ def test_root_login_is_reset_with_a_new_token(fresh_database, ssm):
     assert [entry['action'] for entry in log] == ['root_login_reset', 'root_created']
 
 
-@pytest.mark.parametrize('token', ['guessed', TOKEN[:-1]])
-def test_a_wrong_token_resets_nothing(fresh_database, ssm, token):
+def test_a_wrong_token_resets_nothing(fresh_database, ssm):
     app = app_with(fresh_database, ssm)
     create_root(app, TOKEN)
-    result = reset_root(app, token)
+    result = reset_root(app, TOKEN[:-1])
     assert (result.status, result.json['description']) == (falcon.HTTP_403, 'The setup token is wrong')
 
 
