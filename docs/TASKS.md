@@ -294,6 +294,21 @@ L.16 (a–i) → 9.1 (a–i).
     longer maps old numbers to keys itself
   - [x] **10.2c** Frontend: one `errorText`, one `button`, `formatDate` from `dates.ts`, the setup's fields from `forms.ts`
 
+## 11. Running and checking the app
+
+- [x] **11.1** The local server (`python -m src`) answers requests side by side: `wsgiref` serves one at a time and
+  drops what waits beyond 5, so a page that loads its ~20 modules at once sometimes stays empty ("Failed to fetch
+  dynamically imported module", 3–4 of 10 dashboard loads; gunicorn with threads: 0 of 10). A threaded server with a
+  longer queue
+- [ ] **11.2** A readable message for an invalid ticket key, e.g. when renaming a ticket: today pydantic's "String should
+  match pattern '^[A-Z][A-Z0-9]*-[1-9]\d*$'"; instead e.g. "A ticket key is letters, a dash and a number, e.g. TNG-4138"
+- [ ] **11.3** End-to-end tests in the browser, with Playwright (`pytest-playwright`, Chromium, headless) rather than
+  Cypress: they run in pytest with the fixtures and personas of the API tests, a browser context per user (team
+  admin, auditor, root and admin with 2FA), native `confirm()` handled, and axe-core for the WCAG checks of 6.5.
+  A few flows, not every page: login with 2FA, setup, week (record a day, add, edit and split an entry), review
+  (rename, split), settings (a table row, delete), admin (one-time password dialog), team view; marked `e2e` so the
+  quick suite stays quick. The run skill's driver stays for screenshots and before/after comparisons
+
 ## Later (to be discussed)
 
 - [ ] **L.6** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g.

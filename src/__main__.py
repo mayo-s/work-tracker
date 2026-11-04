@@ -2,10 +2,19 @@
 
 import os
 import sys
-from wsgiref.simple_server import make_server
+from socketserver import ThreadingMixIn
+from wsgiref.simple_server import WSGIServer, make_server
 
 from src.app import create_app
 from src.utils.stages import StageError
+
+
+class Server(ThreadingMixIn, WSGIServer):
+    """Answers requests side by side: a page loads about 20 modules at once, which a server answering one at a time
+    with the default queue of 5 partly drops (the page then stays empty). Each transaction has its own connection."""
+
+    daemon_threads = True
+    request_queue_size = 64
 
 
 def main() -> None:
@@ -15,7 +24,7 @@ def main() -> None:
         app = create_app()
     except StageError as error:
         sys.exit(f'Work Tracker cannot start: {error}')
-    with make_server(host, port, app) as server:
+    with make_server(host, port, app, server_class=Server) as server:
         print(f'Work Tracker on http://{host}:{port}/ (API docs: /apidoc/swagger)')
         server.serve_forever()
 
