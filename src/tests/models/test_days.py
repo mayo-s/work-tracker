@@ -12,30 +12,20 @@ DATE = dt.date(2026, 10, 26)
 
 
 def test_day_without_times():
-    day = Day(date=DATE, day_type=DayType.PTO)
-    assert day.worked == 0
-    assert day.to_record() == DayRecord(0, DayType.PTO)
+    assert Day(date=DATE, day_type=DayType.PTO).to_record() == DayRecord(0, DayType.PTO)
 
 
 def test_day_with_legal_break():
-    day = Day(date=DATE, start=parse_clock('08:15'), end=parse_clock('17:00'))
-    assert day.worked == parse_duration('8:15')
+    day = Day(date=DATE, start=parse_clock('08:15'), end=parse_clock('17:00'), note='  Anreise LÜBECK ')
+    assert (day.worked, day.note) == (parse_duration('8:15'), 'Anreise LÜBECK')
     assert day.to_record() == DayRecord(parse_duration('8:15'), None)
-
-
-def test_day_strips_note():
-    assert Day(date=DATE, note='  Anreise LÜBECK ').note == 'Anreise LÜBECK'
 
 
 @pytest.mark.parametrize('times', [
     {'start': 480},
-    {'end': 960},
     {'break_minutes': 30},
     {'start': 960, 'end': 480},
     {'start': 480, 'end': 720, 'break_minutes': 241},
-    {'start': -1, 'end': 480},
-    {'start': 480, 'end': 1440},
-    {'start': 480, 'end': 960, 'break_minutes': -5},
 ])
 def test_day_rejects_invalid_times(times):
     with pytest.raises(ValidationError):

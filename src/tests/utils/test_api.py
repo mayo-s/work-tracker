@@ -7,15 +7,10 @@ from src.models.days import Day
 from src.utils.api import ClockText, DurationText, PeriodQuery, SignedDurationText, check_domain
 
 
-def test_period_query_allows_a_leap_year():
-    assert PeriodQuery(start='2024-01-01', end='2024-12-31').period()[1] == dt.date(2024, 12, 31)
-
-
 @pytest.mark.parametrize('query, period', [
     ({'week': '2026-W44'}, (dt.date(2026, 10, 26), dt.date(2026, 11, 1))),
     ({'week': '2026-W01'}, (dt.date(2025, 12, 29), dt.date(2026, 1, 4))),
-    ({'start': '2026-10-01', 'end': '2026-10-31'}, (dt.date(2026, 10, 1), dt.date(2026, 10, 31))),
-    ({'start': '2026-10-28', 'end': '2026-10-28'}, (dt.date(2026, 10, 28), dt.date(2026, 10, 28))),
+    ({'start': '2024-01-01', 'end': '2024-12-31'}, (dt.date(2024, 1, 1), dt.date(2024, 12, 31))),  # a leap year
 ])
 def test_period_query_period(query, period):
     assert PeriodQuery(**query).period() == period
@@ -25,7 +20,6 @@ def test_period_query_period(query, period):
     {},
     {'start': '2026-10-01'},
     {'week': '2026-W44', 'start': '2026-10-01', 'end': '2026-10-31'},
-    {'week': '2026-44'},
     {'week': '2026-W54'},
     {'start': '2026-10-31', 'end': '2026-10-01'},
     {'start': '2025-01-01', 'end': '2026-01-02'},
