@@ -3,6 +3,7 @@ import pytest
 from falcon import testing
 
 from src.app import create_app
+from src.tests.helpers import session
 
 SETUP = {
     'balance_start': '2027-03-01',
@@ -89,10 +90,6 @@ def test_duplicate_services_save_nothing(new):
 ])
 def test_setup_rejects_invalid_input(new, changes):
     assert new.simulate_post('/api/setup', json=SETUP | changes).status_code == 422
-
-
-def session(result):
-    return {'wt_session': result.cookies['wt_session'].value}
 
 
 @pytest.fixture

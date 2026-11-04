@@ -12,6 +12,7 @@ from src.modules.backup.full import read_backup_file
 from src.modules.storage.database import Database
 from src.modules.storage.sqlite import SqliteStore
 from src.modules.storage.users import UserRepository
+from src.tests.helpers import logged_in, login
 from src.tests.users import PASCAL, PASSWORD, RAINER
 
 NOW = dt.datetime(2026, 11, 3, 9, 0)
@@ -23,14 +24,6 @@ def app(database):
     with database.transaction() as conn:
         UserRepository(conn).add(PASCAL.model_copy(update={'role': 'root'}), PASSWORD)
     return testing.TestClient(create_app(database, auth=True, clock=lambda: NOW))
-
-
-def login(app, name):
-    return app.simulate_post('/api/auth/login', json={'login': name, 'password': PASSWORD})
-
-
-def logged_in(app, name):
-    return {'wt_session': login(app, name).cookies['wt_session'].value}
 
 
 def download(app, cookies, passphrase=PASSPHRASE):
@@ -139,8 +132,7 @@ def test_taking_over_the_root_login_logs_root_out(database, tmp_path):
     with fresh.transaction() as conn:
         UserRepository(conn).add(RAINER.model_copy(update={'role': 'root'}), 'rainers own password 1!')
     target = testing.TestClient(create_app(fresh, auth=True, clock=lambda: NOW))
-    rainer = {'wt_session': target.simulate_post('/api/auth/login', json={
-        'login': 'rainer', 'password': 'rainers own password 1!'}).cookies['wt_session'].value}
+    rainer = logged_in(target, 'rainer', 'rainers own password 1!')
     result = restore(target, rainer, content, root_login=True)
     assert result.status == falcon.HTTP_200 and result.cookies['wt_session'].value == ''
     assert target.simulate_get('/api/admin/users', cookies=rainer).status == falcon.HTTP_401

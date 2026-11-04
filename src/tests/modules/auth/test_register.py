@@ -6,6 +6,7 @@ from falcon import testing
 
 from src.app import create_app
 from src.modules.storage.settings import set_registration
+from src.tests.helpers import logged_in, login, session
 
 NOW = dt.datetime(2026, 10, 29, 8, 0)
 PASCAL = {'username': 'pascal', 'email': 'turbo.pascal@example.com', 'first_name': 'Pascal', 'last_name': 'Turbo',
@@ -44,18 +45,17 @@ def test_page_is_open_while_on(app, registration):
 def test_new_user_is_logged_in_and_set_up_first(app, registration):
     result = register(app)
     assert (result.status, result.json['username'], result.json['role']) == (falcon.HTTP_201, 'pascal', 'user')
-    cookies = {'wt_session': result.cookies['wt_session'].value}
+    cookies = session(result)
     week = app.simulate_get('/week', cookies=cookies)
     assert (week.status, week.headers['location']) == (falcon.HTTP_303, '/setup')
     assert app.simulate_get('/api/admin/users', cookies=cookies).status == falcon.HTTP_403
 
 
 def test_a_new_user_can_log_out_and_finds_the_setup_after_the_next_login(app, registration):
-    cookies = {'wt_session': register(app).cookies['wt_session'].value}
+    cookies = session(register(app))
     assert app.simulate_post('/api/auth/logout', cookies=cookies).status == falcon.HTTP_204
     assert app.simulate_get('/setup', cookies=cookies).headers['location'].startswith('/login')
-    login = app.simulate_post('/api/auth/login', json={'login': 'pascal', 'password': PASCAL['password']})
-    cookies = {'wt_session': login.cookies['wt_session'].value}
+    cookies = logged_in(app, 'pascal', PASCAL['password'])
     start = app.simulate_get('/', cookies=cookies)
     assert (start.status, start.headers['location']) == (falcon.HTTP_303, '/setup')
     assert app.simulate_get('/setup', cookies=cookies).status == falcon.HTTP_200
@@ -68,10 +68,9 @@ def test_taken_username(app, registration):
 def test_registrations_and_failed_logins_pause_together(app, registration):
     for number in range(4):
         register(app, username=f'pascal{number}', email=f'pascal{number}@example.com')
-    app.simulate_post('/api/auth/login', json={'login': 'klara', 'password': 'wrong password!'})
+    login(app, 'klara', 'wrong password!')
     assert register(app).status == falcon.HTTP_429
-    assert app.simulate_post('/api/auth/login', json={'login': 'klara', 'password': 'wrong password!'}).status \
-        == falcon.HTTP_429
+    assert login(app, 'klara', 'wrong password!').status == falcon.HTTP_429
 
 
 def test_weak_password(app, registration):

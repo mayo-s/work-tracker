@@ -236,7 +236,9 @@ renaming a guessed ticket, a service in the settings, a one-time password, the t
 for WCAG 2.2 AA in the light and the dark theme. `pipenv run pytest` leaves them out (`-m "not e2e"` in
 `pyproject.toml`).
 
-The DynamoDB tests run on a table simulated by moto, without AWS account or network. Contract tests
+The tests share their people (`src/tests/users.py`: Klara, Hans, Rainer, Pascal) and helpers (`src/tests/helpers.py`:
+logging in through the API, a clock to set, a step in a transaction of its own). The DynamoDB tests run on a table
+simulated by moto, without AWS account or network. Contract tests
 (`test_contract_*.py`) run once per backend, and the isolation tests (`test_isolation.py`) run the whole app on both:
 another user's ids answer 404, team and admin routes 403.
 

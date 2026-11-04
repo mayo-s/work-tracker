@@ -11,15 +11,11 @@ import pytest
 from src.models.settings import Settings
 from src.models.users import TwoFactor
 from src.modules.storage.errors import ConflictError, NotFoundError
+from src.tests.helpers import run
 from src.tests.users import KLARA, PASCAL, RAINER
 
 LOGIN = dt.datetime(2026, 10, 29, 8, 0)
 PASSWORD = 'correct horse battery 9!'
-
-
-def run(storage, action):
-    with storage.transaction() as store:
-        return action(store)
 
 
 def add(storage, person):

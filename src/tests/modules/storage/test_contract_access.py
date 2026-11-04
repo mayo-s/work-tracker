@@ -10,6 +10,7 @@ from src.models.entries import ActivityEntry, TicketEntry
 from src.models.review import FlagReason
 from src.models.teams import Team
 from src.modules.storage.errors import ConflictError, NotFoundError
+from src.tests.helpers import run
 from src.tests.users import HANS, PASSWORD
 
 MONDAY = dt.date(2026, 10, 26)
@@ -70,11 +71,6 @@ ATTEMPTS = {
 
 # What each attempt gives: Klara's records are unknown to Hans (flagging an unknown entry is a conflict)
 EXPECTED = dict.fromkeys(ATTEMPTS, NotFoundError) | {'flag the entry': ConflictError}
-
-
-def run(storage, action):
-    with storage.transaction() as store:
-        return action(store)
 
 
 def outcome(storage, action):

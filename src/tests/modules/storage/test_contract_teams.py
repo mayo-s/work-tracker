@@ -8,22 +8,15 @@ import pytest
 from src.models.catalog import Service
 from src.models.teams import Auditor, ReportView, Team
 from src.modules.storage.errors import ConflictError, NotFoundError
+from src.tests.helpers import Clock
 from src.tests.users import HANS
 
 MONDAY = dt.datetime(2026, 11, 2, 9, 0)
 
 
-class Clock:
-    def __init__(self):
-        self.now = MONDAY
-
-    def __call__(self):
-        return self.now
-
-
 @pytest.fixture
 def clock():
-    return Clock()
+    return Clock(MONDAY)
 
 
 @pytest.fixture

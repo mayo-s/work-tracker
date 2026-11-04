@@ -6,6 +6,7 @@ from falcon import testing
 
 from src.app import create_app
 from src.modules.storage.users import UserRepository
+from src.tests.helpers import logged_in, login
 from src.tests.users import HANS, PASCAL, PASSWORD, USER
 
 NOW = dt.datetime(2026, 10, 29, 8, 0)
@@ -21,14 +22,6 @@ def hans_id(database):
 @pytest.fixture
 def app(database, hans_id):
     return testing.TestClient(create_app(database, auth=True, clock=lambda: NOW))
-
-
-def login(app, name):
-    return app.simulate_post('/api/auth/login', json={'login': name, 'password': PASSWORD})
-
-
-def logged_in(app, name):
-    return {'wt_session': login(app, name).cookies['wt_session'].value}
 
 
 @pytest.fixture

@@ -12,6 +12,7 @@ from src.app import create_app
 from src.modules.auth.setup_token import DEFAULT_PARAMETER, SetupToken
 from src.modules.storage.dynamodb.table import REGION
 from src.modules.storage.errors import USED_TOKEN
+from src.tests.helpers import login, session
 from src.tests.users import PASSWORD
 from src.utils.stages import stage_setup_token
 
@@ -83,7 +84,7 @@ def test_after_root_the_token_is_not_needed(fresh_database, ssm):
     app = app_with(fresh_database, ssm)
     create_root(app, TOKEN)
     ssm.delete_parameter(Name=DEFAULT_PARAMETER)  # deleted after the setup, as the README says
-    assert app.simulate_post('/api/auth/login', json={'login': 'rainer', 'password': PASSWORD}).status == falcon.HTTP_200
+    assert login(app, 'rainer').status == falcon.HTTP_200
 
 
 def test_the_token_is_only_used_on_lambda(monkeypatch, ssm):
@@ -121,16 +122,15 @@ def reset_root(app, token, password='a new root password 8%'):
 
 def test_root_login_is_reset_with_a_new_token(fresh_database, ssm):
     app = app_with(fresh_database, ssm)
-    old_session = {'wt_session': create_root(app, TOKEN).cookies['wt_session'].value}
+    old_session = session(create_root(app, TOKEN))
     new_token = secrets.token_urlsafe(32)
     ssm.put_parameter(Name=DEFAULT_PARAMETER, Value=new_token, Type='SecureString', Overwrite=True)
     assert app.simulate_get('/api/auth/status').json['root_reset'] is True
     result = reset_root(app, new_token)
     assert (result.status, result.json['role']) == (falcon.HTTP_200, 'root')
     assert app.simulate_get('/api/auth/me', cookies=old_session).status == falcon.HTTP_401  # its sessions ended
-    login = {'login': 'rainer', 'password': 'a new root password 8%'}
-    assert app.simulate_post('/api/auth/login', json=login).status == falcon.HTTP_200
-    log = app.simulate_get('/api/admin/audit', cookies={'wt_session': result.cookies['wt_session'].value}).json
+    assert login(app, 'rainer', 'a new root password 8%').status == falcon.HTTP_200
+    log = app.simulate_get('/api/admin/audit', cookies=session(result)).json
     assert [entry['action'] for entry in log] == ['root_login_reset', 'root_created']
 
 

@@ -9,6 +9,7 @@ from falcon import testing
 
 from src.app import create_app
 from src.modules.storage.users import UserRepository
+from src.tests.helpers import logged_in, session
 from src.tests.users import HANS, PASCAL, PASSWORD
 
 NOW = dt.datetime(2026, 11, 2, 9, 0)
@@ -25,11 +26,6 @@ def ids(database):
 @pytest.fixture
 def app(database, ids):
     return testing.TestClient(create_app(database, auth=True, clock=lambda: NOW))
-
-
-def logged_in(app, name):
-    result = app.simulate_post('/api/auth/login', json={'login': name, 'password': PASSWORD})
-    return {'wt_session': result.cookies['wt_session'].value}
 
 
 def log(app, cookies):
@@ -84,7 +80,7 @@ def test_root_creation_is_recorded(fresh_database):
     app = testing.TestClient(create_app(fresh_database, auth=True, clock=lambda: NOW))
     root = app.simulate_post('/api/auth/root', json={'username': 'pascal', 'email': 'turbo.pascal@example.com',
                                                      'first_name': 'Pascal', 'last_name': 'Turbo', 'password': PASSWORD})
-    cookies = {'wt_session': root.cookies['wt_session'].value}
+    cookies = session(root)
     assert log(app, cookies) == [('Pascal Turbo', 'root_created', 'Pascal Turbo', None, '')]
 
 

@@ -10,6 +10,7 @@ from falcon import testing
 from src.app import create_app
 from src.lib.totp import code_at, time_step
 from src.modules.storage.users import UserRepository
+from src.tests.helpers import logged_in, login, session
 from src.tests.users import HANS, PASCAL, PASSWORD
 
 NOW = dt.datetime(2026, 11, 2, 9, 0)
@@ -26,11 +27,6 @@ def ids(database, two_factor_required):
 @pytest.fixture
 def app(database, ids):
     return testing.TestClient(create_app(database, auth=True, clock=lambda: NOW))
-
-
-def logged_in(app, name, code=None):
-    result = app.simulate_post('/api/auth/login', json={'login': name, 'password': PASSWORD, 'code': code})
-    return {'wt_session': result.cookies['wt_session'].value}
 
 
 def switch_on(app, cookies, steps_later=0):
@@ -113,12 +109,11 @@ def test_admins_do_not_reset_admins(app, database, ids):
 
 
 def test_root_has_an_hour_and_no_remembered_browser(app):
-    first = app.simulate_post('/api/auth/login', json={'login': 'pascal', 'password': PASSWORD})
+    first = login(app, 'pascal')
     assert first.cookies['wt_session'].max_age == 3600
-    secret = switch_on(app, {'wt_session': first.cookies['wt_session'].value})
+    secret = switch_on(app, session(first))
     code = code_at(secret, time_step(NOW) + 1)
-    result = app.simulate_post('/api/auth/login', json={'login': 'pascal', 'password': PASSWORD, 'code': code,
-                                                        'remember': True})
+    result = login(app, 'pascal', code=code, remember=True)
     assert result.status == falcon.HTTP_200 and 'wt_browser' not in result.cookies
 
 

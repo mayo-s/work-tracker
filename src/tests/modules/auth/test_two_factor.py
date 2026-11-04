@@ -9,15 +9,12 @@ from falcon import testing
 
 from src.app import create_app
 from src.lib.totp import code_at, time_step
+from src.tests.helpers import Clock, login, session
 from src.tests.users import PASSWORD
 
 
-class Clock:
-    def __init__(self):
-        self.now = dt.datetime(2026, 11, 2, 9, 0)
-
-    def __call__(self):
-        return self.now
+class AuthenticatorClock(Clock):
+    """The clock, and the code an authenticator app shows at its time."""
 
     def code(self, secret, steps_later=0):
         return code_at(secret, time_step(self.now) + steps_later)
@@ -25,7 +22,7 @@ class Clock:
 
 @pytest.fixture
 def clock():
-    return Clock()
+    return AuthenticatorClock(dt.datetime(2026, 11, 2, 9, 0))
 
 
 @pytest.fixture
@@ -33,13 +30,9 @@ def app(database, clock):
     return testing.TestClient(create_app(database, auth=True, clock=clock))
 
 
-def login(app, code=None):
-    return app.simulate_post('/api/auth/login', json={'login': 'klara', 'password': PASSWORD, 'code': code})
-
-
 @pytest.fixture
 def klara(app):
-    return {'wt_session': login(app).cookies['wt_session'].value}
+    return session(login(app, 'klara'))
 
 
 @pytest.fixture
@@ -58,7 +51,7 @@ def test_the_setup_shows_the_secret_as_qr_code_and_text(app, klara):
     assert setup['uri'].startswith('otpauth://totp/Work%20Tracker%3Aklara?secret=' + setup['secret'])
     assert setup['qr'].startswith('data:image/svg+xml')
     assert app.simulate_get('/api/auth/me/two-factor', cookies=klara).json['enabled'] is False  # not confirmed yet
-    assert login(app).status == falcon.HTTP_200  # so the login needs no code yet
+    assert login(app, 'klara').status == falcon.HTTP_200  # so the login needs no code yet
 
 
 def test_a_first_code_confirms_it(app, klara, clock):
@@ -71,32 +64,32 @@ def test_a_first_code_confirms_it(app, klara, clock):
 
 
 def test_the_login_asks_for_the_code(app, secret, clock):
-    result = login(app)
+    result = login(app, 'klara')
     assert (result.status, result.json['code']) == (falcon.HTTP_401, 'two_factor_required')
-    assert login(app, clock.code(secret, 10)).status == falcon.HTTP_401
-    right = login(app, clock.code(secret))
+    assert login(app, 'klara', code=clock.code(secret, 10)).status == falcon.HTTP_401
+    right = login(app, 'klara', code=clock.code(secret))
     assert right.status == falcon.HTTP_200
     assert 'wt_browser' not in right.cookies  # without `remember`, no browser is remembered
 
 
 def test_each_code_works_once(app, secret, clock):
     code = clock.code(secret)
-    login(app, code)
-    result = login(app, code)
+    login(app, 'klara', code=code)
+    result = login(app, 'klara', code=code)
     assert (result.status, result.json['description']) == (
         falcon.HTTP_401, 'The code is wrong; enter the current one of your authenticator app, or a recovery code')
 
 
 def test_wrong_codes_count_as_failed_logins(app, secret, clock):
     for _ in range(5):
-        login(app, clock.code(secret, 10))
-    assert login(app, clock.code(secret)).status == falcon.HTTP_429
+        login(app, 'klara', code=clock.code(secret, 10))
+    assert login(app, 'klara', code=clock.code(secret)).status == falcon.HTTP_429
 
 
 def test_a_missing_code_is_no_failed_login(app, secret, clock):
     for _ in range(5):
-        login(app)
-    assert login(app, clock.code(secret)).status == falcon.HTTP_200
+        login(app, 'klara')
+    assert login(app, 'klara', code=clock.code(secret)).status == falcon.HTTP_200
 
 
 def test_switched_off_with_the_password(app, klara, secret):
@@ -104,7 +97,7 @@ def test_switched_off_with_the_password(app, klara, secret):
     assert wrong.status == falcon.HTTP_403
     assert app.simulate_post('/api/auth/me/two-factor/off', cookies=klara, json={'password': PASSWORD}).status == \
         falcon.HTTP_204
-    assert login(app).status == falcon.HTTP_200
+    assert login(app, 'klara').status == falcon.HTTP_200
 
 
 def test_no_second_setup_while_it_is_on(app, klara, secret):
@@ -120,8 +113,8 @@ def test_recovery_codes_work_once_each_in_place_of_a_code(app, klara, clock):
     setup = app.simulate_post('/api/auth/me/two-factor', cookies=klara).json
     codes = app.simulate_put('/api/auth/me/two-factor', cookies=klara, json={'code': clock.code(setup['secret'])}).json
     first = codes['recovery_codes'][0]
-    assert login(app, first.upper().replace('-', ' ')).status == falcon.HTTP_200  # case, dashes and spaces do not matter
-    assert login(app, first).status == falcon.HTTP_401
+    assert login(app, 'klara', code=first.upper().replace('-', ' ')).status == falcon.HTTP_200  # case, dashes, spaces
+    assert login(app, 'klara', code=first).status == falcon.HTTP_401
     assert app.simulate_get('/api/auth/me/two-factor', cookies=klara).json['recovery_left'] == 9
 
 
@@ -132,34 +125,27 @@ def test_new_recovery_codes_replace_the_old_ones(app, klara, clock):
         falcon.HTTP_403
     new = app.simulate_post('/api/auth/me/two-factor/recovery', cookies=klara, json={'password': PASSWORD})
     assert new.status == falcon.HTTP_201
-    assert login(app, old['recovery_codes'][0]).status == falcon.HTTP_401
-    assert login(app, new.json['recovery_codes'][0]).status == falcon.HTTP_200
-
-
-def login_remembering(app, code):
-    return app.simulate_post('/api/auth/login', json={'login': 'klara', 'password': PASSWORD, 'code': code, 'remember': True})
+    assert login(app, 'klara', code=old['recovery_codes'][0]).status == falcon.HTTP_401
+    assert login(app, 'klara', code=new.json['recovery_codes'][0]).status == falcon.HTTP_200
 
 
 def test_a_remembered_browser_needs_no_code_for_30_days(app, secret, clock):
-    first = login_remembering(app, clock.code(secret))
+    first = login(app, 'klara', code=clock.code(secret), remember=True)
     browser = first.cookies['wt_browser']
     assert (browser.http_only, browser.same_site, browser.max_age) == (True, 'Strict', 30 * 24 * 3600)
-    again = app.simulate_post('/api/auth/login', cookies={'wt_browser': browser.value},
-                              json={'login': 'klara', 'password': PASSWORD})
+    again = login(app, 'klara', cookies={'wt_browser': browser.value})
     assert again.status == falcon.HTTP_200
     clock.now += dt.timedelta(days=31)
-    later = app.simulate_post('/api/auth/login', cookies={'wt_browser': browser.value},
-                              json={'login': 'klara', 'password': PASSWORD})
+    later = login(app, 'klara', cookies={'wt_browser': browser.value})
     assert later.json['code'] == 'two_factor_required'
 
 
 def test_a_new_password_forgets_the_browser(app, klara, secret, clock):
-    browser = login_remembering(app, clock.code(secret)).cookies['wt_browser'].value
-    session = {'wt_session': login(app, clock.code(secret, 1)).cookies['wt_session'].value}
-    app.simulate_put('/api/auth/me/password', cookies=session,
+    browser = login(app, 'klara', code=clock.code(secret), remember=True).cookies['wt_browser'].value
+    cookies = session(login(app, 'klara', code=clock.code(secret, 1)))
+    app.simulate_put('/api/auth/me/password', cookies=cookies,
                      json={'current_password': PASSWORD, 'new_password': 'another long password 2#'})
-    again = app.simulate_post('/api/auth/login', cookies={'wt_browser': browser},
-                              json={'login': 'klara', 'password': 'another long password 2#'})
+    again = login(app, 'klara', 'another long password 2#', cookies={'wt_browser': browser})
     assert again.json['code'] == 'two_factor_required'
 
 
@@ -172,12 +158,12 @@ def test_a_new_app_replaces_the_old_one_once_a_code_of_it_confirms_it(app, klara
     assert started.status == falcon.HTTP_201
     fresh = started.json['secret']
     assert started.json['uri'].startswith('otpauth://totp/Work%20Tracker%3Aklara?secret=' + fresh)
-    assert login(app, clock.code(secret, 1)).status == falcon.HTTP_200  # the old app works until confirmed
+    assert login(app, 'klara', code=clock.code(secret, 1)).status == falcon.HTTP_200  # the old app works until confirmed
     confirmed = app.simulate_put('/api/auth/me/two-factor/new-app', cookies=klara, json={'code': clock.code(fresh)})
     assert confirmed.status == falcon.HTTP_204
     clock.now += dt.timedelta(minutes=1)
-    assert login(app, clock.code(secret)).status == falcon.HTTP_401
-    assert login(app, clock.code(fresh)).status == falcon.HTTP_200
+    assert login(app, 'klara', code=clock.code(secret)).status == falcon.HTTP_401
+    assert login(app, 'klara', code=clock.code(fresh)).status == falcon.HTTP_200
 
 
 def test_a_new_app_needs_the_password_and_a_current_code(app, klara, secret, clock):
@@ -205,7 +191,7 @@ def test_a_wrong_code_of_the_new_app_keeps_the_old_one(app, klara, secret, clock
     fresh = new_app(app, klara, clock.code(secret)).json['secret']
     wrong = app.simulate_put('/api/auth/me/two-factor/new-app', cookies=klara, json={'code': clock.code(fresh, 5)})
     assert wrong.status == falcon.HTTP_403
-    assert login(app, clock.code(secret, 1)).status == falcon.HTTP_200
+    assert login(app, 'klara', code=clock.code(secret, 1)).status == falcon.HTTP_200
 
 
 def test_the_recovery_codes_stay_with_a_new_app(app, klara, clock):
@@ -214,7 +200,7 @@ def test_the_recovery_codes_stay_with_a_new_app(app, klara, clock):
     clock.now += dt.timedelta(minutes=1)
     fresh = new_app(app, klara, clock.code(setup['secret'])).json['secret']
     app.simulate_put('/api/auth/me/two-factor/new-app', cookies=klara, json={'code': clock.code(fresh)})
-    assert login(app, codes['recovery_codes'][0]).status == falcon.HTTP_200
+    assert login(app, 'klara', code=codes['recovery_codes'][0]).status == falcon.HTTP_200
 
 
 def test_confirming_needs_a_new_app_started(app, klara, secret, clock):
