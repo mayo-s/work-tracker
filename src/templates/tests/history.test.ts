@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import type { ChangeView } from '../ts/api.ts';
-import { describeChanges, formatTimestamp, formatValue } from '../ts/history.ts';
+import { describeChanges, formatValue } from '../ts/history.ts';
 
 const ACTIVITIES = new Map([['0190a3c4-0001', 'Tool Management']]);
 
@@ -30,10 +30,6 @@ test('changes show old and new value', () => {
 test('created, imported and deleted show only the value', () => {
   assert.deepEqual(describeChanges(change('imported', { duration: [null, 180] }), ACTIVITIES), ['duration: 3:00']);
   assert.deepEqual(describeChanges(change('deleted', { note: ['GCC', null] }), ACTIVITIES), ['note: GCC']);
-});
-
-test('timestamps', () => {
-  assert.equal(formatTimestamp('2026-10-28T16:47:11'), '28.10.2026 16:47');
 });
 
 test('a split shows old and new on the original, only values on new entries', () => {

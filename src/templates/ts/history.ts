@@ -1,6 +1,7 @@
 // The change history of an entry, as readable lines.
 
 import { api, ApiError, type ChangeView } from './api.ts';
+import { formatTimestamp } from './dates.ts';
 import { el } from './dom.ts';
 
 const FIELD_LABELS: Record<string, string> = {
@@ -48,12 +49,6 @@ export function describeChanges(change: ChangeView, activityNames: Map<string, s
       ? `${label}: ${formatValue(field, shown, activityNames)}`
       : `${label}: ${formatValue(field, before, activityNames)} → ${formatValue(field, after, activityNames)}`;
   });
-}
-
-/** `2026-10-28T16:47:11` → `28.10.2026 16:47` */
-export function formatTimestamp(value: string): string {
-  const [date = '', time = ''] = value.split('T');
-  return `${date.split('-').reverse().join('.')} ${time.slice(0, 5)}`;
 }
 
 function historyItem(change: ChangeView, activityNames: Map<string, string>): HTMLElement {
