@@ -79,8 +79,8 @@ L.16 (a–i) → 9.1 (a–i).
   it); replaces the fixed 8:00 in `src/lib/daytypes.py`; API `/api/work-schedules` (GET, POST, PUT, DELETE) and a
   section on the settings page; the first schedule is 40 h Mon–Fri from the balance start. The importer keeps the
   spreadsheet's own 8:00 rule
-- [x] **6.1c** Holidays in the work schedule: federal state (`holidays` subdivision, e.g. `BE`) and whether 24.12. and
-  31.12. are company half days (0.5 PTO each); replaces the fixed Berlin calendar in `src/lib/public_holidays.py`
+  - [x] **6.1c** Holidays in the work schedule: federal state (`holidays` subdivision, e.g. `BE`) and whether 24.12. and
+    31.12. are company half days (0.5 PTO each); replaces the fixed Berlin calendar in `src/lib/public_holidays.py`
 - [x] **6.2** Days off as a range: "Book days off" button on the week page opens a form (from, to, full-day type: PTO,
   sick, unpaid leave or overtime off; optional note). Only the work days of the schedule get the type; weekends, days off
   of the schedule, public holidays and company half days stay automatic. A preview shows the days and the PTO used before
@@ -296,7 +296,7 @@ L.16 (a–i) → 9.1 (a–i).
 - [ ] **10.3** One place for each rule, second round, in steps:
   - [x] **10.3a** Tests: one login helper (`login`, `session`, `logged_in`), one `Clock`, one `run` for the storage
     contract tests, in place of their copies
-  - [ ] **10.3b** Dashboard and reports share their inputs (settings, schedules, what the team view shows from when)
+  - [x] **10.3b** Dashboard and reports share their inputs (settings, schedules, what the team view shows from when)
   - [ ] **10.3c** Storage: deleting an entry and its history line in `EntryRules`, as creating and changing already
   - [ ] **10.3d** Frontend: one header for the week, month and year pages
 
