@@ -297,7 +297,7 @@ L.16 (a–i) → 9.1 (a–i).
   - [x] **10.3a** Tests: one login helper (`login`, `session`, `logged_in`), one `Clock`, one `run` for the storage
     contract tests, in place of their copies
   - [x] **10.3b** Dashboard and reports share their inputs (settings, schedules, what the team view shows from when)
-  - [ ] **10.3c** Storage: deleting an entry and its history line in `EntryRules`, as creating and changing already
+  - [x] **10.3c** Storage: deleting an entry and its history line in `EntryRules`, as creating and changing already
   - [ ] **10.3d** Frontend: one header for the week, month and year pages
 
 ## 11. Running and checking the app
