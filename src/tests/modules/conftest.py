@@ -9,7 +9,8 @@ from src.models.schedules import Schedule
 from src.modules.storage.database import Database
 from src.modules.storage.dynamodb.storage import DynamoStorage
 from src.modules.storage.sqlite import SqliteStorage
-from src.tests.users import KLARA
+from src.modules.storage.users import UserRepository
+from src.tests.users import HANS, KLARA, PASCAL, PASSWORD
 
 
 @pytest.fixture(params=['sqlite', 'dynamodb'])
@@ -82,3 +83,12 @@ def activity_type_ids(storage, klara_id):
     """Klara's default activity types by name."""
     with storage.transaction() as store:
         return {kind.name: kind.id for kind in store.activity_types(klara_id).all()}
+
+
+@pytest.fixture
+def people(database):
+    """Hans, a user, and Pascal, root, next to Klara in the set-up database: their ids."""
+    with database.transaction() as conn:
+        users = UserRepository(conn)
+        return {'hans': users.add(HANS, PASSWORD).id,
+                'pascal': users.add(PASCAL.model_copy(update={'role': 'root'}), PASSWORD).id}

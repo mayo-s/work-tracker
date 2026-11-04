@@ -19,6 +19,7 @@ from src.lib.durations import format_duration, parse_duration
 from src.lib.stays import Stays
 from src.models.entries import Entry, TicketEntry
 from src.modules.storage.store import Store
+from src.modules.tickets.schemas import TicketServices
 
 Records = dict[dt.date, DayRecord]
 VisibleFrom = Annotated[dt.date | None, Field(description='Team view: the first day shown (the member joined the team)')]
@@ -212,23 +213,22 @@ class CodingWork:
 
     def __init__(self, store: Store, user_id: str) -> None:
         self._entries = store.entries(user_id)
-        self._ticket_services = {ticket.key: ticket.service_id for ticket in store.tickets(user_id).all()}
-        self._services = {service.id: service.short_name for service in store.services(user_id).choices()}
+        self._services = TicketServices(store, user_id)
 
     def by_service(self, start: dt.date, end: dt.date, shows: Shows = None) -> list[ServiceWork]:
         """The coding work from `start` to `end`; with `shows` (team view), only on the days shown."""
         grouped = defaultdict(lambda: defaultdict(list))
         for entry in self._entries.between(start, end):
             if _coding(entry, shows):
-                grouped[self._ticket_services.get(entry.ticket_key)][entry.ticket_key].append(entry)
-        services = sorted(grouped, key=lambda service_id: (service_id is None, (self._services.get(service_id) or '').lower()))
+                grouped[self._services.of_ticket(entry.ticket_key)][entry.ticket_key].append(entry)
+        services = sorted(grouped, key=lambda service: (service is None, (self._services.name(service) or '').lower()))
         return [self._service_work(service_id, grouped[service_id]) for service_id in services]
 
     def _service_work(self, service_id: str | None, tickets: dict[str | None, list[TicketEntry]]) -> ServiceWork:
         work = [_ticket_work(key, tickets[key]) for key in sorted(tickets, key=_ticket_order)]
         return ServiceWork(
             service_id=service_id,
-            service=self._services.get(service_id),
+            service=self._services.name(service_id),
             duration=format_duration(sum(parse_duration(ticket.duration) for ticket in work)),
             tickets=work,
         )

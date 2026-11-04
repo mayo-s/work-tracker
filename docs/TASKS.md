@@ -299,6 +299,10 @@ L.16 (a–i) → 9.1 (a–i).
   - [x] **10.3b** Dashboard and reports share their inputs (settings, schedules, what the team view shows from when)
   - [x] **10.3c** Storage: deleting an entry and its history line in `EntryRules`, as creating and changing already
   - [x] **10.3d** Frontend: one header for the week, month and year pages
+- [x] **10.4** One place for each rule, third round, in steps:
+  - [x] **10.4a** The service of an entry (its ticket's) looked up in one place for the entry views and the coding work
+  - [x] **10.4b** Tests: one fixture for Hans and root Pascal (two-factor login, audit log)
+  - [x] **10.4c** Tests: one fixture for the backup of a database with root and a fresh database with another root
 
 ## 11. Running and checking the app
 

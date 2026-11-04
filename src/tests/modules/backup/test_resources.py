@@ -17,6 +17,7 @@ from src.tests.users import PASCAL, PASSWORD, RAINER
 
 NOW = dt.datetime(2026, 11, 3, 9, 0)
 PASSPHRASE = 'a long backup passphrase'
+RAINERS_PASSWORD = 'rainers own password 1!'
 
 
 @pytest.fixture
@@ -61,6 +62,16 @@ def backup(app):
     return download(app, logged_in(app, 'pascal')).content
 
 
+@pytest.fixture
+def other_root(tmp_path):
+    """The app on a fresh database whose root is Rainer, with a password of his own."""
+    fresh = Database(tmp_path / 'fresh.db')
+    fresh.migrate()
+    with fresh.transaction() as conn:
+        UserRepository(conn).add(RAINER.model_copy(update={'role': 'root'}), RAINERS_PASSWORD)
+    return testing.TestClient(create_app(fresh, auth=True, clock=lambda: NOW))
+
+
 def test_restoring_over_other_users_needs_the_purge_confirmed(app, backup):
     root = logged_in(app, 'pascal')
     result = restore(app, root, backup)
@@ -80,18 +91,10 @@ def test_other_sessions_end_and_root_stays_logged_in(app, backup):
     assert login(app, 'klara').status == falcon.HTTP_200  # with the password of the backup
 
 
-def test_with_nobody_but_root_at_once(database, tmp_path):
-    fresh = Database(tmp_path / 'fresh.db')
-    fresh.migrate()
-    with fresh.transaction() as conn:
-        UserRepository(conn).add(RAINER.model_copy(update={'role': 'root'}), PASSWORD)
-    with database.transaction() as conn:
-        UserRepository(conn).add(PASCAL.model_copy(update={'role': 'root'}), PASSWORD)
-    source = testing.TestClient(create_app(database, auth=True, clock=lambda: NOW))
-    content = download(source, logged_in(source, 'pascal')).content
-    target = testing.TestClient(create_app(fresh, auth=True, clock=lambda: NOW))
-    assert restore(target, logged_in(target, 'rainer'), content).status == falcon.HTTP_200
-    assert login(target, 'klara').status == falcon.HTTP_200
+def test_with_nobody_but_root_at_once(backup, other_root):
+    rainer = logged_in(other_root, 'rainer', RAINERS_PASSWORD)
+    assert restore(other_root, rainer, backup).status == falcon.HTTP_200
+    assert login(other_root, 'klara').status == falcon.HTTP_200
 
 
 @pytest.mark.parametrize('content, passphrase, message', [
@@ -122,19 +125,10 @@ def test_until_an_unfinished_restore_is_done_only_root_uses_the_app(app, databas
     assert app.simulate_get('/api/admin/settings', cookies=root).json['restore_unfinished'] is True
 
 
-def test_taking_over_the_root_login_logs_root_out(database, tmp_path):
-    with database.transaction() as conn:
-        UserRepository(conn).add(PASCAL.model_copy(update={'role': 'root'}), PASSWORD)
-    source = testing.TestClient(create_app(database, auth=True, clock=lambda: NOW))
-    content = download(source, logged_in(source, 'pascal')).content
-    fresh = Database(tmp_path / 'fresh.db')
-    fresh.migrate()
-    with fresh.transaction() as conn:
-        UserRepository(conn).add(RAINER.model_copy(update={'role': 'root'}), 'rainers own password 1!')
-    target = testing.TestClient(create_app(fresh, auth=True, clock=lambda: NOW))
-    rainer = logged_in(target, 'rainer', 'rainers own password 1!')
-    result = restore(target, rainer, content, root_login=True)
+def test_taking_over_the_root_login_logs_root_out(backup, other_root):
+    rainer = logged_in(other_root, 'rainer', RAINERS_PASSWORD)
+    result = restore(other_root, rainer, backup, root_login=True)
     assert result.status == falcon.HTTP_200 and result.cookies['wt_session'].value == ''
-    assert target.simulate_get('/api/admin/users', cookies=rainer).status == falcon.HTTP_401
-    pascal = logged_in(target, 'pascal')
-    assert target.simulate_get('/api/admin/audit', cookies=pascal).json[0]['detail'] == 'root login'
+    assert other_root.simulate_get('/api/admin/users', cookies=rainer).status == falcon.HTTP_401
+    pascal = logged_in(other_root, 'pascal')
+    assert other_root.simulate_get('/api/admin/audit', cookies=pascal).json[0]['detail'] == 'root login'
