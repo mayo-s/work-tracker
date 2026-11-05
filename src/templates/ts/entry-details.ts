@@ -3,7 +3,7 @@
 import { api, type DayView, type EntryView } from './api.ts';
 import { formatDay, weekLink } from './dates.ts';
 import { ask } from './dialog.ts';
-import { el } from './dom.ts';
+import { button, el } from './dom.ts';
 import { historyPanel } from './history.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 
@@ -47,4 +47,9 @@ export async function showEntryDetails(title: string, entries: EntryView[]): Pro
   const byDate = new Map(days.map((day) => [day.date, day]));
   const names = new Map(activityTypes.map((type) => [type.id ?? '', type.name]));
   await ask(title, entries.map((entry) => entryBlock(entry, byDate.get(entry.date), names)), [], 'Close');
+}
+
+/** "Details": opens the whole of the entries in a dialog; `fail` shows what went wrong (review, search). */
+export function detailsButton(title: string, entries: EntryView[], fail: (error: unknown) => void): HTMLButtonElement {
+  return button('Details', () => void showEntryDetails(title, entries).catch(fail), { 'aria-label': `Details of ${title}` });
 }

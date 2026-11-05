@@ -24,6 +24,7 @@ const PAGES: Record<string, () => Promise<void>> = {
   month: async () => (await import('./month.ts')).renderMonthPage(document),
   year: async () => (await import('./year.ts')).renderYearPage(document),
   review: async () => (await import('./review.ts')).renderReviewPage(document),
+  search: async () => (await import('./search.ts')).renderSearchPage(document),
   settings: async () => (await import('./settings.ts')).renderSettingsPage(document),
   setup: async () => (await import('./setup.ts')).renderSetupPage(document),
   password: async () => (await import('./password.ts')).renderPasswordPage(document),
@@ -41,11 +42,10 @@ async function showReviewCount(): Promise<void> {
   showReviewBadge(document, await api.reviewCounts());
 }
 
-/** The right end of the header: the user's name (`showUser`), the dark mode switch, then "Log out". Both load side
- * by side, so the switch goes before "Log out" if that is there already, and the name goes first. */
+/** The right end of the header: the search field (in the frame), the user's name (`showUser`), the dark mode switch,
+ * then "Log out". Both load side by side, so the switch goes before "Log out" if that is there already. */
 function headerEnd(header: Element): Element {
-  const end = Object.assign(document.createElement('div'), { className: 'app-user' });
-  header.append(end);
+  const end = header.querySelector('.app-user')!;
   import('./theme.ts').then(({ themeToggle }) => {
     const toggle = themeToggle(document);
     const logout = end.querySelector('button');
@@ -71,13 +71,19 @@ async function showUser(user: Element, nav: Element | null): Promise<void> {
     textContent: 'Log out' });
   logout.addEventListener('click', () => void api.logout().then(() => window.location.assign('/login')));
   const name = Object.assign(document.createElement('span'), { className: 'muted', textContent: status.user.first_name });
-  user.prepend(name);
+  const search = user.querySelector('.nav-search');
+  if (search) {
+    search.after(name);
+  } else {
+    user.prepend(name);
+  }
   user.append(logout);
   if (!nav) {
     return;
   }
   if (status.user.role === 'root') {  // root tracks no work
     nav.querySelectorAll(TRACKING_LINKS).forEach((link) => link.remove());
+    user.querySelector('.nav-search')?.remove();
   }
   if (status.team?.team_role === 'team_admin') {
     nav.append(Object.assign(document.createElement('a'), { href: '/team', textContent: 'Team' }));

@@ -3,7 +3,7 @@
 Simple tracker for daily tasks: working hours, overtime balance, PTO and task entries for the
 monthly work report. A Falcon REST API with a small browser frontend, backed by SQLite, run locally.
 
-The project was partially implemented using claude.ai.
+The project was, despite a manual ramp up phase, mostly implemented using claude.ai.
 
 > Calculation rules, storage, spreadsheet import, REST API and frontend are done; later ideas are listed in
 > `docs/TASKS.md`.
@@ -87,6 +87,9 @@ all at once.
 - `/month`: month and work report (coding and other ticket work by service and ticket, activities by type with their
   notes). `/year`: totals, PTO account, balance by month, work by service and activity type. Both show the hours in
   entries next to the hours worked ("Entries 152:30 of 160:00 worked").
+- `/search` (`?text=…&start=…&end=…`): finds entries by ticket key or words of their description or note, service or
+  activity type in a period (default this year) and sums them up by ticket or activity type and by month; each entry
+  links to its week and opens "Details". Every other page has a search field in the navigation that opens it.
   Week, month and year have a date field: "Go" opens the week, month or year of that date.
 - `/review`: what needs attention after an import (guessed tickets, entries without duration or ticket, flagged days,
   tickets without service), each entry with its description and spreadsheet line; "Details" shows the whole entry
@@ -310,6 +313,7 @@ Reports count worked time, target and overtime up to today (today included); pla
 | `/api/reports/weeks/{week}`                                                        | GET                    | Week (`2026-W44`): worked, target, overtime up to today, balance before and after (a future week: today's), days off                                                                                                                                                                                                                                      |
 | `/api/reports/months/{month}`                                                      | GET                    | Month (`2026-10`): totals, hours in entries, days off, PTO days and the work report: coding and other ticket work by service and ticket (with descriptions), activities by type (with notes)                                                                                                                                                              |
 | `/api/reports/years/{year}`                                                        | GET                    | Year: totals, hours in entries, per month, days worked and average, days off, PTO account, coding and other ticket work by service, activities by type                                                                                                                                                                                                    |
+| `/api/search`                                                                      | GET                    | Find entries of `start`…`end` (default: this year) whose ticket key starts with, or whose description or note contains, every word of `text`; optional `service_id` (`none`: without service) or `activity_type_id`. Hours and number, by ticket or activity type and by month, and the entries                                                           |
 | `…?member=<id>` on `/api/dashboard`, `/api/reports/…`, `/api/days`, `/api/entries` | GET                    | Team view: a member of the team admin's team, read-only and from the day they joined (403 for others); reports are logged for the member                                                                                                                                                                                                                  |
 | `/api/auth/status`                                                                 | GET                    | Whether the login is on, whether users and root exist, the logged-in user, whether registration is on, and whether creating root needs the setup token (open)                                                                                                                                                                                             |
 | `/api/auth/login`                                                                  | POST                   | Log in with `login` (username or e-mail address) and `password`; sets the session cookie; 401, 403 if deactivated, or 429 after 5 failed logins or registrations within a minute (open); with two-factor login also `code` (401 with `code: two_factor_required` without one), and `remember` for 30 days in this browser (cookie `wt_browser`; not root) |

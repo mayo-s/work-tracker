@@ -203,10 +203,11 @@ main:focus {
 
 .app-header {
   display: flex;
+  flex-wrap: wrap;  /* the search field and the user go to a second row when the links take the width */
   align-items: center;
-  gap: var(--space-6);
-  height: var(--header-height);
-  padding: 0 var(--space-5);
+  gap: var(--space-2) var(--space-6);
+  min-height: var(--header-height);
+  padding: var(--space-2) var(--space-5);
   border-bottom: var(--border);
   background: var(--color-background);
 }
@@ -921,14 +922,16 @@ button.button-danger {
 
 /* Year report (/year) */
 
-.year-cards {
+.year-cards,
+.search-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
 
-.year-cards .card + .card {
+.year-cards .card + .card,
+.search-cards .card + .card {
   margin-top: 0;
 }
 
@@ -951,6 +954,28 @@ button.button-danger {
 
 .year-work {
   margin-top: var(--space-6);
+}
+
+/* Search page (/search) */
+
+.search-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+  align-items: end;
+  gap: 0 var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.search-form .field-text {
+  grid-column: 1 / -1;  /* a row of its own */
+}
+
+.search-actions {
+  margin-bottom: var(--space-4);
+}
+
+.search-cards h2 {
+  margin-top: 0;
 }
 
 /* Editable tables (settings page) */
@@ -1421,12 +1446,18 @@ button.button-danger {
   display: block;
 }
 
-body:has(main[data-page='login']) .app-nav,
-body:has(main[data-page='register']) .app-nav,
-body:has(main[data-page='setup']) .app-nav,
-body:has(main[data-page='password']) .app-nav,
-body:has(main[data-page='two-factor']) .app-nav {
+body:has(main[data-page='login']) :is(.app-nav, .nav-search),
+body:has(main[data-page='register']) :is(.app-nav, .nav-search),
+body:has(main[data-page='setup']) :is(.app-nav, .nav-search),
+body:has(main[data-page='password']) :is(.app-nav, .nav-search),
+body:has(main[data-page='two-factor']) :is(.app-nav, .nav-search),
+body:has(main[data-page='search']) .nav-search {  /* the search page has its own form */
   display: none;
+}
+
+.nav-search input {
+  width: 14rem;
+  padding: var(--space-1) var(--space-3);
 }
 
 .one-time-password {
@@ -1533,6 +1564,16 @@ body:has(main[data-page='two-factor']) .app-nav {
   .app-nav {
     flex-wrap: wrap;
     gap: var(--space-1);
+  }
+
+  .app-user {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .nav-search,
+  .nav-search input {
+    width: 100%;
   }
 
   #app {

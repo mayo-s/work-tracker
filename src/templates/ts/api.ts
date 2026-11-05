@@ -28,6 +28,7 @@ export type PeriodTotals = Schemas['PeriodTotals'];
 export type WeekReport = Schemas['WeekReport'];
 export type MonthReport = Schemas['MonthReport'];
 export type YearReport = Schemas['YearReport'];
+export type SearchResult = Schemas['SearchResult'];
 export type DashboardView = Schemas['DashboardView'];
 export type AuthStatus = Schemas['AuthStatus'];
 export type UserView = Schemas['UserView'];
@@ -223,6 +224,7 @@ export const api = {
   yearReport: (year: number, member: string | null = null) =>
     request<YearReport>('GET', `/api/reports/years/${segment(year)}${memberQuery(member)}`),
   dashboard: (member: string | null = null) => request<DashboardView>('GET', `/api/dashboard${memberQuery(member)}`),
+  search: (query: string) => request<SearchResult>('GET', `/api/search?${query}`),
 
   authStatus: () => request<AuthStatus>('GET', '/api/auth/status'),
   login: (login: string, password: string, code: string | null = null, remember = false) =>

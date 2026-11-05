@@ -1,0 +1,31 @@
+    <div class="week-header">
+      <div>
+        <h1>Search</h1>
+        <p class="muted">Find entries and sum them up: all words must match the start of the ticket key or a part of the
+          description or note (e.g. <code>ENGINE-59 europace</code>).</p>
+      </div>
+    </div>
+    <form class="search-form card card-surface" id="search-form" role="search">
+      <div class="field field-text">
+        <label for="search-text">Words or ticket key</label>
+        <input type="search" id="search-text" name="text" maxlength="200">
+      </div>
+      <div class="field">
+        <label for="search-scope">Service or activity type</label>
+        <select id="search-scope" name="scope">
+          <option value="">All entries</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="search-start">From</label>
+        <input type="date" id="search-start" name="start" min="2000-01-01" max="2100-12-31" required>
+      </div>
+      <div class="field">
+        <label for="search-end">To</label>
+        <input type="date" id="search-end" name="end" min="2000-01-01" max="2100-12-31" required>
+      </div>
+      <div class="search-actions">
+        <button type="submit" class="primary">Search</button>
+      </div>
+    </form>
+    <section id="search" aria-live="polite"></section>

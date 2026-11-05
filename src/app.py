@@ -28,6 +28,7 @@ from src.modules.pto.resources import PtoYearCollection, PtoYearItem
 from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
 from src.modules.review.resources import Review, ReviewCountsResource, ReviewFlagItem
 from src.modules.schedules.resources import ScheduleCollection, ScheduleItem
+from src.modules.search.resources import SearchResource
 from src.modules.setup.resources import SetupImportResource, SetupResource
 from src.modules.settings.resources import SettingsResource, ThemeResource
 from src.modules.storage.database import Database
@@ -70,6 +71,7 @@ def create_app(
     app.add_route('/month', Page('month', 'Month'))
     app.add_route('/year', Page('year', 'Year'))
     app.add_route('/review', Page('review', 'Review'))
+    app.add_route('/search', Page('search', 'Search'))
     app.add_route('/lists', Redirect('/settings#services'))
     app.add_route('/settings', Page('settings', 'Settings'))
     app.add_route('/setup', Page('setup', 'Setup'))
@@ -97,6 +99,7 @@ def create_app(
     app.add_route('/api/reports/weeks/{week}', WeekReportResource(storage, today, clock))
     app.add_route('/api/reports/months/{month:dt("%Y-%m")}', MonthReportResource(storage, today, clock))
     app.add_route('/api/reports/years/{year:int(4)}', YearReportResource(storage, today, clock))
+    app.add_route('/api/search', SearchResource(storage, today))
     app.add_route('/api/settings', SettingsResource(storage))
     app.add_route('/api/theme', ThemeResource(storage))
     app.add_route('/api/export', ExportResource(storage, clock))

@@ -285,6 +285,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find entries of a period (default: this year) by text, service or activity type: their hours and number, by ticket or activity type and by month, and the entries themselves. */
+        get: operations["get__api_search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings": {
         parameters: {
             query?: never;
@@ -2543,6 +2560,74 @@ export interface components {
              */
             daily_target: string;
         };
+        /** SearchQuery */
+        SearchQuery: {
+            /**
+             * Text
+             * @description Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note
+             * @default
+             */
+            text?: string;
+            /**
+             * Service Id
+             * @description Only ticket entries of this service; `none`: tickets without service
+             * @default null
+             */
+            service_id?: string | null;
+            /**
+             * Activity Type Id
+             * @description Only activity entries of this type
+             * @default null
+             */
+            activity_type_id?: string | null;
+            /**
+             * Start
+             * @description First day; default: 1 January of this year
+             * @default null
+             */
+            start?: string | null;
+            /**
+             * End
+             * @description Last day; default: 31 December of this year
+             * @default null
+             */
+            end?: string | null;
+        };
+        /** SearchResult */
+        SearchResult: {
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /**
+             * Duration
+             * @description The hours of all entries found
+             */
+            duration: string;
+            /** Count */
+            count: number;
+            /**
+             * Groups
+             * @description By ticket or activity type, the most hours first
+             */
+            groups: components["schemas"]["SearchGroup"][];
+            /**
+             * Months
+             * @description By month, the months with entries found
+             */
+            months: components["schemas"]["SearchMonth"][];
+            /**
+             * Entries
+             * @description The entries found, newest first
+             */
+            entries: components["schemas"]["EntryView"][];
+        };
         /** SetupStatus */
         SetupStatus: {
             /**
@@ -3266,6 +3351,35 @@ export interface components {
             ticket_key: string | null;
             /** Duration */
             duration: string;
+        };
+        /** SearchGroup */
+        SearchGroup: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "ticket" | "activity";
+            /**
+             * Key
+             * @description Ticket key or activity type; null for ticket entries without ticket
+             */
+            key: string | null;
+            /** Duration */
+            duration: string;
+            /** Entries */
+            entries: number;
+        };
+        /** SearchMonth */
+        SearchMonth: {
+            /**
+             * Month
+             * @example 2026-10
+             */
+            month: string;
+            /** Duration */
+            duration: string;
+            /** Entries */
+            entries: number;
         };
         /**
          * ScheduleTerms
@@ -4601,6 +4715,46 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_search: {
+        parameters: {
+            query?: {
+                /** @description Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note */
+                text?: string;
+                /** @description Only ticket entries of this service; `none`: tickets without service */
+                service_id?: string | null;
+                /** @description Only activity entries of this type */
+                activity_type_id?: string | null;
+                /** @description First day; default: 1 January of this year */
+                start?: string | null;
+                /** @description Last day; default: 31 December of this year */
+                end?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResult"];
+                };
             };
             /** @description Unprocessable Content */
             422: {

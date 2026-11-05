@@ -128,7 +128,7 @@ def test_the_dark_mode_switch_saves_the_theme(logged_in):
     page.emulate_media(color_scheme='light')
     page.goto('/week')
     switch = page.locator('.app-user button[aria-label="Dark mode"]')
-    expect(page.locator('.app-user > *')).to_have_text(['Hans', '', 'Log out'])
+    expect(page.locator('.app-user > *')).to_have_text(['', 'Hans', '', 'Log out'])  # the search field first
     expect(switch).to_have_attribute('aria-pressed', 'false')
     switch.click()
     expect(page.locator('html')).to_have_attribute('data-theme', 'dark')
@@ -139,3 +139,20 @@ def test_the_dark_mode_switch_saves_the_theme(logged_in):
     expect(page.locator('html')).to_have_attribute('data-theme', 'light')
     expect(page.locator('input[name="theme"][value="light"]')).to_be_checked()
     page.request.put('/api/theme', data={'theme': 'system'})  # the other tests show the browser's theme
+
+
+def test_search_from_the_navigation_and_narrow_the_period(logged_in):
+    page = logged_in('hans')
+    page.goto('/week')
+    page.fill('.nav-search input', 'tng-43')
+    page.press('.nav-search input', 'Enter')
+    expect(page).to_have_url(re.compile(r'/search\?text=tng-43$'))
+    expect(page.locator('.nav-search')).to_be_hidden()  # the page has its own form
+    expect(page.locator('#search-text')).to_have_value('tng-43')
+    page.fill('#search-start', '2026-10-01')
+    page.fill('#search-end', '2026-10-31')
+    page.click('#search-form button:has-text("Search")')
+    expect(page).to_have_url(re.compile(r'/search\?text=tng-43&start=2026-10-01&end=2026-10-31$'))
+    expect(page.locator('.week-summary')).to_contain_text('Found 6:00 in 1 entry')
+    page.click('button[aria-label="Details of TNG-4347"]')
+    expect(page.locator('dialog .entry-details h3')).to_have_text('Mon 26.10.2026 · no times')

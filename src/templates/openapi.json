@@ -22,6 +22,9 @@
       "name": "Reports"
     },
     {
+      "name": "Search"
+    },
+    {
       "name": "Settings"
     },
     {
@@ -1283,6 +1286,131 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/YearReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/search": {
+      "get": {
+        "summary": "Find entries of a period (default: this year) by text, service or activity type: their hours and number, by ticket or activity type and by month, and the entries themselves.",
+        "operationId": "get__api_search",
+        "description": "",
+        "tags": [
+          "Search"
+        ],
+        "parameters": [
+          {
+            "name": "text",
+            "in": "query",
+            "schema": {
+              "default": "",
+              "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note",
+              "maxLength": 200,
+              "title": "Text",
+              "type": "string"
+            },
+            "required": false,
+            "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note"
+          },
+          {
+            "name": "service_id",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Only ticket entries of this service; `none`: tickets without service",
+              "title": "Service Id"
+            },
+            "required": false,
+            "description": "Only ticket entries of this service; `none`: tickets without service"
+          },
+          {
+            "name": "activity_type_id",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Only activity entries of this type",
+              "title": "Activity Type Id"
+            },
+            "required": false,
+            "description": "Only activity entries of this type"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "First day; default: 1 January of this year",
+              "title": "Start"
+            },
+            "required": false,
+            "description": "First day; default: 1 January of this year"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Last day; default: 31 December of this year",
+              "title": "End"
+            },
+            "required": false,
+            "description": "Last day; default: 31 December of this year"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResult"
                 }
               }
             }
@@ -7250,6 +7378,131 @@
         "title": "ScheduleView",
         "type": "object"
       },
+      "SearchQuery": {
+        "properties": {
+          "text": {
+            "default": "",
+            "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note",
+            "maxLength": 200,
+            "title": "Text",
+            "type": "string"
+          },
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Only ticket entries of this service; `none`: tickets without service",
+            "title": "Service Id"
+          },
+          "activity_type_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Only activity entries of this type",
+            "title": "Activity Type Id"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "First day; default: 1 January of this year",
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Last day; default: 31 December of this year",
+            "title": "End"
+          }
+        },
+        "title": "SearchQuery",
+        "type": "object"
+      },
+      "SearchResult": {
+        "properties": {
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "duration": {
+            "description": "The hours of all entries found",
+            "title": "Duration",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "groups": {
+            "description": "By ticket or activity type, the most hours first",
+            "items": {
+              "$ref": "#/components/schemas/SearchGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "months": {
+            "description": "By month, the months with entries found",
+            "items": {
+              "$ref": "#/components/schemas/SearchMonth"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "entries": {
+            "description": "The entries found, newest first",
+            "items": {
+              "$ref": "#/components/schemas/EntryView"
+            },
+            "title": "Entries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "duration",
+          "count",
+          "groups",
+          "months",
+          "entries"
+        ],
+        "title": "SearchResult",
+        "type": "object"
+      },
       "SetupStatus": {
         "properties": {
           "done": {
@@ -8846,6 +9099,72 @@
           "duration"
         ],
         "title": "SplitPart",
+        "type": "object"
+      },
+      "SearchGroup": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "ticket",
+              "activity"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ticket key or activity type; null for ticket entries without ticket",
+            "title": "Key"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "string"
+          },
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "key",
+          "duration",
+          "entries"
+        ],
+        "title": "SearchGroup",
+        "type": "object"
+      },
+      "SearchMonth": {
+        "properties": {
+          "month": {
+            "examples": [
+              "2026-10"
+            ],
+            "title": "Month",
+            "type": "string"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "string"
+          },
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month",
+          "duration",
+          "entries"
+        ],
+        "title": "SearchMonth",
         "type": "object"
       },
       "ScheduleTerms": {
