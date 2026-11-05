@@ -13,7 +13,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
-from src.lib.balances import DayRecord, overtime_balance, pto_accounts, summarize_period
+from src.lib.balances import DayLedger, DayRecord, pto_accounts
 from src.lib.daytypes import DaySummary, DayType
 from src.lib.durations import format_duration, parse_duration
 from src.lib.stays import Stays
@@ -111,22 +111,24 @@ class Reports:
         self._first = max(self._settings.balance_start, self._visible_from or dt.date.min)
         self._pto_terms = store.pto_years(user_id).terms()
         self._schedules = store.schedules(user_id).schedules()
+        self._records: Records = {}
+        self._loaded: DayLedger | None = None
 
     def week(self, week: str, monday: dt.date) -> WeekReport:
         sunday = monday + dt.timedelta(days=6)
-        records = self._records(sunday)
-        totals, days_off = self._totals(records, monday, sunday), self._days_off(records, monday, sunday)
+        ledger = self._ledger_until(sunday)
+        totals, days_off = self._totals(ledger, monday, sunday), self._days_off(ledger, monday, sunday)
         return WeekReport(week=week, totals=totals, days_off=days_off, visible_from=self._visible_from)
 
     def month(self, year: int, month: int) -> MonthReport:
         start, end = _month_bounds(year, month)
-        records = self._records(end)
+        ledger = self._ledger_until(end)
         coding = CodingWork(self._store, self._user).by_service(max(start, self._first), end, self._shows)
         return MonthReport(
             month=f'{year}-{month:02d}',
-            totals=self._totals(records, start, end),
-            days_off=self._days_off(records, start, end),
-            pto_days=float(sum(day.pto_days for day in self._period_days(records, start, end))),
+            totals=self._totals(ledger, start, end),
+            days_off=self._days_off(ledger, start, end),
+            pto_days=float(sum(day.pto_days for day in self._period_days(ledger, start, end))),
             coding=coding,
             coding_total=format_duration(sum(parse_duration(service.duration) for service in coding)),
             visible_from=self._visible_from,
@@ -134,50 +136,53 @@ class Reports:
 
     def year(self, year: int) -> YearReport:
         start, end = dt.date(year, 1, 1), dt.date(year, 12, 31)
-        records = self._records(end)
-        counted = self._counted_days(records, start, end)
+        ledger = self._ledger_until(end)
+        counted = self._counted_days(ledger, start, end)
         worked_days = [day for day in counted if day.worked]
         return YearReport(
             year=year,
-            totals=self._totals(records, start, end),
-            months=[self._month_totals(records, year, month) for month in range(1, 13)],
+            totals=self._totals(ledger, start, end),
+            months=[self._month_totals(ledger, year, month) for month in range(1, 13)],
             days_worked=len(worked_days),
             average_per_day_worked=format_duration(sum(day.worked for day in worked_days) // max(len(worked_days), 1)),
-            days_off=self._days_off(records, start, end),
-            pto=self._pto(records, year),
+            days_off=self._days_off(ledger, start, end),
+            pto=self._pto(year),
             visible_from=self._visible_from,
         )
 
-    def _records(self, end: dt.date) -> Records:
-        return self._store.days(self._user).records(self._settings.balance_start, end)
+    def _ledger_until(self, end: dt.date) -> DayLedger:
+        """The days from the balance start to `end` at least, loaded and summarized once per report object (the
+        dashboard asks for several periods)."""
+        if self._loaded is None or self._loaded.end < end:
+            start = self._settings.balance_start
+            self._records = self._store.days(self._user).records(start, end) if start <= end else {}
+            self._loaded = DayLedger(self._records, start, end, self._today, self._settings.opening_balance,
+                                     self._schedules)
+        return self._loaded
 
-    def _period_days(self, records: Records, start: dt.date, end: dt.date) -> list[DaySummary]:
+    def _period_days(self, ledger: DayLedger, start: dt.date, end: dt.date) -> list[DaySummary]:
         """Days of the period from the balance start on (days before it are ignored; in the team view also those not
         shown)."""
-        first = max(start, self._first)
-        return self._only_shown(summarize_period(records, first, end, self._schedules) if first <= end else [])
+        return self._only_shown(ledger.days(max(start, self._first), end))
 
     def _only_shown(self, days: list[DaySummary]) -> list[DaySummary]:
         """In the team view only the days shown, all others otherwise."""
         return [day for day in days if self._shows(day.date)] if self._shows else days
 
-    def _counted_days(self, records: Records, start: dt.date, end: dt.date) -> list[DaySummary]:
+    def _counted_days(self, ledger: DayLedger, start: dt.date, end: dt.date) -> list[DaySummary]:
         """Days of the period from the balance start up to today."""
-        return self._period_days(records, start, min(end, self._today))
+        return self._period_days(ledger, start, min(end, self._today))
 
-    def _days_off(self, records: Records, start: dt.date, end: dt.date) -> dict[DayType, int]:
+    def _days_off(self, ledger: DayLedger, start: dt.date, end: dt.date) -> dict[DayType, int]:
         """Weekdays by day type other than work, including planned ones."""
-        days = self._period_days(records, start, end)
+        days = self._period_days(ledger, start, end)
         counts = Counter(day.day_type for day in days if day.work_day and day.day_type is not DayType.WORK)
         return dict(sorted(counts.items()))
 
-    def _balance(self, records: Records, until: dt.date) -> int:
-        return overtime_balance(records, self._settings.balance_start, until, self._settings.opening_balance, self._schedules)
-
-    def _totals(self, records: Records, start: dt.date, end: dt.date) -> PeriodTotals:
-        days = self._counted_days(records, start, end)
+    def _totals(self, ledger: DayLedger, start: dt.date, end: dt.date) -> PeriodTotals:
+        days = self._counted_days(ledger, start, end)
         worked, target = sum(day.worked for day in days), sum(day.target for day in days)
-        balance_in = self._balance(records, start - dt.timedelta(days=1))
+        balance_in = ledger.balance(start - dt.timedelta(days=1))
         return PeriodTotals(
             start=start,
             end=end,
@@ -186,18 +191,18 @@ class Reports:
             target=format_duration(target),
             overtime=format_duration(worked - target),
             balance_in=format_duration(balance_in),
-            balance_out=format_duration(self._balance(records, days[-1].date) if days else balance_in),
+            balance_out=format_duration(ledger.balance(days[-1].date) if days else balance_in),
         )
 
-    def _month_totals(self, records: Records, year: int, month: int) -> MonthTotals:
-        totals = self._totals(records, *_month_bounds(year, month))
+    def _month_totals(self, ledger: DayLedger, year: int, month: int) -> MonthTotals:
+        totals = self._totals(ledger, *_month_bounds(year, month))
         return MonthTotals(month=f'{year}-{month:02d}', worked=totals.worked, target=totals.target, overtime=totals.overtime)
 
-    def _pto(self, records: Records, year: int) -> PtoView | None:
+    def _pto(self, year: int) -> PtoView | None:
         if not self._settings.balance_start.year <= year <= self._today.year:
             return None
         until = min(dt.date(year, 12, 31), self._today)
-        accounts = pto_accounts(records, self._pto_terms, self._settings.balance_start, until, self._schedules)
+        accounts = pto_accounts(self._records, self._pto_terms, self._settings.balance_start, until, self._schedules)
         account = next((account for account in accounts if account.year == year), None)
         if account is None:
             return None

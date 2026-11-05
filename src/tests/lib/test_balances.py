@@ -1,7 +1,7 @@
 import datetime as dt
 from decimal import Decimal
 
-from src.lib.balances import DayRecord, PtoTerms, overtime_balance, pto_accounts, summarize_period
+from src.lib.balances import DayLedger, DayRecord, PtoTerms, overtime_balance, pto_accounts, summarize_period
 from src.lib.dates import each_day
 from src.lib.daytypes import DayType
 from src.lib.durations import parse_duration
@@ -34,6 +34,15 @@ def test_overtime_balance_of_a_week():
         dt.date(2026, 10, 24): worked('1:00'),
     }
     assert overtime_balance(records, dt.date(2026, 10, 19), dt.date(2026, 10, 25)) == parse_duration('1:45')
+
+
+def test_day_ledger_balance_stops_at_until():
+    records = {dt.date(2026, 10, 26): worked('9:00')}
+    ledger = DayLedger(records, dt.date(2026, 10, 26), dt.date(2026, 11, 1), until=dt.date(2026, 10, 27), opening=30)
+    # before the start the opening balance; Monday +1:00, Tuesday (until) −8:00; Wednesday on does not count
+    assert [ledger.balance(dt.date(2026, 10, day)) for day in (25, 26, 27, 30)] == [30, 90, -390, -390]
+    assert [day.date for day in ledger.days(dt.date(2026, 10, 31), dt.date(2026, 11, 5))] == [
+        dt.date(2026, 10, 31), dt.date(2026, 11, 1)]
 
 
 def test_overtime_balance_counts_missing_weekday_as_nothing_worked():

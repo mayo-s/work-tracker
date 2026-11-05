@@ -1,13 +1,17 @@
 """API schemas for the review list: what needs attention after the import, and why."""
 
+import datetime as dt
 from collections import defaultdict
+from collections.abc import Iterable
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 from src.lib.durations import format_duration
 
-from src.models.review import FlagReason
+from src.models.catalog import Ticket
+from src.models.entries import TicketEntry
+from src.models.review import FlagReason, ReviewFlag
 from src.modules.days.schemas import DayView, day_view
 from src.modules.entries.schemas import EntryView, EntryViewer
 from src.modules.importer.tickets import split_keys
@@ -50,12 +54,11 @@ class ReviewView(BaseModel):
 
 def review(store: Store, user_id: str) -> ReviewView:
     """What needs attention in the user's data."""
-    without_service = store.tickets(user_id).without_service()
-    tickets = [ticket for ticket in ticket_views(store, user_id, without_service) if ticket.entries]
-    repository = store.entries(user_id)
-    views = EntryViewer(store, user_id).views(repository.for_review())
+    tickets = ticket_views(store, user_id, _open_tickets(store, user_id))
+    views = EntryViewer(store, user_id).views(store.entries(user_id).for_review())
+    split = _split_on_import(store.entries(user_id), views)
     entries = [
-        ReviewEntry(entry=view, reasons=_reasons(view), split_on_import=_split_on_import(repository, view),
+        ReviewEntry(entry=view, reasons=_reasons(view), split_on_import=split.get(view.id, []),
                     split_suggestion=_split_suggestion(view))
         for view in views
     ]
@@ -68,11 +71,49 @@ def review(store: Store, user_id: str) -> ReviewView:
     )
 
 
-def _split_on_import(repository: Entries, entry: EntryView) -> list[SplitPart]:
-    together = repository.imported_together(entry.id) if entry.kind == 'ticket' else []
-    if len(together) < 2:
+def review_counts(store: Store, user_id: str) -> ReviewCounts:
+    """The number of open items of each kind, without building them (for the navigation and the dashboard)."""
+    return ReviewCounts(
+        tickets_without_service=len(_open_tickets(store, user_id)),
+        entries=len(store.entries(user_id).for_review()),
+        days=len(_day_flags(store, user_id)),
+    )
+
+
+def _open_tickets(store: Store, user_id: str) -> list[Ticket]:
+    """Tickets with entries but no service."""
+    tickets = store.tickets(user_id)
+    counts = tickets.entry_counts()
+    return [ticket for ticket in tickets.without_service() if counts.get(ticket.key)]
+
+
+def _split_on_import(repository: Entries, views: list[EntryView]) -> dict[str, list[SplitPart]]:
+    """The parts of each ticket entry the import made from a spreadsheet line naming several tickets, by entry id."""
+    split: dict[str, list[SplitPart]] = {}
+    for together in _imported_together(repository, _ticket_entries_on(repository, views)):
+        if len(together) > 1:
+            parts = [SplitPart(ticket_key=entry.ticket_key, duration=format_duration(entry.duration)) for entry in together]
+            split.update(dict.fromkeys((entry.id for entry in together), parts))
+    return split
+
+
+def _ticket_entries_on(repository: Entries, views: list[EntryView]) -> list[TicketEntry]:
+    """The ticket entries on the dates of the given entries, in one query."""
+    dates = {view.date for view in views}
+    if not dates:
         return []
-    return [SplitPart(ticket_key=part.ticket_key, duration=format_duration(part.duration)) for part in together]
+    return [entry for entry in repository.between(min(dates), max(dates))
+            if entry.date in dates and isinstance(entry, TicketEntry)]
+
+
+def _imported_together(repository: Entries, entries: list[TicketEntry]) -> Iterable[list[TicketEntry]]:
+    """The imported ones of the given entries, grouped by date and the spreadsheet line they came from."""
+    lines = repository.imported_lines(entry.id for entry in entries)
+    together = defaultdict(list)
+    for entry in entries:
+        if entry.id in lines:
+            together[entry.date, lines[entry.id]].append(entry)
+    return together.values()
 
 
 def _split_suggestion(entry: EntryView) -> list[str]:
@@ -91,7 +132,12 @@ def _reasons(entry: EntryView) -> list[ReviewReason]:
 
 def _flagged_days(store: Store, user_id: str) -> list[DayView]:
     days, schedules = store.days(user_id), store.schedules(user_id).schedules()
+    return [day_view(date, days.get(date), flags, schedules.on(date)) for date, flags in _day_flags(store, user_id).items()]
+
+
+def _day_flags(store: Store, user_id: str) -> dict[dt.date, list[ReviewFlag]]:
+    """The flags of each flagged day, by date."""
     flags = defaultdict(list)
-    for flag in days.day_flags():
+    for flag in store.days(user_id).day_flags():
         flags[flag.date].append(flag)
-    return [day_view(date, days.get(date), date_flags, schedules.on(date)) for date, date_flags in flags.items()]
+    return flags

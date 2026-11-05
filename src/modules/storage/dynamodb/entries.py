@@ -69,17 +69,6 @@ class DynamoEntries(EntryRules):
         items = self._unit.query(self._pk, f'ENTRY#{start.isoformat()}', f'ENTRY#{end.isoformat()}#{_LAST}')
         return [_entry(item) for item in items]
 
-    def imported_together(self, entry_id: str) -> list[Entry]:
-        """Entries imported from the same spreadsheet line as this one (same date and original line), itself included.
-
-        Empty if the entry was not imported.
-        """
-        line, pointer = self._imported_line(entry_id), self._unit.get(self._pk, _id_key(entry_id))
-        if line is None or pointer is None:
-            return []
-        date = dt.date.fromisoformat(pointer['date'])
-        return [entry for entry in self.between(date, date) if self._imported_line(entry.id) == line]
-
     def for_review(self) -> list[Entry]:
         """Entries with 0:00, ticket entries without ticket and flagged entries, by date."""
         flagged = {flag.entry_id for flag in all_flags(self._unit, self._pk) if flag.entry_id is not None}
@@ -109,12 +98,13 @@ class DynamoEntries(EntryRules):
 
     def changed(self, entry_ids: Iterable[str]) -> set[str]:
         """Those of the given entries that changed after they were created or imported (for the UI marker)."""
-        ids = set(entry_ids)
-        if not ids:
-            return set()
-        lines = self._unit.query(self._pk, f'HISTORY#{min(ids)}#', f'HISTORY#{max(ids)}#{_LAST}')
-        return {line['entry_id'] for line in lines if line['entry_id'] in ids
-                and line['action'] not in (HistoryAction.CREATED, HistoryAction.IMPORTED)}
+        return {line['entry_id'] for line in self._history_of(entry_ids)
+                if line['action'] not in (HistoryAction.CREATED, HistoryAction.IMPORTED)}
+
+    def imported_lines(self, entry_ids: Iterable[str]) -> dict[str, str]:
+        """The original spreadsheet line of each of the given entries that was imported."""
+        return {line['entry_id']: line['detail'] for line in self._history_of(entry_ids)
+                if line['action'] == HistoryAction.IMPORTED}
 
     def add_flag(self, entry_id: str, reason: FlagReason, detail: str = '') -> ReviewFlag:
         flag = ReviewFlag(entry_id=entry_id, reason=reason, detail=detail)
@@ -140,8 +130,13 @@ class DynamoEntries(EntryRules):
         day = self._unit.get(self._pk, day_key(entry.date))
         check_fits(entry, day['start'] if day else None)
 
-    def _imported_line(self, entry_id: str) -> str | None:
-        return next((change.detail for change in self.history(entry_id) if change.action == HistoryAction.IMPORTED), None)
+    def _history_of(self, entry_ids: Iterable[str]) -> list[Item]:
+        """The history lines of the given entries, in one query (from the lowest to the highest id)."""
+        ids = set(entry_ids)
+        if not ids:
+            return []
+        lines = self._unit.query(self._pk, f'HISTORY#{min(ids)}#', f'HISTORY#{max(ids)}#{_LAST}')
+        return [line for line in lines if line['entry_id'] in ids]
 
     def _check_references(self, entry: Entry) -> None:
         """A ticket entry's ticket is created if needed; an activity entry needs one of the user's activity types."""

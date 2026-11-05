@@ -100,6 +100,17 @@ def test_flagged_day_without_record(client, database):
     assert (day['date'], day['recorded']) == ('2024-11-09', False)
 
 
+def test_counts_count_the_open_items(client, database):
+    add_entry(client, 'AGA-39', duration='0:00')  # a ticket without service and an entry with 0:00
+    with database.transaction() as conn:
+        conn.execute("INSERT INTO tickets (user_id, key) VALUES (?, 'TNG-4138')", (USER,))  # no entries: not open
+        days = DayRepository(conn, USER)
+        days.add_flag(dt.date(2025, 12, 6), FlagReason.WEEKEND_HOURS, '3,5 ABREISE Lübeck')
+        days.add_flag(dt.date(2025, 12, 6), FlagReason.WEEKEND_HOURS, '1,0 Secretary')  # one day, two flags
+    expected = {'tickets_without_service': 1, 'entries': 1, 'days': 1}
+    assert (client.simulate_get('/api/review/counts').json, get_review(client)['counts']) == (expected, expected)
+
+
 def test_clear_unknown_flag(client):
     assert client.simulate_delete('/api/review/flags/404').status == falcon.HTTP_404
 
@@ -112,6 +123,8 @@ def test_entry_split_on_import_is_shown(client, database):
             created = repository.create(TicketEntry(date=dt.date(2024, 6, 10), ticket_key=key, duration=180),
                                         HistoryAction.IMPORTED, line)
             repository.add_flag(created.id, FlagReason.UNCERTAIN_TICKET, line)
+        next_day = TicketEntry(date=dt.date(2024, 6, 11), ticket_key='TNG-4138', duration=60)
+        repository.create(next_day, HistoryAction.IMPORTED, line)  # the same line on another day: not part of the split
     items = get_review(client)['entries']
     assert [item['split_on_import'] for item in items] == [
         [{'ticket_key': 'TNG-4138', 'duration': '3:00'}, {'ticket_key': 'TNG-4139', 'duration': '3:00'}]] * 2

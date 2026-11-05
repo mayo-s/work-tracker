@@ -1,7 +1,8 @@
 // Review page (/review): tickets without service, entries and days that need attention after the import.
 
 import {
-  api, errorText, type DayView, type ReviewEntry, type ReviewReason, type ReviewView, type ServiceChoice, type TicketView,
+  api, errorText, type DayView, type ReviewCounts, type ReviewEntry, type ReviewReason, type ReviewView, type ServiceChoice,
+  type TicketView,
 } from './api.ts';
 import { formatDate, formatDay, isoWeek, type IsoDate } from './dates.ts';
 import { button, el, onEscape, scrolling } from './dom.ts';
@@ -19,7 +20,7 @@ export function weekLink(date: IsoDate, parameter: string): string {
   return `/week?week=${isoWeek(date)}&${parameter}`;
 }
 
-export function reviewTotal(counts: ReviewView['counts']): number {
+export function reviewTotal(counts: ReviewCounts): number {
   return counts.tickets_without_service + counts.entries + counts.days;
 }
 

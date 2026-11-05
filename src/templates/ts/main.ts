@@ -42,7 +42,7 @@ async function showReviewCount(nav: Element): Promise<void> {
   }
   const { api } = await import('./api.ts');
   const { reviewTotal } = await import('./review.ts');
-  const total = reviewTotal((await api.review()).counts);
+  const total = reviewTotal(await api.reviewCounts());
   if (total) {
     link.append(' ', Object.assign(document.createElement('span'), { className: 'badge warning', textContent: String(total) }));
   }

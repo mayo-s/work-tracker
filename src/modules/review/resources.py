@@ -1,9 +1,9 @@
-"""Review endpoints: /api/review and clearing review flags."""
+"""Review endpoints: /api/review, /api/review/counts and clearing review flags."""
 
 import falcon
 from spectree import Response
 
-from src.modules.review.schemas import ReviewView, review
+from src.modules.review.schemas import ReviewCounts, ReviewView, review, review_counts
 from src.modules.storage.errors import NotFoundError
 from src.modules.storage.store import Storage
 from src.modules.auth.sessions import current_user
@@ -21,6 +21,17 @@ class Review:
         """Everything that needs attention; an item disappears once its reason is fixed or its flag is cleared."""
         with self._storage.transaction() as store:
             resp.media = review(store, current_user(req))
+
+
+class ReviewCountsResource:
+    def __init__(self, storage: Storage) -> None:
+        self._storage = storage
+
+    @spec.validate(resp=Response(HTTP_200=ReviewCounts), tags=TAGS)
+    def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+        """The number of open review items of each kind, without the items (for the navigation and the dashboard)."""
+        with self._storage.transaction() as store:
+            resp.media = review_counts(store, current_user(req))
 
 
 class ReviewFlagItem:

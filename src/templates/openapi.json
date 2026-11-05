@@ -4127,6 +4127,39 @@
         }
       }
     },
+    "/api/review/counts": {
+      "get": {
+        "summary": "The number of open review items of each kind, without the items (for the navigation and the dashboard).",
+        "operationId": "get__api_review_counts",
+        "description": "",
+        "tags": [
+          "Review"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewCounts"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/review/flags/{flag_id}": {
       "delete": {
         "summary": "Clear a review flag of an entry or a day (e.g. after checking a guessed ticket key).",
@@ -6921,6 +6954,29 @@
         "title": "ReviewView",
         "type": "object"
       },
+      "ReviewCounts": {
+        "properties": {
+          "tickets_without_service": {
+            "title": "Tickets Without Service",
+            "type": "integer"
+          },
+          "entries": {
+            "title": "Entries",
+            "type": "integer"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tickets_without_service",
+          "entries",
+          "days"
+        ],
+        "title": "ReviewCounts",
+        "type": "object"
+      },
       "ScheduleViewList": {
         "items": {
           "$ref": "#/components/schemas/ScheduleView"
@@ -8525,29 +8581,6 @@
           "overtime"
         ],
         "title": "MonthTotals",
-        "type": "object"
-      },
-      "ReviewCounts": {
-        "properties": {
-          "tickets_without_service": {
-            "title": "Tickets Without Service",
-            "type": "integer"
-          },
-          "entries": {
-            "title": "Entries",
-            "type": "integer"
-          },
-          "days": {
-            "title": "Days",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "tickets_without_service",
-          "entries",
-          "days"
-        ],
-        "title": "ReviewCounts",
         "type": "object"
       },
       "ReviewEntry": {

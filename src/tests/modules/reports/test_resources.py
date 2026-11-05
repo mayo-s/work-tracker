@@ -62,7 +62,8 @@ def test_week_days_off_include_planned_days(client):
 def test_future_week_counts_nothing(client):
     totals = client.simulate_get('/api/reports/weeks/2026-W50').json['totals']
     assert (totals['until'], totals['worked'], totals['target']) == (None, '0:00', '0:00')
-    assert totals['balance_in'] == totals['balance_out']
+    # the balance of today: 20 weekdays from 01.10. without record; the weekdays up to the week do not count yet
+    assert (totals['balance_in'], totals['balance_out']) == ('-160:00', '-160:00')
 
 
 @pytest.mark.parametrize('path', ['/api/reports/weeks/2026-W54', '/api/reports/months/2026-13'])

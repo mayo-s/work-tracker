@@ -321,6 +321,26 @@ L.16 (a–i) → 9.1 (a–i).
   settings (a table row, delete), admin (one-time password dialog), team view; marked `e2e` so the quick suite stays
   quick. The run skill's driver stays for screenshots and before/after comparisons
 
+## 12. Faster pages and more insight
+
+- [x] **12.1** Faster dashboard and reports: `GET /api/review/counts` only counts the open review items (for the
+  navigation badge and the dashboard tile; today both build the whole review, 41 DynamoDB queries per page); the year
+  report computes its days once with a running balance (today 25 balances from the balance start, ~21,000 day
+  summaries per call); the review page finds the entries imported together in one pass instead of a query per entry
+- [ ] **12.2** The review count in the navigation follows every review action (from the counts of 12.1)
+- [ ] **12.3** A full restore that takes over the backup's root login needs no two-factor setup before, while the
+  database holds nobody but root (the backup's root login comes with its own); everything else still requires it
+- [ ] **12.4** Review entries with more context: the description (or note) and the original spreadsheet line in the
+  row, and "Details" opening a dialog with the whole entry (date and weekday with the day's times, duration, ticket or
+  activity, service, coding, description, flags, history, a link to the week); a button, not hover (keyboard, touch)
+- [ ] **12.5** Week, month and year: a date field with "Go" in the header opens the week, month or year of that date
+- [ ] **12.6** Month and year report beyond coding: "Other ticket work" (ticket entries not marked coding, by service
+  and ticket) and "Activities" (by activity type, in the month with their notes), and the hours in entries next to
+  the hours worked by the day times (e.g. "Entries 152:30 of 160:00 worked")
+- [ ] **12.7** Search: a page to find and sum up entries by text (ticket key or its start, words of description or
+  note), activity type, service and period (default this year): total hours and entries, by ticket or activity type,
+  by month, and the entries with links to their week
+
 ## Later (to be discussed)
 
 - [ ] **L.6** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g.

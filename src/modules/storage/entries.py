@@ -146,21 +146,6 @@ class EntryRepository(EntryRules):
         )
         return [_to_entry(row) for row in rows]
 
-    def imported_together(self, entry_id: str) -> list[Entry]:
-        """Entries imported from the same spreadsheet line as this one (same date and original line), itself included.
-
-        Empty if the entry was not imported.
-        """
-        rows = self._conn.execute(
-            f'SELECT {", ".join(f"e.{column}" for column in _ENTRY_COLUMNS.split(", "))} FROM entries e '
-            "JOIN entry_history h ON h.entry_id = e.id AND h.action = 'imported' "
-            "JOIN entry_history own ON own.entry_id = ? AND own.action = 'imported' "
-            'JOIN entries mine ON mine.id = own.entry_id AND mine.user_id = e.user_id '
-            'WHERE h.detail = own.detail AND e.date = mine.date AND e.user_id = ? ORDER BY e.id',
-            (entry_id, self._user),
-        )
-        return [_to_entry(row) for row in rows]
-
     def for_review(self) -> list[Entry]:
         """Entries with 0:00, ticket entries without ticket and flagged entries, by date."""
         rows = self._conn.execute(
@@ -214,6 +199,16 @@ class EntryRepository(EntryRules):
             (self._user, *ids, HistoryAction.CREATED, HistoryAction.IMPORTED),
         )
         return {row['entry_id'] for row in rows}
+
+    def imported_lines(self, entry_ids: Iterable[str]) -> dict[str, str]:
+        """The original spreadsheet line of each of the given entries that was imported."""
+        ids = list(entry_ids)
+        placeholders = ', '.join('?' for _ in ids)
+        rows = self._conn.execute(
+            f'SELECT entry_id, detail FROM entry_history WHERE user_id = ? AND entry_id IN ({placeholders}) AND action = ?',
+            (self._user, *ids, HistoryAction.IMPORTED),
+        )
+        return {row['entry_id']: row['detail'] for row in rows}
 
     def add_flag(self, entry_id: str, reason: FlagReason, detail: str = '') -> ReviewFlag:
         flag = ReviewFlag(entry_id=entry_id, reason=reason, detail=detail)
