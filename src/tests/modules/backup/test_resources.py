@@ -8,7 +8,7 @@ import pytest
 from falcon import testing
 
 from src.app import create_app
-from src.modules.backup.full import read_backup_file
+from src.modules.backup.full import backup_file, read_backup_file
 from src.modules.storage.database import Database
 from src.modules.storage.sqlite import SqliteStore
 from src.modules.storage.users import UserRepository
@@ -132,3 +132,23 @@ def test_taking_over_the_root_login_logs_root_out(backup, other_root):
     assert other_root.simulate_get('/api/admin/users', cookies=rainer).status == falcon.HTTP_401
     pascal = logged_in(other_root, 'pascal')
     assert other_root.simulate_get('/api/admin/audit', cookies=pascal).json[0]['detail'] == 'root login'
+
+
+def test_root_alone_restores_before_two_factor_login_only_taking_over_the_root_login(
+        other_root, sqlite_backup, two_factor_required):
+    rainer = logged_in(other_root, 'rainer', RAINERS_PASSWORD)
+    assert other_root.simulate_get('/api/auth/me/two-factor', cookies=rainer).json['restore_instead'] is True
+    content = backup_file(sqlite_backup, PASSPHRASE)
+    refused = restore(other_root, rainer, content)
+    assert (refused.status, refused.json['description']) == (
+        falcon.HTTP_403, "Set up two-factor login first, on /2fa, or take over the backup's root login")
+    assert restore(other_root, rainer, content, root_login=True).status == falcon.HTTP_200
+    pascal = logged_in(other_root, 'pascal')  # the backup's root login, here without two-factor login: still to set up
+    assert other_root.simulate_get('/api/admin/users', cookies=pascal).status == falcon.HTTP_403
+
+
+def test_root_with_others_sets_up_two_factor_login_before_restoring(app, two_factor_required):
+    root = logged_in(app, 'pascal')
+    assert app.simulate_get('/api/auth/me/two-factor', cookies=root).json['restore_instead'] is False
+    refused = restore(app, root, b'never read', confirm='purge', root_login=True)
+    assert (refused.status, refused.json['description']) == (falcon.HTTP_403, 'Set up two-factor login first, on /2fa')

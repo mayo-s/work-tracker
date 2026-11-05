@@ -199,7 +199,9 @@ typing `purge`: everyone else goes with all records, teams and logs, then the ba
 the backup's root did is credited to it), unless it ticks "Take over the backup's root login": then it gets that root's
 username, e-mail address, name, password and two-factor login and logs in again with them. Everyone else logs in with
 their password and two-factor login from the backup. A wrong passphrase or a damaged file is refused before anything changes. On DynamoDB a restore that stops
-halfway leaves only root using the app (others get 503) until restoring the file again finishes it.
+halfway leaves only root using the app (others get 503) until restoring the file again finishes it. Moving to a new
+database: its new root restores on `/2fa` before setting up two-factor login, as long as nobody else is there, and takes
+over the backup's root login with its two-factor login (without one, root sets it up after the next login).
 
 Teams: a user is in at most one; accepting an invitation (in the settings) leaves the current one. Members choose the
 team services next to their own; on leaving, those their tickets use become personal services.

@@ -20,8 +20,8 @@ from src.modules.auth.sessions import (
 )
 from src.modules.auth.setup_token import SetupToken, check_setup_token
 from src.modules.auth.two_factor import (
-    WRONG_CODE, code_accepted, code_or_recovery_accepted, new_app_accepted, new_recovery_codes, qr_code, recovery_hash,
-    required, second_factor,
+    WRONG_CODE, code_accepted, code_or_recovery_accepted, may_restore_instead, new_app_accepted, new_recovery_codes, qr_code,
+    recovery_hash, required, second_factor,
 )
 from src.modules.storage.errors import ConflictError
 from src.modules.storage.store import Storage, Store
@@ -243,12 +243,13 @@ class TwoFactorResource(_AuthResource):
     @spec.validate(resp=Response('HTTP_401', HTTP_200=TwoFactorStatus), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         """Whether the logged-in user's login needs a code of an authenticator app, whether it must (root and admins),
-        and how many recovery codes are left."""
+        how many recovery codes are left, and whether root may restore a full backup instead of setting it up."""
         with self._storage.transaction() as store:
             users = store.users()
             user, state = users.get(_user_id(req)), users.two_factor(_user_id(req))
             resp.media = TwoFactorStatus(enabled=user.two_factor, required=required(user),
-                                         recovery_left=len(state.recovery) if state and state.enabled else 0)
+                                         recovery_left=len(state.recovery) if state and state.enabled else 0,
+                                         restore_instead=may_restore_instead(user, users.count()))
 
     @spec.validate(resp=Response('HTTP_401', 'HTTP_409', HTTP_201=TwoFactorSetup), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response) -> None:

@@ -410,6 +410,8 @@ corners, one accent color. Warnings are the only loud element.
   to the current root); everyone else has their password and two-factor login from the backup, and all other sessions
   end. Optionally root takes over the login of the backup's root (username, e-mail address, name, password, two-factor
   login): it keeps its account and what it did, its sessions end, and it logs in again with that login.
+- A new root restores before setting up two-factor login, on `/2fa`, while the database holds nobody but root: only
+  taking over the backup's root login, which comes with its own two-factor login. Everything else still requires it.
 - A wrong passphrase, a damaged file, an unknown format or a newer version is refused before anything is written.
   SQLite restores in one transaction. DynamoDB purges and restores in atomic chunks; one that stops halfway marks the
   database: only root can use the app until restoring the file again finishes it.

@@ -328,7 +328,7 @@ L.16 (a–i) → 9.1 (a–i).
   report computes its days once with a running balance (today 25 balances from the balance start, ~21,000 day
   summaries per call); the review page finds the entries imported together in one pass instead of a query per entry
 - [x] **12.2** The review count in the navigation follows every review action (from the counts of 12.1)
-- [ ] **12.3** A full restore that takes over the backup's root login needs no two-factor setup before, while the
+- [x] **12.3** A full restore that takes over the backup's root login needs no two-factor setup before, while the
   database holds nobody but root (the backup's root login comes with its own); everything else still requires it
 - [ ] **12.4** Review entries with more context: the description (or note) and the original spreadsheet line in the
   row, and "Details" opening a dialog with the whole entry (date and weekday with the day's times, duration, ticket or

@@ -20,6 +20,7 @@ from src.modules.admin.schemas import (
     OneTimePasswordView,
 )
 from src.modules.auth.sessions import clear_session_cookie, current_user
+from src.modules.auth.two_factor import required
 from src.modules.backup.full import backup_file, make_backup, read_backup_file
 from src.modules.backup.restore import BackupError, check_backup, restore_backup
 from src.modules.backup.schemas import Backup, BackupInput, RestoreInput, RestoreSummary
@@ -316,13 +317,16 @@ class AdminRestoreResource(_AdminResource):
         the backup's root instead (username, e-mail address, name, password, two-factor login): its sessions end too, and
         it logs in again with that login.
 
+        Root without two-factor login gets here only while the database holds nobody else, and only takes over the
+        backup's root login (403 otherwise), which comes with its own two-factor login.
+
         While anyone but root exists, only with `confirm` 'purge' (409 with the code `purge_required` otherwise). A
         wrong passphrase, a damaged file, another format, a newer version or a backup that does not hold together is
         refused before anything is written (422). On DynamoDB the restore writes chunks; one that stops halfway leaves
         only root using the app until restoring the file again finishes it.
         """
         with self._storage.transaction() as store:
-            _staff(req, store, ('root',))  # before the costly decryption
+            _check_two_factor(_staff(req, store, ('root',)), json.root_login)  # before the costly decryption
         backup = _read_backup(json)
         with self._storage.transaction() as store:
             root = _staff(req, store, ('root',))
@@ -334,6 +338,12 @@ class AdminRestoreResource(_AdminResource):
             record(store, self._clock(), root.id, 'backup_restored', detail='root login' if json.root_login else '')
         if json.root_login:
             clear_session_cookie(resp)
+
+
+def _check_two_factor(root: User, root_login: bool) -> None:
+    """Without two-factor login, root only restores a backup whose root login it takes over (see may_restore_instead)."""
+    if required(root) and not root.two_factor and not root_login:
+        raise falcon.HTTPForbidden(description="Set up two-factor login first, on /2fa, or take over the backup's root login")
 
 
 def _read_backup(json: RestoreInput) -> Backup:

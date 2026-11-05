@@ -549,7 +549,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Whether the logged-in user's login needs a code of an authenticator app, whether it must (root and admins), and how many recovery codes are left. */
+        /** Whether the logged-in user's login needs a code of an authenticator app, whether it must (root and admins), how many recovery codes are left, and whether root may restore a full backup instead of setting it up. */
         get: operations["get__api_auth_me_two-factor"];
         /** Confirm the setup with the current code of the authenticator app (403 if wrong): from now on, the login needs a code. Answers the 10 recovery codes, shown only now. 409 without a setup started or once it is on. */
         put: operations["put__api_auth_me_two-factor"];
@@ -736,7 +736,9 @@ export interface paths {
         put?: never;
         /**
          * Root only: restore the full backup from its file (base64) and passphrase. Everything but root goes first, then the backup comes in; root stays as it is (the backup's root is skipped), everyone else has their password and two-factor login from the backup, and all other sessions end. With `root_login`, root takes over the login of the backup's root instead (username, e-mail address, name, password, two-factor login): its sessions end too, and it logs in again with that login.
-         * @description While anyone but root exists, only with `confirm` 'purge' (409 with the code `purge_required` otherwise). A wrong passphrase, a damaged file, another format, a newer version or a backup that does not hold together is refused before anything is written (422). On DynamoDB the restore writes chunks; one that stops halfway leaves only root using the app until restoring the file again finishes it.
+         * @description Root without two-factor login gets here only while the database holds nobody else, and only takes over the backup's root login (403 otherwise), which comes with its own two-factor login.
+         *
+         *     While anyone but root exists, only with `confirm` 'purge' (409 with the code `purge_required` otherwise). A wrong passphrase, a damaged file, another format, a newer version or a backup that does not hold together is refused before anything is written (422). On DynamoDB the restore writes chunks; one that stops halfway leaves only root using the app until restoring the file again finishes it.
          */
         post: operations["post__api_admin_restore"];
         delete?: never;
@@ -1726,6 +1728,12 @@ export interface components {
              * @default 0
              */
             recovery_left?: number;
+            /**
+             * Restore Instead
+             * @description Root, alone in the database, may restore a full backup and take over its root login instead of setting it up first
+             * @default false
+             */
+            restore_instead?: boolean;
         };
         /** TwoFactorSetup */
         TwoFactorSetup: {

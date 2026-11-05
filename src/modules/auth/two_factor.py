@@ -24,6 +24,12 @@ def required(user: User) -> bool:
     return user.role in REQUIRED
 
 
+def may_restore_instead(user: User, users: int) -> bool:
+    """Root may restore a full backup and take over its root login, which comes with its own two-factor login, instead
+    of setting up two-factor login first, while the database holds nobody but root (`users` in all)."""
+    return required(user) and user.role == 'root' and not user.two_factor and users == 1
+
+
 def new_recovery_codes() -> list[str]:
     """Ten codes like `k7qm3-xtp9w` (50 bits each), each replacing a code of the app once."""
     codes = [''.join(secrets.choice(_RECOVERY_LETTERS) for _ in range(10)) for _ in range(RECOVERY_CODES)]
