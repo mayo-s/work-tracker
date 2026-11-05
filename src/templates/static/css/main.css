@@ -270,6 +270,11 @@ table {
   border-collapse: collapse;
 }
 
+.table-scroll {
+  position: relative;  /* also clips what is positioned inside, e.g. visually hidden headers */
+  overflow-x: auto;  /* a wide table scrolls in its own area, not the page (dom.ts `scrolling`) */
+}
+
 th,
 td {
   padding: var(--space-2) var(--space-3);
@@ -443,6 +448,7 @@ pre {
 }
 
 :not(pre) > code {
+  overflow-wrap: anywhere;  /* long names break instead of widening the page */
   padding: 0 var(--space-1);
   border-radius: var(--radius);
   background: var(--color-surface);
@@ -528,7 +534,7 @@ pre {
 
 .swatches {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
   gap: var(--space-3);
 }
 
@@ -566,6 +572,7 @@ pre {
 
 .week-nav {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
@@ -864,7 +871,7 @@ button.button-danger {
 
 .year-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
@@ -925,7 +932,8 @@ button.button-danger {
   align-items: flex-end;
 }
 
-.list-table + .list-form {
+.list-table + .list-form,
+.table-scroll + .list-form {
   margin-top: var(--space-3);
 }
 
@@ -937,7 +945,7 @@ button.button-danger {
 
 .balance-form {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
   column-gap: var(--space-4);
   max-width: 40rem;
 }
@@ -1006,7 +1014,7 @@ button.button-danger {
 
 .days-off-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
   column-gap: var(--space-4);
 }
 
@@ -1073,7 +1081,7 @@ button.button-danger {
 
 .setup-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
   column-gap: var(--space-4);
 }
 
@@ -1110,6 +1118,7 @@ button.button-danger {
 
 .theme-preview {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-4);
   margin: 0 0 var(--space-4);
   padding: var(--space-2) var(--space-3);
@@ -1136,7 +1145,7 @@ button.button-danger {
 
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
@@ -1185,7 +1194,9 @@ button.button-danger {
 }
 
 .segmented {
+  position: relative;  /* the radio buttons inside are positioned */
   display: inline-flex;
+  flex-wrap: wrap;
   border: var(--border);
   border-radius: var(--radius);
 }
@@ -1202,6 +1213,9 @@ button.button-danger {
 
 .segmented input {
   position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
   opacity: 0;
 }
 
@@ -1217,7 +1231,7 @@ button.button-danger {
 
 .dashboard-columns {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
   gap: var(--space-4);
 }
 
@@ -1439,4 +1453,46 @@ body:has(main[data-page='two-factor']) .app-nav {
 
 .team-view-banner {
   margin-bottom: var(--space-4);
+}
+
+/* Narrow screens and zoom (WCAG 1.4.10 Reflow: 320 CSS px, i.e. 1280 px at 400 %): no page-wide horizontal scrolling */
+
+@media (max-width: 40rem) {
+  .app-header {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--header-height);
+    padding: var(--space-2) var(--space-4);
+    gap: var(--space-2) var(--space-4);
+  }
+
+  .app-nav {
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+
+  #app {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .gallery {
+    grid-template-columns: minmax(0, 1fr);  /* the navigation above the components */
+  }
+
+  /* Entries and forms in the week table stay at the left of its scroll area, as wide as the screen */
+  .week-table .day-details > td > *,
+  .week-table .day-editor-row > td > * {
+    position: sticky;
+    left: 0;
+    max-width: calc(100vw - 2 * var(--space-4) - 2 * var(--space-3));
+  }
+
+  .day-editor-fields,
+  .entry-editor-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .entry-editor-fields .field-note {
+    grid-column: 1 / -1;
+  }
 }

@@ -2,7 +2,7 @@
 
 import type { AuditView } from './api.ts';
 import { formatDate, formatTimestamp } from './dates.ts';
-import { el } from './dom.ts';
+import { el, scrolling } from './dom.ts';
 
 const ROLE_NAMES: Record<string, string> = {
   admin: 'an admin', user: 'a user', team_admin: 'team admin', member: 'a member',
@@ -44,8 +44,8 @@ export function auditTable(entries: AuditView[], empty: string): HTMLElement {
   if (!entries.length) {
     return el('p', {}, empty);
   }
-  return el('table', { class: 'review-table list-table' },
+  return scrolling(el('table', { class: 'review-table list-table' },
     el('thead', {}, el('tr', {}, el('th', {}, 'When'), el('th', {}, 'What'))),
     el('tbody', {}, ...entries.map((entry) => el('tr', {},
-      el('td', {}, formatTimestamp(entry.at)), el('td', {}, auditText(entry))))));
+      el('td', {}, formatTimestamp(entry.at)), el('td', {}, auditText(entry)))))));
 }

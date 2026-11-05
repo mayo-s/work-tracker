@@ -4,7 +4,7 @@ import {
   api, errorText, type DayView, type ReviewEntry, type ReviewReason, type ReviewView, type ServiceChoice, type TicketView,
 } from './api.ts';
 import { formatDate, formatDay, isoWeek, type IsoDate } from './dates.ts';
-import { button, el, onEscape } from './dom.ts';
+import { button, el, onEscape, scrolling } from './dom.ts';
 import { serviceOptions } from './lists.ts';
 import { entryContent } from './week.ts';
 
@@ -180,10 +180,10 @@ function ticketsSection(page: Page): HTMLElement {
     el('p', { class: 'muted' }, 'A service applies to all entries of a ticket. Filter, select, then assign.'),
     tickets.length ? el('div', { class: 'review-toolbar' }, filter, services, assign) : null,
     tickets.length
-      ? el('table', { class: 'review-table' },
+      ? scrolling(el('table', { class: 'review-table' },
         el('thead', {}, el('tr', {}, el('th', { class: 'select-cell' }, selectAll), el('th', {}, 'Ticket'),
           el('th', { class: 'num' }, 'Entries'), el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
-        el('tbody', {}, ...rows))
+        el('tbody', {}, ...rows)))
       : el('p', {}, 'All tickets have a service.'),
   );
 }
@@ -258,10 +258,10 @@ function guessedSection(groups: GuessedTicket[], page: Page): HTMLElement {
       + 'Confirm the key, rename the ticket, or split it if the spreadsheet named several; each clears the flags of all '
       + 'its entries.'),
     groups.length
-      ? el('table', { class: 'review-table' },
+      ? scrolling(el('table', { class: 'review-table' },
         el('thead', {}, el('tr', {}, el('th', {}, 'Ticket'), el('th', {}, 'Spreadsheet'),
           el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
-        el('tbody', {}, ...groups.map((group) => guessedRow(group, page))))
+        el('tbody', {}, ...groups.map((group) => guessedRow(group, page)))))
       : el('p', {}, 'Nothing to review.'),
   );
 }
@@ -283,7 +283,7 @@ function entriesSection(others: ReviewEntry[], page: Page): HTMLElement {
     el('h2', {}, 'Entries ', el('span', { class: 'badge warning' }, String(others.length))),
     el('p', { class: 'muted' }, 'Entries without duration or without ticket; open them in the week view to fix them.'),
     others.length
-      ? el('table', { class: 'review-table' }, el('tbody', {}, ...others.map((item) => entryRow(item, page))))
+      ? scrolling(el('table', { class: 'review-table' }, el('tbody', {}, ...others.map((item) => entryRow(item, page)))))
       : el('p', {}, 'Nothing to review.'),
   );
 }
@@ -305,10 +305,10 @@ function daysSection(page: Page): HTMLElement {
     el('h2', {}, 'Days ', el('span', { class: 'badge warning' }, String(days.length))),
     el('p', { class: 'muted' }, 'Weekend hours the spreadsheet counted differently. Check the times, then mark as done.'),
     days.length
-      ? el('table', { class: 'review-table' },
+      ? scrolling(el('table', { class: 'review-table' },
         el('thead', {}, el('tr', {}, el('th', {}, 'Day'), el('th', { class: 'num' }, 'Worked'), el('th', {}, 'Spreadsheet'),
           el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
-        el('tbody', {}, ...days.map((day) => dayRow(day, page))))
+        el('tbody', {}, ...days.map((day) => dayRow(day, page)))))
       : el('p', {}, 'Nothing to review.'),
   );
 }

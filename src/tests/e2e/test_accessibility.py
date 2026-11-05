@@ -32,3 +32,39 @@ def test_pages_meet_wcag_aa(browser, base, logged_in, theme):
         page = logged_in(persona, theme) if persona else browser.new_page(base_url=base, color_scheme=theme)
         actual |= {path: violations(page, path) for path in paths}
     assert {path: found for path, found in actual.items() if found} == {}
+
+
+def wider_than_the_window(page) -> list[str]:
+    """The elements sticking out of the window, outside an area that scrolls by itself (none: the page reflows)."""
+    return page.evaluate('''() => {
+        const width = document.documentElement.clientWidth;
+        const out = [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > width + 1)
+            .filter((e) => !e.closest('.table-scroll')).map((e) => e.tagName.toLowerCase() + (e.id ? '#' + e.id : ''));
+        return document.documentElement.scrollWidth > width ? ['page', ...new Set(out)].slice(0, 6) : [];
+    }''')
+
+
+def test_pages_reflow_at_320_css_pixels(browser, base, logged_in):
+    """WCAG 1.4.10 (1280 px at 400 %): no page scrolls sideways, and the pages meet AA at this width too, e.g. a table
+    that scrolls by itself can be reached with the keyboard."""
+    actual = {}
+    for persona, paths in PAGES.items():
+        page = logged_in(persona) if persona else browser.new_page(base_url=base)
+        page.set_viewport_size({'width': 320, 'height': 640})
+        actual |= {path: violations(page, path) + wider_than_the_window(page) for path in paths}
+    assert {path: found for path, found in actual.items() if found} == {}
+
+
+def test_the_week_editors_fit_a_narrow_screen(logged_in):
+    """The forms in the week table stay within the screen, though the table itself scrolls sideways."""
+    page = logged_in('hans')
+    page.set_viewport_size({'width': 320, 'height': 640})
+    page.goto('/week?week=2026-W44')
+    actual = {}
+    openers = {'.day-editor': '[aria-label="Edit Mon 26.10."]', '.entry-editor': '[data-opens="add-2026-10-26"]'}
+    for editor, opener in openers.items():
+        page.click(opener)
+        box = page.locator(editor).bounding_box()
+        actual[editor] = box['x'] >= 0 and box['x'] + box['width'] <= 320
+        page.keyboard.press('Escape')
+    assert actual == {'.day-editor': True, '.entry-editor': True}

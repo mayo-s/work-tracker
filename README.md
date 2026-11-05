@@ -95,8 +95,9 @@ all at once.
 
 Durations are entered as `1:30`, `1.5`, `1h30m` or `90m`; a plain number too long for the day is asked about as
 minutes, a time that is no quarter hour offers the two nearest. Company half days (24.12., 31.12.) take 0.5 PTO by
-themselves. Former links forward (`/?week=…`, `/lists`). All pages meet WCAG 2.2 AA in both themes (axe-core);
-Escape closes inline forms.
+themselves. Former links forward (`/?week=…`, `/lists`). All pages meet WCAG 2.2 AA in both themes (axe-core) and on
+narrow screens or zoomed in down to 320 CSS px, where wide tables scroll sideways in their own area; Escape closes
+inline forms.
 
 ## Deploy to AWS
 
@@ -233,7 +234,7 @@ npm run build && pipenv run pytest -m e2e   # end-to-end tests in the browser
 The end-to-end tests (`src/tests/e2e`, Playwright in the installed Google Chrome) run the app with the test personas
 and go through the main flows: login with two-factor code, setup, recording a day and its entries, splitting and
 renaming a guessed ticket, a service in the settings, a one-time password, the team view. axe-core checks the pages
-for WCAG 2.2 AA in the light and the dark theme. `pipenv run pytest` leaves them out (`-m "not e2e"` in
+for WCAG 2.2 AA in the light and the dark theme, and at 320 CSS px, where no page may scroll sideways. `pipenv run pytest` leaves them out (`-m "not e2e"` in
 `pyproject.toml`).
 
 The tests share their people (`src/tests/users.py`: Klara, Hans, Rainer, Pascal) and helpers (`src/tests/helpers.py`:

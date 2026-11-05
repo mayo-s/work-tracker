@@ -2,7 +2,7 @@
 
 import { api, errorText, type DayType, type YearReport } from './api.ts';
 import { isoDate, isoMonth, type IsoDate } from './dates.ts';
-import { el } from './dom.ts';
+import { el, scrolling } from './dom.ts';
 import { fromMinutes, toMinutes } from './durations.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
@@ -66,7 +66,7 @@ function daysOffCard(report: YearReport): HTMLElement {
 function monthsTable(report: YearReport): HTMLElement {
   const balances = runningBalances(report.totals.balance_in, report.months.map((month) => month.overtime));
   const counted = report.totals.until ? isoMonth(report.totals.until) : '';
-  return el('table', { class: 'year-months' },
+  return scrolling(el('table', { class: 'year-months' },
     el('thead', {}, el('tr', {}, el('th', {}, 'Month'), el('th', { class: 'num' }, 'Worked'), el('th', { class: 'num' }, 'Target'),
       el('th', { class: 'num' }, 'Overtime'), el('th', { class: 'num' }, 'Balance'))),
     el('tbody', {}, ...report.months.map((month, index) => {
@@ -78,7 +78,7 @@ function monthsTable(report: YearReport): HTMLElement {
         el('td', { class: 'num' }, future ? '—' : value(month.overtime, true)),
         el('td', { class: 'num' }, future ? '—' : value(balances[index] ?? '0:00')));
     })),
-  );
+  ));
 }
 
 export async function renderYearPage(doc: Document): Promise<void> {

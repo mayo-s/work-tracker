@@ -1,7 +1,7 @@
 // An editable table of records (add, edit inline, delete) and the page frame around such tables, with a status line.
 
 import { errorText } from './api.ts';
-import { button, el, onEscape } from './dom.ts';
+import { button, el, onEscape, scrolling } from './dom.ts';
 import { normalizeOnLeave, settleDuration, type DurationRules } from './duration-input.ts';
 import { WEEKDAY_NAMES } from './labels.ts';
 
@@ -197,8 +197,8 @@ export function tableSection(table: EditableTable, page: Page): HTMLElement {
     el('h2', {}, table.title),
     el('p', { class: 'muted' }, table.hint),
     table.items.length
-      ? el('table', { class: 'review-table list-table' }, el('thead', {}, header),
-        el('tbody', {}, ...table.items.map((item) => itemRow(table, item, page))))
+      ? scrolling(el('table', { class: 'review-table list-table' }, el('thead', {}, header),
+        el('tbody', {}, ...table.items.map((item) => itemRow(table, item, page)))))
       : el('p', {}, `No ${table.noun}s yet.`),
     itemForm(table, null, page, el('button', { type: 'submit', class: 'primary' }, `Add ${table.noun}`)),
   );
