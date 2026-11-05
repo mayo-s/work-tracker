@@ -41,10 +41,27 @@ async function showReviewCount(): Promise<void> {
   showReviewBadge(document, await api.reviewCounts());
 }
 
+/** The right end of the header: the user's name (`showUser`), the dark mode switch, then "Log out". Both load side
+ * by side, so the switch goes before "Log out" if that is there already, and the name goes first. */
+function headerEnd(header: Element): Element {
+  const end = Object.assign(document.createElement('div'), { className: 'app-user' });
+  header.append(end);
+  import('./theme.ts').then(({ themeToggle }) => {
+    const toggle = themeToggle(document);
+    const logout = end.querySelector('button');
+    if (logout) {
+      logout.before(toggle);
+    } else {
+      end.append(toggle);
+    }
+  }).catch(() => undefined);
+  return end;
+}
+
 /** The logged-in user's first name and "Log out" in the header (nothing when the login is off). With `nav`, also the
  * Team link for team admins, the Admin link for admins, and a badge on Settings for open team invitations; without it
  * (the setup page) only name and "Log out": a new user can leave and finds the setup again after the next login. */
-async function showUser(header: Element, nav: Element | null): Promise<void> {
+async function showUser(user: Element, nav: Element | null): Promise<void> {
   const { api } = await import('./api.ts');
   const status = await api.authStatus();
   if (!status.enabled || !status.user) {
@@ -53,10 +70,9 @@ async function showUser(header: Element, nav: Element | null): Promise<void> {
   const logout = Object.assign(document.createElement('button'), { type: 'button', className: 'button-small',
     textContent: 'Log out' });
   logout.addEventListener('click', () => void api.logout().then(() => window.location.assign('/login')));
-  const user = Object.assign(document.createElement('div'), { className: 'app-user' });
   const name = Object.assign(document.createElement('span'), { className: 'muted', textContent: status.user.first_name });
-  user.append(name, logout);
-  header.append(user);
+  user.prepend(name);
+  user.append(logout);
   if (!nav) {
     return;
   }
@@ -84,10 +100,10 @@ if (nav && !['login', 'register', 'setup', 'password', 'two-factor'].includes(pa
   if (page !== 'review') {
     showReviewCount().catch(() => undefined);  // the count is a hint; pages work without it
   }
-  showUser(document.querySelector('.app-header')!, nav).catch(() => undefined);
+  showUser(headerEnd(document.querySelector('.app-header')!), nav).catch(() => undefined);
 }
 if (['setup', 'password', 'two-factor'].includes(page ?? '')) {  // still to do first: still able to log out
-  showUser(document.querySelector('.app-header')!, null).catch(() => undefined);
+  showUser(headerEnd(document.querySelector('.app-header')!), null).catch(() => undefined);
 }
 
 const member = new URLSearchParams(window.location.search).get('member');

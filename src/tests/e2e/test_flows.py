@@ -121,3 +121,21 @@ def test_a_team_admin_views_a_member_read_only(logged_in, people):
     page.click('#week-go button:has-text("Go")')
     expect(page).to_have_url(re.compile(f'/week\\?week=2026-W10&member={people["klara"]}'))
     expect(page.locator('#week-title')).to_have_text('Week 10 · 2026')
+
+
+def test_the_dark_mode_switch_saves_the_theme(logged_in):
+    page = logged_in('hans')
+    page.emulate_media(color_scheme='light')
+    page.goto('/week')
+    switch = page.locator('.app-user button[aria-label="Dark mode"]')
+    expect(page.locator('.app-user > *')).to_have_text(['Hans', '', 'Log out'])
+    expect(switch).to_have_attribute('aria-pressed', 'false')
+    switch.click()
+    expect(page.locator('html')).to_have_attribute('data-theme', 'dark')
+    page.goto('/settings')
+    expect(page.locator('html')).to_have_attribute('data-theme', 'dark')
+    expect(page.locator('input[name="theme"][value="dark"]')).to_be_checked()
+    switch.click()
+    expect(page.locator('html')).to_have_attribute('data-theme', 'light')
+    expect(page.locator('input[name="theme"][value="light"]')).to_be_checked()
+    page.request.put('/api/theme', data={'theme': 'system'})  # the other tests show the browser's theme

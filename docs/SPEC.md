@@ -268,7 +268,8 @@ corners, one accent color. Warnings are the only loud element.
   requests. Tabular digits for times and durations, so columns line up.
 - All colors, sizes and spacings are CSS variables in one stylesheet. **Dark mode** is a second set of color
   values; the theme (System, Light, Dark) is chosen on the settings page and stored in the database. System follows
-  the light or dark setting of the system.
+  the light or dark setting of the system. A switch between the name and "Log out" in the navigation (a moon in light
+  mode, a sun in dark mode) turns dark mode on or off and saves it as Light or Dark.
 - Text contrast is at least 4.5:1 on its background, except the warning highlight color, which is
   only used for large or bold text, borders and icons. A test checks every text color on background, surface and
   its tint, in both themes.

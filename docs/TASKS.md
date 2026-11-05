@@ -340,6 +340,8 @@ L.16 (a–i) → 9.1 (a–i).
 - [ ] **12.7** Search: a page to find and sum up entries by text (ticket key or its start, words of description or
   note), activity type, service and period (default this year): total hours and entries, by ticket or activity type,
   by month, and the entries with links to their week
+- [x] **12.8** A dark mode switch between the name and "Log out" in the navigation: turns dark mode on or off and
+  saves it as the theme (Light or Dark; System stays in the settings)
 
 ## Later (to be discussed)
 
