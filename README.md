@@ -86,7 +86,7 @@ all at once.
   history; "Book days off" sets PTO, sick, unpaid leave or overtime off for a range, with a preview.
 - `/month`: month and work report (coding hours by service and ticket). `/year`: totals, PTO account, balance by month.
 - `/review`: what needs attention after an import (guessed tickets, entries without duration or ticket, flagged days,
-  tickets without service).
+  tickets without service). The count next to "Review" in the navigation follows every action on the page.
 - `/settings`: overtime balance, work schedules, PTO years, services and activity types, color theme, "Export my data",
   account.
 - `/setup`, `/admin`, `/team`, `/register`, `/password`, `/2fa`: see "Start from zero" and "Login". `/components`: the

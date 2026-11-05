@@ -55,9 +55,11 @@ def test_record_a_day_then_add_and_change_an_entry(logged_in):
     expect(page.locator('.entry', has_text='TNG-5882')).to_contain_text('2:00')
 
 
-def test_split_a_guessed_ticket_then_rename_one(logged_in):
+def test_split_a_guessed_ticket_rename_one_and_assign_a_service(logged_in):
     page = logged_in('hans')
     page.goto('/review')
+    badge = page.locator('.app-nav a[href="/review"] .badge')
+    expect(badge).to_have_text('2')  # the guessed entry and its ticket without service
     page.click('#guessed button:has-text("Split")')
     expect(page.locator('#guessed .rename-form input')).to_have_value('TNG-4347, KP-1482')
     page.click('#guessed .rename-form button:has-text("Split")')
@@ -66,6 +68,10 @@ def test_split_a_guessed_ticket_then_rename_one(logged_in):
     page.fill('#tickets .rename-input', 'kp-1483')
     page.click('#tickets .rename-form button:has-text("Rename")')
     expect(page.locator('#review-status')).to_have_text('KP-1482 renamed to KP-1483 (1 entry)')
+    page.check('#tickets input[aria-label="Select all shown tickets"]')
+    page.click('#tickets button:has-text("Assign to 2 selected")')
+    expect(page.locator('#review-status')).to_contain_text('assigned to 2 tickets')
+    expect(badge).to_have_count(0)
 
 
 def test_add_and_delete_a_service(logged_in):
