@@ -2564,7 +2564,7 @@ export interface components {
         SearchQuery: {
             /**
              * Text
-             * @description Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note
+             * @description Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note, of the service (short name or name) or of the activity type
              * @default
              */
             text?: string;
@@ -4729,7 +4729,7 @@ export interface operations {
     get__api_search: {
         parameters: {
             query?: {
-                /** @description Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note */
+                /** @description Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note, of the service (short name or name) or of the activity type */
                 text?: string;
                 /** @description Only ticket entries of this service; `none`: tickets without service */
                 service_id?: string | null;

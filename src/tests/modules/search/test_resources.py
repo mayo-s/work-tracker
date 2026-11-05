@@ -46,6 +46,15 @@ def test_every_word_matches_a_ticket_key_start_or_the_text(client, entries):
         ('2026-10-06', 'ENGINE-597'), ('2026-10-05', 'ENGINE-594'), ('2025-12-01', 'ENGINE-594')]  # newest first
 
 
+def test_words_also_match_the_service_and_the_activity_type(client, entries):
+    def keys(text):
+        return [group['key'] for group in found(client, text=text)['groups']]
+
+    assert keys('msb') == ['ENGINE-594', 'ENGINE-590']  # the short name
+    assert keys('Bookings credentials') == ['ENGINE-594']  # a part of the name: microsoft-bookings-service
+    assert keys('meeting') == ['Meeting']
+
+
 def test_without_text_all_entries_of_the_period(client, entries):
     result = found(client, start='2025-12-01', end='2026-03-31')
     assert result['groups'] == [{'kind': 'ticket', 'key': 'ENGINE-590', 'duration': '2:00', 'entries': 1},
