@@ -232,6 +232,9 @@ Lists everything that needs attention, each with its reason:
   the hours are split evenly in quarter hours. Each of these clears the flags of the ticket's entries.
 - A spreadsheet line the import already split among several tickets shows that split under the original
   line ("Split on import: TNG-4138 3:00 · TNG-4139 3:00"), so it is not split a second time.
+- Each entry shows its description (or note) and the original spreadsheet line; "Details" (a button, for keyboard
+  and touch) opens a dialog with the whole entry: date and weekday with the day's times, duration, ticket or activity,
+  service, coding, description, flags, history and a link to its week. For a guessed ticket, all its entries.
 
 An item leaves the list once the reason is fixed or the flag is cleared.
 

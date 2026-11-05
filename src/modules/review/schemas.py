@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from src.lib.durations import format_duration
 
 from src.models.catalog import Ticket
-from src.models.entries import TicketEntry
+from src.models.entries import Entry, TicketEntry
 from src.models.review import FlagReason, ReviewFlag
 from src.modules.days.schemas import DayView, day_view
 from src.modules.entries.schemas import EntryView, EntryViewer
@@ -33,6 +33,7 @@ class SplitPart(BaseModel):
 class ReviewEntry(BaseModel):
     entry: EntryView
     reasons: list[ReviewReason]
+    original: str | None = Field(description='The spreadsheet line the entry was imported from; null if not imported')
     split_on_import: list[SplitPart] = Field(
         description='All entries the import made from the same spreadsheet line, if it named several tickets')
     split_suggestion: list[str] = Field(
@@ -55,10 +56,13 @@ class ReviewView(BaseModel):
 def review(store: Store, user_id: str) -> ReviewView:
     """What needs attention in the user's data."""
     tickets = ticket_views(store, user_id, _open_tickets(store, user_id))
-    views = EntryViewer(store, user_id).views(store.entries(user_id).for_review())
-    split = _split_on_import(store.entries(user_id), views)
+    repository = store.entries(user_id)
+    views = EntryViewer(store, user_id).views(repository.for_review())
+    on_dates = _entries_on(repository, views)
+    lines = repository.imported_lines(entry.id for entry in on_dates)
+    split = _split_on_import(on_dates, lines)
     entries = [
-        ReviewEntry(entry=view, reasons=_reasons(view), split_on_import=split.get(view.id, []),
+        ReviewEntry(entry=view, reasons=_reasons(view), original=lines.get(view.id), split_on_import=split.get(view.id, []),
                     split_suggestion=_split_suggestion(view))
         for view in views
     ]
@@ -87,31 +91,29 @@ def _open_tickets(store: Store, user_id: str) -> list[Ticket]:
     return [ticket for ticket in tickets.without_service() if counts.get(ticket.key)]
 
 
-def _split_on_import(repository: Entries, views: list[EntryView]) -> dict[str, list[SplitPart]]:
+def _entries_on(repository: Entries, views: list[EntryView]) -> list[Entry]:
+    """The entries on the dates of the given entries, in one query."""
+    dates = {view.date for view in views}
+    if not dates:
+        return []
+    return [entry for entry in repository.between(min(dates), max(dates)) if entry.date in dates]
+
+
+def _split_on_import(entries: list[Entry], lines: dict[str, str]) -> dict[str, list[SplitPart]]:
     """The parts of each ticket entry the import made from a spreadsheet line naming several tickets, by entry id."""
     split: dict[str, list[SplitPart]] = {}
-    for together in _imported_together(repository, _ticket_entries_on(repository, views)):
+    for together in _imported_together(entries, lines):
         if len(together) > 1:
             parts = [SplitPart(ticket_key=entry.ticket_key, duration=format_duration(entry.duration)) for entry in together]
             split.update(dict.fromkeys((entry.id for entry in together), parts))
     return split
 
 
-def _ticket_entries_on(repository: Entries, views: list[EntryView]) -> list[TicketEntry]:
-    """The ticket entries on the dates of the given entries, in one query."""
-    dates = {view.date for view in views}
-    if not dates:
-        return []
-    return [entry for entry in repository.between(min(dates), max(dates))
-            if entry.date in dates and isinstance(entry, TicketEntry)]
-
-
-def _imported_together(repository: Entries, entries: list[TicketEntry]) -> Iterable[list[TicketEntry]]:
-    """The imported ones of the given entries, grouped by date and the spreadsheet line they came from."""
-    lines = repository.imported_lines(entry.id for entry in entries)
+def _imported_together(entries: list[Entry], lines: dict[str, str]) -> Iterable[list[TicketEntry]]:
+    """The imported ticket entries, grouped by date and the spreadsheet line (`lines`, by entry id) they came from."""
     together = defaultdict(list)
     for entry in entries:
-        if entry.id in lines:
+        if entry.id in lines and isinstance(entry, TicketEntry):
             together[entry.date, lines[entry.id]].append(entry)
     return together.values()
 

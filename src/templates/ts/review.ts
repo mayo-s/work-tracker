@@ -1,11 +1,12 @@
 // Review page (/review): tickets without service, entries and days that need attention after the import.
 
 import {
-  api, errorText, type DayView, type ReviewCounts, type ReviewEntry, type ReviewReason, type ReviewView, type ServiceChoice,
-  type TicketView,
+  api, errorText, type DayView, type EntryView, type ReviewCounts, type ReviewEntry, type ReviewReason, type ReviewView,
+  type ServiceChoice, type TicketView,
 } from './api.ts';
-import { formatDate, formatDay, isoWeek, type IsoDate } from './dates.ts';
+import { formatDate, formatDay, weekLink } from './dates.ts';
 import { button, el, onEscape, scrolling } from './dom.ts';
+import { showEntryDetails } from './entry-details.ts';
 import { serviceOptions } from './lists.ts';
 import { entryContent } from './week.ts';
 
@@ -14,11 +15,6 @@ export const REASON_LABELS: Record<ReviewReason, string> = {
   zero_duration: 'No duration',
   no_ticket: 'No ticket',
 };
-
-/** A link into the week view of a date, e.g. `/week?week=2024-W45&entry=129`. */
-export function weekLink(date: IsoDate, parameter: string): string {
-  return `/week?week=${isoWeek(date)}&${parameter}`;
-}
 
 export function reviewTotal(counts: ReviewCounts): number {
   return counts.tickets_without_service + counts.entries + counts.days;
@@ -38,6 +34,18 @@ export function showReviewBadge(doc: Document, counts: ReviewCounts): void {
   if (total) {
     link.append(' ', el('span', { class: 'badge warning' }, String(total)));
   }
+}
+
+/** The descriptions (notes of activities) of the entries, each once (ignoring case), in order. */
+export function entryTexts(entries: EntryView[]): string[] {
+  const texts = new Map<string, string>();
+  for (const entry of entries) {
+    const text = (entry.kind === 'ticket' ? entry.description : entry.note)?.trim();
+    if (text && !texts.has(text.toLowerCase())) {
+      texts.set(text.toLowerCase(), text);
+    }
+  }
+  return [...texts.values()];
 }
 
 /** Tickets whose key contains the filter text (case-insensitive). */
@@ -255,9 +263,12 @@ function guessedRow(group: GuessedTicket, page: Page): HTMLElement {
       () => openInCell(actions, split, (cancel) => splitForm(group, suggestion, page, cancel)));
     actions.append(split);
   }
+  actions.append(detailsButton(`${group.key}: ${count}`, group.entries, page));
   const shown = group.originals.slice(0, 3);
+  const texts = entryTexts(group.entries);
   return el('tr', {},
-    el('td', {}, el('strong', {}, group.key), el('div', { class: 'muted' }, count)),
+    el('td', {}, el('strong', {}, group.key), el('div', { class: 'muted' }, count),
+      texts.length ? el('div', { class: 'entry-text' }, texts.slice(0, 3).join(' · ') + (texts.length > 3 ? ' · …' : '')) : null),
     el('td', {},
       el('div', { class: 'muted' }, formatDate(first.date),
         group.entries.length > 1 ? ` – ${formatDate(group.entries[group.entries.length - 1]!.date)}` : ''),
@@ -290,9 +301,17 @@ function entryRow(item: ReviewEntry, page: Page): HTMLElement {
     el('td', { class: 'num' }, el('a', { href: link }, formatDate(entry.date))),
     el('td', {},
       el('div', { class: 'entry' }, ...entryContent(entry, false)),
+      item.original ? el('div', { class: 'muted' }, `Original: ${item.original}`) : null,
       el('div', {}, ...item.reasons.map((reason) => el('span', { class: 'badge warning' }, REASON_LABELS[reason])))),
     el('td', { class: 'row-actions' }, el('a', { class: 'button button-small', href: link }, 'Open'),
+      detailsButton(entry.ticket_key ?? entry.activity_type ?? 'Entry without ticket', [entry], page),
       ...flagActions(entry.flags.filter(() => item.reasons.includes('uncertain_ticket')), page)));
+}
+
+/** Opens the whole of the entries in a dialog. */
+function detailsButton(title: string, entries: EntryView[], page: Page): HTMLButtonElement {
+  return button('Details', () => void showEntryDetails(title, entries).catch(page.fail),
+    { 'aria-label': `Details of ${title}` });
 }
 
 function entriesSection(others: ReviewEntry[], page: Page): HTMLElement {

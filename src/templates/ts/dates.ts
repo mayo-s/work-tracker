@@ -30,6 +30,11 @@ function weekdayIndex(date: Date): number {
   return (date.getDay() + 6) % 7;
 }
 
+/** A link into the week view of a date, e.g. `/week?week=2024-W45&entry=129`. */
+export function weekLink(date: IsoDate, parameter: string): string {
+  return `/week?week=${isoWeek(date)}&${parameter}`;
+}
+
 /** The ISO week of a date: weeks start on Monday, week 1 contains the 4th of January. */
 export function isoWeek(value: IsoDate): IsoWeek {
   const date = parseIsoDate(value);

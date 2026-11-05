@@ -3163,6 +3163,11 @@ export interface components {
             /** Reasons */
             reasons: components["schemas"]["ReviewReason"][];
             /**
+             * Original
+             * @description The spreadsheet line the entry was imported from; null if not imported
+             */
+            original: string | null;
+            /**
              * Split On Import
              * @description All entries the import made from the same spreadsheet line, if it named several tickets
              */

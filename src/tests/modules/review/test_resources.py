@@ -57,7 +57,7 @@ def test_tickets_without_entries_are_not_listed(client, database):
 def test_entry_with_zero_duration_leaves_once_fixed(client):
     entry = add_entry(client, 'KP-2045', duration='0:00')
     [item] = get_review(client)['entries']
-    assert (item['entry']['id'], item['reasons']) == (entry['id'], ['zero_duration'])
+    assert (item['entry']['id'], item['reasons'], item['original']) == (entry['id'], ['zero_duration'], None)
     body = {'kind': 'ticket', 'date': '2026-03-02', 'duration': '0:45', 'ticket_key': 'KP-2045'}
     client.simulate_put(f'/api/entries/{entry["id"]}', json=body)
     assert get_review(client)['entries'] == []
@@ -136,7 +136,8 @@ def test_entry_imported_alone_has_no_split(client, database):
         created = repository.create(TicketEntry(date=dt.date(2024, 6, 19), ticket_key='TNG-4156', duration=60),
                                     HistoryAction.IMPORTED, '1,0 #4156')
         repository.add_flag(created.id, FlagReason.UNCERTAIN_TICKET, '1,0 #4156')
-    assert get_review(client)['entries'][0]['split_on_import'] == []
+    [item] = get_review(client)['entries']
+    assert (item['split_on_import'], item['original']) == ([], '1,0 #4156')
 
 
 def test_an_alias_is_suggested_for_a_split(client, database):
