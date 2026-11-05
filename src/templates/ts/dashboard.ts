@@ -2,7 +2,7 @@
 
 import { api, errorText, type DashboardView } from './api.ts';
 import { formatDate, formatDay, formatMonth, type IsoDate } from './dates.ts';
-import { el } from './dom.ts';
+import { el, scrolling } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { fullName, viewedMember } from './team-view.ts';
 import { valueClass } from './week.ts';
@@ -206,10 +206,10 @@ function hoverLayer(chart: HTMLElement, plot: SVGSVGElement, points: Point[], ra
 function balanceTable(points: Point[], range: Range): HTMLElement {
   return el('details', { class: 'chart-table' },
     el('summary', {}, 'Show as table'),
-    el('table', {},
+    scrolling(el('table', {},
       el('thead', {}, el('tr', {}, el('th', {}, range === 'month' ? 'Day' : 'Month'), el('th', { class: 'num' }, 'Balance'))),
       el('tbody', {}, ...points.map((point) => el('tr', {}, el('td', {}, pointLabel(point, range)),
-        el('td', { class: `num ${valueClass(point.balance)}` }, point.balance))))));
+        el('td', { class: `num ${valueClass(point.balance)}` }, point.balance)))))));
 }
 
 function balanceChart(points: Point[], range: Range, width: number): HTMLElement {
@@ -233,7 +233,7 @@ function balanceSection(data: DashboardView): HTMLElement {
   let width = 0;
   const holder = el('div', {});
   const draw = (): void => {
-    holder.replaceChildren(balanceChart(data.balance_series[range], range, Math.max(width, 320)));
+    holder.replaceChildren(balanceChart(data.balance_series[range], range, Math.max(width, 200)));
   };
   const switcher = el('div', { class: 'segmented', role: 'radiogroup', 'aria-label': 'Period of the chart' },
     ...RANGES.map(([value, label]) => {

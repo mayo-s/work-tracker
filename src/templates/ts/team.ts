@@ -2,7 +2,7 @@
 
 import { api, type InvitationView, type MemberView, type Service, type TeamPageView } from './api.ts';
 import { formatDate, formatTimestamp } from './dates.ts';
-import { button, el } from './dom.ts';
+import { button, el, scrolling } from './dom.ts';
 import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 import { field, submit } from './forms.ts';
 
@@ -32,7 +32,7 @@ function membersSection(team: TeamPageView, me: string | undefined, page: Page):
     el('h2', {}, 'Members'),
     el('p', { class: 'muted' }, 'Accounts only: nobody\'s days or entries are shown here. Members leave in their settings.'),
     team.members.length
-      ? el('table', { class: 'review-table list-table' }, el('thead', {}, header), el('tbody', {}, ...team.members.map(row)))
+      ? scrolling(el('table', { class: 'review-table list-table' }, el('thead', {}, header), el('tbody', {}, ...team.members.map(row))))
       : el('p', {}, 'No members yet.'));
 }
 
@@ -64,10 +64,10 @@ function invitationsSection(team: TeamPageView, page: Page): HTMLElement {
     el('p', { class: 'muted' },
       'The invited user accepts or declines in their settings; accepting leaves their current team.'),
     team.invitations.length
-      ? el('table', { class: 'review-table list-table' },
+      ? scrolling(el('table', { class: 'review-table list-table' },
         el('thead', {}, el('tr', {}, el('th', {}, 'E-mail address'), el('th', {}, 'Invited'),
           el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
-        el('tbody', {}, ...team.invitations.map(row)))
+        el('tbody', {}, ...team.invitations.map(row))))
       : el('p', {}, 'No open invitations.'),
     inviteForm(team, page));
 }

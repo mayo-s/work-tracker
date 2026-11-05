@@ -10,7 +10,7 @@ import {
 import { auditTable } from './audit.ts';
 import { formatDate, formatTimestamp } from './dates.ts';
 import { ask } from './dialog.ts';
-import { button, el } from './dom.ts';
+import { button, el, scrolling } from './dom.ts';
 import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 import { field, submit } from './forms.ts';
 
@@ -337,8 +337,8 @@ function usersSection(users: AdminUserView[], viewer: Viewer, me: string | undef
   return el('section', { class: 'review-section', id: 'users' },
     el('h2', {}, 'Users'),
     el('p', { class: 'muted' }, USERS_HINT[viewer]),
-    el('table', { class: 'review-table list-table admin-users' }, el('thead', {}, header),
-      el('tbody', {}, ...users.map((user) => userRow(user, viewer, me, page)))));
+    scrolling(el('table', { class: 'review-table list-table admin-users' }, el('thead', {}, header),
+      el('tbody', {}, ...users.map((user) => userRow(user, viewer, me, page))))));
 }
 
 function teamsTable(teams: AdminTeamView[]): EditableTable {
@@ -375,10 +375,10 @@ function auditorsSection(auditors: AuditorView[], users: AdminUserView[], teams:
       + 'for the days they belonged to it, read-only (no day notes, no review); the members see who can look. The access '
       + 'ends after the last day, or when removed. Not for yourself.'),
     auditors.length
-      ? el('table', { class: 'review-table list-table' },
+      ? scrolling(el('table', { class: 'review-table list-table' },
         el('thead', {}, el('tr', {}, ...['Team', 'Auditor', 'Last day'].map((label) => el('th', {}, label)),
           el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
-        el('tbody', {}, ...auditors.map(row)))
+        el('tbody', {}, ...auditors.map(row))))
       : el('p', {}, 'No auditors yet.'),
     teams.length ? auditorForm(users, teams, page) : el('p', { class: 'muted' }, 'Create a team first.'));
 }

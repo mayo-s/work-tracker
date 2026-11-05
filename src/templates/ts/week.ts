@@ -6,7 +6,7 @@ import {
 import { addDays, formatDate, formatDay, isoDate, isoWeek, isValidWeek, mondayOf, shiftWeek, type IsoDate } from './dates.ts';
 import { dayEditor } from './day-editor.ts';
 import { daysOffForm } from './days-off.ts';
-import { button, el } from './dom.ts';
+import { button, el, scrolling } from './dom.ts';
 import { entryEditor, type EntryEditorOptions } from './entry-editor.ts';
 import { historyPanel } from './history.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
@@ -255,13 +255,13 @@ export function shownDays(days: DayView[], entries: Map<IsoDate, EntryView[]>, e
 }
 
 function dayTable(view: View): HTMLElement {
-  return el('table', { class: 'week-table' },
+  return scrolling(el('table', { class: 'week-table' },
     el('thead', {}, el('tr', {},
       el('th', {}, 'Day'), el('th', {}, 'Type'), el('th', {}, 'Times'), el('th', { class: 'num' }, 'Break'),
       el('th', { class: 'num' }, 'Worked'), el('th', { class: 'num' }, 'Target'), el('th', { class: 'num' }, 'Overtime'),
       el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
     el('tbody', {}, ...shownDays(view.data.days, view.data.entries, view.editing).flatMap((day) => dayRows(day, view))),
-  );
+  ));
 }
 
 function weekendLinks(view: View): HTMLElement | null {

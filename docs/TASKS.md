@@ -113,8 +113,10 @@ L.16 (a–i) → 9.1 (a–i).
   next 60 days (public holidays, company half days and planned days off, days in a row combined), and this year's
   figures (days worked and average, sick days, overtime-off days, coding hours, top services). Data from
   `GET /api/dashboard` in one transaction
-- [ ] **6.7** Narrow screens and zoom (WCAG 1.4.10 Reflow, 320 CSS px / 200 % zoom): wide tables scroll in their own
-  container, the navigation wraps, form grids fall back to one column
+- [x] **6.7** Narrow screens and zoom (WCAG 1.4.10 Reflow, 320 CSS px / 400 % zoom): wide tables scroll in their own
+  area (focusable while it scrolls), the navigation and button rows wrap, form grids fall back to one column, the
+  week's entries and forms stay on screen; checked by the end-to-end tests (no page wider than 320 px, axe at that
+  width)
 - [x] **6.8** Duration formats: every duration field (entry duration, break, hours per week, opening balance with a
   minus) accepts `1:30`, `1.5`, `1,5`, `1h30m`, `1h30`, `1h`, `1 h 30 min`, `90m`, `90min` (spaces and case do not
   matter); the field shows the normalized `h:mm` when left, and the API reads the same formats

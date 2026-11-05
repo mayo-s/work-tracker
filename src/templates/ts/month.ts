@@ -2,7 +2,7 @@
 
 import { api, errorText, type DayType, type MonthReport } from './api.ts';
 import { formatMonth, isoDate, isoMonth, isValidMonth, shiftMonth, type IsoDate } from './dates.ts';
-import { el } from './dom.ts';
+import { el, scrolling } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
 import { periodHeader, periodSummary } from './week.ts';
@@ -35,14 +35,14 @@ function serviceSection(work: ServiceWork, readOnly: boolean): HTMLElement {
       el('h3', {}, unassigned ? 'No service ' : `${work.service} `,
         unassigned && !readOnly ? el('a', { class: 'badge warning', href: '/review#tickets' }, 'assign in review') : null),
       el('span', { class: 'num' }, work.duration)),
-    el('table', {},
+    scrolling(el('table', {},
       el('tbody', {}, ...work.tickets.map((ticket) => el('tr', {},
         el('td', { class: 'work-ticket' }, ticket.ticket_key ? el('strong', {}, ticket.ticket_key)
           : el('strong', { class: 'value-negative' }, 'No ticket')),
         el('td', {}, ticket.descriptions.length
           ? el('ul', { class: 'work-descriptions' }, ...ticket.descriptions.map((text) => el('li', {}, text)))
           : el('span', { class: 'muted' }, '—')),
-        el('td', { class: 'num' }, ticket.duration))))),
+        el('td', { class: 'num' }, ticket.duration)))))),
   );
 }
 

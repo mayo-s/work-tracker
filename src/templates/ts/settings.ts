@@ -7,7 +7,7 @@ import {
 } from './api.ts';
 import { auditTable } from './audit.ts';
 import { formatDate, formatMonth, formatTimestamp } from './dates.ts';
-import { button, el } from './dom.ts';
+import { button, el, scrolling } from './dom.ts';
 import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 import { accountSection } from './account.ts';
 import { normalizeOnLeave, type DurationRules } from './duration-input.ts';
@@ -256,9 +256,9 @@ function teamViewInfo(mine: MyTeamView): HTMLElement[] {
     ...notes,
     el('h3', { class: 'account-heading' }, 'Who looked at your reports'),
     views.length
-      ? el('table', { class: 'review-table list-table' },
+      ? scrolling(el('table', { class: 'review-table list-table' },
         el('thead', {}, el('tr', {}, el('th', {}, 'When'), el('th', {}, 'Who'), el('th', {}, 'Report'))),
-        el('tbody', {}, ...views))
+        el('tbody', {}, ...views)))
       : el('p', {}, 'Nobody yet.'),
   ];
 }
