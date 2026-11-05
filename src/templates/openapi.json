@@ -6795,6 +6795,11 @@
           "totals": {
             "$ref": "#/components/schemas/PeriodTotals"
           },
+          "entries": {
+            "description": "Hours in entries on the days counted as worked (up to today)",
+            "title": "Entries",
+            "type": "string"
+          },
           "days_off": {
             "additionalProperties": {
               "type": "integer"
@@ -6822,6 +6827,30 @@
             "title": "Coding Total",
             "type": "string"
           },
+          "other_work": {
+            "description": "Ticket work not marked as coding, by service and ticket",
+            "items": {
+              "$ref": "#/components/schemas/ServiceWork"
+            },
+            "title": "Other Work",
+            "type": "array"
+          },
+          "other_work_total": {
+            "title": "Other Work Total",
+            "type": "string"
+          },
+          "activities": {
+            "description": "Activities by type, with their notes",
+            "items": {
+              "$ref": "#/components/schemas/ActivityWork"
+            },
+            "title": "Activities",
+            "type": "array"
+          },
+          "activities_total": {
+            "title": "Activities Total",
+            "type": "string"
+          },
           "visible_from": {
             "anyOf": [
               {
@@ -6840,10 +6869,15 @@
         "required": [
           "month",
           "totals",
+          "entries",
           "days_off",
           "pto_days",
           "coding",
-          "coding_total"
+          "coding_total",
+          "other_work",
+          "other_work_total",
+          "activities",
+          "activities_total"
         ],
         "title": "MonthReport",
         "type": "object"
@@ -6856,6 +6890,11 @@
           },
           "totals": {
             "$ref": "#/components/schemas/PeriodTotals"
+          },
+          "entries": {
+            "description": "Hours in entries on the days counted as worked (up to today)",
+            "title": "Entries",
+            "type": "string"
           },
           "months": {
             "items": {
@@ -6894,6 +6933,42 @@
             ],
             "description": "Null for years before the balance start, in the future or without PTO days entered"
           },
+          "coding": {
+            "description": "Coding work by service; tickets without service last",
+            "items": {
+              "$ref": "#/components/schemas/ServiceTotal"
+            },
+            "title": "Coding",
+            "type": "array"
+          },
+          "coding_total": {
+            "title": "Coding Total",
+            "type": "string"
+          },
+          "other_work": {
+            "description": "Ticket work not marked as coding, by service",
+            "items": {
+              "$ref": "#/components/schemas/ServiceTotal"
+            },
+            "title": "Other Work",
+            "type": "array"
+          },
+          "other_work_total": {
+            "title": "Other Work Total",
+            "type": "string"
+          },
+          "activities": {
+            "description": "Activities by type",
+            "items": {
+              "$ref": "#/components/schemas/ActivityTotal"
+            },
+            "title": "Activities",
+            "type": "array"
+          },
+          "activities_total": {
+            "title": "Activities Total",
+            "type": "string"
+          },
           "visible_from": {
             "anyOf": [
               {
@@ -6912,11 +6987,18 @@
         "required": [
           "year",
           "totals",
+          "entries",
           "months",
           "days_worked",
           "average_per_day_worked",
           "days_off",
-          "pto"
+          "pto",
+          "coding",
+          "coding_total",
+          "other_work",
+          "other_work_total",
+          "activities",
+          "activities_total"
         ],
         "title": "YearReport",
         "type": "object"
@@ -8481,6 +8563,37 @@
         "type": "string"
       },
       "JsonValue": {},
+      "ActivityWork": {
+        "properties": {
+          "activity_type_id": {
+            "title": "Activity Type Id",
+            "type": "string"
+          },
+          "activity_type": {
+            "title": "Activity Type",
+            "type": "string"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "activity_type_id",
+          "activity_type",
+          "duration",
+          "notes"
+        ],
+        "title": "ActivityWork",
+        "type": "object"
+      },
       "ServiceWork": {
         "properties": {
           "service_id": {
@@ -8561,6 +8674,29 @@
         "title": "TicketWork",
         "type": "object"
       },
+      "ActivityTotal": {
+        "properties": {
+          "activity_type_id": {
+            "title": "Activity Type Id",
+            "type": "string"
+          },
+          "activity_type": {
+            "title": "Activity Type",
+            "type": "string"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity_type_id",
+          "activity_type",
+          "duration"
+        ],
+        "title": "ActivityTotal",
+        "type": "object"
+      },
       "MonthTotals": {
         "properties": {
           "month": {
@@ -8587,6 +8723,44 @@
           "overtime"
         ],
         "title": "MonthTotals",
+        "type": "object"
+      },
+      "ServiceTotal": {
+        "properties": {
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for tickets without service",
+            "title": "Service Id"
+          },
+          "service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_id",
+          "service",
+          "duration"
+        ],
+        "title": "ServiceTotal",
         "type": "object"
       },
       "ReviewEntry": {

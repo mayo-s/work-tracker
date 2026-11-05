@@ -949,6 +949,10 @@ button.button-danger {
   color: var(--color-muted);
 }
 
+.year-work {
+  margin-top: var(--space-6);
+}
+
 /* Editable tables (settings page) */
 
 .list-form {

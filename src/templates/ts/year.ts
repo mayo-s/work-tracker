@@ -1,4 +1,5 @@
-// Year report (/year): totals, PTO account, days off and the months with their running balance.
+// Year report (/year): totals, PTO account, days off, the months with their running balance, and the work by service
+// and activity type.
 
 import { api, errorText, type DayType, type YearReport } from './api.ts';
 import { isoDate, isoMonth, type IsoDate } from './dates.ts';
@@ -6,7 +7,7 @@ import { el, scrolling } from './dom.ts';
 import { fromMinutes, toMinutes } from './durations.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
-import { periodHeader, periodSummary, value } from './week.ts';
+import { entriesOfWorked, periodHeader, periodSummary, value } from './week.ts';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -63,6 +64,26 @@ function daysOffCard(report: YearReport): HTMLElement {
       : el('p', { class: 'muted' }, 'None'));
 }
 
+/** A card of the year's work: hours by service or activity type and the total; `None` if there is none. */
+function workCard(title: string, rows: [string, string][], total: string): HTMLElement {
+  return el('div', { class: 'card' }, el('h3', {}, title),
+    rows.length
+      ? el('table', { class: 'card-table' }, el('tbody', {}, ...rows.map(([label, duration]) => cardRow(label, duration)),
+        el('tr', { class: 'card-table-total' }, el('td', {}, el('strong', {}, 'Total')),
+          el('td', { class: 'num' }, el('strong', {}, total)))))
+      : el('p', { class: 'muted' }, 'None'));
+}
+
+function workCards(report: YearReport): HTMLElement {
+  const byService = (services: YearReport['coding']): [string, string][] =>
+    services.map((service) => [service.service ?? 'No service', service.duration]);
+  return el('div', { class: 'year-cards' },
+    workCard('Coding work', byService(report.coding), report.coding_total),
+    workCard('Other ticket work', byService(report.other_work), report.other_work_total),
+    workCard('Activities', report.activities.map((activity) => [activity.activity_type, activity.duration]),
+      report.activities_total));
+}
+
 function monthsTable(report: YearReport): HTMLElement {
   const balances = runningBalances(report.totals.balance_in, report.months.map((month) => month.overtime));
   const counted = report.totals.until ? isoMonth(report.totals.until) : '';
@@ -97,9 +118,10 @@ export async function renderYearPage(doc: Document): Promise<void> {
     const report = await api.yearReport(year, viewedMember(doc.location.search));
     const worked = el('div', {}, el('span', { class: 'muted' }, 'Days worked '), el('span', { class: 'num' }, String(report.days_worked)),
       el('span', { class: 'muted' }, ' · average '), el('span', { class: 'num' }, report.average_per_day_worked));
-    root.replaceChildren(periodSummary(report.totals, worked),
+    root.replaceChildren(periodSummary(report.totals, entriesOfWorked(report.entries, report.totals), worked),
       el('div', { class: 'year-cards' }, ptoCard(report), daysOffCard(report)),
-      el('h2', {}, 'Months'), monthsTable(report));
+      el('h2', {}, 'Months'), monthsTable(report),
+      el('h2', { class: 'year-work' }, 'Work'), workCards(report));
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },
       errorText(error, 'The year could not be loaded.')));

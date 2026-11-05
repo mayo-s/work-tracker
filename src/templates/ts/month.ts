@@ -1,13 +1,15 @@
-// Month report (/month): totals, days off and the monthly work report (coding hours by service and ticket).
+// Month report (/month): totals, days off and the monthly work report: coding and other ticket work by service and
+// ticket, activities by type.
 
 import { api, errorText, type DayType, type MonthReport } from './api.ts';
 import { formatMonth, isoDate, isoMonth, isValidMonth, shiftMonth, type IsoDate } from './dates.ts';
 import { el, scrolling } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
-import { periodHeader, periodSummary } from './week.ts';
+import { entriesOfWorked, periodHeader, periodSummary } from './week.ts';
 
 type ServiceWork = MonthReport['coding'][number];
+type ActivityWork = MonthReport['activities'][number];
 
 /** The month from `?month=2026-10`, otherwise the current month. */
 export function monthFromSearch(search: string, today: IsoDate): string {
@@ -39,21 +41,49 @@ function serviceSection(work: ServiceWork, readOnly: boolean): HTMLElement {
       el('tbody', {}, ...work.tickets.map((ticket) => el('tr', {},
         el('td', { class: 'work-ticket' }, ticket.ticket_key ? el('strong', {}, ticket.ticket_key)
           : el('strong', { class: 'value-negative' }, 'No ticket')),
-        el('td', {}, ticket.descriptions.length
-          ? el('ul', { class: 'work-descriptions' }, ...ticket.descriptions.map((text) => el('li', {}, text)))
-          : el('span', { class: 'muted' }, '—')),
+        el('td', {}, texts(ticket.descriptions)),
         el('td', { class: 'num' }, ticket.duration)))))),
   );
 }
 
-function workReport(report: MonthReport): HTMLElement {
+/** The descriptions or notes as a list, or a dash. */
+function texts(items: string[]): HTMLElement {
+  return items.length
+    ? el('ul', { class: 'work-descriptions' }, ...items.map((text) => el('li', {}, text)))
+    : el('span', { class: 'muted' }, '—');
+}
+
+/** A part of the work report with its total: "Coding work", "Other ticket work" or "Activities". */
+function workSection(title: string, total: string, content: HTMLElement | null, empty: string): HTMLElement {
   return el('section', { class: 'work-report' },
-    el('div', { class: 'work-service-header' }, el('h2', {}, 'Coding work'),
-      el('span', { class: 'num' }, el('span', { class: 'muted' }, 'Total '), el('strong', {}, report.coding_total))),
-    report.coding.length
-      ? el('div', {}, ...report.coding.map((work) => serviceSection(work, Boolean(report.visible_from))))
-      : el('p', { class: 'muted' }, 'No coding work recorded in this month.'),
+    el('div', { class: 'work-service-header' }, el('h2', {}, title),
+      el('span', { class: 'num' }, el('span', { class: 'muted' }, 'Total '), el('strong', {}, total))),
+    content ?? el('p', { class: 'muted' }, empty),
   );
+}
+
+function servicesContent(services: ServiceWork[], readOnly: boolean): HTMLElement | null {
+  return services.length ? el('div', {}, ...services.map((work) => serviceSection(work, readOnly))) : null;
+}
+
+function activitiesContent(activities: ActivityWork[]): HTMLElement | null {
+  return activities.length ? scrolling(el('table', {},
+    el('tbody', {}, ...activities.map((activity) => el('tr', {},
+      el('td', { class: 'work-ticket' }, el('strong', {}, activity.activity_type)),
+      el('td', {}, texts(activity.notes)),
+      el('td', { class: 'num' }, activity.duration)))))) : null;
+}
+
+function workReport(report: MonthReport): HTMLElement[] {
+  const readOnly = Boolean(report.visible_from);
+  return [
+    workSection('Coding work', report.coding_total, servicesContent(report.coding, readOnly),
+      'No coding work recorded in this month.'),
+    workSection('Other ticket work', report.other_work_total, servicesContent(report.other_work, readOnly),
+      'No other ticket work recorded in this month.'),
+    workSection('Activities', report.activities_total, activitiesContent(report.activities),
+      'No activities recorded in this month.'),
+  ];
 }
 
 export async function renderMonthPage(doc: Document): Promise<void> {
@@ -70,7 +100,8 @@ export async function renderMonthPage(doc: Document): Promise<void> {
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
     const report = await api.monthReport(month, viewedMember(doc.location.search));
-    root.replaceChildren(periodSummary(report.totals, daysOff(report)), workReport(report));
+    root.replaceChildren(periodSummary(report.totals, entriesOfWorked(report.entries, report.totals), daysOff(report)),
+      ...workReport(report));
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },
       errorText(error, 'The month could not be loaded.')));
