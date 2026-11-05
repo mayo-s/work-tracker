@@ -1096,6 +1096,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/review/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The number of open review items of each kind, without the items (for the navigation and the dashboard). */
+        get: operations["get__api_review_counts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/review/flags/{flag_id}": {
         parameters: {
             query?: never;
@@ -2376,6 +2393,15 @@ export interface components {
              */
             days: components["schemas"]["DayView"][];
         };
+        /** ReviewCounts */
+        ReviewCounts: {
+            /** Tickets Without Service */
+            tickets_without_service: number;
+            /** Entries */
+            entries: number;
+            /** Days */
+            days: number;
+        };
         /** ScheduleViewList */
         ScheduleViewList: components["schemas"]["ScheduleView"][];
         /** ScheduleInput */
@@ -3122,15 +3148,6 @@ export interface components {
             target: string;
             /** Overtime */
             overtime: string;
-        };
-        /** ReviewCounts */
-        ReviewCounts: {
-            /** Tickets Without Service */
-            tickets_without_service: number;
-            /** Entries */
-            entries: number;
-            /** Days */
-            days: number;
         };
         /** ReviewEntry */
         ReviewEntry: {
@@ -7191,6 +7208,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewView"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_review_counts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewCounts"];
                 };
             };
             /** @description Unprocessable Content */

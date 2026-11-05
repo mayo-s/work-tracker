@@ -84,7 +84,8 @@ def test_review_is_per_user(app, storage, klara_id, klara, hans):
         entries.add_flag(entries.create(TicketEntry(date=dt.date(2026, 10, 28), ticket_key='TNG-4138', duration=60)).id,
                          FlagReason.UNCERTAIN_TICKET, '#4138')
     assert set(app.simulate_get('/api/review', cookies=hans).json['counts'].values()) == {0}
-    assert app.simulate_get('/api/review', cookies=klara).json['counts']['entries'] == 1
+    assert set(app.simulate_get('/api/review/counts', cookies=hans).json.values()) == {0}
+    assert app.simulate_get('/api/review/counts', cookies=klara).json['entries'] == 1
 
 
 def test_settings_schedules_and_pto_are_per_user(app, klara, hans):

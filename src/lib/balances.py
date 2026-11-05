@@ -4,6 +4,7 @@ import datetime as dt
 from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
+from itertools import accumulate
 from typing import NamedTuple
 
 from src.lib.dates import each_day
@@ -50,6 +51,36 @@ def summarize_period(
     return [summarize_day(day, *records.get(day, DayRecord()), schedules.on(day)) for day in each_day(start, end)]
 
 
+class DayLedger:
+    """The days from `start` to `end`, each summarized once, with the overtime balance at the end of each day: the
+    opening balance plus the overtime of every day from `start` on.
+
+    Days after `until` (today) do not count: from there on, the balance stays at the one of `until`. Before `start`,
+    it is the opening balance.
+    """
+
+    def __init__(
+        self, records: Records, start: dt.date, end: dt.date, until: dt.date, opening: int = 0,
+        schedules: Schedules = STANDARD_SCHEDULES,
+    ) -> None:
+        self.start, self.end = start, end
+        self._days = summarize_period(records, start, end, schedules) if start <= end else []
+        counted = (day.overtime for day in self._days if day.date <= until)
+        self._balances = list(accumulate(counted, initial=opening))  # [i]: the balance before the i-th day
+
+    def days(self, first: dt.date, last: dt.date) -> list[DaySummary]:
+        """The summaries from first to last (inclusive), as far as the ledger covers them."""
+        return self._days[self._before(first):self._before(last + dt.timedelta(days=1))]
+
+    def balance(self, date: dt.date) -> int:
+        """The balance at the end of the day."""
+        return self._balances[min(self._before(date + dt.timedelta(days=1)), len(self._balances) - 1)]
+
+    def _before(self, date: dt.date) -> int:
+        """The number of the ledger's days before `date`."""
+        return min(max((date - self.start).days, 0), len(self._days))
+
+
 def overtime_balance(
     records: Records, start: dt.date, until: dt.date, opening: int = 0, schedules: Schedules = STANDARD_SCHEDULES,
 ) -> int:
@@ -57,9 +88,7 @@ def overtime_balance(
 
     Pass today (or an earlier date) as `until`: future days must not count.
     """
-    if until < start:
-        return opening
-    return opening + sum(day.overtime for day in summarize_period(records, start, until, schedules))
+    return DayLedger(records, start, until, until, opening, schedules).balance(until)
 
 
 def pto_accounts(

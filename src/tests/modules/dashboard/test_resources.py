@@ -30,6 +30,8 @@ def dashboard(client):
 def test_key_figures(client):
     work(client, '2026-10-26', end='17:30')  # 9:00, +1:00
     work(client, '2026-10-27')  # 8:00
+    body = {'kind': 'ticket', 'date': '2026-10-27', 'duration': '0:00', 'ticket_key': 'ENGINE-597'}
+    client.simulate_post('/api/entries', json=body)  # for review: a ticket without service and an entry with 0:00
     result = dashboard(client)
     # 01.09.–28.10.: 42 weekdays, 40 of them without times (today too): 2:00 − 40 × 8:00 + 1:00
     assert (result['today'], result['week']) == ('2026-10-28', '2026-W44')
@@ -38,7 +40,7 @@ def test_key_figures(client):
     assert (result['this_week']['worked'], result['this_week']['target']) == ('17:00', '24:00')  # up to today
     assert result['week_target'] == '40:00'  # the whole week
     assert result['pto']['allowance'] == 31.0
-    assert result['review_open'] == 0
+    assert result['review_open'] == 2
 
 
 def test_balance_series(client):

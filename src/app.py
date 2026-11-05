@@ -26,7 +26,7 @@ from src.modules.pages.resources import (
 )
 from src.modules.pto.resources import PtoYearCollection, PtoYearItem
 from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
-from src.modules.review.resources import Review, ReviewFlagItem
+from src.modules.review.resources import Review, ReviewCountsResource, ReviewFlagItem
 from src.modules.schedules.resources import ScheduleCollection, ScheduleItem
 from src.modules.setup.resources import SetupImportResource, SetupResource
 from src.modules.settings.resources import SettingsResource, ThemeResource
@@ -142,6 +142,7 @@ def create_app(
     app.add_route('/api/pto-years', PtoYearCollection(storage))
     app.add_route('/api/pto-years/{year:int(4)}', PtoYearItem(storage))
     app.add_route('/api/review', Review(storage))
+    app.add_route('/api/review/counts', ReviewCountsResource(storage))
     app.add_route('/api/review/flags/{flag_id}', ReviewFlagItem(storage))
     app.add_route('/api/services', ServiceCollection(storage))
     app.add_route('/api/service-choices', ServiceChoices(storage))

@@ -6,7 +6,6 @@ account are running figures.
 """
 
 import datetime as dt
-from itertools import accumulate
 
 from pydantic import BaseModel, Field
 
@@ -16,7 +15,7 @@ from src.lib.durations import format_duration, parse_duration
 from src.lib.public_holidays import holiday_on
 from src.lib.stays import Stays
 from src.modules.reports.schemas import CodingWork, PeriodTotals, PtoView, Reports, VisibleFrom
-from src.modules.review.schemas import review
+from src.modules.review.schemas import review_counts
 from src.modules.storage.store import Store
 
 COMING_UP_DAYS = 60
@@ -85,8 +84,7 @@ class Dashboard(Reports):
 
     def __init__(self, store: Store, user_id: str, today: dt.date, stays: Stays | None = None) -> None:
         super().__init__(store, user_id, today, stays)
-        self._day_records = self._records(today + dt.timedelta(days=COMING_UP_DAYS))
-        self._balances = self._daily_balances()
+        self._ledger = self._ledger_until(max(today + dt.timedelta(days=COMING_UP_DAYS), dt.date(today.year, 12, 31)))
 
     def view(self) -> DashboardView:
         iso_year, iso_week, _ = self._today.isocalendar()
@@ -95,43 +93,26 @@ class Dashboard(Reports):
         year = self.year(self._today.year)
         return DashboardView(
             today=self._today,
-            balance=format_duration(self._balance_on(self._today)),
+            balance=format_duration(self._ledger.balance(self._today)),
             balance_change_this_year=format_duration(
-                self._balance_on(self._today) - self._balance_on(dt.date(self._today.year - 1, 12, 31))),
+                self._ledger.balance(self._today) - self._ledger.balance(dt.date(self._today.year - 1, 12, 31))),
             pto=year.pto,
             week=week,
             this_week=self.week(week, monday).totals,
-            week_target=format_duration(sum(day.target for day in self._shown(max(monday, self._first),
-                                                                              monday + dt.timedelta(days=6)))),
-            review_open=0 if self._visible_from else sum(review(self._store, self._user).counts.model_dump().values()),
+            week_target=format_duration(sum(day.target for day in self._period_days(self._ledger, monday,
+                                                                                    monday + dt.timedelta(days=6)))),
+            review_open=0 if self._visible_from else sum(review_counts(self._store, self._user).model_dump().values()),
             balance_series=self._series(),
             coming_up=self._coming_up(),
             this_year=self._year_figures(year.days_worked, year.average_per_day_worked, year.days_off),
             visible_from=self._visible_from,
         )
 
-    def _daily_balances(self) -> dict[dt.date, int]:
-        """The balance at the end of each day from the balance start up to today."""
-        days = self._summaries(self._settings.balance_start, self._today)
-        totals = accumulate((day.overtime for day in days), initial=self._settings.opening_balance)
-        return dict(zip((day.date for day in days), list(totals)[1:]))
-
-    def _summaries(self, start: dt.date, end: dt.date) -> list[DaySummary]:
-        return summarize_period(self._day_records, start, end, self._schedules) if start <= end else []
-
-    def _shown(self, start: dt.date, end: dt.date) -> list[DaySummary]:
-        """The days of the period; in the team view only those shown."""
-        return self._only_shown(self._summaries(start, end))
-
-    def _balance_on(self, date: dt.date) -> int:
-        """The balance at the end of the day; before the balance start, the opening balance."""
-        return self._balances.get(date, self._settings.opening_balance if date < self._settings.balance_start else 0)
-
     def _series(self) -> BalanceSeries:
         start, today = self._first, self._today
         month_start = max(start, today.replace(day=1))
         return BalanceSeries(
-            month=[self._point(day.date) for day in self._summaries(month_start, today)],
+            month=[self._point(day.date) for day in self._ledger.days(month_start, today)],
             year=self._month_ends(max(start, dt.date(today.year, 1, 1))),
             last_12_months=self._month_ends(max(start, _months_back(today, 11))),
             all=self._month_ends(start),
@@ -146,13 +127,14 @@ class Dashboard(Reports):
         return points
 
     def _point(self, date: dt.date) -> BalancePoint:
-        minutes = self._balance_on(date)
+        minutes = self._ledger.balance(date)
         return BalancePoint(date=date, minutes=minutes, balance=format_duration(minutes))
 
     def _coming_up(self) -> list[ComingUp]:
         items: list[ComingUp] = []
         tomorrow = self._today + dt.timedelta(days=1)
-        for day in self._shown(tomorrow, self._today + dt.timedelta(days=COMING_UP_DAYS)):
+        days = summarize_period(self._records, tomorrow, self._today + dt.timedelta(days=COMING_UP_DAYS), self._schedules)
+        for day in self._only_shown(days):
             if day.work_day:
                 _add_coming_up(items, day, self._holiday_name(day))
         return [item for item in items if item.day_type is not DayType.WORK]

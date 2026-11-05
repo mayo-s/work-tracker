@@ -21,6 +21,7 @@ export type ServiceChoice = Schemas['ServiceChoice'];
 export type ActivityType = Schemas['ActivityType'];
 export type ActivityTypeInput = Schemas['ActivityTypeInput'];
 export type ReviewView = Schemas['ReviewView'];
+export type ReviewCounts = Schemas['ReviewCounts'];
 export type ReviewEntry = Schemas['ReviewEntry'];
 export type ReviewReason = Schemas['ReviewReason'];
 export type PeriodTotals = Schemas['PeriodTotals'];
@@ -212,6 +213,7 @@ export const api = {
   deleteActivityType: (id: string) => request<void>('DELETE', `/api/activity-types/${segment(id)}`),
 
   review: () => request<ReviewView>('GET', '/api/review'),
+  reviewCounts: () => request<ReviewCounts>('GET', '/api/review/counts'),
   clearFlag: (id: string) => request<void>('DELETE', `/api/review/flags/${segment(id)}`),
 
   weekReport: (week: string, member: string | null = null) =>

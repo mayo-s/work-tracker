@@ -220,17 +220,11 @@ def test_split_needs_a_ticket_entry_and_two_different_tickets(entries, activity_
         entries.split(entry.id, keys)
 
 
-def test_entries_imported_together(entries):
-    line = '6,0 #4138, #4139 create meeting service'
-    first = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4138', duration=180), HistoryAction.IMPORTED, line)
-    second = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4139', duration=180), HistoryAction.IMPORTED, line)
-    next_day = TicketEntry(date=MONDAY + dt.timedelta(days=1), ticket_key='TNG-4138', duration=60)
-    entries.create(next_day, HistoryAction.IMPORTED, line)
-    alone = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4145', duration=60), HistoryAction.IMPORTED, '1,0 #4145')
+def test_imported_lines(entries):
+    first = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4138', duration=180), HistoryAction.IMPORTED, '3,0 #4138')
+    entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4139', duration=60), HistoryAction.IMPORTED, '1,0 #4139')
     created = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-5882', duration=60))
-    assert [entry.id for entry in entries.imported_together(first.id)] == [first.id, second.id]
-    assert [entry.id for entry in entries.imported_together(alone.id)] == [alone.id]
-    assert entries.imported_together(created.id) == []
+    assert entries.imported_lines([first.id, created.id]) == {first.id: '3,0 #4138'}
 
 
 def test_update_to_new_ticket_creates_ticket(entries, tickets, ticket_entry):
