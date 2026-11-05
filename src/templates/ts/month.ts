@@ -63,8 +63,10 @@ export async function renderMonthPage(doc: Document): Promise<void> {
   }
   const today = isoDate(new Date());
   const month = monthFromSearch(doc.location.search, today);
-  periodHeader(doc, 'month', formatMonth(month), (shift) => `/month?month=${shiftMonth(month, shift)}`,
-    month === isoMonth(today));
+  periodHeader(doc, 'month', {
+    title: formatMonth(month), start: `${month}-01`, shifted: (shift) => `/month?month=${shiftMonth(month, shift)}`,
+    of: (date) => `/month?month=${isoMonth(date)}`, current: month === isoMonth(today),
+  });
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
     const report = await api.monthReport(month, viewedMember(doc.location.search));

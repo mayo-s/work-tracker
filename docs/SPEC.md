@@ -194,7 +194,7 @@ Every change to a task entry is recorded, so it can be checked later what change
 ### 5.1 Week
 
 - Shows the work days of the current week (e.g. Mon–Fri); other days only if they hold data. Prev / next / today
-  navigation.
+  navigation, and a date field whose "Go" opens the week of that date.
 - Per day: day type (a company half day as "Company half day · 0.5 PTO (half free)"), start / end / break, worked
   vs. target, overtime, the task entries and the warning.
 - Add, edit and delete days and entries inline; open an entry's history (4.5).
@@ -208,6 +208,7 @@ Every change to a task entry is recorded, so it can be checked later what change
 
 - **Coding work by service → ticket**: hours plus the entry descriptions. Unassigned entries are listed separately.
 - Worked vs. target, overtime for the month, balance at month end.
+- Previous / next / current month, and a date field whose "Go" opens the month of that date.
 - PTO, sick and overtime-off days in the month.
 
 ### 5.3 Year report
@@ -216,6 +217,7 @@ Replaces the spreadsheet dashboard:
 
 - Per year: worked total, target, average per day worked, overtime for the year, balance carried in and out.
 - Per month: worked, target, overtime.
+- Previous / next / current year, and a date field whose "Go" opens the year of that date.
 - PTO carried over / allowance / used / remaining; sick, overtime-off and unpaid days.
 
 ### 5.4 Review
