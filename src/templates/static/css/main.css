@@ -773,6 +773,44 @@ button.button-danger {
   margin-top: var(--space-1);
 }
 
+/* The whole of an entry in a dialog (entry-details.ts) */
+
+.entry-details + .entry-details {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: var(--border);
+}
+
+.entry-details h3 {
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-base);
+}
+
+.details-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: 0 0 var(--space-3);
+}
+
+.details-list dt {
+  color: var(--color-muted);
+}
+
+.details-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.details-flags {
+  margin: var(--space-1) 0 var(--space-3);
+  padding-left: var(--space-4);
+}
+
+.entry-details .history {
+  margin: var(--space-1) 0 var(--space-3);
+}
+
 /* Review page (/review) */
 
 .review-header {

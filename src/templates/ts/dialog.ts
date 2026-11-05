@@ -4,8 +4,11 @@ import { button, el } from './dom.ts';
 
 export type Choice<T> = { label: string; value: T; primary?: boolean };
 
-/** Asks in a modal dialog; resolves to the chosen value, or null for Cancel and Escape. */
-export function ask<T>(title: string, body: (string | HTMLElement)[], choices: Choice<T>[]): Promise<T | null> {
+/** Asks in a modal dialog; resolves to the chosen value, or null for Cancel (`cancel`, e.g. Close for a dialog that
+ * only shows something) and Escape. */
+export function ask<T>(
+  title: string, body: (string | HTMLElement)[], choices: Choice<T>[], cancel = 'Cancel',
+): Promise<T | null> {
   return new Promise((resolve) => {
     const dialog = el('dialog', { class: 'dialog', 'aria-labelledby': 'dialog-title' });
     const choose = (value: T | null) => (): void => {
@@ -19,7 +22,7 @@ export function ask<T>(title: string, body: (string | HTMLElement)[], choices: C
       ...body.map((part) => (typeof part === 'string' ? el('p', { class: 'muted' }, part) : part)),
       el('div', { class: 'form-actions' },
         ...choices.map((choice) => button(choice.label, choose(choice.value), { class: choice.primary ? 'primary' : null })),
-        button('Cancel', choose(null), { class: null })),
+        button(cancel, choose(null), { class: null })),
     );
     document.body.append(dialog);
     dialog.showModal();

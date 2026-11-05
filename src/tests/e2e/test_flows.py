@@ -60,6 +60,12 @@ def test_split_a_guessed_ticket_rename_one_and_assign_a_service(logged_in):
     page.goto('/review')
     badge = page.locator('.app-nav a[href="/review"] .badge')
     expect(badge).to_have_text('2')  # the guessed entry and its ticket without service
+    page.click('#guessed button:has-text("Details")')
+    dialog = page.locator('dialog')
+    expect(dialog.locator('h3')).to_have_text('Mon 26.10.2026 · no times')
+    expect(dialog.locator('.history')).to_contain_text('Original: 6,0 #4347 aka #1482 check permission')
+    dialog.locator('button:has-text("Close")').click()
+    expect(dialog).to_have_count(0)
     page.click('#guessed button:has-text("Split")')
     expect(page.locator('#guessed .rename-form input')).to_have_value('TNG-4347, KP-1482')
     page.click('#guessed .rename-form button:has-text("Split")')

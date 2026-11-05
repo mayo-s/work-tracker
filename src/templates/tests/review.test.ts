@@ -3,18 +3,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import type { ReviewEntry, TicketView } from '../ts/api.ts';
+import type { EntryView, ReviewEntry, TicketView } from '../ts/api.ts';
 import {
-  describeSplit, filterTickets, groupReview, reviewTotal, splitSuggestion, weekLink,
+  describeSplit, entryTexts, filterTickets, groupReview, reviewTotal, splitSuggestion,
 } from '../ts/review.ts';
 
 const TICKETS: TicketView[] = ['AGA-39', 'AGA-40', 'TNG-4950', 'TNG-5214'].map((key) => ({ key, service_id: null, service: null, entries: 1 }));
-
-test('links into the week view of a date', () => {
-  assert.equal(weekLink('2024-10-31', 'entry=129'), '/week?week=2024-W44&entry=129');
-  assert.equal(weekLink('2025-12-06', 'edit=2025-12-06'), '/week?week=2025-W49&edit=2025-12-06');
-  assert.equal(weekLink('2025-12-29', 'entry=1'), '/week?week=2026-W01&entry=1');
-});
 
 test('total of open review items', () => {
   assert.equal(reviewTotal({ tickets_without_service: 185, entries: 104, days: 3 }), 292);
@@ -33,6 +27,7 @@ function reviewEntry(
   split: ReviewEntry['split_on_import'] = [], suggestion: string[] = [],
 ): ReviewEntry {
   return {
+    original: null,
     split_on_import: split,
     split_suggestion: suggestion,
     entry: {
@@ -78,4 +73,12 @@ test('the split of the import is kept per original line', () => {
   ]);
   assert.deepEqual(guessed[0]?.splits, { [line]: split });
   assert.equal(describeSplit(split), 'TNG-4138 3:00 · TNG-4139 3:00');
+});
+
+test('descriptions and notes of entries, each once ignoring case', () => {
+  const entries = [
+    { kind: 'ticket', description: 'PR Review' }, { kind: 'ticket', description: '' }, { kind: 'ticket', description: 'pr review' },
+    { kind: 'activity', note: 'Sprint planning' }, { kind: 'ticket', description: ' adapt tests ' },
+  ] as EntryView[];
+  assert.deepEqual(entryTexts(entries), ['PR Review', 'Sprint planning', 'adapt tests']);
 });

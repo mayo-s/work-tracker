@@ -5,7 +5,7 @@ import { test } from 'node:test';
 
 import {
   addDays, formatDate, formatDay, formatMonth, formatTimestamp, isoDate, isoMonth, isoWeek, isValidMonth, isValidWeek,
-  mondayOf, shiftMonth, shiftWeek,
+  mondayOf, shiftMonth, shiftWeek, weekLink,
 } from '../ts/dates.ts';
 
 test('iso date of a local date', () => {
@@ -66,4 +66,10 @@ test('months', () => {
 
 test('timestamps show date and minutes', () => {
   assert.equal(formatTimestamp('2026-10-29T08:05:12'), '29.10.2026 08:05');
+});
+
+test('links into the week view of a date', () => {
+  assert.equal(weekLink('2024-10-31', 'entry=129'), '/week?week=2024-W44&entry=129');
+  assert.equal(weekLink('2025-12-06', 'edit=2025-12-06'), '/week?week=2025-W49&edit=2025-12-06');
+  assert.equal(weekLink('2025-12-29', 'entry=1'), '/week?week=2026-W01&entry=1');
 });

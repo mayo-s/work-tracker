@@ -330,7 +330,7 @@ L.16 (a–i) → 9.1 (a–i).
 - [x] **12.2** The review count in the navigation follows every review action (from the counts of 12.1)
 - [x] **12.3** A full restore that takes over the backup's root login needs no two-factor setup before, while the
   database holds nobody but root (the backup's root login comes with its own); everything else still requires it
-- [ ] **12.4** Review entries with more context: the description (or note) and the original spreadsheet line in the
+- [x] **12.4** Review entries with more context: the description (or note) and the original spreadsheet line in the
   row, and "Details" opening a dialog with the whole entry (date and weekday with the day's times, duration, ticket or
   activity, service, coding, description, flags, history, a link to the week); a button, not hover (keyboard, touch)
 - [ ] **12.5** Week, month and year: a date field with "Go" in the header opens the week, month or year of that date

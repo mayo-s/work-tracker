@@ -8601,6 +8601,18 @@
             "title": "Reasons",
             "type": "array"
           },
+          "original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The spreadsheet line the entry was imported from; null if not imported",
+            "title": "Original"
+          },
           "split_on_import": {
             "description": "All entries the import made from the same spreadsheet line, if it named several tickets",
             "items": {
@@ -8621,6 +8633,7 @@
         "required": [
           "entry",
           "reasons",
+          "original",
           "split_on_import",
           "split_suggestion"
         ],
