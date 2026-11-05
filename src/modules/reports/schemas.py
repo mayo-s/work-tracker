@@ -1,4 +1,5 @@
-"""Reports for a week, a month (with the coding work by service) and a year (with the PTO account).
+"""Reports for a week, a month (with the work by service, ticket and activity type) and a year (with the PTO account
+and the work by service and activity type).
 
 Worked time, target and overtime count up to today; future days do not count yet. Days off count for
 the whole period, so planned PTO shows up. In the team view, the period figures count only the member's days in the
@@ -8,7 +9,7 @@ team (Stays); the balance and the PTO account are running figures and cover the 
 import calendar
 import datetime as dt
 from collections import Counter, defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Annotated
 
 from pydantic import BaseModel, Field
@@ -17,7 +18,7 @@ from src.lib.balances import DayLedger, DayRecord, pto_accounts
 from src.lib.daytypes import DaySummary, DayType
 from src.lib.durations import format_duration, parse_duration
 from src.lib.stays import Stays
-from src.models.entries import Entry, TicketEntry
+from src.models.entries import ActivityEntry, TicketEntry
 from src.modules.storage.store import Store
 from src.modules.tickets.schemas import TicketServices
 
@@ -50,20 +51,41 @@ class TicketWork(BaseModel):
     descriptions: list[str]
 
 
-class ServiceWork(BaseModel):
+class ServiceTotal(BaseModel):
     service_id: str | None = Field(description='Null for tickets without service')
     service: str | None
     duration: str
+
+
+class ServiceWork(ServiceTotal):
     tickets: list[TicketWork]
+
+
+class ActivityTotal(BaseModel):
+    activity_type_id: str
+    activity_type: str
+    duration: str
+
+
+class ActivityWork(ActivityTotal):
+    notes: list[str]
+
+
+Entries = Annotated[str, Field(description='Hours in entries on the days counted as worked (up to today)')]
 
 
 class MonthReport(BaseModel):
     month: str = Field(examples=['2026-10'])
     totals: PeriodTotals
+    entries: Entries
     days_off: dict[DayType, int]
     pto_days: float = Field(description='PTO used and planned in the month')
     coding: list[ServiceWork] = Field(description='Coding work by service and ticket; tickets without service last')
     coding_total: str
+    other_work: list[ServiceWork] = Field(description='Ticket work not marked as coding, by service and ticket')
+    other_work_total: str
+    activities: list[ActivityWork] = Field(description='Activities by type, with their notes')
+    activities_total: str
     visible_from: VisibleFrom = None
 
 
@@ -87,6 +109,7 @@ class PtoView(BaseModel):
 class YearReport(BaseModel):
     year: int
     totals: PeriodTotals
+    entries: Entries
     months: list[MonthTotals]
     days_worked: int = Field(description='Days with worked time, up to today')
     average_per_day_worked: str
@@ -94,6 +117,12 @@ class YearReport(BaseModel):
     pto: PtoView | None = Field(
         description='Null for years before the balance start, in the future or without PTO days entered',
     )
+    coding: list[ServiceTotal] = Field(description='Coding work by service; tickets without service last')
+    coding_total: str
+    other_work: list[ServiceTotal] = Field(description='Ticket work not marked as coding, by service')
+    other_work_total: str
+    activities: list[ActivityTotal] = Field(description='Activities by type')
+    activities_total: str
     visible_from: VisibleFrom = None
 
 
@@ -123,14 +152,17 @@ class Reports:
     def month(self, year: int, month: int) -> MonthReport:
         start, end = _month_bounds(year, month)
         ledger = self._ledger_until(end)
-        coding = CodingWork(self._store, self._user).by_service(max(start, self._first), end, self._shows)
+        work = self._work(start, end)
+        coding, other, activities = work.tickets(coding=True), work.tickets(coding=False), work.activities()
         return MonthReport(
             month=f'{year}-{month:02d}',
             totals=self._totals(ledger, start, end),
+            entries=work.total(min(end, self._today)),
             days_off=self._days_off(ledger, start, end),
             pto_days=float(sum(day.pto_days for day in self._period_days(ledger, start, end))),
-            coding=coding,
-            coding_total=format_duration(sum(parse_duration(service.duration) for service in coding)),
+            coding=coding, coding_total=_sum(coding),
+            other_work=other, other_work_total=_sum(other),
+            activities=activities, activities_total=_sum(activities),
             visible_from=self._visible_from,
         )
 
@@ -139,16 +171,27 @@ class Reports:
         ledger = self._ledger_until(end)
         counted = self._counted_days(ledger, start, end)
         worked_days = [day for day in counted if day.worked]
+        work = self._work(start, end)
+        coding, other, activities = work.tickets(coding=True), work.tickets(coding=False), work.activities()
         return YearReport(
             year=year,
             totals=self._totals(ledger, start, end),
+            entries=work.total(min(end, self._today)),
             months=[self._month_totals(ledger, year, month) for month in range(1, 13)],
             days_worked=len(worked_days),
             average_per_day_worked=format_duration(sum(day.worked for day in worked_days) // max(len(worked_days), 1)),
             days_off=self._days_off(ledger, start, end),
             pto=self._pto(year),
+            coding=_service_totals(coding), coding_total=_sum(coding),
+            other_work=_service_totals(other), other_work_total=_sum(other),
+            activities=[ActivityTotal(**item.model_dump(exclude={'notes'})) for item in activities],
+            activities_total=_sum(activities),
             visible_from=self._visible_from,
         )
+
+    def _work(self, start: dt.date, end: dt.date) -> 'PeriodWork':
+        """The entries of the period from the balance start on (in the team view only on the days shown)."""
+        return PeriodWork(self._store, self._user, max(start, self._first), end, self._shows)
 
     def _ledger_until(self, end: dt.date) -> DayLedger:
         """The days from the balance start to `end` at least, loaded and summarized once per report object (the
@@ -213,21 +256,37 @@ class Reports:
         )
 
 
-class CodingWork:
-    """A user's coding entries of a period, grouped by the service of their ticket and by ticket."""
+class PeriodWork:
+    """A user's entries from `start` to `end` (with `shows`, team view: only on the days shown): the ticket work by the
+    service of the ticket and by ticket, coding or not, and the activities by type."""
 
-    def __init__(self, store: Store, user_id: str) -> None:
-        self._entries = store.entries(user_id)
+    def __init__(self, store: Store, user_id: str, start: dt.date, end: dt.date, shows: Shows = None) -> None:
+        self._store, self._user = store, user_id
+        self._entries = [entry for entry in store.entries(user_id).between(start, end) if shows is None or shows(entry.date)]
         self._services = TicketServices(store, user_id)
 
-    def by_service(self, start: dt.date, end: dt.date, shows: Shows = None) -> list[ServiceWork]:
-        """The coding work from `start` to `end`; with `shows` (team view), only on the days shown."""
+    def tickets(self, coding: bool) -> list[ServiceWork]:
+        """The ticket work marked as coding, or the other ticket work; tickets without service last."""
         grouped = defaultdict(lambda: defaultdict(list))
-        for entry in self._entries.between(start, end):
-            if _coding(entry, shows):
+        for entry in self._entries:
+            if isinstance(entry, TicketEntry) and entry.coding == coding:
                 grouped[self._services.of_ticket(entry.ticket_key)][entry.ticket_key].append(entry)
         services = sorted(grouped, key=lambda service: (service is None, (self._services.name(service) or '').lower()))
         return [self._service_work(service_id, grouped[service_id]) for service_id in services]
+
+    def activities(self) -> list[ActivityWork]:
+        """The activities by type, ordered by name, with their notes."""
+        grouped = defaultdict(list)
+        for entry in self._entries:
+            if isinstance(entry, ActivityEntry):
+                grouped[entry.activity_type_id].append(entry)
+        names = {kind.id: kind.name for kind in self._store.activity_types(self._user).all()} if grouped else {}
+        work = [_activity_work(type_id, names.get(type_id, ''), entries) for type_id, entries in grouped.items()]
+        return sorted(work, key=lambda activity: activity.activity_type.lower())
+
+    def total(self, until: dt.date) -> str:
+        """The hours in all entries up to `until`."""
+        return format_duration(sum(entry.duration for entry in self._entries if entry.date <= until))
 
     def _service_work(self, service_id: str | None, tickets: dict[str | None, list[TicketEntry]]) -> ServiceWork:
         work = [_ticket_work(key, tickets[key]) for key in sorted(tickets, key=_ticket_order)]
@@ -239,17 +298,33 @@ class CodingWork:
         )
 
 
-def _coding(entry: Entry, shows: Shows) -> bool:
-    return isinstance(entry, TicketEntry) and entry.coding and (shows is None or shows(entry.date))
-
-
 def _ticket_work(key: str | None, entries: list[TicketEntry]) -> TicketWork:
-    descriptions: dict[str, str] = {}  # first spelling per description, ignoring case ('PR Review' = 'PR review')
-    for entry in entries:
-        if entry.description:
-            descriptions.setdefault(entry.description.casefold(), entry.description)
     return TicketWork(ticket_key=key, duration=format_duration(sum(entry.duration for entry in entries)),
-                      descriptions=list(descriptions.values()))
+                      descriptions=_distinct(entry.description for entry in entries))
+
+
+def _activity_work(type_id: str, name: str, entries: list[ActivityEntry]) -> ActivityWork:
+    return ActivityWork(activity_type_id=type_id, activity_type=name,
+                        duration=format_duration(sum(entry.duration for entry in entries)),
+                        notes=_distinct(entry.note for entry in entries))
+
+
+def _distinct(texts: Iterable[str]) -> list[str]:
+    """The texts without empty ones and repeats, in the first spelling ignoring case ('PR Review' = 'PR review')."""
+    first: dict[str, str] = {}
+    for text in texts:
+        if text:
+            first.setdefault(text.casefold(), text)
+    return list(first.values())
+
+
+def _service_totals(work: list[ServiceWork]) -> list[ServiceTotal]:
+    """The services without their tickets (the year report)."""
+    return [ServiceTotal(**service.model_dump(exclude={'tickets'})) for service in work]
+
+
+def _sum(work: list[ServiceWork] | list[ActivityWork]) -> str:
+    return format_duration(sum(parse_duration(item.duration) for item in work))
 
 
 def _ticket_order(key: str | None) -> tuple[bool, str, int]:

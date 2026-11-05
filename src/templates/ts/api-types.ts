@@ -2332,6 +2332,11 @@ export interface components {
              */
             month: string;
             totals: components["schemas"]["PeriodTotals"];
+            /**
+             * Entries
+             * @description Hours in entries on the days counted as worked (up to today)
+             */
+            entries: string;
             /** Days Off */
             days_off: {
                 [key: string]: number;
@@ -2349,6 +2354,20 @@ export interface components {
             /** Coding Total */
             coding_total: string;
             /**
+             * Other Work
+             * @description Ticket work not marked as coding, by service and ticket
+             */
+            other_work: components["schemas"]["ServiceWork"][];
+            /** Other Work Total */
+            other_work_total: string;
+            /**
+             * Activities
+             * @description Activities by type, with their notes
+             */
+            activities: components["schemas"]["ActivityWork"][];
+            /** Activities Total */
+            activities_total: string;
+            /**
              * Visible From
              * @description Team view: the first day shown (the member joined the team)
              * @default null
@@ -2360,6 +2379,11 @@ export interface components {
             /** Year */
             year: number;
             totals: components["schemas"]["PeriodTotals"];
+            /**
+             * Entries
+             * @description Hours in entries on the days counted as worked (up to today)
+             */
+            entries: string;
             /** Months */
             months: components["schemas"]["MonthTotals"][];
             /**
@@ -2375,6 +2399,27 @@ export interface components {
             };
             /** @description Null for years before the balance start, in the future or without PTO days entered */
             pto: components["schemas"]["PtoView"] | null;
+            /**
+             * Coding
+             * @description Coding work by service; tickets without service last
+             */
+            coding: components["schemas"]["ServiceTotal"][];
+            /** Coding Total */
+            coding_total: string;
+            /**
+             * Other Work
+             * @description Ticket work not marked as coding, by service
+             */
+            other_work: components["schemas"]["ServiceTotal"][];
+            /** Other Work Total */
+            other_work_total: string;
+            /**
+             * Activities
+             * @description Activities by type
+             */
+            activities: components["schemas"]["ActivityTotal"][];
+            /** Activities Total */
+            activities_total: string;
             /**
              * Visible From
              * @description Team view: the first day shown (the member joined the team)
@@ -3120,6 +3165,17 @@ export interface components {
          */
         HistoryAction: "created" | "imported" | "updated" | "renamed" | "merged" | "split" | "deleted";
         JsonValue: unknown;
+        /** ActivityWork */
+        ActivityWork: {
+            /** Activity Type Id */
+            activity_type_id: string;
+            /** Activity Type */
+            activity_type: string;
+            /** Duration */
+            duration: string;
+            /** Notes */
+            notes: string[];
+        };
         /** ServiceWork */
         ServiceWork: {
             /**
@@ -3146,6 +3202,15 @@ export interface components {
             /** Descriptions */
             descriptions: string[];
         };
+        /** ActivityTotal */
+        ActivityTotal: {
+            /** Activity Type Id */
+            activity_type_id: string;
+            /** Activity Type */
+            activity_type: string;
+            /** Duration */
+            duration: string;
+        };
         /** MonthTotals */
         MonthTotals: {
             /** Month */
@@ -3156,6 +3221,18 @@ export interface components {
             target: string;
             /** Overtime */
             overtime: string;
+        };
+        /** ServiceTotal */
+        ServiceTotal: {
+            /**
+             * Service Id
+             * @description Null for tickets without service
+             */
+            service_id: string | null;
+            /** Service */
+            service: string | null;
+            /** Duration */
+            duration: string;
         };
         /** ReviewEntry */
         ReviewEntry: {

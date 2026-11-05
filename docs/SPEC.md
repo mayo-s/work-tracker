@@ -207,7 +207,10 @@ Every change to a task entry is recorded, so it can be checked later what change
 ### 5.2 Month report
 
 - **Coding work by service → ticket**: hours plus the entry descriptions. Unassigned entries are listed separately.
-- Worked vs. target, overtime for the month, balance at month end.
+- **Other ticket work** (ticket entries not marked as coding) the same way, by service → ticket.
+- **Activities** by activity type: hours plus the notes.
+- Worked vs. target, overtime for the month, balance at month end; the hours in entries next to the hours worked
+  ("Entries 152:30 of 160:00 worked", the same days: up to today).
 - Previous / next / current month, and a date field whose "Go" opens the month of that date.
 - PTO, sick and overtime-off days in the month.
 
@@ -217,6 +220,8 @@ Replaces the spreadsheet dashboard:
 
 - Per year: worked total, target, average per day worked, overtime for the year, balance carried in and out.
 - Per month: worked, target, overtime.
+- Coding work and other ticket work by service, activities by type (hours and totals); the hours in entries next to
+  the hours worked.
 - Previous / next / current year, and a date field whose "Go" opens the year of that date.
 - PTO carried over / allowance / used / remaining; sick, overtime-off and unpaid days.
 

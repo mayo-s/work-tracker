@@ -14,7 +14,7 @@ from src.lib.daytypes import DaySummary, DayType
 from src.lib.durations import format_duration, parse_duration
 from src.lib.public_holidays import holiday_on
 from src.lib.stays import Stays
-from src.modules.reports.schemas import CodingWork, PeriodTotals, PtoView, Reports, VisibleFrom
+from src.modules.reports.schemas import PeriodTotals, PeriodWork, PtoView, Reports, VisibleFrom
 from src.modules.review.schemas import review_counts
 from src.modules.storage.store import Store
 
@@ -146,7 +146,7 @@ class Dashboard(Reports):
     def _year_figures(self, days_worked: int, average: str, days_off: dict[DayType, int]) -> YearFigures:
         year = self._today.year
         first = max(dt.date(year, 1, 1), self._first)
-        coding = CodingWork(self._store, self._user).by_service(first, dt.date(year, 12, 31), self._shows)
+        coding = PeriodWork(self._store, self._user, first, dt.date(year, 12, 31), self._shows).tickets(coding=True)
         top = sorted(coding, key=lambda work: parse_duration(work.duration), reverse=True)[:3]
         return YearFigures(
             year=year, days_worked=days_worked, average_per_day_worked=average,

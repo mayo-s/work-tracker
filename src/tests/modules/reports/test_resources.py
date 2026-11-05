@@ -6,7 +6,7 @@ from falcon import testing
 
 from src.app import create_app
 from src.models.entries import TicketEntry
-from src.modules.storage.catalog import ServiceRepository
+from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.settings import load_settings, save_settings
 from src.tests.users import USER
@@ -27,6 +27,12 @@ def client(database):
 def service_ids(database):
     with database.transaction() as conn:
         return {service.short_name: service.id for service in ServiceRepository(conn, USER).all()}
+
+
+@pytest.fixture
+def activity_ids(database):
+    with database.transaction() as conn:
+        return {kind.name: kind.id for kind in ActivityTypeRepository(conn, USER).all()}
 
 
 def work(client, date, start='08:00', end='16:30', break_time='0:30'):
@@ -93,6 +99,59 @@ def test_month_coding_work_by_service_and_ticket(client, service_ids):
         ]},
     ]
     assert report['coding_total'] == '10:00'
+
+
+def activity(client, date, type_id, duration, note=''):
+    body = {'kind': 'activity', 'date': date, 'duration': duration, 'activity_type_id': type_id, 'note': note}
+    assert client.simulate_post('/api/entries', json=body).status == falcon.HTTP_201
+
+
+@pytest.fixture
+def october(client, service_ids, activity_ids):
+    """Coding, other ticket work and activities in October 2026, one coding entry after today (28.10.); a ticket has
+    one service for all its entries."""
+    work(client, '2026-10-05')
+    ticket(client, '2026-10-05', 'ENGINE-573', '3:00', 'HUB support', service_id=service_ids['MSB'])
+    ticket(client, '2026-10-05', 'KP-2203', '1:00', 'refinement', coding=False, service_id=service_ids['MSB'])
+    ticket(client, '2026-10-06', 'KP-2203', '0:30', 'Refinement', coding=False)
+    ticket(client, '2026-10-06', 'KP-2045', '1:00', 'planning', coding=False)
+    activity(client, '2026-10-05', activity_ids['Meeting'], '1:00', 'Jour fixe')
+    activity(client, '2026-10-07', activity_ids['Meeting'], '0:30', 'jour fixe')
+    activity(client, '2026-10-07', activity_ids['Meeting'], '0:15')
+    activity(client, '2026-10-08', activity_ids['Tool Management'], '2:00', 'Jira cleanup')
+    ticket(client, '2026-10-29', 'TNG-5783', '4:00')
+
+
+def test_month_other_ticket_work_activities_and_entries(client, october, service_ids, activity_ids):
+    report = client.simulate_get('/api/reports/months/2026-10').json
+    assert report['other_work'] == [
+        {'service_id': service_ids['MSB'], 'service': 'MSB', 'duration': '1:30', 'tickets': [
+            {'ticket_key': 'KP-2203', 'duration': '1:30', 'descriptions': ['refinement']},
+        ]},
+        {'service_id': None, 'service': None, 'duration': '1:00', 'tickets': [
+            {'ticket_key': 'KP-2045', 'duration': '1:00', 'descriptions': ['planning']},
+        ]},
+    ]
+    assert report['activities'] == [
+        {'activity_type_id': activity_ids['Meeting'], 'activity_type': 'Meeting', 'duration': '1:45',
+         'notes': ['Jour fixe']},
+        {'activity_type_id': activity_ids['Tool Management'], 'activity_type': 'Tool Management', 'duration': '2:00',
+         'notes': ['Jira cleanup']},
+    ]
+    assert (report['coding_total'], report['other_work_total'], report['activities_total']) == ('7:00', '2:30', '3:45')
+    assert (report['entries'], report['totals']['worked']) == ('9:15', '8:00')  # 29.10. is after today
+
+
+def test_year_work_by_service_and_activity_type(client, october, service_ids, activity_ids):
+    report = client.simulate_get('/api/reports/years/2026').json
+    assert report['coding'] == [{'service_id': service_ids['MSB'], 'service': 'MSB', 'duration': '3:00'},
+                                {'service_id': None, 'service': None, 'duration': '4:00'}]
+    assert report['other_work'] == [{'service_id': service_ids['MSB'], 'service': 'MSB', 'duration': '1:30'},
+                                    {'service_id': None, 'service': None, 'duration': '1:00'}]
+    assert [(item['activity_type'], item['duration']) for item in report['activities']] == [
+        ('Meeting', '1:45'), ('Tool Management', '2:00')]
+    assert (report['coding_total'], report['other_work_total'], report['activities_total'], report['entries']) == (
+        '7:00', '2:30', '3:45', '9:15')
 
 
 def test_month_lists_pr_reviews_without_ticket_last(client, database):

@@ -108,8 +108,9 @@ function renderHeader(doc: Document, week: string, today: IsoDate): void {
   doc.querySelector('#week-period')!.textContent = `${formatDate(monday)} – ${formatDate(addDays(monday, 6))}`;
 }
 
-/** Worked of target, overtime and balance of a week, month or year (shared by the week view and the reports). */
-export function periodSummary(totals: PeriodTotals, extra: HTMLElement | null = null): HTMLElement {
+/** Worked of target, overtime and balance of a week, month or year (shared by the week view and the reports), then
+ * the `extra` lines of the page. */
+export function periodSummary(totals: PeriodTotals, ...extra: (HTMLElement | null)[]): HTMLElement {
   return el('div', { class: 'card card-surface week-summary' },
     el('div', {}, el('span', { class: 'muted' }, 'Worked '), el('span', { class: 'num' }, totals.worked),
       el('span', { class: 'muted' }, ' of '), el('span', { class: 'num' }, totals.target)),
@@ -118,8 +119,14 @@ export function periodSummary(totals: PeriodTotals, extra: HTMLElement | null = 
       value(totals.balance_out)),
     totals.until && totals.until < totals.end
       ? el('div', { class: 'muted' }, `counted up to ${formatDate(totals.until)}`) : null,
-    extra,
+    ...extra,
   );
+}
+
+/** `Entries 152:30 of 160:00 worked`: the hours in entries next to the hours worked by the day times (month, year). */
+export function entriesOfWorked(entries: string, totals: PeriodTotals): HTMLElement {
+  return el('div', {}, el('span', { class: 'muted' }, 'Entries '), el('span', { class: 'num' }, entries),
+    el('span', { class: 'muted' }, ' of '), el('span', { class: 'num' }, totals.worked), el('span', { class: 'muted' }, ' worked'));
 }
 
 type WeekData = {

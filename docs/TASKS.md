@@ -334,7 +334,7 @@ L.16 (a–i) → 9.1 (a–i).
   row, and "Details" opening a dialog with the whole entry (date and weekday with the day's times, duration, ticket or
   activity, service, coding, description, flags, history, a link to the week); a button, not hover (keyboard, touch)
 - [x] **12.5** Week, month and year: a date field with "Go" in the header opens the week, month or year of that date
-- [ ] **12.6** Month and year report beyond coding: "Other ticket work" (ticket entries not marked coding, by service
+- [x] **12.6** Month and year report beyond coding: "Other ticket work" (ticket entries not marked coding, by service
   and ticket) and "Activities" (by activity type, in the month with their notes), and the hours in entries next to
   the hours worked by the day times (e.g. "Entries 152:30 of 160:00 worked")
 - [ ] **12.7** Search: a page to find and sum up entries by text (ticket key or its start, words of description or
