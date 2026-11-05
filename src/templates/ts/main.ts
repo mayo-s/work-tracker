@@ -34,18 +34,11 @@ const PAGES: Record<string, () => Promise<void>> = {
   team: async () => (await import('./team.ts')).renderTeamPage(document),
 };
 
-/** Shows the number of open review items next to the Review link, as a warning badge. */
-async function showReviewCount(nav: Element): Promise<void> {
-  const link = nav.querySelector('a[href="/review"]');
-  if (!link) {
-    return;
-  }
+/** Shows the number of open review items next to the Review link; the review page keeps it up to date itself. */
+async function showReviewCount(): Promise<void> {
   const { api } = await import('./api.ts');
-  const { reviewTotal } = await import('./review.ts');
-  const total = reviewTotal(await api.reviewCounts());
-  if (total) {
-    link.append(' ', Object.assign(document.createElement('span'), { className: 'badge warning', textContent: String(total) }));
-  }
+  const { showReviewBadge } = await import('./review.ts');
+  showReviewBadge(document, await api.reviewCounts());
 }
 
 /** The logged-in user's first name and "Log out" in the header (nothing when the login is off). With `nav`, also the
@@ -88,7 +81,9 @@ const page = document.querySelector<HTMLElement>('#app')?.dataset.page;
 const nav = document.querySelector('.app-nav');
 if (nav && !['login', 'register', 'setup', 'password', 'two-factor'].includes(page ?? '')) {
   markCurrentPage(nav, window.location.pathname);
-  showReviewCount(nav).catch(() => undefined);  // the count is a hint; pages work without it
+  if (page !== 'review') {
+    showReviewCount().catch(() => undefined);  // the count is a hint; pages work without it
+  }
   showUser(document.querySelector('.app-header')!, nav).catch(() => undefined);
 }
 if (['setup', 'password', 'two-factor'].includes(page ?? '')) {  // still to do first: still able to log out

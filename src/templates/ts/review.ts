@@ -24,6 +24,22 @@ export function reviewTotal(counts: ReviewCounts): number {
   return counts.tickets_without_service + counts.entries + counts.days;
 }
 
+/** Shows the number of open review items next to the Review link of the navigation, as a warning badge (none at 0);
+ * replaces the badge shown before, so the count follows every review action. */
+export function showReviewBadge(doc: Document, counts: ReviewCounts): void {
+  const link = doc.querySelector('.app-nav a[href="/review"]');
+  if (!link) {
+    return;
+  }
+  const shown = link.querySelector('.badge');
+  shown?.previousSibling?.remove();  // the space before it
+  shown?.remove();
+  const total = reviewTotal(counts);
+  if (total) {
+    link.append(' ', el('span', { class: 'badge warning' }, String(total)));
+  }
+}
+
 /** Tickets whose key contains the filter text (case-insensitive). */
 export function filterTickets(tickets: TicketView[], text: string): TicketView[] {
   const filter = text.trim().toUpperCase();
@@ -331,6 +347,7 @@ export async function renderReviewPage(doc: Document): Promise<void> {
       const page: Page = { data, services, reload: (text) => void load(text), fail: (error) => show(errorText(error), true) };
       const { guessed, others } = groupReview(data.entries);
       root.replaceChildren(guessedSection(guessed, page), entriesSection(others, page), daysSection(page), ticketsSection(page));
+      showReviewBadge(doc, data.counts);
       show(message);
     } catch (error) {
       root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' }, errorText(error)));
