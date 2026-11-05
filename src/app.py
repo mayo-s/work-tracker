@@ -99,7 +99,7 @@ def create_app(
     app.add_route('/api/reports/weeks/{week}', WeekReportResource(storage, today, clock))
     app.add_route('/api/reports/months/{month:dt("%Y-%m")}', MonthReportResource(storage, today, clock))
     app.add_route('/api/reports/years/{year:int(4)}', YearReportResource(storage, today, clock))
-    app.add_route('/api/search', SearchResource(storage, today))
+    app.add_route('/api/search', SearchResource(storage))
     app.add_route('/api/settings', SettingsResource(storage))
     app.add_route('/api/theme', ThemeResource(storage))
     app.add_route('/api/export', ExportResource(storage, clock))

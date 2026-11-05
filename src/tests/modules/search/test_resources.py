@@ -1,19 +1,8 @@
-import datetime as dt
-
 import falcon
 import pytest
-from falcon import testing
 
-from src.app import create_app
 from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository
 from src.tests.users import USER
-
-TODAY = dt.date(2026, 10, 28)
-
-
-@pytest.fixture
-def client(database):
-    return testing.TestClient(create_app(database, today=lambda: TODAY))
 
 
 @pytest.fixture
@@ -47,13 +36,14 @@ def found(client, **params):
 
 
 def test_every_word_matches_a_ticket_key_start_or_the_text(client, entries):
-    result = found(client, text='engine-59 EUROPACE')
-    assert (result['start'], result['end'], result['duration'], result['count']) == ('2026-01-01', '2026-12-31', '4:00', 2)
-    assert result['groups'] == [{'kind': 'ticket', 'key': 'ENGINE-594', 'duration': '3:00', 'entries': 1},
+    result = found(client, text='engine-59 EUROPACE')  # all time
+    assert (result['duration'], result['count']) == ('5:00', 3)
+    assert result['groups'] == [{'kind': 'ticket', 'key': 'ENGINE-594', 'duration': '4:00', 'entries': 2},
                                 {'kind': 'ticket', 'key': 'ENGINE-597', 'duration': '1:00', 'entries': 1}]
-    assert result['months'] == [{'month': '2026-10', 'duration': '4:00', 'entries': 2}]
+    assert result['months'] == [{'month': '2025-12', 'duration': '1:00', 'entries': 1},
+                                {'month': '2026-10', 'duration': '4:00', 'entries': 2}]
     assert [(entry['date'], entry['ticket_key']) for entry in result['entries']] == [
-        ('2026-10-06', 'ENGINE-597'), ('2026-10-05', 'ENGINE-594')]  # newest first
+        ('2026-10-06', 'ENGINE-597'), ('2026-10-05', 'ENGINE-594'), ('2025-12-01', 'ENGINE-594')]  # newest first
 
 
 def test_without_text_all_entries_of_the_period(client, entries):
@@ -61,6 +51,13 @@ def test_without_text_all_entries_of_the_period(client, entries):
     assert result['groups'] == [{'kind': 'ticket', 'key': 'ENGINE-590', 'duration': '2:00', 'entries': 1},
                                 {'kind': 'ticket', 'key': 'ENGINE-594', 'duration': '1:00', 'entries': 1}]
     assert [month['month'] for month in result['months']] == ['2025-12', '2026-03']
+    assert [month['month'] for month in found(client, start='2026-03-02')['months']] == ['2026-03', '2026-09', '2026-10']
+
+
+def test_the_limit_lists_the_newest_entries_and_sums_up_all(client, entries):
+    result = found(client, text='europace', limit=2)
+    assert (result['duration'], result['count'], [entry['date'] for entry in result['entries']]) == (
+        '5:30', 4, ['2026-10-06', '2026-10-05'])
 
 
 def test_service_or_activity_type_narrow_the_search(client, entries, ids):

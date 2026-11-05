@@ -1,5 +1,5 @@
-"""Search: a user's entries of a period found by text, service or activity type, summed up by ticket or activity type
-and by month."""
+"""Search: a user's entries found by text, service or activity type, of all time or a period, summed up by ticket or
+activity type and by month."""
 
 import datetime as dt
 from collections import defaultdict
@@ -20,17 +20,15 @@ class SearchQuery(BaseModel):
     service_id: str | None = Field(
         default=None, description=f'Only ticket entries of this service; `{NO_SERVICE}`: tickets without service')
     activity_type_id: str | None = Field(default=None, description='Only activity entries of this type')
-    start: dt.date | None = Field(default=None, description='First day; default: 1 January of this year')
-    end: dt.date | None = Field(default=None, description='Last day; default: 31 December of this year')
+    start: dt.date | None = Field(default=None, description='First day; none: from the first entry')
+    end: dt.date | None = Field(default=None, description='Last day; none: up to the last entry')
+    limit: int | None = Field(default=None, ge=1, description='List only the newest entries found; the sums count all')
 
     @model_validator(mode='after')
     def check_period(self) -> Self:
         if self.start and self.end and self.end < self.start:
             raise ValueError('end must be on or after start')
         return self
-
-    def period(self, today: dt.date) -> tuple[dt.date, dt.date]:
-        return self.start or dt.date(today.year, 1, 1), self.end or dt.date(today.year, 12, 31)
 
 
 class SearchGroup(BaseModel):
@@ -47,25 +45,25 @@ class SearchMonth(BaseModel):
 
 
 class SearchResult(BaseModel):
-    start: dt.date
-    end: dt.date
     duration: str = Field(description='The hours of all entries found')
-    count: int
+    count: int = Field(description='The number of all entries found')
     groups: list[SearchGroup] = Field(description='By ticket or activity type, the most hours first')
     months: list[SearchMonth] = Field(description='By month, the months with entries found')
-    entries: list[EntryView] = Field(description='The entries found, newest first')
+    entries: list[EntryView] = Field(description='The entries found, newest first (the newest `limit` ones)')
 
 
-def search(store: Store, user_id: str, query: SearchQuery, today: dt.date) -> SearchResult:
-    start, end = query.period(today)
-    views = EntryViewer(store, user_id).views(store.entries(user_id).between(start, end))
-    words = query.text.casefold().split()
-    found = [view for view in views if _in_scope(view, query) and all(_matches(view, word) for word in words)]
+def search(store: Store, user_id: str, query: SearchQuery) -> SearchResult:
+    entries = store.entries(user_id).between(query.start or dt.date.min, query.end or dt.date.max)
+    found = _found(EntryViewer(store, user_id).views(entries), query)
     return SearchResult(
-        start=start, end=end, duration=_total(found), count=len(found),
-        groups=_groups(found), months=_months(found),
-        entries=sorted(found, key=lambda view: view.date, reverse=True),
+        duration=_total(found), count=len(found), groups=_groups(found), months=_months(found),
+        entries=sorted(found, key=lambda view: view.date, reverse=True)[:query.limit],
     )
+
+
+def _found(views: list[EntryView], query: SearchQuery) -> list[EntryView]:
+    words = query.text.casefold().split()
+    return [view for view in views if _in_scope(view, query) and all(_matches(view, word) for word in words)]
 
 
 def _in_scope(view: EntryView, query: SearchQuery) -> bool:

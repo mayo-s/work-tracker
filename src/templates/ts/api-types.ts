@@ -292,7 +292,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Find entries of a period (default: this year) by text, service or activity type: their hours and number, by ticket or activity type and by month, and the entries themselves. */
+        /** Find entries of all time or a period by text, service or activity type: their hours and number, by ticket or activity type and by month, and the entries themselves (with `limit` only the newest). */
         get: operations["get__api_search"];
         put?: never;
         post?: never;
@@ -2582,35 +2582,34 @@ export interface components {
             activity_type_id?: string | null;
             /**
              * Start
-             * @description First day; default: 1 January of this year
+             * @description First day; none: from the first entry
              * @default null
              */
             start?: string | null;
             /**
              * End
-             * @description Last day; default: 31 December of this year
+             * @description Last day; none: up to the last entry
              * @default null
              */
             end?: string | null;
+            /**
+             * Limit
+             * @description List only the newest entries found; the sums count all
+             * @default null
+             */
+            limit?: number | null;
         };
         /** SearchResult */
         SearchResult: {
-            /**
-             * Start
-             * Format: date
-             */
-            start: string;
-            /**
-             * End
-             * Format: date
-             */
-            end: string;
             /**
              * Duration
              * @description The hours of all entries found
              */
             duration: string;
-            /** Count */
+            /**
+             * Count
+             * @description The number of all entries found
+             */
             count: number;
             /**
              * Groups
@@ -2624,7 +2623,7 @@ export interface components {
             months: components["schemas"]["SearchMonth"][];
             /**
              * Entries
-             * @description The entries found, newest first
+             * @description The entries found, newest first (the newest `limit` ones)
              */
             entries: components["schemas"]["EntryView"][];
         };
@@ -4736,10 +4735,12 @@ export interface operations {
                 service_id?: string | null;
                 /** @description Only activity entries of this type */
                 activity_type_id?: string | null;
-                /** @description First day; default: 1 January of this year */
+                /** @description First day; none: from the first entry */
                 start?: string | null;
-                /** @description Last day; default: 31 December of this year */
+                /** @description Last day; none: up to the last entry */
                 end?: string | null;
+                /** @description List only the newest entries found; the sums count all */
+                limit?: number | null;
             };
             header?: never;
             path?: never;

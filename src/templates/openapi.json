@@ -1305,7 +1305,7 @@
     },
     "/api/search": {
       "get": {
-        "summary": "Find entries of a period (default: this year) by text, service or activity type: their hours and number, by ticket or activity type and by month, and the entries themselves.",
+        "summary": "Find entries of all time or a period by text, service or activity type: their hours and number, by ticket or activity type and by month, and the entries themselves (with `limit` only the newest).",
         "operationId": "get__api_search",
         "description": "",
         "tags": [
@@ -1377,11 +1377,11 @@
                 }
               ],
               "default": null,
-              "description": "First day; default: 1 January of this year",
+              "description": "First day; none: from the first entry",
               "title": "Start"
             },
             "required": false,
-            "description": "First day; default: 1 January of this year"
+            "description": "First day; none: from the first entry"
           },
           {
             "name": "end",
@@ -1397,11 +1397,31 @@
                 }
               ],
               "default": null,
-              "description": "Last day; default: 31 December of this year",
+              "description": "Last day; none: up to the last entry",
               "title": "End"
             },
             "required": false,
-            "description": "Last day; default: 31 December of this year"
+            "description": "Last day; none: up to the last entry"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "List only the newest entries found; the sums count all",
+              "title": "Limit"
+            },
+            "required": false,
+            "description": "List only the newest entries found; the sums count all"
           }
         ],
         "responses": {
@@ -7424,7 +7444,7 @@
               }
             ],
             "default": null,
-            "description": "First day; default: 1 January of this year",
+            "description": "First day; none: from the first entry",
             "title": "Start"
           },
           "end": {
@@ -7438,8 +7458,22 @@
               }
             ],
             "default": null,
-            "description": "Last day; default: 31 December of this year",
+            "description": "Last day; none: up to the last entry",
             "title": "End"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "List only the newest entries found; the sums count all",
+            "title": "Limit"
           }
         },
         "title": "SearchQuery",
@@ -7447,22 +7481,13 @@
       },
       "SearchResult": {
         "properties": {
-          "start": {
-            "format": "date",
-            "title": "Start",
-            "type": "string"
-          },
-          "end": {
-            "format": "date",
-            "title": "End",
-            "type": "string"
-          },
           "duration": {
             "description": "The hours of all entries found",
             "title": "Duration",
             "type": "string"
           },
           "count": {
+            "description": "The number of all entries found",
             "title": "Count",
             "type": "integer"
           },
@@ -7483,7 +7508,7 @@
             "type": "array"
           },
           "entries": {
-            "description": "The entries found, newest first",
+            "description": "The entries found, newest first (the newest `limit` ones)",
             "items": {
               "$ref": "#/components/schemas/EntryView"
             },
@@ -7492,8 +7517,6 @@
           }
         },
         "required": [
-          "start",
-          "end",
           "duration",
           "count",
           "groups",
