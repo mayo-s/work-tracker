@@ -76,6 +76,8 @@ class TwoFactorStatus(BaseModel):
     enabled: bool = Field(description='Whether the login also needs a code of an authenticator app')
     required: bool = Field(default=False, description='Root and admins must use it')
     recovery_left: int = Field(default=0, description='Recovery codes not used yet')
+    restore_instead: bool = Field(default=False, description="Root, alone in the database, may restore a full backup and "
+                                                             "take over its root login instead of setting it up first")
 
 
 class RecoveryCodes(BaseModel):

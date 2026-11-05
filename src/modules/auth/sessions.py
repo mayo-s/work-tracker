@@ -9,7 +9,7 @@ from urllib.parse import quote
 import falcon
 
 from src.models.users import User
-from src.modules.auth.two_factor import required
+from src.modules.auth.two_factor import may_restore_instead, required
 from src.modules.storage.owners import NO_OWNER
 from src.modules.storage.store import Storage
 from src.modules.storage.users import BROWSER_LIFETIME, SESSION_LIFETIME, session_lifetime
@@ -26,6 +26,7 @@ OPEN_PREFIXES = ('/static/', '/apidoc')
 NEW_PASSWORD_PATHS = {'/password', '/api/auth/me/password'}
 # Root and admins without two-factor login: only the page to set it up, its API and what every page needs
 TWO_FACTOR_PATHS = {'/2fa', '/api/auth/me/two-factor'}
+RESTORE_PATHS = {'/api/admin/restore'}  # also for root alone in the database, taking over the backup's root login
 # Root tracks no work: its pages and the API behind them; other pages forward to /admin, the rest of the API answers 403
 ROOT_PAGES = {'/admin', '/settings', '/password', '/2fa'}
 ROOT_API = ('/api/auth/', '/api/admin/', '/api/theme')
@@ -69,8 +70,9 @@ class Authentication:
     """Middleware: `req.context.user_id` for a valid session (renewing the cookie with the session); without one,
     pages forward to `/login?next=…` and the API answers 401. Until root exists, a new database creates it on
     /setup, an existing one on /login. After a one-time password, pages forward to /password and the API answers 403
-    until the user chose their own; then, for root and admins without two-factor login, the same with /2fa. Root only
-    reaches its pages (ROOT_PAGES) and their API."""
+    until the user chose their own; then, for root and admins without two-factor login, the same with /2fa (root alone
+    in the database may also restore a full backup, see may_restore_instead). Root only reaches its pages (ROOT_PAGES)
+    and their API."""
 
     def __init__(self, storage: Storage, clock: Callable[[], dt.datetime]) -> None:
         self._storage = storage
@@ -81,7 +83,8 @@ class Authentication:
         with self._storage.transaction() as store:
             user_id, renewed = store.sessions().user_id(token, self._clock()) if token else (None, False)
             user = store.users().get(user_id) if user_id is not None else None
-            access = _Access(user, not store.users().count(), store.setup_done(NO_OWNER), store.restore_unfinished())
+            users = store.users().count()
+            access = _Access(user, not users, store.setup_done(NO_OWNER), store.restore_unfinished(), users)
         req.context.user_id = user_id
         if renewed:
             set_session_cookie(req, resp, token, session_lifetime(user.role))
@@ -93,6 +96,7 @@ class _Access(NamedTuple):
     first_user_missing: bool
     set_up: bool  # the database (not logged in)
     restoring: bool = False  # a restore of the full backup is unfinished: only root uses the app
+    users: int = 0  # in the database
 
 
 def _check(req: falcon.Request, access: _Access) -> None:
@@ -103,17 +107,18 @@ def _check(req: falcon.Request, access: _Access) -> None:
     elif access.restoring and access.user.role != 'root':
         allowed, refuse = _open_until(req.path, set()), _wait_for_restore
     else:
-        allowed, refuse = _rule(access.user, req.path)
+        allowed, refuse = _rule(access.user, req.path, access.users)
     if not allowed:
         refuse(req)
 
 
-def _rule(user: User, path: str) -> tuple[bool, Callable[[falcon.Request], None]]:
+def _rule(user: User, path: str, users: int) -> tuple[bool, Callable[[falcon.Request], None]]:
     """Whether the logged-in user may reach the path, and how they are refused otherwise."""
     if user.must_change_password:
         return _open_until(path, NEW_PASSWORD_PATHS), _ask_for_new_password
     if required(user) and not user.two_factor:
-        return _open_until(path, TWO_FACTOR_PATHS), _ask_for_two_factor
+        restore = RESTORE_PATHS if may_restore_instead(user, users) else set()
+        return _open_until(path, TWO_FACTOR_PATHS | restore), _ask_for_two_factor
     return user.role != 'root' or _open_to_root(path), _send_root_to_admin
 
 

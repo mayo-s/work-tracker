@@ -105,17 +105,18 @@ function downloadForm(page: Page): HTMLFormElement {
   return form;
 }
 
-/** The file of a backup and its passphrase; with anyone but root there, typing `purge` confirms that they go. */
-function restoreForm(othersExist: boolean, page: Page): HTMLFormElement {
+/** The file of a backup and its passphrase; with anyone but root there, typing `purge` confirms that they go. Without
+ * `page` (on /2fa, before root set up two-factor login), root always takes over the backup's root login. */
+export function restoreForm(othersExist: boolean, page: Page | null): HTMLFormElement {
   const file = el('input', { id: 'restore-file', type: 'file', accept: '.wtbackup' });
   const passphrase = el('input', { id: 'restore-passphrase', type: 'password', autocomplete: 'off' });
-  const rootLogin = el('input', { id: 'restore-root-login', type: 'checkbox' });
+  const rootLogin = el('input', { id: 'restore-root-login', type: 'checkbox', checked: !page });
   const form = el('form', { class: 'balance-form', novalidate: true },
     field('restore', 'file', 'Backup file', file),
     field('restore', 'passphrase', 'Passphrase', passphrase),
-    el('label', { class: 'checkbox-field', for: 'restore-root-login' }, rootLogin,
+    page ? el('label', { class: 'checkbox-field', for: 'restore-root-login' }, rootLogin,
       "Take over the backup's root login (username, e-mail address, name, password, two-factor login); you log in "
-      + 'again with it afterwards'),
+      + 'again with it afterwards') : null,
     el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
     el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'button-danger' }, 'Restore backup')));
   let summary: RestoreSummary | null = null;
@@ -137,7 +138,7 @@ function restoreForm(othersExist: boolean, page: Page): HTMLFormElement {
       if (summary && rootLogin.checked) {
         window.location.assign('/login');  // this session ended with the login of the backup's root
       } else if (summary) {
-        page.reload(restoredText(summary));
+        page?.reload(restoredText(summary));
       } else {
         form.querySelectorAll('button').forEach((item) => (item.disabled = false));  // the purge was not confirmed
       }
