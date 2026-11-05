@@ -14,6 +14,7 @@ import { normalizeOnLeave, type DurationRules } from './duration-input.ts';
 import { field, submit } from './forms.ts';
 import { STATE_NAMES, WEEKDAY_NAMES } from './labels.ts';
 import { activityTypesTable, servicesTable } from './lists.ts';
+import { applyTheme } from './theme.ts';
 
 const BALANCE_FIELDS = ['balance_start', 'opening_balance'] as const;
 const SIGNED: DurationRules = { signed: true };  // the opening balance may be negative
@@ -23,15 +24,6 @@ const SECTIONS = [
   ['account', 'Account'], ['account-log', 'Changes to your account'],
 ];
 const THEMES: [Theme, string][] = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
-
-/** Shows a theme at once: `data-theme` on <html>, none for `system` (then the system setting decides). */
-export function applyTheme(root: HTMLElement, theme: Theme): void {
-  if (theme === 'system') {
-    delete root.dataset.theme;
-  } else {
-    root.dataset.theme = theme;
-  }
-}
 
 type Weekday = (typeof WEEKDAY_NAMES)[number];
 

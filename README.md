@@ -90,7 +90,7 @@ all at once.
   tickets without service), each entry with its description and spreadsheet line; "Details" shows the whole entry
   with its day, flags and history. The count next to "Review" in the navigation follows every action on the page.
 - `/settings`: overtime balance, work schedules, PTO years, services and activity types, color theme, "Export my data",
-  account.
+  account. The moon or sun between the name and "Log out" in the navigation turns dark mode on or off.
 - `/setup`, `/admin`, `/team`, `/register`, `/password`, `/2fa`: see "Start from zero" and "Login". `/components`: the
   UI components with their HTML. `/apidoc/swagger`, `/apidoc/redoc`, `/apidoc/scalar`: API documentation (spec:
   `/apidoc/openapi.json`).
