@@ -978,6 +978,10 @@ button.button-danger {
   margin-top: 0;
 }
 
+.search-more {
+  margin-top: var(--space-3);
+}
+
 /* Editable tables (settings page) */
 
 .list-form {

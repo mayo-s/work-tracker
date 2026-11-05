@@ -338,8 +338,8 @@ L.16 (a–i) → 9.1 (a–i).
   and ticket) and "Activities" (by activity type, in the month with their notes), and the hours in entries next to
   the hours worked by the day times (e.g. "Entries 152:30 of 160:00 worked")
 - [x] **12.7** Search: a page to find and sum up entries by text (ticket key or its start, words of description or
-  note), activity type, service and period (default this year): total hours and entries, by ticket or activity type,
-  by month, and the entries with links to their week
+  note), activity type, service and period (all time, a preset or custom): total hours and entries, by ticket or
+  activity type, by month, and the entries with links to their week (the newest 100, "Show all")
 - [x] **12.8** A dark mode switch between the name and "Log out" in the navigation: turns dark mode on or off and
   saves it as the theme (Light or Dark; System stays in the settings)
 
