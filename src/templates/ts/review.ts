@@ -6,7 +6,7 @@ import {
 } from './api.ts';
 import { formatDate, formatDay, weekLink } from './dates.ts';
 import { button, el, onEscape, scrolling } from './dom.ts';
-import { showEntryDetails } from './entry-details.ts';
+import { detailsButton } from './entry-details.ts';
 import { serviceOptions } from './lists.ts';
 import { entryContent } from './week.ts';
 
@@ -263,7 +263,7 @@ function guessedRow(group: GuessedTicket, page: Page): HTMLElement {
       () => openInCell(actions, split, (cancel) => splitForm(group, suggestion, page, cancel)));
     actions.append(split);
   }
-  actions.append(detailsButton(`${group.key}: ${count}`, group.entries, page));
+  actions.append(detailsButton(`${group.key}: ${count}`, group.entries, page.fail));
   const shown = group.originals.slice(0, 3);
   const texts = entryTexts(group.entries);
   return el('tr', {},
@@ -304,14 +304,8 @@ function entryRow(item: ReviewEntry, page: Page): HTMLElement {
       item.original ? el('div', { class: 'muted' }, `Original: ${item.original}`) : null,
       el('div', {}, ...item.reasons.map((reason) => el('span', { class: 'badge warning' }, REASON_LABELS[reason])))),
     el('td', { class: 'row-actions' }, el('a', { class: 'button button-small', href: link }, 'Open'),
-      detailsButton(entry.ticket_key ?? entry.activity_type ?? 'Entry without ticket', [entry], page),
+      detailsButton(entry.ticket_key ?? entry.activity_type ?? 'Entry without ticket', [entry], page.fail),
       ...flagActions(entry.flags.filter(() => item.reasons.includes('uncertain_ticket')), page)));
-}
-
-/** Opens the whole of the entries in a dialog. */
-function detailsButton(title: string, entries: EntryView[], page: Page): HTMLButtonElement {
-  return button('Details', () => void showEntryDetails(title, entries).catch(page.fail),
-    { 'aria-label': `Details of ${title}` });
 }
 
 function entriesSection(others: ReviewEntry[], page: Page): HTMLElement {
