@@ -576,6 +576,20 @@ pre {
   gap: var(--space-2);
 }
 
+/* The date field and its "Go" as one control */
+.period-go {
+  display: flex;
+}
+
+.period-go input {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.period-go button {
+  border-left: none;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
 .week-nav [aria-disabled] {
   color: var(--color-muted);
   pointer-events: none;

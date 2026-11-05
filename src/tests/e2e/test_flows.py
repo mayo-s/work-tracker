@@ -117,3 +117,7 @@ def test_a_team_admin_views_a_member_read_only(logged_in, people):
     expect(page).to_have_url(re.compile(f'/week\\?member={people["klara"]}'))
     expect(page.locator('.week-table')).to_be_visible()
     expect(page.locator('.week-table button:has-text("Edit")')).to_have_count(0)
+    page.fill('#week-go-date', '2026-03-04')
+    page.click('#week-go button:has-text("Go")')
+    expect(page).to_have_url(re.compile(f'/week\\?week=2026-W10&member={people["klara"]}'))
+    expect(page.locator('#week-title')).to_have_text('Week 10 · 2026')

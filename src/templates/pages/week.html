@@ -7,6 +7,11 @@
         <a class="button" id="week-previous" href="/week">‹ Previous</a>
         <a class="button" id="week-current" href="/week">Today</a>
         <a class="button" id="week-next" href="/week">Next ›</a>
+        <form class="period-go" id="week-go">
+          <label class="visually-hidden" for="week-go-date">Go to the week of</label>
+          <input type="date" id="week-go-date" name="date" min="2000-01-01" max="2100-12-31" required>
+          <button type="submit" class="button">Go</button>
+        </form>
         <button type="button" class="button" id="week-book-days-off" aria-expanded="false">Book days off</button>
       </nav>
     </div>

@@ -10,7 +10,7 @@ import { button, el, scrolling } from './dom.ts';
 import { entryEditor, type EntryEditorOptions } from './entry-editor.ts';
 import { historyPanel } from './history.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
-import { viewedMember } from './team-view.ts';
+import { viewedMember, withMember } from './team-view.ts';
 
 /** Overtime with a sign: `0:15` → `+0:15`; negative values and zero stay as they are. */
 export function signed(duration: string): string {
@@ -74,21 +74,37 @@ export function value(duration: string, withSign = false): HTMLElement {
   return el('span', { class: `num ${valueClass(duration)}`.trim() }, withSign ? signed(duration) : duration);
 }
 
-/** The header of the week, month or year page (`page`): its title, the links to the period before (`link(-1)`) and
- * after (`link(1)`), and the link to the current period, disabled while that is shown. */
-export function periodHeader(doc: Document, page: string, title: string, link: (shift: number) => string,
-  current: boolean): void {
-  doc.querySelector(`#${page}-title`)!.textContent = title;
-  doc.querySelector<HTMLAnchorElement>(`#${page}-previous`)!.href = link(-1);
-  doc.querySelector<HTMLAnchorElement>(`#${page}-next`)!.href = link(1);
-  doc.querySelector<HTMLAnchorElement>(`#${page}-current`)!.toggleAttribute('aria-disabled', current);
+/** A shown week, month or year: its title and first day, the link to the period `shift` periods away, the link to
+ * the period of a date, and whether it is the current period. */
+export type Period = {
+  title: string; start: IsoDate; shifted: (shift: number) => string; of: (date: IsoDate) => string; current: boolean;
+};
+
+/** The header of the week, month or year page (`page`): its title, the links to the period before and after, the
+ * link to the current period (disabled while that is shown), and the date field whose "Go" opens the period of the
+ * date, starting at the shown period's first day; in the team view the member is kept. */
+export function periodHeader(doc: Document, page: string, period: Period): void {
+  doc.querySelector(`#${page}-title`)!.textContent = period.title;
+  doc.querySelector<HTMLAnchorElement>(`#${page}-previous`)!.href = period.shifted(-1);
+  doc.querySelector<HTMLAnchorElement>(`#${page}-next`)!.href = period.shifted(1);
+  doc.querySelector<HTMLAnchorElement>(`#${page}-current`)!.toggleAttribute('aria-disabled', period.current);
+  const date = doc.querySelector<HTMLInputElement>(`#${page}-go-date`)!;
+  date.value = period.start;
+  doc.querySelector(`#${page}-go`)!.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const href = period.of(date.value);
+    const member = viewedMember(doc.location.search);
+    doc.location.assign(member ? withMember(href, member) : href);
+  });
 }
 
 function renderHeader(doc: Document, week: string, today: IsoDate): void {
   const monday = mondayOf(week);
   const [year, number] = week.split('-W');
-  periodHeader(doc, 'week', `Week ${Number(number)} · ${year}`, (shift) => `/week?week=${shiftWeek(week, shift)}`,
-    week === isoWeek(today));
+  periodHeader(doc, 'week', {
+    title: `Week ${Number(number)} · ${year}`, start: monday, shifted: (shift) => `/week?week=${shiftWeek(week, shift)}`,
+    of: (date) => `/week?week=${isoWeek(date)}`, current: week === isoWeek(today),
+  });
   doc.querySelector('#week-period')!.textContent = `${formatDate(monday)} – ${formatDate(addDays(monday, 6))}`;
 }
 

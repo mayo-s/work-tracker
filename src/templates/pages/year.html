@@ -7,6 +7,11 @@
         <a class="button" id="year-previous" href="/year">‹ Previous</a>
         <a class="button" id="year-current" href="/year">Current year</a>
         <a class="button" id="year-next" href="/year">Next ›</a>
+        <form class="period-go" id="year-go">
+          <label class="visually-hidden" for="year-go-date">Go to the year of</label>
+          <input type="date" id="year-go-date" name="date" min="2000-01-01" max="2100-12-31" required>
+          <button type="submit" class="button">Go</button>
+        </form>
       </nav>
     </div>
     <section id="year" aria-live="polite"></section>

@@ -7,6 +7,11 @@
         <a class="button" id="month-previous" href="/month">‹ Previous</a>
         <a class="button" id="month-current" href="/month">Current month</a>
         <a class="button" id="month-next" href="/month">Next ›</a>
+        <form class="period-go" id="month-go">
+          <label class="visually-hidden" for="month-go-date">Go to the month of</label>
+          <input type="date" id="month-go-date" name="date" min="2000-01-01" max="2100-12-31" required>
+          <button type="submit" class="button">Go</button>
+        </form>
       </nav>
     </div>
     <section id="month" aria-live="polite"></section>

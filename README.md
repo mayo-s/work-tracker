@@ -85,6 +85,7 @@ all at once.
 - `/week` (`?week=2026-W44`, `&edit=<date>`, `&entry=<id>`): days and entries edited in place, each entry with its
   history; "Book days off" sets PTO, sick, unpaid leave or overtime off for a range, with a preview.
 - `/month`: month and work report (coding hours by service and ticket). `/year`: totals, PTO account, balance by month.
+  Week, month and year have a date field: "Go" opens the week, month or year of that date.
 - `/review`: what needs attention after an import (guessed tickets, entries without duration or ticket, flagged days,
   tickets without service), each entry with its description and spreadsheet line; "Details" shows the whole entry
   with its day, flags and history. The count next to "Review" in the navigation follows every action on the page.

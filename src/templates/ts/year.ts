@@ -88,7 +88,10 @@ export async function renderYearPage(doc: Document): Promise<void> {
   }
   const today = isoDate(new Date());
   const year = yearFromSearch(doc.location.search, today);
-  periodHeader(doc, 'year', String(year), (shift) => `/year?year=${year + shift}`, year === Number(today.slice(0, 4)));
+  periodHeader(doc, 'year', {
+    title: String(year), start: `${year}-01-01`, shifted: (shift) => `/year?year=${year + shift}`,
+    of: (date) => `/year?year=${date.slice(0, 4)}`, current: year === Number(today.slice(0, 4)),
+  });
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
     const report = await api.yearReport(year, viewedMember(doc.location.search));
