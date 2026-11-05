@@ -438,7 +438,7 @@ corners, one accent color. Warnings are the only loud element.
   month or Custom (From and To, each optional). It searches on "Search" or Enter, and the criteria go into the URL
   (bookmarks, Back).
 - An entry matches when every word, ignoring case, starts its ticket key (`ENGINE-59` finds ENGINE-590…599) or is a
-  part of its description or note.
+  part of its description or note, of its service (short name or name: `MSB`, `bookings`) or of its activity type.
 - Results: total hours and number of entries, by ticket or activity type (most hours first) and by month (linking to
   the month report), and the entries, newest first, each linking to its week and with "Details" (5.4). The list
   shows the newest 100 entries and "Show all" for the rest; the sums always count all.

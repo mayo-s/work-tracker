@@ -16,7 +16,8 @@ NO_SERVICE = 'none'
 
 class SearchQuery(BaseModel):
     text: str = Field(default='', max_length=200, description=(
-        'Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note'))
+        'Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note, '
+        'of the service (short name or name) or of the activity type'))
     service_id: str | None = Field(
         default=None, description=f'Only ticket entries of this service; `{NO_SERVICE}`: tickets without service')
     activity_type_id: str | None = Field(default=None, description='Only activity entries of this type')
@@ -54,16 +55,17 @@ class SearchResult(BaseModel):
 
 def search(store: Store, user_id: str, query: SearchQuery) -> SearchResult:
     entries = store.entries(user_id).between(query.start or dt.date.min, query.end or dt.date.max)
-    found = _found(EntryViewer(store, user_id).views(entries), query)
+    service_names = {service.id: service.name for service in store.services(user_id).choices()}
+    found = _found(EntryViewer(store, user_id).views(entries), query, service_names)
     return SearchResult(
         duration=_total(found), count=len(found), groups=_groups(found), months=_months(found),
         entries=sorted(found, key=lambda view: view.date, reverse=True)[:query.limit],
     )
 
 
-def _found(views: list[EntryView], query: SearchQuery) -> list[EntryView]:
+def _found(views: list[EntryView], query: SearchQuery, service_names: dict[str | None, str]) -> list[EntryView]:
     words = query.text.casefold().split()
-    return [view for view in views if _in_scope(view, query) and all(_matches(view, word) for word in words)]
+    return [view for view in views if _in_scope(view, query) and _matches(view, words, service_names)]
 
 
 def _in_scope(view: EntryView, query: SearchQuery) -> bool:
@@ -75,9 +77,17 @@ def _in_scope(view: EntryView, query: SearchQuery) -> bool:
     return view.kind == 'ticket' and view.service_id == (None if query.service_id == NO_SERVICE else query.service_id)
 
 
-def _matches(view: EntryView, word: str) -> bool:
-    """The word starts the ticket key or is part of the description or note."""
-    return (view.ticket_key or '').casefold().startswith(word) or word in (view.description or view.note or '').casefold()
+def _matches(view: EntryView, words: list[str], service_names: dict[str | None, str]) -> bool:
+    """Every word starts the ticket key or is part of the description or note, of the service (short name or name) or
+    of the activity type."""
+    key, text = (view.ticket_key or '').casefold(), _text(view, service_names)
+    return all(key.startswith(word) or word in text for word in words)
+
+
+def _text(view: EntryView, service_names: dict[str | None, str]) -> str:
+    """The texts a word may be part of, one per line (a word does not span two), ignoring case."""
+    texts = (view.description or view.note, view.service, service_names.get(view.service_id), view.activity_type)
+    return '\n'.join(part for part in texts if part).casefold()
 
 
 def _groups(found: list[EntryView]) -> list[SearchGroup]:

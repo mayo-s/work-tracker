@@ -1317,13 +1317,13 @@
             "in": "query",
             "schema": {
               "default": "",
-              "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note",
+              "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note, of the service (short name or name) or of the activity type",
               "maxLength": 200,
               "title": "Text",
               "type": "string"
             },
             "required": false,
-            "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note"
+            "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note, of the service (short name or name) or of the activity type"
           },
           {
             "name": "service_id",
@@ -7402,7 +7402,7 @@
         "properties": {
           "text": {
             "default": "",
-            "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note",
+            "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note, of the service (short name or name) or of the activity type",
             "maxLength": 200,
             "title": "Text",
             "type": "string"
