@@ -4,6 +4,7 @@ export file)."""
 import falcon
 from spectree import Response
 
+from src.models.catalog import CODING, new_activity_type
 from src.modules.auth.sessions import current_user
 from src.modules.setup.schemas import SetupImportInput, SetupInput, SetupStatus
 from src.modules.storage.errors import ConflictError
@@ -29,8 +30,8 @@ class SetupResource:
 
     @spec.validate(json=SetupInput, resp=Response('HTTP_409', HTTP_200=SetupStatus), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: SetupInput) -> None:
-        """Set up the logged-in user's data at once: start day, opening balance, work schedule, PTO years and
-        services.
+        """Set up the logged-in user's data at once: start day, opening balance, way of working, work schedule, PTO
+        years and services; a developer gets the activity type Coding too.
 
         The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409)
         once set up: then the settings page changes everything.
@@ -43,6 +44,8 @@ class SetupResource:
             services = store.services(user_id)
             for service in json.service_models():
                 services.add(service)
+            if json.work_mode == 'developer':
+                store.activity_types(user_id).add(new_activity_type(CODING))
             store.finish_setup(user_id)
         resp.media = SetupStatus(done=True)
 

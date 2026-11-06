@@ -86,6 +86,38 @@ def test_a_team_admin_becomes_a_user_who_is_team_admin_of_their_team(tmp_path, m
     assert team_roles == [('2026-01-01', 'member'), ('2026-06-01', 'team_admin')]
 
 
+def test_entries_become_one_kind(tmp_path, monkeypatch):
+    """Migration 25 (SPEC 4.6): coding and PR reviews become Coding (added), a refinement a Meeting (the user's own),
+    an activity keeps its type with the note as description; an unclear ticket entry waits for the review."""
+    db = Database(tmp_path / 'kinds.db')
+    monkeypatch.setattr(migrations, 'MIGRATIONS', migrations.MIGRATIONS[:24])
+    db.migrate()
+    with db.transaction() as conn:
+        conn.execute("INSERT INTO activity_types (id, user_id, name) VALUES ('a1', ?, 'meeting')", (USER,))
+        conn.executemany("INSERT INTO tickets (user_id, key) VALUES (?, ?)", [(USER, 'TNG-1'), (USER, 'TNG-2')])
+        conn.executemany('INSERT INTO entries (id, user_id, date, kind, ticket_key, activity_type_id, duration, text, coding) '
+                         "VALUES (?, ?, '2026-10-26', ?, ?, ?, 60, ?, ?)", [
+                             ('e1', USER, 'ticket', 'TNG-1', None, 'europace', 1),
+                             ('e2', USER, 'ticket', None, None, 'PR review zipkin', 0),
+                             ('e3', USER, 'ticket', 'TNG-2', None, 'Refinement', 0),
+                             ('e4', USER, 'ticket', 'TNG-2', None, 'investigation', 0),
+                             ('e5', USER, 'activity', None, 'a1', 'Standup', 0),
+                         ])
+    monkeypatch.undo()
+    db.migrate()
+    with db.transaction() as conn:
+        entries = [tuple(row) for row in conn.execute(
+            'SELECT entries.id, ticket_key, name, ticket_required, description FROM entries '
+            'LEFT JOIN activity_types ON activity_types.id = activity_type_id ORDER BY entries.id')]
+    assert entries == [
+        ('e1', 'TNG-1', 'Coding', 1, 'europace'),
+        ('e2', None, 'Coding', 1, 'PR review zipkin'),
+        ('e3', 'TNG-2', 'meeting', 0, 'Refinement'),
+        ('e4', 'TNG-2', None, None, 'investigation'),
+        ('e5', None, 'meeting', 0, 'Standup'),
+    ]
+
+
 def test_migrate_rejects_newer_schema(database, monkeypatch):
     monkeypatch.setattr(migrations, 'MIGRATIONS', ())
     with pytest.raises(SchemaVersionError):
@@ -103,9 +135,9 @@ def test_failed_migration_is_rolled_back(database, monkeypatch):
 
 @pytest.mark.parametrize('statement', [
     "INSERT INTO tickets (user_id, key, service_id) VALUES (?, 'TNG-1', 99)",
-    "INSERT INTO entries (user_id, date, kind, ticket_key, duration) VALUES (?, '2026-10-26', 'ticket', 'TNG-404', 60)",
-    "INSERT INTO entries (user_id, date, kind, duration) VALUES (?, '2026-10-26', 'activity', 60)",
-    "INSERT INTO entries (user_id, date, kind, activity_type_id, duration) VALUES (?, '2026-10-26', 'meeting', 1, 60)",
+    "INSERT INTO entries (id, user_id, date, ticket_key, duration) VALUES ('e1', ?, '2026-10-26', 'TNG-404', 60)",
+    "INSERT INTO entries (id, user_id, date, activity_type_id, duration) VALUES ('e1', ?, '2026-10-26', 'a404', 60)",
+    "INSERT INTO activity_types (id, user_id, name, ticket_required) VALUES ('a1', ?, 'Support', 2)",
     "INSERT INTO review_flags (user_id, reason) VALUES (?, 'weekend_hours')",
     "INSERT INTO services (user_id, short_name) VALUES (?, 'msb')",
     "INSERT INTO days (user_id) VALUES (?)",

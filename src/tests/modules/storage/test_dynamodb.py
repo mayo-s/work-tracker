@@ -5,6 +5,7 @@ import datetime as dt
 import pytest
 
 from src.modules.storage.dynamodb.__main__ import main
+from src.modules.storage.dynamodb.entry_kinds import to_one_kind
 from src.modules.storage.dynamodb.keys import META, SCHEMA
 from src.modules.storage.dynamodb.storage import LATEST, DynamoStorage
 from src.modules.storage.dynamodb.table import TTL_ATTRIBUTE
@@ -136,6 +137,33 @@ def test_a_unique_item_deleted_and_written_again_in_one_transaction(dynamo_table
 def test_a_new_table_gets_the_latest_schema_version(dynamo_table):
     assert DynamoStorage(dynamo_table).migrate() == LATEST
     assert dynamo_table.get(META, SCHEMA)['version'] == LATEST
+
+
+def former_entry(entry_id, kind, **values):
+    return {'PK': USER, 'SK': f'ENTRY#2026-10-26#{entry_id}', 'id': entry_id, 'kind': kind, 'date': '2026-10-26',
+            'duration': 60, **values}
+
+
+def test_version_2_converts_the_entries_to_one_kind(dynamo_table):
+    """SPEC 4.6 as in SQLite (test_database.py); a second run changes nothing, as after a run that stopped halfway."""
+    put_all(dynamo_table, {'PK': META, 'SK': SCHEMA, 'version': 1}, {'PK': 'USERS', 'SK': USER, 'order': 1},
+            {'PK': USER, 'SK': 'ACTIVITY_TYPE#a1', 'id': 'a1', 'name': 'Meeting'},
+            {'PK': USER, 'SK': 'ACTIVITY_TYPE_NAME#meeting', 'id': 'a1'},
+            former_entry('e1', 'ticket', ticket_key='TNG-1', description='europace', coding=True),
+            former_entry('e2', 'ticket', ticket_key='TNG-2', description='Refinement', coding=False),
+            former_entry('e3', 'ticket', ticket_key='TNG-2', description='investigation', coding=False),
+            former_entry('e4', 'activity', activity_type_id='a1', note='Standup'))
+    storage = DynamoStorage(dynamo_table)
+    assert storage.migrate() == LATEST
+    to_one_kind(dynamo_table)
+    with storage.transaction() as store:
+        kinds = {kind.id: kind for kind in store.activity_types(USER.removeprefix('USER#')).all()}
+        entries = [(entry.id, entry.ticket_key, kinds[entry.activity_type_id].name if entry.activity_type_id else None,
+                    entry.description) for entry in store.entries(USER.removeprefix('USER#')).between(
+                        dt.date(2026, 10, 26), dt.date(2026, 10, 26))]
+    assert entries == [('e1', 'TNG-1', 'Coding', 'europace'), ('e2', 'TNG-2', 'Meeting', 'Refinement'),
+                       ('e3', 'TNG-2', None, 'investigation'), ('e4', None, 'Meeting', 'Standup')]
+    assert {(kind.name, kind.ticket_required) for kind in kinds.values()} == {('Meeting', False), ('Coding', True)}
 
 
 def test_a_table_of_a_newer_app_is_refused(dynamo_table):

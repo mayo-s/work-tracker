@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from src.models.catalog import Ticket
-from src.models.entries import TicketEntry
+from src.models.entries import Entry
 from src.modules.storage.errors import ConflictError, NotFoundError
 
 
@@ -74,7 +74,7 @@ def test_entry_counts(tickets, per_call, klara_id):
     entries = per_call(lambda store: store.entries(klara_id))
     tickets.ensure('TNG-4138')
     for key in ('KP-1951', 'KP-1951', 'TNG-5214', None):
-        entries.create(TicketEntry(date=dt.date(2026, 1, 8), ticket_key=key, duration=60))
+        entries.create(Entry(date=dt.date(2026, 1, 8), ticket_key=key, duration=60))
     assert tickets.entry_counts() == {'KP-1951': 2, 'TNG-5214': 1}
 
 

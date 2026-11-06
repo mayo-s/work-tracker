@@ -14,6 +14,7 @@ export const REASON_LABELS: Record<ReviewReason, string> = {
   uncertain_ticket: 'Ticket guessed',
   zero_duration: 'No duration',
   no_ticket: 'No ticket',
+  no_activity_type: 'No activity type',
 };
 
 export function reviewTotal(counts: ReviewCounts): number {
@@ -37,11 +38,11 @@ export function showReviewBadge(doc: Document, counts: ReviewCounts): void {
   }
 }
 
-/** The descriptions (notes of activities) of the entries, each once (ignoring case), in order. */
+/** The descriptions of the entries, each once (ignoring case), in order. */
 export function entryTexts(entries: EntryView[]): string[] {
   const texts = new Map<string, string>();
   for (const entry of entries) {
-    const text = (entry.kind === 'ticket' ? entry.description : entry.note)?.trim();
+    const text = entry.description.trim();
     if (text && !texts.has(text.toLowerCase())) {
       texts.set(text.toLowerCase(), text);
     }
@@ -312,7 +313,8 @@ function entryRow(item: ReviewEntry, page: Page): HTMLElement {
 function entriesSection(others: ReviewEntry[], page: Page): HTMLElement {
   return el('section', { class: 'review-section', id: 'entries' },
     el('h2', {}, 'Entries ', el('span', { class: 'badge warning' }, String(others.length))),
-    el('p', { class: 'muted' }, 'Entries without duration or without ticket; open them in the week view to fix them.'),
+    el('p', { class: 'muted' }, 'Entries without duration, without activity type, or without the ticket their activity type requires; open them in '
+      + 'the week view to fix them.'),
     others.length
       ? scrolling(el('table', { class: 'review-table' }, el('tbody', {}, ...others.map((item) => entryRow(item, page)))))
       : el('p', {}, 'Nothing to review.'),

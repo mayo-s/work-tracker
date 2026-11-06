@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from src.models.catalog import Service
+from src.models.catalog import CODING, Service, new_activity_type
 from src.models.pto import PtoYear
 from src.models.schedules import Schedule
 from src.modules.storage.database import Database
@@ -83,6 +83,13 @@ def activity_type_ids(storage, klara_id):
     """Klara's default activity types by name."""
     with storage.transaction() as store:
         return {kind.name: kind.id for kind in store.activity_types(klara_id).all()}
+
+
+@pytest.fixture
+def coding_id(storage, klara_id):
+    """Klara's activity type Coding, which requires a ticket (a developer gets it in the setup)."""
+    with storage.transaction() as store:
+        return store.activity_types(klara_id).add(new_activity_type(CODING)).id
 
 
 @pytest.fixture

@@ -3,7 +3,7 @@ import pytest
 
 from src.modules.storage.catalog import ServiceRepository
 from src.tests.users import USER
-from src.tests.ids import UNKNOWN
+from src.tests.ids import CODING, UNKNOWN
 
 
 @pytest.fixture
@@ -13,7 +13,7 @@ def service_ids(database):
 
 
 def add_entry(client, key, date='2026-03-02'):
-    body = {'kind': 'ticket', 'date': date, 'duration': '1:00', 'ticket_key': key}
+    body = {'activity_type_id': CODING, 'date': date, 'duration': '1:00', 'ticket_key': key}
     assert client.simulate_post('/api/entries', json=body).status == falcon.HTTP_201
 
 

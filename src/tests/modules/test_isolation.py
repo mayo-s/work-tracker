@@ -10,12 +10,13 @@ from falcon import testing
 
 from src.app import create_app
 from src.models.catalog import Service
-from src.models.entries import TicketEntry
+from src.models.entries import Entry
 from src.models.pto import PtoYear
 from src.models.review import FlagReason
 from src.models.schedules import Schedule
 from src.models.settings import Settings
 from src.tests.helpers import logged_in
+from src.tests.ids import FIRST
 from src.tests.users import HANS, KLARA, PASSWORD
 
 
@@ -72,16 +73,17 @@ def test_lists_are_per_user(app, klara, hans):
 def test_others_services_and_activity_types_cannot_be_used(app, klara, hans):
     msb = service_id(app, klara, 'MSB')
     meeting = app.simulate_get('/api/activity-types', cookies=klara).json[1]['id']
-    ticket = {'kind': 'ticket', 'date': '2026-10-28', 'duration': '1:00', 'ticket_key': 'TNG-1', 'service_id': msb}
+    own = app.simulate_get('/api/activity-types', cookies=hans).json[0]['id']
+    ticket = {'activity_type_id': own, 'date': '2026-10-28', 'duration': '1:00', 'ticket_key': 'TNG-1', 'service_id': msb}
     assert app.simulate_post('/api/entries', cookies=hans, json=ticket).status == falcon.HTTP_409
-    activity = {'kind': 'activity', 'date': '2026-10-28', 'duration': '1:00', 'activity_type_id': meeting}
+    activity = {'date': '2026-10-28', 'duration': '1:00', 'activity_type_id': meeting}
     assert app.simulate_post('/api/entries', cookies=hans, json=activity).status == falcon.HTTP_409
 
 
 def test_review_is_per_user(app, storage, klara_id, klara, hans):
     with storage.transaction() as store:
         entries = store.entries(klara_id)
-        entries.add_flag(entries.create(TicketEntry(date=dt.date(2026, 10, 28), ticket_key='TNG-4138', duration=60)).id,
+        entries.add_flag(entries.create(Entry(date=dt.date(2026, 10, 28), ticket_key='TNG-4138', duration=60)).id,
                          FlagReason.UNCERTAIN_TICKET, '#4138')
     assert set(app.simulate_get('/api/review', cookies=hans).json['counts'].values()) == {0}
     assert set(app.simulate_get('/api/review/counts', cookies=hans).json.values()) == {0}
@@ -115,8 +117,10 @@ def test_login_off_works_on_the_first_users_data(storage, klara_id):
 @pytest.fixture
 def klaras_records(app, storage, klara_id, klara):
     """One record of every kind with an id, all Klara's; Klara is admin and team admin of Platform."""
+    planning = app.simulate_get('/api/activity-types', cookies=klara).json[2]['id']
     entry = app.simulate_post('/api/entries', cookies=klara, json={
-        'kind': 'ticket', 'date': '2026-10-28', 'duration': '1:00', 'ticket_key': 'TNG-4138', 'description': 'secret'}).json
+        'activity_type_id': planning, 'date': '2026-10-28', 'duration': '1:00', 'ticket_key': 'TNG-4138',
+        'description': 'secret'}).json
     with storage.transaction() as store:
         flag = store.entries(klara_id).add_flag(entry['id'], FlagReason.UNCERTAIN_TICKET, '#4138')
     team = app.simulate_post('/api/admin/teams', cookies=klara, json={'name': 'Platform'}).json
@@ -139,7 +143,7 @@ def klaras_records(app, storage, klara_id, klara):
 
 
 SERVICE = {'short_name': 'MSB', 'name': 'changed'}
-ENTRY = {'kind': 'ticket', 'date': '2026-10-28', 'duration': '2:00', 'ticket_key': 'TNG-4138'}
+ENTRY = {'activity_type_id': FIRST, 'date': '2026-10-28', 'duration': '2:00', 'ticket_key': 'TNG-4138'}
 SCHEDULE = {'valid_from': '2027-01-01', 'weekly_hours': '20:00', 'work_days': ['Mon']}
 
 # Hans tries every route with an id of one of Klara's records, and what he should get: unknown to him (404) or not his

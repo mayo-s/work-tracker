@@ -3,7 +3,6 @@
 import datetime as dt
 from collections.abc import Callable
 
-from src.models.entries import TicketEntry
 from src.models.history import HistoryAction
 from src.modules.storage.dynamodb.entries import DynamoEntries
 from src.modules.storage.dynamodb.keys import user_partition
@@ -32,7 +31,7 @@ def rename_ticket(
     action = HistoryAction.MERGED if target else HistoryAction.RENAMED
     entries = DynamoEntries(unit, user_id, clock)
     moving = [entry for entry in entries.between(dt.date.min, dt.date.max)
-              if isinstance(entry, TicketEntry) and entry.ticket_key == source.key]
+              if entry.ticket_key == source.key]
     for entry in moving:
         unit.make_room(ITEMS_PER_ENTRY)
         entries.update(entry.model_copy(update={'ticket_key': new}), action)

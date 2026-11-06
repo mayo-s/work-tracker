@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from src.lib.durations import format_duration
 
 from src.models.catalog import Ticket
-from src.models.entries import Entry, TicketEntry
+from src.models.entries import Entry
 from src.models.review import FlagReason, ReviewFlag
 from src.modules.days.schemas import DayView, day_view
 from src.modules.entries.schemas import EntryView, EntryViewer
@@ -21,7 +21,8 @@ from src.modules.tickets.schemas import TicketView, ticket_views
 
 class ReviewReason(StrEnum):
     ZERO_DURATION = 'zero_duration'  # 0:00, e.g. a ticket mentioned without hours
-    NO_TICKET = 'no_ticket'  # a ticket entry without ticket, e.g. an imported PR review
+    NO_TICKET = 'no_ticket'  # no ticket, though the activity type requires one, e.g. an imported PR review
+    NO_ACTIVITY_TYPE = 'no_activity_type'  # a former ticket entry whose activity was unclear (SPEC 4.6)
     UNCERTAIN_TICKET = FlagReason.UNCERTAIN_TICKET.value  # import flag: the ticket key was guessed
 
 
@@ -109,11 +110,11 @@ def _split_on_import(entries: list[Entry], lines: dict[str, str]) -> dict[str, l
     return split
 
 
-def _imported_together(entries: list[Entry], lines: dict[str, str]) -> Iterable[list[TicketEntry]]:
-    """The imported ticket entries, grouped by date and the spreadsheet line (`lines`, by entry id) they came from."""
+def _imported_together(entries: list[Entry], lines: dict[str, str]) -> Iterable[list[Entry]]:
+    """The imported entries with a ticket, grouped by date and the spreadsheet line (`lines`, by entry id) they came from."""
     together = defaultdict(list)
     for entry in entries:
-        if entry.id in lines and isinstance(entry, TicketEntry):
+        if entry.id in lines and entry.ticket_key is not None:
             together[entry.date, lines[entry.id]].append(entry)
     return together.values()
 
@@ -127,7 +128,9 @@ def _reasons(entry: EntryView) -> list[ReviewReason]:
     reasons = [ReviewReason(flag.reason.value) for flag in entry.flags]
     if entry.duration == '0:00':
         reasons.append(ReviewReason.ZERO_DURATION)
-    if entry.kind == 'ticket' and entry.ticket_key is None:
+    if entry.activity_type_id is None:
+        reasons.append(ReviewReason.NO_ACTIVITY_TYPE)
+    if entry.ticket_required and entry.ticket_key is None:
         reasons.append(ReviewReason.NO_TICKET)
     return list(dict.fromkeys(reasons))
 

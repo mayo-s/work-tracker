@@ -13,6 +13,10 @@ NOW = dt.datetime(2026, 11, 2, 9, 0)
 INVITED = {'message': 'If a user with this e-mail address exists, they find the invitation in their settings'}
 
 
+def own_activity_type(app, cookies):
+    return app.simulate_get('/api/activity-types', cookies=cookies).json[0]['id']
+
+
 @pytest.fixture
 def app(database):
     with database.transaction() as conn:
@@ -131,14 +135,16 @@ def test_members_choose_team_services_that_only_team_admins_change(app, klara, h
         == falcon.HTTP_403
     choices = app.simulate_get('/api/service-choices', cookies=rainer).json
     assert choices == [{'id': service['id'], 'short_name': 'AUTH', 'name': '', 'team': 'Platform'}]
-    entry = {'kind': 'ticket', 'date': '2026-11-02', 'duration': '1:00', 'ticket_key': 'TNG-1', 'service_id': service['id']}
+    entry = {'activity_type_id': own_activity_type(app, rainer), 'date': '2026-11-02', 'duration': '1:00',
+             'ticket_key': 'TNG-1', 'service_id': service['id']}
     assert app.simulate_post('/api/entries', cookies=rainer, json=entry).json['service'] == 'AUTH'
 
 
 def test_removed_member_keeps_the_service_of_their_tickets(app, klara, hans, rainer, team_id, hans_team_admin):
     join(app, hans, team_id, 'rainer.zufall@example.com', rainer)
     service = app.simulate_post(f'/api/teams/{team_id}/services', cookies=hans, json={'short_name': 'AUTH'}).json
-    entry = {'kind': 'ticket', 'date': '2026-11-02', 'duration': '1:00', 'ticket_key': 'TNG-1', 'service_id': service['id']}
+    entry = {'activity_type_id': own_activity_type(app, rainer), 'date': '2026-11-02', 'duration': '1:00',
+             'ticket_key': 'TNG-1', 'service_id': service['id']}
     app.simulate_post('/api/entries', cookies=rainer, json=entry)
     removed = app.simulate_delete(f'/api/teams/{team_id}/members/{user_id(app, rainer)}', cookies=hans)
     assert removed.status == falcon.HTTP_204

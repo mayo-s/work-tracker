@@ -18,7 +18,7 @@ from src.lib.balances import DayLedger, DayRecord, pto_accounts
 from src.lib.daytypes import DaySummary, DayType
 from src.lib.durations import format_duration, parse_duration
 from src.lib.stays import Stays
-from src.models.entries import ActivityEntry, TicketEntry
+from src.models.entries import Entry
 from src.modules.storage.store import Store
 from src.modules.tickets.schemas import TicketServices
 
@@ -62,7 +62,7 @@ class ServiceWork(ServiceTotal):
 
 
 class ActivityTotal(BaseModel):
-    activity_type_id: str
+    activity_type_id: str | None = Field(description='None: entries still without activity type (see the review)')
     activity_type: str
     duration: str
 
@@ -258,37 +258,49 @@ class Reports:
 
 class PeriodWork:
     """A user's entries from `start` to `end` (with `shows`, team view: only on the days shown): the ticket work by the
-    service of the ticket and by ticket, coding or not, and the activities by type."""
+    service of the ticket and by ticket, coding or not, and the activities by type.
+
+    Until the work report goes by activity type (TASKS.md 13.9), coding work is the work of activity types that require
+    a ticket (Coding), other ticket work that of other entries with a ticket, and activities the entries without one."""
 
     def __init__(self, store: Store, user_id: str, start: dt.date, end: dt.date, shows: Shows = None) -> None:
-        self._store, self._user = store, user_id
         self._entries = [entry for entry in store.entries(user_id).between(start, end) if shows is None or shows(entry.date)]
         self._services = TicketServices(store, user_id)
+        self._activity_types = {kind.id: kind for kind in store.activity_types(user_id).all()}
 
     def tickets(self, coding: bool) -> list[ServiceWork]:
-        """The ticket work marked as coding, or the other ticket work; tickets without service last."""
+        """The coding work, or the other ticket work; tickets without service last."""
         grouped = defaultdict(lambda: defaultdict(list))
         for entry in self._entries:
-            if isinstance(entry, TicketEntry) and entry.coding == coding:
+            if self._ticket_work(entry, coding):
                 grouped[self._services.of_ticket(entry.ticket_key)][entry.ticket_key].append(entry)
         services = sorted(grouped, key=lambda service: (service is None, (self._services.name(service) or '').lower()))
         return [self._service_work(service_id, grouped[service_id]) for service_id in services]
 
     def activities(self) -> list[ActivityWork]:
-        """The activities by type, ordered by name, with their notes."""
+        """The entries without a ticket by activity type, ordered by name, with their descriptions."""
         grouped = defaultdict(list)
         for entry in self._entries:
-            if isinstance(entry, ActivityEntry):
+            if not self._coding(entry) and entry.ticket_key is None:
                 grouped[entry.activity_type_id].append(entry)
-        names = {kind.id: kind.name for kind in self._store.activity_types(self._user).all()} if grouped else {}
-        work = [_activity_work(type_id, names.get(type_id, ''), entries) for type_id, entries in grouped.items()]
+        names = {type_id: kind.name for type_id, kind in self._activity_types.items()}
+        work = [_activity_work(type_id, names.get(type_id, 'No activity type'), entries)
+                for type_id, entries in grouped.items()]
         return sorted(work, key=lambda activity: activity.activity_type.lower())
 
     def total(self, until: dt.date) -> str:
         """The hours in all entries up to `until`."""
         return format_duration(sum(entry.duration for entry in self._entries if entry.date <= until))
 
-    def _service_work(self, service_id: str | None, tickets: dict[str | None, list[TicketEntry]]) -> ServiceWork:
+    def _ticket_work(self, entry: Entry, coding: bool) -> bool:
+        """Coding work (with or without its ticket), or other work on a ticket."""
+        return self._coding(entry) if coding else not self._coding(entry) and entry.ticket_key is not None
+
+    def _coding(self, entry: Entry) -> bool:
+        kind = self._activity_types.get(entry.activity_type_id)
+        return bool(kind and kind.ticket_required)
+
+    def _service_work(self, service_id: str | None, tickets: dict[str | None, list[Entry]]) -> ServiceWork:
         work = [_ticket_work(key, tickets[key]) for key in sorted(tickets, key=_ticket_order)]
         return ServiceWork(
             service_id=service_id,
@@ -298,15 +310,15 @@ class PeriodWork:
         )
 
 
-def _ticket_work(key: str | None, entries: list[TicketEntry]) -> TicketWork:
+def _ticket_work(key: str | None, entries: list[Entry]) -> TicketWork:
     return TicketWork(ticket_key=key, duration=format_duration(sum(entry.duration for entry in entries)),
                       descriptions=_distinct(entry.description for entry in entries))
 
 
-def _activity_work(type_id: str, name: str, entries: list[ActivityEntry]) -> ActivityWork:
+def _activity_work(type_id: str | None, name: str, entries: list[Entry]) -> ActivityWork:
     return ActivityWork(activity_type_id=type_id, activity_type=name,
                         duration=format_duration(sum(entry.duration for entry in entries)),
-                        notes=_distinct(entry.note for entry in entries))
+                        notes=_distinct(entry.description for entry in entries))
 
 
 def _distinct(texts: Iterable[str]) -> list[str]:

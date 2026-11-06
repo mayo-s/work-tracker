@@ -157,19 +157,25 @@ export function openerKey(editing: Editing): string | null {
   return editing.kind === 'day' ? `day-${editing.date}` : editing.id === null ? `add-${editing.date}` : `entry-${editing.id}`;
 }
 
-/** Duration, ticket or activity, service, text and badges of an entry (also used by the review page). */
+/** The name an entry is listed by: its ticket (or "No ticket" where its activity type requires one), otherwise its
+ * activity type; then the activity type of an entry on a ticket. */
+function entryLabel(entry: EntryView): (HTMLElement | null)[] {
+  const activity = entry.activity_type ?? 'No activity type';
+  if (!entry.ticket_key && !entry.ticket_required) {
+    return [el('strong', { class: entry.activity_type ? '' : 'value-negative' }, activity)];
+  }
+  return [el('strong', { class: entry.ticket_key ? '' : 'value-negative' }, entry.ticket_key ?? 'No ticket'),
+    el('span', { class: entry.activity_type ? 'badge positive' : 'badge warning' }, activity)];
+}
+
+/** Duration, ticket and activity type, service, text and badges of an entry (also used by the review page). */
 export function entryContent(entry: EntryView, showFlags = true): (HTMLElement | null)[] {
-  const label = entry.kind === 'ticket'
-    ? el('strong', { class: entry.ticket_key ? '' : 'value-negative' }, entry.ticket_key ?? 'No ticket')
-    : el('strong', {}, entry.activity_type ?? 'Activity');
-  const text = entry.kind === 'ticket' ? entry.description : entry.note;
   return [
     el('span', { class: entry.duration === '0:00' ? 'num value-negative' : 'num', title: entry.duration === '0:00'
       ? 'No duration yet' : null }, entry.duration),
-    label,
+    ...entryLabel(entry),
     entry.service ? el('span', { class: 'badge' }, entry.service) : null,
-    text ? el('span', { class: 'entry-text' }, text) : null,
-    entry.coding ? el('span', { class: 'badge positive' }, 'coding') : null,
+    entry.description ? el('span', { class: 'entry-text' }, entry.description) : null,
     showFlags && entry.flags.length ? el('span', { class: 'badge warning', title: entry.flags.map((flag) => flag.detail).join('\n') },
       `${entry.flags.length} to review`) : null,
     entry.changed ? el('span', { class: 'badge', title: 'Changed after it was created or imported' }, 'changed') : null,

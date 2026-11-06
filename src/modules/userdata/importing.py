@@ -3,8 +3,7 @@
 import datetime as dt
 from collections.abc import Iterable
 
-from src.models.catalog import ActivityType, Service
-from src.models.entries import ActivityEntry
+from src.models.catalog import Service
 from src.models.history import EntryChange, HistoryAction
 from src.modules.storage.errors import ConflictError
 from src.modules.storage.store import Changes, Entries, Store
@@ -105,7 +104,7 @@ class _Import:
             kinds.delete(kind.id)
         for kind in self._data.activity_types:
             self._store.make_room(ROOM)
-            self._activity_types[kind.id] = kinds.add(ActivityType(name=kind.name)).id
+            self._activity_types[kind.id] = kinds.add(kind.model_copy(update={'id': None})).id
 
     def _tickets(self) -> None:
         tickets = self._store.tickets(self._user)
@@ -118,9 +117,7 @@ class _Import:
     def _entries_of_file(self) -> None:
         entries = self._store.entries(self._user)
         for entry in self._data.entries:
-            update: dict = {'id': None}
-            if isinstance(entry, ActivityEntry):
-                update['activity_type_id'] = self._activity_types[entry.activity_type_id]
+            update = {'id': None, 'activity_type_id': self._activity_types.get(entry.activity_type_id)}
             self._store.make_room(ROOM)
             self._entries[entry.id] = entries.restore(entry.model_copy(update=update)).id
 
@@ -167,10 +164,9 @@ class _Import:
 
 def check_references(data: UserData) -> None:
     """Every service, activity type and entry the file refers to is in it (before anything is written)."""
-    activity_entries = [entry for entry in data.entries if isinstance(entry, ActivityEntry)]
     for references, held, label in (
         (_ids(data.tickets, 'service_id'), _ids(data.services, 'id'), 'service'),
-        (_ids(activity_entries, 'activity_type_id'), _ids(data.activity_types, 'id'), 'activity type'),
+        (_ids(data.entries, 'activity_type_id'), _ids(data.activity_types, 'id'), 'activity type'),
         (_ids(data.review_flags, 'entry_id'), _ids(data.entries, 'id'), 'entry'),
     ):
         _known(references, held, label)

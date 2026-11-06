@@ -65,8 +65,9 @@ def test_entries_with_history_of_the_original_line(conn):
     run(conn)
     entries = EntryRepository(conn, USER)
     first_day = entries.between(dt.date(2026, 3, 3), dt.date(2026, 3, 3))
-    assert [(entry.kind, entry.duration) for entry in first_day] == [
-        ('ticket', 60), ('ticket', 30), ('ticket', 30), ('ticket', 15), ('ticket', 15), ('activity', 120),
+    names = {kind.id: kind.name for kind in ActivityTypeRepository(conn, USER).all()}
+    assert [(names[entry.activity_type_id], entry.duration) for entry in first_day] == [
+        ('Coding', 60), ('Coding', 30), ('Coding', 30), ('Coding', 15), ('Coding', 15), ('Meeting', 120),
     ]
     [change] = entries.history(first_day[1].id)
     assert (change.action, change.detail) == (HistoryAction.IMPORTED, '1,5 KP-2035, KP-2044, KP-2045, KP-2053 Refinement')
@@ -83,8 +84,8 @@ def test_activity_entries_reference_activity_types(conn):
     run(conn)
     meeting = next(activity for activity in ActivityTypeRepository(conn, USER).all() if activity.name == 'Meeting')
     first_day = EntryRepository(conn, USER).between(dt.date(2026, 3, 3), dt.date(2026, 3, 3))
-    [entry] = [entry for entry in first_day if entry.kind == 'activity']
-    assert (entry.activity_type_id, entry.note) == (meeting.id, 'Stages for AWS Lambdas')
+    [entry] = [entry for entry in first_day if entry.ticket_key is None]
+    assert (entry.activity_type_id, entry.description) == (meeting.id, 'Stages for AWS Lambdas')
 
 
 def test_tickets_are_created_without_service(conn):

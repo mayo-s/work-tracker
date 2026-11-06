@@ -6,7 +6,8 @@ from spectree import Response
 
 from src.modules.entries.schemas import ChangeView, EntryInput, EntrySplitInput, EntryView, EntryViewer
 from src.modules.auth.sessions import current_user
-from src.modules.storage.errors import NotFoundError
+from src.models.entries import Entry
+from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.store import Storage, Store
 from src.modules.teams.view import MemberPeriodQuery, viewing
 from src.utils.spec import spec
@@ -33,7 +34,8 @@ class EntryCollection:
     @spec.validate(json=EntryInput, resp=Response('HTTP_409', HTTP_201=EntryView), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: EntryInput) -> None:
         """Create an entry; a new ticket is created, `service_id` sets the ticket's service. The duration takes e.g.
-        `1:30`, `1.5`, `1h30m` or `90m`, in quarter hours, at most the rest of the day from its start (409)."""
+        `1:30`, `1.5`, `1h30m` or `90m`, in quarter hours, at most the rest of the day from its start (409). An activity
+        type that requires a ticket (e.g. Coding) is entered with one (409)."""
         with self._storage.transaction() as store:
             view = _save(store, current_user(req), json)
         resp.status = falcon.HTTP_201
@@ -55,7 +57,7 @@ class EntryItem:
     @spec.validate(json=EntryInput, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=EntryView), tags=TAGS,
                    path_parameter_descriptions=ID_PARAMETER)
     def on_put(self, req: falcon.Request, resp: falcon.Response, entry_id: str, json: EntryInput) -> None:
-        """Change an entry; only changed fields are written to its history. The kind cannot change."""
+        """Change an entry; only changed fields are written to its history."""
         with self._storage.transaction() as store:
             resp.media = _save(store, current_user(req), json, entry_id)
 
@@ -74,7 +76,7 @@ class EntrySplit:
     @spec.validate(json=EntrySplitInput, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=list[EntryView]), tags=TAGS,
                    path_parameter_descriptions=ID_PARAMETER)
     def on_post(self, req: falcon.Request, resp: falcon.Response, entry_id: str, json: EntrySplitInput) -> None:
-        """Divide a ticket entry among several tickets (e.g. an alias like #4347 aka #1482), hours split evenly."""
+        """Divide an entry among several tickets (e.g. an alias like #4347 aka #1482), hours split evenly."""
         with self._storage.transaction() as store:
             user_id = current_user(req)
             resp.media = EntryViewer(store, user_id).views(store.entries(user_id).split(entry_id, json.ticket_keys))
@@ -98,7 +100,15 @@ class EntryHistory:
 def _save(store: Store, user_id: str, json: EntryInput, entry_id: str | None = None) -> EntryView:
     entries = store.entries(user_id)
     entries.check_fits_day(json.to_entry(entry_id))
+    _check_ticket(store, user_id, json.to_entry(entry_id))
     entry = entries.create(json.to_entry()) if entry_id is None else entries.update(json.to_entry(entry_id))
     if json.sets_service:
         store.tickets(user_id).set_service(entry.ticket_key, json.service_id)
     return EntryViewer(store, user_id).view(entry)
+
+
+def _check_ticket(store: Store, user_id: str, entry: Entry) -> None:
+    """An activity type that requires a ticket is entered with one (only imported entries wait for it in the review)."""
+    activity_type = next((kind for kind in store.activity_types(user_id).all() if kind.id == entry.activity_type_id), None)
+    if activity_type and activity_type.ticket_required and entry.ticket_key is None:
+        raise ConflictError(f'{activity_type.name} needs a ticket')

@@ -378,13 +378,14 @@ L.16 (a–i) → 9.1 (a–i).
   every way of working (SPEC 5.4); search: the search page without service and with "Words" when there are no
   ticket entries
 - [ ] **13.6** Team view: a member's pages in the member's way of working (after 13.9)
-- [ ] **13.7** One kind of entry (SPEC 4, 4.6): every entry has an activity type, an optional ticket and a
+- [x] **13.7** One kind of entry (SPEC 4, 4.6): every entry has an activity type, an optional ticket and a
   description; activity types get "Ticket required", Coding is a default for Developer; the migration on both
   backends converts the former entries (coding → Coding, PR review → Coding, refinement → Meeting, the rest without
-  activity type), the API, the entry form (activity type first, ticket and service per way of working), export
-  version 2 (version 1 converted) and the spreadsheet import
-- [ ] **13.8** Review: entries without activity type (choose one, also for several at once), "no ticket" only where
-  the activity type requires one; "Ticket required" in the settings' activity types
+  activity type) with one shared conversion: SQLite rebuilds `entries`, DynamoDB rewrites the entry items in place in
+  chunks, safe to repeat (its first migration, SPEC 7.2); the API, the entry form (activity type first, ticket and
+  service per way of working), export version 2 (version 1 converted), the spreadsheet import and "Ticket required"
+  in the settings' activity types
+- [ ] **13.8** Review: choose the activity type of entries without one, also for several at once
 - [ ] **13.9** Reports, dashboard and search by activity type (SPEC 5.0, 5.2, 5.3, 5.10, 5.11): the work report by
   activity type in place of coding / other ticket work, "Top activity types" in place of "Coding hours"; "Times
   only" with entries optional ("Add entry", the search field, the work report when the period holds entries)

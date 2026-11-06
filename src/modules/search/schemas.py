@@ -16,7 +16,7 @@ NO_SERVICE = 'none'
 
 class SearchQuery(BaseModel):
     text: str = Field(default='', max_length=200, description=(
-        'Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note, '
+        'Words that all must match, ignoring case: the start of the ticket key, or a part of the description, '
         'of the service (short name or name) or of the activity type'))
     service_id: str | None = Field(
         default=None, description=f'Only ticket entries of this service; `{NO_SERVICE}`: tickets without service')
@@ -74,11 +74,11 @@ def _in_scope(view: EntryView, query: SearchQuery) -> bool:
         return False
     if query.service_id is None:
         return True
-    return view.kind == 'ticket' and view.service_id == (None if query.service_id == NO_SERVICE else query.service_id)
+    return view.ticket_key is not None and view.service_id == (None if query.service_id == NO_SERVICE else query.service_id)
 
 
 def _matches(view: EntryView, words: list[str], service_names: dict[str | None, str]) -> bool:
-    """Every word starts the ticket key or is part of the description or note, of the service (short name or name) or
+    """Every word starts the ticket key or is part of the description, of the service (short name or name) or
     of the activity type."""
     key, text = (view.ticket_key or '').casefold(), _text(view, service_names)
     return all(key.startswith(word) or word in text for word in words)
@@ -86,14 +86,15 @@ def _matches(view: EntryView, words: list[str], service_names: dict[str | None, 
 
 def _text(view: EntryView, service_names: dict[str | None, str]) -> str:
     """The texts a word may be part of, one per line (a word does not span two), ignoring case."""
-    texts = (view.description or view.note, view.service, service_names.get(view.service_id), view.activity_type)
+    texts = (view.description, view.service, service_names.get(view.service_id), view.activity_type)
     return '\n'.join(part for part in texts if part).casefold()
 
 
 def _groups(found: list[EntryView]) -> list[SearchGroup]:
     grouped = defaultdict(list)
     for view in found:
-        grouped[view.kind, view.ticket_key if view.kind == 'ticket' else view.activity_type].append(view)
+        kind = 'ticket' if view.ticket_key else 'activity'  # by ticket, or by activity type without one (TASKS.md 13.9)
+        grouped[kind, view.ticket_key or view.activity_type].append(view)
     groups = [SearchGroup(kind=kind, key=key, duration=_total(views), entries=len(views))
               for (kind, key), views in grouped.items()]
     return sorted(groups, key=lambda group: (-parse_duration(group.duration), group.key or ''))

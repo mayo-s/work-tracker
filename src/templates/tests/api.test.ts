@@ -48,8 +48,8 @@ describe('requests', () => {
   });
 
   test('creating an entry returns the created entry', async () => {
-    respond(201, { id: 'e7', kind: 'ticket' });
-    const entry = await api.createEntry({ kind: 'ticket', date: '2026-10-28', duration: '1:30', ticket_key: 'TNG-5882' });
+    respond(201, { id: 'e7' });
+    const entry = await api.createEntry({ date: '2026-10-28', activity_type_id: 'a1', duration: '1:30', ticket_key: 'TNG-5882' });
     assert.equal(entry.id, 'e7');
   });
 

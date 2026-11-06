@@ -17,12 +17,9 @@ export function describeDay(day: DayView): string {
 
 /** The fields of an entry as label and value. */
 export function entryFields(entry: EntryView): [string, string][] {
-  const common: [string, string][] = [['Duration', entry.duration]];
-  if (entry.kind === 'activity') {
-    return [...common, ['Activity', entry.activity_type ?? '—'], ['Note', entry.note || '—']];
-  }
-  return [...common, ['Ticket', entry.ticket_key ?? 'No ticket'], ['Service', entry.service ?? '—'],
-    ['Coding', entry.coding ? 'Yes' : 'No'], ['Description', entry.description || '—']];
+  return [['Duration', entry.duration], ['Activity', entry.activity_type ?? 'No activity type'],
+    ['Ticket', entry.ticket_key ?? (entry.ticket_required ? 'No ticket' : '—')], ['Service', entry.service ?? '—'],
+    ['Description', entry.description || '—']];
 }
 
 function entryBlock(entry: EntryView, day: DayView | undefined, activityNames: Map<string, string>): HTMLElement {

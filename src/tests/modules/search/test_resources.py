@@ -2,6 +2,7 @@ import falcon
 import pytest
 
 from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository
+from src.tests.ids import CODING
 from src.tests.users import USER
 
 
@@ -21,11 +22,11 @@ def entries(client, ids):
             ('2026-03-02', 'ENGINE-590', '2:00', 'service id', 'MSB'),
             ('2026-10-05', 'ENGINE-594', '3:00', 'Europace credentials', 'MSB'),
             ('2026-10-06', 'ENGINE-597', '1:00', 'europace permissions', None)):
-        body = {'kind': 'ticket', 'date': date, 'duration': duration, 'ticket_key': key, 'description': description,
+        body = {'activity_type_id': CODING, 'date': date, 'duration': duration, 'ticket_key': key, 'description': description,
                 'service_id': ids.get(service)}
         assert client.simulate_post('/api/entries', json=body).status == falcon.HTTP_201
-    body = {'kind': 'activity', 'date': '2026-09-07', 'duration': '0:30', 'activity_type_id': ids['Meeting'],
-            'note': 'Europace jour fixe'}
+    body = {'date': '2026-09-07', 'duration': '0:30', 'activity_type_id': ids['Meeting'],
+            'description': 'Europace jour fixe'}
     assert client.simulate_post('/api/entries', json=body).status == falcon.HTTP_201
 
 

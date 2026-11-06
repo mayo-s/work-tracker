@@ -13,8 +13,8 @@ import pytest
 from src.__main__ import Server
 from src.app import create_app
 from src.lib.totp import code_at, time_step
-from src.models.catalog import Service
-from src.models.entries import TicketEntry
+from src.models.catalog import CODING, Service, new_activity_type
+from src.models.entries import Entry
 from src.models.history import HistoryAction
 from src.models.review import FlagReason
 from src.models.teams import Team
@@ -45,8 +45,9 @@ def seed(storage: SqliteStorage) -> dict[str, str]:
         store.teams().set_team_role(ids['hans'], 'team_admin')
         store.team_services(team.id).add(Service(short_name='AUTH', name='auth-service'))
         store.invitations().invite(team.id, 'rainer.zufall@example.com', ids['hans'])
+        coding = store.activity_types(ids['hans']).add(new_activity_type(CODING)).id  # a developer has Coding
         entries = store.entries(ids['hans'])
-        entry = entries.create(TicketEntry(date=dt.date(2026, 10, 26), ticket_key='TNG-4347', duration=360),
+        entry = entries.create(Entry(date=dt.date(2026, 10, 26), activity_type_id=coding, ticket_key='TNG-4347', duration=360),
                                HistoryAction.IMPORTED, GUESSED)
         entries.add_flag(entry.id, FlagReason.UNCERTAIN_TICKET, GUESSED)
     return ids

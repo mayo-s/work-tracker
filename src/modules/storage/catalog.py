@@ -105,5 +105,5 @@ class ActivityTypeRepository(_CatalogRepository[ActivityType]):
     model = ActivityType
     label = 'activity type'
     table = 'activity_types'
-    fields = ('name',)
+    fields = ('name', 'ticket_required')
     order = 'id'
