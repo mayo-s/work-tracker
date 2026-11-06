@@ -1,4 +1,4 @@
-"""Reading and saving the settings of a user (balance, setup, theme); `settings` holds app-wide ones."""
+"""Reading and saving the settings of a user (balance, way of working, setup, theme); `settings` holds app-wide ones."""
 
 import datetime as dt
 import sqlite3
@@ -21,15 +21,17 @@ def _save(conn: sqlite3.Connection, user_id: str, values: dict[str, str]) -> Non
 
 
 def load_settings(conn: sqlite3.Connection, user_id: str) -> Settings:
-    """The user's balance start and opening balance; before the setup: today and 0:00."""
+    """The user's balance start, opening balance and way of working; before the setup: today, 0:00 and developer."""
     values = _values(conn, user_id)
     return Settings(balance_start=values.get('balance_start', dt.date.today().isoformat()),
-                    opening_balance=int(values.get('opening_balance', '0')))
+                    opening_balance=int(values.get('opening_balance', '0')),
+                    work_mode=values.get('work_mode', 'developer'))
 
 
 def save_settings(conn: sqlite3.Connection, user_id: str, settings: Settings) -> None:
     _save(conn, user_id, {
         'balance_start': settings.balance_start.isoformat(), 'opening_balance': str(settings.opening_balance),
+        'work_mode': settings.work_mode,
     })
 
 

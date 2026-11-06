@@ -18,7 +18,7 @@
 | `AUDIT`          | `AT#<time>#<id>`        | an audit log entry (one about a user also as `AUDIT#…` in theirs) |
 | `USER#<user id>` | e.g. `DAY#2026-10-30`   | a user's records: one partition per user, so only their own data  |
 
-In a user's partition: `SETTINGS` (balance, setup, theme), `SESSION#<hash>` (to end all their sessions),
+In a user's partition: `SETTINGS` (balance, way of working, setup, theme), `SESSION#<hash>` (to end all their sessions),
 `SERVICE#<id>` and `ACTIVITY_TYPE#<id>` (names unique by `SERVICE_NAME#…` / `ACTIVITY_TYPE_NAME#<lower case>`),
 `TICKET#<key>`, `DAY#<date>`, `ENTRY#<date>#<id>` with `ENTRY_ID#<id>` (its date), `HISTORY#<entry id>#<id>`,
 `FLAG#<id>`, `SCHEDULE#<id>` (one per day by `SCHEDULE_FROM#<date>`), `PTO#<year>`, `MEMBERSHIP#<id>` (the teams they

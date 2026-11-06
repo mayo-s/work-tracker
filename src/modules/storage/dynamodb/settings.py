@@ -1,4 +1,4 @@
-"""A user's settings (balance, setup, theme) in the `SETTINGS` item of their partition, and the app-wide ones."""
+"""A user's settings (balance, way of working, setup, theme) in their partition's `SETTINGS` item; app-wide ones."""
 
 import datetime as dt
 from typing import Any, get_args
@@ -19,15 +19,15 @@ def _save(unit: Unit, pk: str, **values: Any) -> None:
 
 
 def load_settings(unit: Unit, user_id: str) -> Settings:
-    """The user's balance start and opening balance; before the setup: today and 0:00."""
+    """The user's balance start, opening balance and way of working; before the setup: today, 0:00 and developer."""
     values = _values(unit, user_partition(user_id))
     return Settings(balance_start=values.get('balance_start', dt.date.today().isoformat()),
-                    opening_balance=int(values.get('opening_balance', 0)))
+                    opening_balance=int(values.get('opening_balance', 0)), work_mode=values.get('work_mode', 'developer'))
 
 
 def save_settings(unit: Unit, user_id: str, settings: Settings) -> None:
     _save(unit, user_partition(user_id), balance_start=settings.balance_start.isoformat(),
-          opening_balance=settings.opening_balance)
+          opening_balance=settings.opening_balance, work_mode=settings.work_mode)
 
 
 def setup_done(unit: Unit, user_id: str) -> bool:

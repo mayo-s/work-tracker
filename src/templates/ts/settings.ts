@@ -1,5 +1,5 @@
-// Settings page (/settings): overtime balance, schedules, PTO days per year, services, activity types, team, theme,
-// export of the own data and account.
+// Settings page (/settings): way of working, overtime balance, schedules, PTO days per year, services, activity types,
+// team, theme, export of the own data and account.
 
 import {
   api, ApiError, type AuditorNote, type AuditView, type MyInvitationView, type MyTeamView, type PtoYear,
@@ -12,14 +12,14 @@ import { renderEditablePage, tableSection, type EditableTable, type Page } from 
 import { accountSection } from './account.ts';
 import { normalizeOnLeave, type DurationRules } from './duration-input.ts';
 import { field, submit } from './forms.ts';
-import { STATE_NAMES, WEEKDAY_NAMES } from './labels.ts';
+import { STATE_NAMES, WEEKDAY_NAMES, WORK_MODES } from './labels.ts';
 import { activityTypesTable, servicesTable } from './lists.ts';
 import { applyTheme } from './theme.ts';
 
 const BALANCE_FIELDS = ['balance_start', 'opening_balance'] as const;
 const SIGNED: DurationRules = { signed: true };  // the opening balance may be negative
 const SECTIONS = [
-  ['balance', 'Overtime balance'], ['schedules', 'Work schedules'], ['pto-years', 'PTO years'], ['services', 'Services'],
+  ['work-mode', 'Way of working'], ['balance', 'Overtime balance'], ['schedules', 'Work schedules'], ['pto-years', 'PTO years'], ['services', 'Services'],
   ['activity-types', 'Activity types'], ['team', 'Team'], ['appearance', 'Appearance'], ['data', 'Your data'],
   ['account', 'Account'], ['account-log', 'Changes to your account'],
 ];
@@ -65,6 +65,22 @@ export function ptoYearInput(values: Record<string, string>): PtoYearInput {
   };
 }
 
+function workModeSection(settings: SettingsView, page: Page): HTMLElement {
+  const choices = WORK_MODES.map(([value, label, meaning]) => {
+    const radio = el('input', { type: 'radio', name: 'work_mode', value, checked: value === settings.work_mode });
+    radio.addEventListener('change', () => {
+      api.saveSettings({ ...settings, work_mode: value })
+        .then(() => page.reload(`Saved the way of working: ${label}`), page.fail);
+    });
+    return el('label', {}, radio, el('span', {}, label, el('span', { class: 'muted' }, ` – ${meaning}`)));
+  });
+  return el('section', { class: 'review-section', id: 'work-mode' },
+    el('h2', {}, 'Way of working'),
+    el('p', { class: 'muted' }, 'How you track your work decides which fields, report parts and links the pages show. '
+      + 'Changing it deletes nothing: what you recorded before stays visible.'),
+    el('fieldset', { class: 'work-modes' }, el('legend', {}, 'Way of working'), ...choices));
+}
+
 function balanceSection(settings: SettingsView, page: Page): HTMLElement {
   const start = el('input', {
     id: 'balance-balance_start', name: 'balance_start', type: 'date', value: settings.balance_start,
@@ -81,7 +97,7 @@ function balanceSection(settings: SettingsView, page: Page): HTMLElement {
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     void submit(form, 'balance', BALANCE_FIELDS,
-      () => api.saveSettings({ balance_start: start.value, opening_balance: opening.value.trim() }),
+      () => api.saveSettings({ ...settings, balance_start: start.value, opening_balance: opening.value.trim() }),
       () => page.reload('Saved the overtime balance'));
   });
   return el('section', { class: 'review-section', id: 'balance' },
@@ -302,6 +318,7 @@ export async function renderSettingsPage(doc: Document): Promise<void> {
     ]);
     return [
       contents(),
+      workModeSection(settings, page),
       balanceSection(settings, page),
       tableSection(schedulesTable(schedules), page),
       tableSection(ptoYearsTable(years), page),

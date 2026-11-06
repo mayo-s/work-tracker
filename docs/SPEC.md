@@ -12,6 +12,7 @@ AWS Lambda (DynamoDB), see 7.
 - Calculate worked time, target time and a running overtime balance.
 - Produce the **monthly work report**: coding work grouped by service.
 - Import the existing spreadsheet data (2024, 2025, 2026).
+- Serve non-developers too: each user chooses how they track their work (5.11).
 
 Out of scope for now: export.
 
@@ -140,7 +141,7 @@ time (meetings, breaks etc. are not logged). Two kinds:
 
 | Field         | Notes                                                                           |
 |---------------|---------------------------------------------------------------------------------|
-| Activity type | Managed list, initially **Tool Management**, **Meeting**, **Travel**, **Other** |
+| Activity type | Managed list, initially **Meeting**, **Travel**, **Planning**, **Documentation**, **Other** |
 | Duration      | `h:mm`, quarter-hour steps                                                      |
 | Note          | Free text (e.g. "new computer setup", "Hackathon Picard")                       |
 
@@ -158,7 +159,8 @@ Editable in the UI; initially:
 
 ### 4.4 Warnings
 
-A warning is shown only for a **past work day of the schedule (e.g. Mon–Fri, day type Work) without any entry**.
+A warning is shown only for a **past work day of the schedule (e.g. Mon–Fri, day type Work) without any entry**,
+and not in the way of working "Times only" (5.11).
 
 ### 4.5 Entry history
 
@@ -245,6 +247,9 @@ Lists everything that needs attention, each with its reason:
 
 An item leaves the list once the reason is fixed or the flag is cleared.
 
+The navigation shows "Review" with the count of open items only while there are any, and on the review page itself;
+it appears once the count is loaded, so it does not flash on pages without open items.
+
 ### 5.5 UI style
 
 White, blueish and clean: generous whitespace, thin borders instead of heavy shadows, 6 px rounded
@@ -328,12 +333,13 @@ corners, one accent color. Warnings are the only loud element.
 ### 5.7 Data per user
 
 - Each user has their own days, entries with their history, review flags, tickets with their service, services,
-  activity types, work schedules, PTO years and settings (balance start, opening balance, theme, setup done).
+  activity types, work schedules, PTO years and settings (balance start, opening balance, theme, way of working,
+  setup done).
   Nobody sees or changes another user's records, root and admins neither; an unknown or foreign id answers 404, using
   another user's service or activity type 409.
 - A user is identified by a random UUID and has one app role; in a team, the membership has a team role; an auditor
   is assigned to teams. The first user who is not root takes over all records of a database used without users. A
-  new user (not root) starts with the four default activity types and goes through the setup; "Log out" is there
+  new user (not root) starts with the five default activity types (4.2) and goes through the setup; "Log out" is there
   during the setup too, and after the next login the setup continues.
 - App roles:
   - **root** runs the app: exactly one, created once (in the setup of a new database, or with "Create root admin"
@@ -443,6 +449,35 @@ corners, one accent color. Warnings are the only loud element.
   the month report), and the entries, newest first, each linking to its week and with "Details" (5.4). The list
   shows the newest 100 entries and "Show all" for the rest; the sums always count all.
 
+### 5.11 Ways of working
+
+Not everyone who tracks time is a developer. Each user chooses a **way of working** in the setup and can change it in
+the settings at any time:
+
+| Way of working     | For                         | Ticket entries | Coding | Warning: day without entries |
+|--------------------|-----------------------------|----------------|--------|------------------------------|
+| Developer          | developers (as before)      | yes            | yes    | yes                          |
+| Tickets, no coding | product owners, QA, design  | yes            | no     | yes                          |
+| Activities only    | HR, office, sales           | no             | no     | yes                          |
+| Times only         | start, end and break only   | no entries     | no     | no                           |
+
+- It only shapes the pages: the data model and the API stay the same and accept every entry. Changing it never
+  deletes or changes records; what was recorded before stays visible and editable where it appears. The default
+  activity types (4.2) are the same for all.
+- Existing users and an export file without it (5.8) get **Developer**; the setup preselects Developer. API
+  `/api/settings`: `work_mode`, one of `developer`, `tickets`, `activities`, `times`.
+- **Setup**: the way of working is chosen on the start step. The step "Services" only comes with ticket entries.
+- **Entry form** (week): "Tickets, no coding" leaves out the Coding checkbox (new entries are not coding); "Activities
+  only" leaves out the Ticket / Activity choice and opens an activity entry; "Times only" offers no "Add entry". An
+  existing entry of another kind still opens in its full form.
+- **Month and year report**: a part is shown when the way of working has it or when it holds data in the period.
+  Without coding, ticket work is one part, "Ticket work", in place of "Coding work" and "Other ticket work"; "Times
+  only" shows no work report, only the times, overtime and days off.
+- **Dashboard**: "Coding hours" only for Developer, "Top services" only with ticket entries.
+- **Search**: no search field in the navigation in "Times only"; without ticket entries the search page offers no
+  service and its text field says "Words" instead of "Words or ticket key".
+- **Team view**: a member's pages follow the member's way of working, not the viewer's.
+
 ## 6. Import (spreadsheet CSV)
 
 Run locally as a command, one CSV per year (e.g. `Time_tracking_DK - 2026_Data.csv`).
@@ -490,6 +525,7 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 | text without hours or ticket                                                                                     | Appended to the day note                                                                                                             |
 
 - Hours use a decimal comma (`1,5` → `1:30`, `0,75` → `0:45`).
+- An activity type the user does not have yet (e.g. Tool Management) is added by the import.
 
 ### 6.3 Ticket clean-up
 

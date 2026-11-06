@@ -343,8 +343,30 @@ L.16 (a–i) → 9.1 (a–i).
 - [x] **12.8** A dark mode switch between the name and "Log out" in the navigation: turns dark mode on or off and
   saves it as the theme (Light or Dark; System stays in the settings)
 
+## 13. Other ways of working
+
+- [x] **13.1** The way of working (SPEC 5.11) as a setting: `work_mode` in the settings on both backends (existing
+  users get `developer`), `/api/settings`, export and import (a file without it gets `developer`), and a choice on the
+  settings page
+- [ ] **13.2** Setup: the way of working on the start step, the step "Services" only with ticket entries; new users
+  get the default activity types Meeting, Travel, Planning, Documentation and Other (no Tool Management; existing
+  users keep theirs), and the spreadsheet import adds an activity type the user does not have yet
+- [ ] **13.3** Week: the entry form per way of working (no Coding checkbox, no Ticket / Activity choice, no "Add
+  entry" in "Times only"; an existing entry of another kind keeps its full form), and no warning for a day without
+  entries in "Times only"
+- [ ] **13.4** Month and year report: parts per way of working or data in the period, "Ticket work" without coding,
+  no work report in "Times only"; dashboard: "Coding hours" and "Top services" per way of working
+- [ ] **13.5** Navigation: "Review" only while items are open (with their count) and on the review page itself, for
+  every way of working (SPEC 5.4); search: no search field in "Times only", the search page without service and with
+  "Words" when there are no ticket entries
+- [ ] **13.6** Team view: a member's pages in the member's way of working
+
 ## Later (to be discussed)
 
 - [ ] **L.6** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g.
   `2,0 PTO Dentist`, today only a day note) as a value, and show them in the year report next to the days off.
   On hold: kept as day notes for now, to see how hours off are used in practice
+- [ ] **L.7** i18n - add a flag icon dropdown next to the dark mode icon to switch ui language to german, english, spanish
+- [ ] **L.8** Quarter Hour - remove quarter hour rule, track exact times; "Start now" and "End now" on today's day in
+  the week view set the start and end time to the current time
+- 

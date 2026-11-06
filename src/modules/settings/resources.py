@@ -17,13 +17,13 @@ class SettingsResource:
 
     @spec.validate(resp=Response(HTTP_200=SettingsView), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
-        """Start date and opening balance of the overtime balance."""
+        """Start date and opening balance of the overtime balance, and the way of working."""
         with self._storage.transaction() as store:
             resp.media = SettingsView.of(store.load_settings(current_user(req)))
 
     @spec.validate(json=SettingsView, resp=Response(HTTP_200=SettingsView), tags=TAGS)
     def on_put(self, req: falcon.Request, resp: falcon.Response, json: SettingsView) -> None:
-        """Change the start date and opening balance; reports count from the new start day on."""
+        """Change the settings; reports count from the new start day on, and the pages follow the way of working."""
         with self._storage.transaction() as store:
             store.save_settings(current_user(req), json.to_settings())
             resp.media = SettingsView.of(store.load_settings(current_user(req)))

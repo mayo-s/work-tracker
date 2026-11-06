@@ -57,6 +57,7 @@ export type MyTeamView = Schemas['MyTeamView'];
 export type MyInvitationView = Schemas['MyInvitationView'];
 export type ReportViewEntry = Schemas['ReportViewEntry'];
 export type SettingsView = Schemas['SettingsView'];
+export type WorkMode = SettingsView['work_mode'];
 export type ThemeView = Schemas['ThemeView'];
 export type Theme = ThemeView['theme'];
 export type SetupInput = Schemas['SetupInput'];
