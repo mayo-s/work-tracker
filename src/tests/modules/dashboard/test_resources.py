@@ -79,7 +79,8 @@ def test_this_year(client):
     client.simulate_post('/api/entries', json=body)
     figures = dashboard(client)['this_year']
     assert (figures['year'], figures['days_worked'], figures['sick_days']) == (2026, 2, 1.5)
-    assert (figures['coding'], figures['top_services']) == ('3:00', [{'service': None, 'duration': '3:00'}])
+    assert (figures['top_activity_types'], figures['top_services']) == (
+        [{'activity_type': 'Coding', 'duration': '3:00'}], [{'service': None, 'duration': '3:00'}])
 
 
 def test_before_the_balance_start(client, database):

@@ -7012,40 +7012,17 @@
             "title": "Pto Days",
             "type": "number"
           },
-          "coding": {
-            "description": "Coding work by service and ticket; tickets without service last",
-            "items": {
-              "$ref": "#/components/schemas/ServiceWork"
-            },
-            "title": "Coding",
-            "type": "array"
-          },
-          "coding_total": {
-            "title": "Coding Total",
-            "type": "string"
-          },
-          "other_work": {
-            "description": "Ticket work not marked as coding, by service and ticket",
-            "items": {
-              "$ref": "#/components/schemas/ServiceWork"
-            },
-            "title": "Other Work",
-            "type": "array"
-          },
-          "other_work_total": {
-            "title": "Other Work Total",
-            "type": "string"
-          },
-          "activities": {
-            "description": "Activities by type, with their notes",
+          "work": {
+            "description": "The work by activity type, most hours first",
             "items": {
               "$ref": "#/components/schemas/ActivityWork"
             },
-            "title": "Activities",
+            "title": "Work",
             "type": "array"
           },
-          "activities_total": {
-            "title": "Activities Total",
+          "work_total": {
+            "description": "Hours in all entries of the month",
+            "title": "Work Total",
             "type": "string"
           },
           "visible_from": {
@@ -7069,12 +7046,8 @@
           "entries",
           "days_off",
           "pto_days",
-          "coding",
-          "coding_total",
-          "other_work",
-          "other_work_total",
-          "activities",
-          "activities_total"
+          "work",
+          "work_total"
         ],
         "title": "MonthReport",
         "type": "object"
@@ -7130,40 +7103,29 @@
             ],
             "description": "Null for years before the balance start, in the future or without PTO days entered"
           },
-          "coding": {
-            "description": "Coding work by service; tickets without service last",
-            "items": {
-              "$ref": "#/components/schemas/ServiceTotal"
-            },
-            "title": "Coding",
-            "type": "array"
-          },
-          "coding_total": {
-            "title": "Coding Total",
-            "type": "string"
-          },
-          "other_work": {
-            "description": "Ticket work not marked as coding, by service",
-            "items": {
-              "$ref": "#/components/schemas/ServiceTotal"
-            },
-            "title": "Other Work",
-            "type": "array"
-          },
-          "other_work_total": {
-            "title": "Other Work Total",
-            "type": "string"
-          },
-          "activities": {
-            "description": "Activities by type",
+          "work": {
+            "description": "The work by activity type, most hours first",
             "items": {
               "$ref": "#/components/schemas/ActivityTotal"
             },
-            "title": "Activities",
+            "title": "Work",
             "type": "array"
           },
-          "activities_total": {
-            "title": "Activities Total",
+          "work_total": {
+            "description": "Hours in all entries of the year",
+            "title": "Work Total",
+            "type": "string"
+          },
+          "services": {
+            "description": "The work on tickets by service, most hours first; without service last",
+            "items": {
+              "$ref": "#/components/schemas/ServiceTotal"
+            },
+            "title": "Services",
+            "type": "array"
+          },
+          "services_total": {
+            "title": "Services Total",
             "type": "string"
           },
           "visible_from": {
@@ -7190,12 +7152,10 @@
           "average_per_day_worked",
           "days_off",
           "pto",
-          "coding",
-          "coding_total",
-          "other_work",
-          "other_work_total",
-          "activities",
-          "activities_total"
+          "work",
+          "work_total",
+          "services",
+          "services_total"
         ],
         "title": "YearReport",
         "type": "object"
@@ -8392,6 +8352,24 @@
         "title": "TeamRef",
         "type": "object"
       },
+      "ActivityTypeHours": {
+        "properties": {
+          "activity_type": {
+            "title": "Activity Type",
+            "type": "string"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity_type",
+          "duration"
+        ],
+        "title": "ActivityTypeHours",
+        "type": "object"
+      },
       "BalancePoint": {
         "properties": {
           "date": {
@@ -8682,13 +8660,16 @@
             "title": "Overtime Off Days",
             "type": "integer"
           },
-          "coding": {
-            "description": "Coding hours of the year",
-            "title": "Coding",
-            "type": "string"
+          "top_activity_types": {
+            "description": "The three activity types with the most hours",
+            "items": {
+              "$ref": "#/components/schemas/ActivityTypeHours"
+            },
+            "title": "Top Activity Types",
+            "type": "array"
           },
           "top_services": {
-            "description": "The three services with the most coding hours",
+            "description": "The three services with the most hours on tickets",
             "items": {
               "$ref": "#/components/schemas/ServiceHours"
             },
@@ -8702,7 +8683,7 @@
           "average_per_day_worked",
           "sick_days",
           "overtime_off_days",
-          "coding",
+          "top_activity_types",
           "top_services"
         ],
         "title": "YearFigures",
@@ -8920,11 +8901,20 @@
             "title": "Duration",
             "type": "string"
           },
-          "notes": {
+          "services": {
+            "description": "Its entries on a ticket by service and ticket (with those still without the ticket their activity type requires); tickets without service last",
+            "items": {
+              "$ref": "#/components/schemas/ServiceWork"
+            },
+            "title": "Services",
+            "type": "array"
+          },
+          "descriptions": {
+            "description": "The descriptions of its other entries",
             "items": {
               "type": "string"
             },
-            "title": "Notes",
+            "title": "Descriptions",
             "type": "array"
           }
         },
@@ -8932,7 +8922,8 @@
           "activity_type_id",
           "activity_type",
           "duration",
-          "notes"
+          "services",
+          "descriptions"
         ],
         "title": "ActivityWork",
         "type": "object"
@@ -8994,7 +8985,7 @@
                 "type": "null"
               }
             ],
-            "description": "Null for PR reviews still without ticket",
+            "description": "Null for entries still without the ticket their activity type requires",
             "title": "Ticket Key"
           },
           "duration": {

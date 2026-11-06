@@ -386,7 +386,7 @@ L.16 (a–i) → 9.1 (a–i).
   service per way of working), export version 2 (version 1 converted), the spreadsheet import and "Ticket required"
   in the settings' activity types
 - [x] **13.8** Review: choose the activity type of entries without one, also for several at once
-- [ ] **13.9** Reports, dashboard and search by activity type (SPEC 5.0, 5.2, 5.3, 5.10, 5.11): the work report by
+- [x] **13.9** Reports, dashboard and search by activity type (SPEC 5.0, 5.2, 5.3, 5.10, 5.11): the work report by
   activity type in place of coding / other ticket work, "Top activity types" in place of "Coding hours"; "Times
   only" with entries optional ("Add entry", the search field, the work report when the period holds entries)
 

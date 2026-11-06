@@ -52,14 +52,19 @@ class ServiceHours(BaseModel):
     duration: str
 
 
+class ActivityTypeHours(BaseModel):
+    activity_type: str
+    duration: str
+
+
 class YearFigures(BaseModel):
     year: int
     days_worked: int
     average_per_day_worked: str
     sick_days: float = Field(description='Full sick days, half days count half')
     overtime_off_days: int
-    coding: str = Field(description='Coding hours of the year')
-    top_services: list[ServiceHours] = Field(description='The three services with the most coding hours')
+    top_activity_types: list[ActivityTypeHours] = Field(description='The three activity types with the most hours')
+    top_services: list[ServiceHours] = Field(description='The three services with the most hours on tickets')
 
 
 class DashboardView(BaseModel):
@@ -146,14 +151,15 @@ class Dashboard(Reports):
     def _year_figures(self, days_worked: int, average: str, days_off: dict[DayType, int]) -> YearFigures:
         year = self._today.year
         first = max(dt.date(year, 1, 1), self._first)
-        coding = PeriodWork(self._store, self._user, first, dt.date(year, 12, 31), self._shows).tickets(coding=True)
-        top = sorted(coding, key=lambda work: parse_duration(work.duration), reverse=True)[:3]
+        work = PeriodWork(self._store, self._user, first, dt.date(year, 12, 31), self._shows)
+        services = sorted(work.services(), key=lambda service: parse_duration(service.duration), reverse=True)
         return YearFigures(
             year=year, days_worked=days_worked, average_per_day_worked=average,
             sick_days=days_off.get(DayType.SICK, 0) + days_off.get(DayType.SICK_HALF, 0) / 2,
             overtime_off_days=days_off.get(DayType.OVERTIME_OFF, 0),
-            coding=format_duration(sum(parse_duration(work.duration) for work in coding)),
-            top_services=[ServiceHours(service=work.service, duration=work.duration) for work in top],
+            top_activity_types=[ActivityTypeHours(activity_type=kind.activity_type, duration=kind.duration)
+                                for kind in work.activity_types()[:3]],
+            top_services=[ServiceHours(service=service.service, duration=service.duration) for service in services[:3]],
         )
 
 

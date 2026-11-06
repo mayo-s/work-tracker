@@ -46,7 +46,7 @@ class WeekReport(BaseModel):
 
 
 class TicketWork(BaseModel):
-    ticket_key: str | None = Field(description='Null for PR reviews still without ticket')
+    ticket_key: str | None = Field(description='Null for entries still without the ticket their activity type requires')
     duration: str
     descriptions: list[str]
 
@@ -68,7 +68,10 @@ class ActivityTotal(BaseModel):
 
 
 class ActivityWork(ActivityTotal):
-    notes: list[str]
+    services: list[ServiceWork] = Field(
+        description='Its entries on a ticket by service and ticket (with those still without the ticket their activity type '
+                    'requires); tickets without service last')
+    descriptions: list[str] = Field(description='The descriptions of its other entries')
 
 
 Entries = Annotated[str, Field(description='Hours in entries on the days counted as worked (up to today)')]
@@ -80,12 +83,8 @@ class MonthReport(BaseModel):
     entries: Entries
     days_off: dict[DayType, int]
     pto_days: float = Field(description='PTO used and planned in the month')
-    coding: list[ServiceWork] = Field(description='Coding work by service and ticket; tickets without service last')
-    coding_total: str
-    other_work: list[ServiceWork] = Field(description='Ticket work not marked as coding, by service and ticket')
-    other_work_total: str
-    activities: list[ActivityWork] = Field(description='Activities by type, with their notes')
-    activities_total: str
+    work: list[ActivityWork] = Field(description='The work by activity type, most hours first')
+    work_total: str = Field(description='Hours in all entries of the month')
     visible_from: VisibleFrom = None
 
 
@@ -117,12 +116,10 @@ class YearReport(BaseModel):
     pto: PtoView | None = Field(
         description='Null for years before the balance start, in the future or without PTO days entered',
     )
-    coding: list[ServiceTotal] = Field(description='Coding work by service; tickets without service last')
-    coding_total: str
-    other_work: list[ServiceTotal] = Field(description='Ticket work not marked as coding, by service')
-    other_work_total: str
-    activities: list[ActivityTotal] = Field(description='Activities by type')
-    activities_total: str
+    work: list[ActivityTotal] = Field(description='The work by activity type, most hours first')
+    work_total: str = Field(description='Hours in all entries of the year')
+    services: list[ServiceTotal] = Field(description='The work on tickets by service, most hours first; without service last')
+    services_total: str
     visible_from: VisibleFrom = None
 
 
@@ -153,16 +150,14 @@ class Reports:
         start, end = _month_bounds(year, month)
         ledger = self._ledger_until(end)
         work = self._work(start, end)
-        coding, other, activities = work.tickets(coding=True), work.tickets(coding=False), work.activities()
+        by_type = work.activity_types()
         return MonthReport(
             month=f'{year}-{month:02d}',
             totals=self._totals(ledger, start, end),
             entries=work.total(min(end, self._today)),
             days_off=self._days_off(ledger, start, end),
             pto_days=float(sum(day.pto_days for day in self._period_days(ledger, start, end))),
-            coding=coding, coding_total=_sum(coding),
-            other_work=other, other_work_total=_sum(other),
-            activities=activities, activities_total=_sum(activities),
+            work=by_type, work_total=_sum(by_type),
             visible_from=self._visible_from,
         )
 
@@ -172,7 +167,7 @@ class Reports:
         counted = self._counted_days(ledger, start, end)
         worked_days = [day for day in counted if day.worked]
         work = self._work(start, end)
-        coding, other, activities = work.tickets(coding=True), work.tickets(coding=False), work.activities()
+        by_type, services = work.activity_types(), work.services()
         return YearReport(
             year=year,
             totals=self._totals(ledger, start, end),
@@ -182,10 +177,9 @@ class Reports:
             average_per_day_worked=format_duration(sum(day.worked for day in worked_days) // max(len(worked_days), 1)),
             days_off=self._days_off(ledger, start, end),
             pto=self._pto(year),
-            coding=_service_totals(coding), coding_total=_sum(coding),
-            other_work=_service_totals(other), other_work_total=_sum(other),
-            activities=[ActivityTotal(**item.model_dump(exclude={'notes'})) for item in activities],
-            activities_total=_sum(activities),
+            work=[ActivityTotal(**item.model_dump(exclude={'services', 'descriptions'})) for item in by_type],
+            work_total=_sum(by_type),
+            services=_service_totals(services), services_total=_sum(services),
             visible_from=self._visible_from,
         )
 
@@ -257,48 +251,55 @@ class Reports:
 
 
 class PeriodWork:
-    """A user's entries from `start` to `end` (with `shows`, team view: only on the days shown): the ticket work by the
-    service of the ticket and by ticket, coding or not, and the activities by type.
-
-    Until the work report goes by activity type (TASKS.md 13.9), coding work is the work of activity types that require
-    a ticket (Coding), other ticket work that of other entries with a ticket, and activities the entries without one."""
+    """A user's entries from `start` to `end` (with `shows`, team view: only on the days shown): the work by activity
+    type, each with its entries on a ticket by service and ticket, and the work on tickets by service."""
 
     def __init__(self, store: Store, user_id: str, start: dt.date, end: dt.date, shows: Shows = None) -> None:
         self._entries = [entry for entry in store.entries(user_id).between(start, end) if shows is None or shows(entry.date)]
         self._services = TicketServices(store, user_id)
         self._activity_types = {kind.id: kind for kind in store.activity_types(user_id).all()}
 
-    def tickets(self, coding: bool) -> list[ServiceWork]:
-        """The coding work, or the other ticket work; tickets without service last."""
-        grouped = defaultdict(lambda: defaultdict(list))
-        for entry in self._entries:
-            if self._ticket_work(entry, coding):
-                grouped[self._services.of_ticket(entry.ticket_key)][entry.ticket_key].append(entry)
-        services = sorted(grouped, key=lambda service: (service is None, (self._services.name(service) or '').lower()))
-        return [self._service_work(service_id, grouped[service_id]) for service_id in services]
-
-    def activities(self) -> list[ActivityWork]:
-        """The entries without a ticket by activity type, ordered by name, with their descriptions."""
+    def activity_types(self) -> list[ActivityWork]:
+        """The work by activity type, most hours first (then by name)."""
         grouped = defaultdict(list)
         for entry in self._entries:
-            if not self._coding(entry) and entry.ticket_key is None:
-                grouped[entry.activity_type_id].append(entry)
-        names = {type_id: kind.name for type_id, kind in self._activity_types.items()}
-        work = [_activity_work(type_id, names.get(type_id, 'No activity type'), entries)
-                for type_id, entries in grouped.items()]
-        return sorted(work, key=lambda activity: activity.activity_type.lower())
+            grouped[entry.activity_type_id].append(entry)
+        work = [self._activity_work(type_id, entries) for type_id, entries in grouped.items()]
+        return sorted(work, key=lambda item: (-parse_duration(item.duration), item.activity_type.lower()))
+
+    def services(self) -> list[ServiceWork]:
+        """The work on tickets by service, most hours first; tickets without service last."""
+        by_service = self._by_service([entry for entry in self._entries if self._on_ticket(entry)])
+        return sorted(by_service, key=lambda work: (work.service_id is None, -parse_duration(work.duration)))
 
     def total(self, until: dt.date) -> str:
         """The hours in all entries up to `until`."""
         return format_duration(sum(entry.duration for entry in self._entries if entry.date <= until))
 
-    def _ticket_work(self, entry: Entry, coding: bool) -> bool:
-        """Coding work (with or without its ticket), or other work on a ticket."""
-        return self._coding(entry) if coding else not self._coding(entry) and entry.ticket_key is not None
+    def _activity_work(self, type_id: str | None, entries: list[Entry]) -> ActivityWork:
+        return ActivityWork(
+            activity_type_id=type_id, activity_type=self._name(type_id),
+            duration=format_duration(sum(entry.duration for entry in entries)),
+            services=self._by_service([entry for entry in entries if self._on_ticket(entry)]),
+            descriptions=_distinct(entry.description for entry in entries if not self._on_ticket(entry)),
+        )
 
-    def _coding(self, entry: Entry) -> bool:
+    def _name(self, type_id: str | None) -> str:
+        kind = self._activity_types.get(type_id)
+        return kind.name if kind else 'No activity type'  # a former entry still waiting for the review
+
+    def _on_ticket(self, entry: Entry) -> bool:
+        """On a ticket, or still without the ticket its activity type requires (e.g. an imported PR review)."""
         kind = self._activity_types.get(entry.activity_type_id)
-        return bool(kind and kind.ticket_required)
+        return entry.ticket_key is not None or bool(kind and kind.ticket_required)
+
+    def _by_service(self, entries: list[Entry]) -> list[ServiceWork]:
+        """By service, ordered by name, and by ticket; tickets without service last."""
+        grouped = defaultdict(lambda: defaultdict(list))
+        for entry in entries:
+            grouped[self._services.of_ticket(entry.ticket_key)][entry.ticket_key].append(entry)
+        services = sorted(grouped, key=lambda service: (service is None, (self._services.name(service) or '').lower()))
+        return [self._service_work(service_id, grouped[service_id]) for service_id in services]
 
     def _service_work(self, service_id: str | None, tickets: dict[str | None, list[Entry]]) -> ServiceWork:
         work = [_ticket_work(key, tickets[key]) for key in sorted(tickets, key=_ticket_order)]
@@ -313,12 +314,6 @@ class PeriodWork:
 def _ticket_work(key: str | None, entries: list[Entry]) -> TicketWork:
     return TicketWork(ticket_key=key, duration=format_duration(sum(entry.duration for entry in entries)),
                       descriptions=_distinct(entry.description for entry in entries))
-
-
-def _activity_work(type_id: str | None, name: str, entries: list[Entry]) -> ActivityWork:
-    return ActivityWork(activity_type_id=type_id, activity_type=name,
-                        duration=format_duration(sum(entry.duration for entry in entries)),
-                        notes=_distinct(entry.description for entry in entries))
 
 
 def _distinct(texts: Iterable[str]) -> list[str]:

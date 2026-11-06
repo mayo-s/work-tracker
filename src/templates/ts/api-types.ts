@@ -2376,26 +2376,15 @@ export interface components {
              */
             pto_days: number;
             /**
-             * Coding
-             * @description Coding work by service and ticket; tickets without service last
+             * Work
+             * @description The work by activity type, most hours first
              */
-            coding: components["schemas"]["ServiceWork"][];
-            /** Coding Total */
-            coding_total: string;
+            work: components["schemas"]["ActivityWork"][];
             /**
-             * Other Work
-             * @description Ticket work not marked as coding, by service and ticket
+             * Work Total
+             * @description Hours in all entries of the month
              */
-            other_work: components["schemas"]["ServiceWork"][];
-            /** Other Work Total */
-            other_work_total: string;
-            /**
-             * Activities
-             * @description Activities by type, with their notes
-             */
-            activities: components["schemas"]["ActivityWork"][];
-            /** Activities Total */
-            activities_total: string;
+            work_total: string;
             /**
              * Visible From
              * @description Team view: the first day shown (the member joined the team)
@@ -2429,26 +2418,22 @@ export interface components {
             /** @description Null for years before the balance start, in the future or without PTO days entered */
             pto: components["schemas"]["PtoView"] | null;
             /**
-             * Coding
-             * @description Coding work by service; tickets without service last
+             * Work
+             * @description The work by activity type, most hours first
              */
-            coding: components["schemas"]["ServiceTotal"][];
-            /** Coding Total */
-            coding_total: string;
+            work: components["schemas"]["ActivityTotal"][];
             /**
-             * Other Work
-             * @description Ticket work not marked as coding, by service
+             * Work Total
+             * @description Hours in all entries of the year
              */
-            other_work: components["schemas"]["ServiceTotal"][];
-            /** Other Work Total */
-            other_work_total: string;
+            work_total: string;
             /**
-             * Activities
-             * @description Activities by type
+             * Services
+             * @description The work on tickets by service, most hours first; without service last
              */
-            activities: components["schemas"]["ActivityTotal"][];
-            /** Activities Total */
-            activities_total: string;
+            services: components["schemas"]["ServiceTotal"][];
+            /** Services Total */
+            services_total: string;
             /**
              * Visible From
              * @description Team view: the first day shown (the member joined the team)
@@ -3014,6 +2999,13 @@ export interface components {
              */
             team_role: "member" | "team_admin";
         };
+        /** ActivityTypeHours */
+        ActivityTypeHours: {
+            /** Activity Type */
+            activity_type: string;
+            /** Duration */
+            duration: string;
+        };
         /** BalancePoint */
         BalancePoint: {
             /**
@@ -3175,13 +3167,13 @@ export interface components {
             /** Overtime Off Days */
             overtime_off_days: number;
             /**
-             * Coding
-             * @description Coding hours of the year
+             * Top Activity Types
+             * @description The three activity types with the most hours
              */
-            coding: string;
+            top_activity_types: components["schemas"]["ActivityTypeHours"][];
             /**
              * Top Services
-             * @description The three services with the most coding hours
+             * @description The three services with the most hours on tickets
              */
             top_services: components["schemas"]["ServiceHours"][];
         };
@@ -3285,8 +3277,16 @@ export interface components {
             activity_type: string;
             /** Duration */
             duration: string;
-            /** Notes */
-            notes: string[];
+            /**
+             * Services
+             * @description Its entries on a ticket by service and ticket (with those still without the ticket their activity type requires); tickets without service last
+             */
+            services: components["schemas"]["ServiceWork"][];
+            /**
+             * Descriptions
+             * @description The descriptions of its other entries
+             */
+            descriptions: string[];
         };
         /** ServiceWork */
         ServiceWork: {
@@ -3306,7 +3306,7 @@ export interface components {
         TicketWork: {
             /**
              * Ticket Key
-             * @description Null for PR reviews still without ticket
+             * @description Null for entries still without the ticket their activity type requires
              */
             ticket_key: string | null;
             /** Duration */

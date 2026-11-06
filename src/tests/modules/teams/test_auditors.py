@@ -94,7 +94,7 @@ def test_an_auditor_sees_each_stay_and_nothing_in_between(app, ids, hans):
         ('2026-11-02', True, ''), ('2026-11-03', True, ''), ('2026-11-04', False, ''), ('2026-11-05', True, '')]
     week = app.simulate_get('/api/reports/weeks/2026-W45', cookies=hans, params=member).json
     assert (week['totals']['worked'], week['visible_from']) == ('24:00', '2026-11-02')
-    assert app.simulate_get('/api/reports/months/2026-11', cookies=hans, params=member).json['coding_total'] == '24:00'
+    assert app.simulate_get('/api/reports/months/2026-11', cookies=hans, params=member).json['work_total'] == '24:00'
 
 
 def test_the_auditor_finds_the_team_with_its_members_and_their_stays(app, ids, hans):
