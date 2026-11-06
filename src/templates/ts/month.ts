@@ -7,7 +7,7 @@ import { el, scrolling } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
 import { entriesOfWorked, periodHeader, periodSummary } from './week.ts';
-import { ownWorkMode, showsWork } from './work-modes.ts';
+import { showsWork } from './work-modes.ts';
 
 type ActivityWork = MonthReport['work'][number];
 type ServiceWork = ActivityWork['services'][number];
@@ -98,8 +98,8 @@ export async function renderMonthPage(doc: Document): Promise<void> {
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
     const member = viewedMember(doc.location.search);
-    const [report, mode] = await Promise.all([api.monthReport(month, member), ownWorkMode(member)]);
-    const parts = workReport(report, mode);
+    const report = await api.monthReport(month, member);
+    const parts = workReport(report, report.work_mode);  // the member's way of working in the team view
     root.replaceChildren(
       periodSummary(report.totals, parts.length ? entriesOfWorked(report.entries, report.totals) : null, daysOff(report)),
       ...parts);

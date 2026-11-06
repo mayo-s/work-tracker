@@ -37,7 +37,7 @@ def ids(database):
         for name in ('hans', 'rainer'):
             teams.join(ids[name], platform)
         teams.set_team_role(ids['hans'], 'team_admin')
-        save_settings(conn, ids['rainer'], Settings(balance_start=dt.date(2026, 11, 2)))
+        save_settings(conn, ids['rainer'], Settings(balance_start=dt.date(2026, 11, 2), work_mode='activities'))
         finish_setup(conn, ids['rainer'])
         days, entries = DayRepository(conn, ids['rainer']), EntryRepository(conn, ids['rainer'])
         coding = ActivityTypeRepository(conn, ids['rainer']).add(new_activity_type(CODING)).id
@@ -79,6 +79,14 @@ def test_reports_count_from_joining_on(app, hans, ids):
     assert (totals['worked'], totals['target']) == ('8:00', '24:00')  # Wednesday (no time) to Friday (today)
     month = app.simulate_get('/api/reports/months/2026-11', cookies=hans, params={'member': ids['rainer']}).json
     assert (month['work_total'], month['visible_from']) == ('8:00', '2026-11-04')
+
+
+def test_the_pages_follow_the_members_way_of_working(app, hans, ids):
+    member = {'member': ids['rainer']}
+    modes = [app.simulate_get(path, cookies=hans, params=member).json['work_mode'] for path in (
+        '/api/dashboard', '/api/reports/weeks/2026-W45', '/api/reports/months/2026-11', '/api/reports/years/2026')]
+    assert modes == ['activities'] * 4
+    assert app.simulate_get('/api/dashboard', cookies=hans).json['work_mode'] == 'developer'  # Hans's own
 
 
 def test_dashboard_without_review_items(app, hans, ids):

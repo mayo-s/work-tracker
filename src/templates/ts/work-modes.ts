@@ -1,6 +1,6 @@
 // The ways of working (SPEC 5.11): what a user tracks, and the choice of it in the setup and the settings.
 
-import { api, type WorkMode } from './api.ts';
+import type { WorkMode } from './api.ts';
 import { el } from './dom.ts';
 
 /** Name and meaning of each way of working. */
@@ -18,11 +18,6 @@ export function workModeLabel(mode: WorkMode): string {
 /** Whether entries can be ticket entries (and services matter). */
 export function hasTickets(mode: WorkMode): boolean {
   return mode === 'developer' || mode === 'tickets';
-}
-
-/** The way of working of the user; in the team view (a `member`) the pages stay as they were (TASKS.md 13.6). */
-export async function ownWorkMode(member: string | null): Promise<WorkMode> {
-  return member ? 'developer' : (await api.settings()).work_mode;
 }
 
 /** Whether the month and year report show the work: always, but in "Times only" only when the period holds entries

@@ -402,4 +402,5 @@ L.16 (a–i) → 9.1 (a–i).
   the week view set the start and end time to the current time
 - [ ] **L.10** Ways of working: after 13.9, review whether the four are still needed, or two switches (ticket and
   service; entries expected) do the same
-- 
+- [ ] **L.11** Team audit: team admin and auditor need a page to not just see entries of a person, but also see a team
+  report. 

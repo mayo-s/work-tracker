@@ -10,7 +10,7 @@ import { addDays, formatDate, formatMonth, isoDate, isoMonth, shiftMonth, weekLi
 import { button, el, scrolling } from './dom.ts';
 import { detailsButton } from './entry-details.ts';
 import { entryContent } from './week.ts';
-import { hasTickets, ownWorkMode } from './work-modes.ts';
+import { hasTickets } from './work-modes.ts';
 
 const NO_SERVICE = 'none';
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -231,7 +231,8 @@ export async function renderSearchPage(doc: Document): Promise<void> {
   const fail = (error: unknown): void => root.prepend(el('div', { class: 'card is-warning', role: 'alert' },
     errorText(error, 'Something went wrong.')));
   try {
-    const [services, activityTypes, mode] = await Promise.all([api.serviceChoices(), api.activityTypes(), ownWorkMode(null)]);
+    const [services, activityTypes, settings] = await Promise.all([api.serviceChoices(), api.activityTypes(), api.settings()]);
+    const mode = settings.work_mode;
     labelFields(doc, mode);
     fillForm(form, criteria, scopeOptions(services, activityTypes, mode), doc);
     if (!doc.location.search) {  // nothing asked yet
