@@ -1,6 +1,6 @@
 // Display names shared by the pages.
 
-import type { DayType } from './api.ts';
+import type { DayType, WorkMode } from './api.ts';
 
 export const DAY_TYPE_LABELS: Record<DayType, string> = {
   work: 'Work',
@@ -13,6 +13,14 @@ export const DAY_TYPE_LABELS: Record<DayType, string> = {
   public_holiday: 'Holiday',
   company_half_day: 'Company half day',
 };
+
+/** The ways of working (SPEC 5.11): name and what it means. */
+export const WORK_MODES: [WorkMode, string, string][] = [
+  ['developer', 'Developer', 'Tickets and activities; ticket work can be marked as coding.'],
+  ['tickets', 'Tickets, no coding', 'Tickets and activities, without coding work.'],
+  ['activities', 'Activities only', 'Activities such as meetings or travel, no tickets.'],
+  ['times', 'Times only', 'Start, end and break of each day, no entries.'],
+];
 
 export const WEEKDAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 

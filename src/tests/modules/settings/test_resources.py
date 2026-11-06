@@ -2,25 +2,27 @@ import pytest
 
 
 def test_get_settings(client):
-    assert client.simulate_get('/api/settings').json == {'balance_start': '2024-06-01', 'opening_balance': '0:00'}
+    assert client.simulate_get('/api/settings').json == {
+        'balance_start': '2024-06-01', 'opening_balance': '0:00', 'work_mode': 'developer'}
 
 
 @pytest.mark.parametrize('opening, shown', [('+12:30', '12:30'), ('-1:45', '-1:45')])
 def test_put_settings(client, opening, shown):
-    body = {'balance_start': '2027-03-01', 'opening_balance': opening}
-    expected = {'balance_start': '2027-03-01', 'opening_balance': shown}
+    body = {'balance_start': '2027-03-01', 'opening_balance': opening, 'work_mode': 'activities'}
+    expected = {'balance_start': '2027-03-01', 'opening_balance': shown, 'work_mode': 'activities'}
     assert client.simulate_put('/api/settings', json=body).json == expected
     assert client.simulate_get('/api/settings').json == expected
 
 
 def test_reports_count_from_the_new_start_day(client):
-    client.simulate_put('/api/settings', json={'balance_start': '2026-10-26', 'opening_balance': '2:00'})
+    body = {'balance_start': '2026-10-26', 'opening_balance': '2:00', 'work_mode': 'developer'}
+    client.simulate_put('/api/settings', json=body)
     totals = client.simulate_get('/api/reports/weeks/2026-W44').json['totals']
     assert totals['balance_in'] == '2:00'
 
 
 def test_put_rejects_invalid_settings(client):
-    body = {'balance_start': '2027-03-01', 'opening_balance': '1:5'}
+    body = {'balance_start': '2027-03-01', 'opening_balance': '1:5', 'work_mode': 'developer'}
     assert client.simulate_put('/api/settings', json=body).status_code == 422
 
 
@@ -36,7 +38,8 @@ def test_choose_the_theme(client):
 
 def test_saving_the_balance_keeps_the_theme(client):
     client.simulate_put('/api/theme', json={'theme': 'dark'})
-    client.simulate_put('/api/settings', json={'balance_start': '2027-03-01', 'opening_balance': '0:00'})
+    body = {'balance_start': '2027-03-01', 'opening_balance': '0:00', 'work_mode': 'developer'}
+    client.simulate_put('/api/settings', json=body)
     assert client.simulate_get('/api/theme').json == {'theme': 'dark'}
 
 

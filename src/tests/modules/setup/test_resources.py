@@ -56,7 +56,8 @@ def test_setup_page_forwards_to_the_week_once_done(client):
 
 def test_setup_saves_everything_at_once(new):
     assert new.simulate_post('/api/setup', json=SETUP).json == {'done': True}
-    assert new.simulate_get('/api/settings').json == {'balance_start': '2027-03-01', 'opening_balance': '2:30'}
+    assert new.simulate_get('/api/settings').json == {
+        'balance_start': '2027-03-01', 'opening_balance': '2:30', 'work_mode': 'developer'}
     [schedule] = new.simulate_get('/api/work-schedules').json
     assert (schedule['valid_from'], schedule['daily_target'], schedule['state'], schedule['company_half_days']) == (
         '2027-03-01', '8:00', 'HH', False)

@@ -309,9 +309,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Start date and opening balance of the overtime balance. */
+        /** Start date and opening balance of the overtime balance, and the way of working. */
         get: operations["get__api_settings"];
-        /** Change the start date and opening balance; reports count from the new start day on. */
+        /** Change the settings; reports count from the new start day on, and the pages follow the way of working. */
         put: operations["put__api_settings"];
         post?: never;
         delete?: never;
@@ -2716,6 +2716,12 @@ export interface components {
              * @example -1:45
              */
             opening_balance: string;
+            /**
+             * Work Mode
+             * @description Way of working: developer, tickets (no coding), activities (only) or times (only); it shapes the pages, not the data
+             * @enum {string}
+             */
+            work_mode: "developer" | "tickets" | "activities" | "times";
         };
         /** ThemeView */
         ThemeView: {
@@ -3618,6 +3624,13 @@ export interface components {
              * @default 0
              */
             opening_balance?: number;
+            /**
+             * Work Mode
+             * @description Way of working: developer, tickets (no coding), activities (only) or times (only); it shapes the pages, not the data
+             * @default developer
+             * @enum {string}
+             */
+            work_mode?: "developer" | "tickets" | "activities" | "times";
         };
         /**
          * Ticket

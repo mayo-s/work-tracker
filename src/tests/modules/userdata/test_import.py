@@ -48,6 +48,7 @@ def kind_id(store, name, user_id):
 def record_klaras_work(store, klara):
     """Something of every kind, also what an export renumbers: deleted entries and activity types, a split, flags."""
     store.save_theme(klara, 'dark')
+    store.save_settings(klara, store.load_settings(klara).model_copy(update={'work_mode': 'tickets'}))
     store.schedules(klara).add(Schedule(valid_from=dt.date(2027, 1, 1), weekly_minutes=1920, work_days=[1, 2, 3, 4]))
     days, entries = store.days(klara), store.entries(klara, clock=lambda: NOW)
     days.save(Day(date=MONDAY, day_type='work', start=480, end=990, note='release'))
@@ -230,6 +231,13 @@ def test_setup_of_a_new_user_from_a_file(new_database, klaras_file):
     assert client.simulate_get('/api/setup', cookies=hans).json == {'done': True}
     week = client.simulate_get('/api/entries', cookies=hans, params={'week': '2026-W44'}).json
     assert [entry['ticket_key'] for entry in week if entry['kind'] == 'ticket'] == ['TNG-5213', 'TNG-5214']
+
+
+def test_a_file_without_the_way_of_working_gives_developer(new_database, klaras_file):
+    client, hans = new_database
+    settings = {key: value for key, value in klaras_file['settings'].items() if key != 'work_mode'}
+    client.simulate_post('/api/setup/import', cookies=hans, json={'data': klaras_file | {'settings': settings}})
+    assert client.simulate_get('/api/settings', cookies=hans).json['work_mode'] == 'developer'
 
 
 def test_a_failed_import_leaves_nothing_behind(new_database, klaras_file):

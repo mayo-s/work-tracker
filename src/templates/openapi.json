@@ -1450,7 +1450,7 @@
     },
     "/api/settings": {
       "get": {
-        "summary": "Start date and opening balance of the overtime balance.",
+        "summary": "Start date and opening balance of the overtime balance, and the way of working.",
         "operationId": "get__api_settings",
         "description": "",
         "tags": [
@@ -1481,7 +1481,7 @@
         }
       },
       "put": {
-        "summary": "Change the start date and opening balance; reports count from the new start day on.",
+        "summary": "Change the settings; reports count from the new start day on, and the pages follow the way of working.",
         "operationId": "put__api_settings",
         "description": "",
         "tags": [
@@ -7696,11 +7696,23 @@
             ],
             "title": "Opening Balance",
             "type": "string"
+          },
+          "work_mode": {
+            "description": "Way of working: developer, tickets (no coding), activities (only) or times (only); it shapes the pages, not the data",
+            "enum": [
+              "developer",
+              "tickets",
+              "activities",
+              "times"
+            ],
+            "title": "Work Mode",
+            "type": "string"
           }
         },
         "required": [
           "balance_start",
-          "opening_balance"
+          "opening_balance",
+          "work_mode"
         ],
         "title": "SettingsView",
         "type": "object"
@@ -9644,6 +9656,18 @@
             "description": "Overtime in minutes before balance_start",
             "title": "Opening Balance",
             "type": "integer"
+          },
+          "work_mode": {
+            "default": "developer",
+            "description": "Way of working: developer, tickets (no coding), activities (only) or times (only); it shapes the pages, not the data",
+            "enum": [
+              "developer",
+              "tickets",
+              "activities",
+              "times"
+            ],
+            "title": "Work Mode",
+            "type": "string"
           }
         },
         "required": [

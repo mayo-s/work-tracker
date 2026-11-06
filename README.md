@@ -96,8 +96,10 @@ all at once.
 - `/review`: what needs attention after an import (guessed tickets, entries without duration or ticket, flagged days,
   tickets without service), each entry with its description and spreadsheet line; "Details" shows the whole entry
   with its day, flags and history. The count next to "Review" in the navigation follows every action on the page.
-- `/settings`: overtime balance, work schedules, PTO years, services and activity types, color theme, "Export my data",
-  account. The moon or sun between the name and "Log out" in the navigation turns dark mode on or off.
+- `/settings`: way of working (Developer, Tickets without coding, Activities only or Times only: what the pages offer;
+  existing users and older export files are Developer), overtime balance, work schedules, PTO years, services and
+  activity types, color theme, "Export my data", account. The moon or sun between the name and "Log out" in the
+  navigation turns dark mode on or off.
 - `/setup`, `/admin`, `/team`, `/register`, `/password`, `/2fa`: see "Start from zero" and "Login". `/components`: the
   UI components with their HTML. `/apidoc/swagger`, `/apidoc/redoc`, `/apidoc/scalar`: API documentation (spec:
   `/apidoc/openapi.json`).
@@ -330,7 +332,7 @@ Reports count worked time, target and overtime up to today (today included); pla
 | `/api/auth/me/two-factor/off`                                                      | POST                   | Switch two-factor login off with the current `password` (403 if wrong)                                                                                                                                                                                                                                                                                    |
 | `/api/auth/me/two-factor/recovery`                                                 | POST                   | New recovery codes with the current `password`, shown once; the old ones stop working                                                                                                                                                                                                                                                                     |
 | `/api/auth/me/two-factor/new-app`                                                  | POST, PUT              | New authenticator app: start with the current `password` and a current `code` (or a recovery code; 403 if wrong, counts as a failed login), answering the new secret as for the setup; confirm with a `code` of the new app (403 if wrong), which then replaces the old one                                                                               |
-| `/api/settings`                                                                    | GET, PUT               | Start date and opening balance (`balance_start`, `opening_balance` as signed h:mm, e.g. `-1:45`)                                                                                                                                                                                                                                                          |
+| `/api/settings`                                                                    | GET, PUT               | Start date and opening balance (`balance_start`, `opening_balance` as signed h:mm, e.g. `-1:45`), way of working (`work_mode`: `developer`, `tickets`, `activities` or `times`)                                                                                                                                                                           |
 | `/api/theme`                                                                       | GET, PUT               | Color theme of all pages: `system` (follows the system setting), `light` or `dark`                                                                                                                                                                                                                                                                        |
 | `/api/export`                                                                      | GET                    | Your own records as one JSON file to download (format version 1): settings, schedules, PTO years, services, activity types, tickets, days, entries, all history and flags; file ids in place of database ids                                                                                                                                              |
 | `/api/setup`                                                                       | GET, POST              | Whether the user's data is set up; set it up at once (start day, opening balance, schedule, PTO of the first year and the next, services); 409 once set up                                                                                                                                                                                                |
@@ -411,7 +413,7 @@ Pydantic models; times in minutes, validated on creation and assignment.
 | `users`     | `User`: random UUID, username and e-mail address (unique), first and last name, role (admin, user), active, registered and last login          |
 | `teams`     | `Team`, `Membership` (joined on, left on, team role: member or team admin), `Member` (account and team role), `Invitation` (by e-mail address) |
 | `pto`       | `PtoYear`: allowance, extra days, fixed carry-over (empty = remainder of the year before), note                                                |
-| `settings`  | `Settings`: balance start date, opening balance                                                                                                |
+| `settings`  | `Settings`: balance start date, opening balance, way of working                                                                                |
 
 ## Storage (`src/modules/storage`)
 
