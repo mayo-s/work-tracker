@@ -18,8 +18,7 @@ class SettingsView(BaseModel):
     opening_balance: SignedDurationText = Field(
         description='Overtime before the start day, e.g. 12:30, -1:45, 1.5 or -2h; answered as h:mm',
     )
-    work_mode: WorkMode = Field(description='Way of working: developer, tickets (no coding), activities (only) or times '
-                                '(only); it shapes the pages, not the data')
+    work_mode: WorkMode
 
     @classmethod
     def of(cls, settings: Settings) -> Self:

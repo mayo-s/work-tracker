@@ -5,8 +5,7 @@ import { el } from './dom.ts';
 
 /** Name and meaning of each way of working. */
 export const WORK_MODES: [WorkMode, string, string][] = [
-  ['developer', 'Developer', 'Tickets and activities; ticket work can be marked as coding.'],
-  ['tickets', 'Tickets, no coding', 'Tickets and activities, without coding work.'],
+  ['tickets', 'Tickets and activities', 'Work on tickets (e.g. Coding) with their service, and activities such as meetings.'],
   ['activities', 'Activities only', 'Activities such as meetings or travel, no tickets.'],
   ['times', 'Times only', 'Start, end and break of each day, no entries.'],
 ];
@@ -17,7 +16,7 @@ export function workModeLabel(mode: WorkMode): string {
 
 /** Whether entries can be ticket entries (and services matter). */
 export function hasTickets(mode: WorkMode): boolean {
-  return mode === 'developer' || mode === 'tickets';
+  return mode === 'tickets';
 }
 
 /** Whether the month and year report show the work: always, but in "Times only" only when the period holds entries

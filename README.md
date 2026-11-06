@@ -43,11 +43,11 @@ pipenv run python -m src
 
 1. `/setup` creates root, who runs the app and tracks no work (see "Login").
 2. Root switches registration on in `/admin`; you register on `/register`.
-3. Your setup asks in five steps for the first day, opening balance and way of working (Developer, Tickets without
-   coding, Activities only, Times only), the work schedule (hours per week, work days, federal state, company half
-   days), the PTO days (a pro-rata number for the first year is proposed) and, with ticket entries, the services.
-   "Start" saves it all; `/settings` changes it later. New users start with the activity types Meeting, Travel,
-   Planning, Documentation and Other; developers also get Coding, which requires a ticket.
+3. Your setup asks in five steps for the first day, opening balance and way of working (Tickets and activities,
+   Activities only, Times only), the work schedule (hours per week, work days, federal state, company half days), the
+   PTO days (a pro-rata number for the first year is proposed) and, with ticket entries, the services. "Start" saves
+   it all; `/settings` changes it later. New users start with the activity types Meeting, Travel, Planning,
+   Documentation and Other; with tickets, the setup also adds Coding (requires a ticket) unless unchecked.
 
 From the first day on, each work day counts its full target as missing until its times are entered (today included).
 
@@ -86,9 +86,8 @@ all at once.
   coming up and this year's figures (the top activity types; "Top services" only with ticket and service).
 - `/week` (`?week=2026-W44`, `&edit=<date>`, `&entry=<id>`): days and entries edited in place, each entry with its
   history; "Book days off" sets PTO, sick, unpaid leave or overtime off for a range, with a preview. Every entry is an
-  activity (e.g. Coding, Meeting), optionally on a ticket; the form shows ticket and service in "Developer" and
-  "Tickets without coding" (or when the entry has a ticket); no "No entries" warning in "Times only", where entries
-  are optional.
+  activity (e.g. Coding, Meeting), optionally on a ticket; the form shows ticket and service in "Tickets and
+  activities" (or when the entry has a ticket); no "No entries" warning in "Times only", where entries are optional.
 - `/month`: month and work report by activity type, most hours first (its ticket work by service and ticket, the
   descriptions of its other entries). `/year`: totals, PTO account, balance by month, hours by activity type and by
   service. Both show the hours in entries next to the hours worked ("Entries 152:30 of 160:00 worked"); in "Times
@@ -104,10 +103,10 @@ all at once.
   spreadsheet line; activity types and services are assigned to several selected at once; "Details" shows the whole
   entry with its day, flags and history. "Review" shows in the navigation only while items are open (with their count) and
   on the review page itself; the count follows every action on the page.
-- `/settings`: way of working (Developer, Tickets without coding, Activities only or Times only: what the pages offer;
-  existing users and older export files are Developer), overtime balance, work schedules, PTO years, services and
-  activity types, color theme, "Export my data", account. The moon or sun between the name and "Log out" in the
-  navigation turns dark mode on or off.
+- `/settings`: way of working (Tickets and activities, Activities only or Times only: what the pages offer; existing
+  users, older export files and the former "Developer" are Tickets and activities), overtime balance, work schedules,
+  PTO years, services and activity types, color theme, "Export my data", account. The moon or sun between the name and
+  "Log out" in the navigation turns dark mode on or off.
 - `/setup`, `/admin`, `/team`, `/register`, `/password`, `/2fa`: see "Start from zero" and "Login". `/components`: the
   UI components with their HTML. `/apidoc/swagger`, `/apidoc/redoc`, `/apidoc/scalar`: API documentation (spec:
   `/apidoc/openapi.json`).
@@ -341,7 +340,7 @@ Reports count worked time, target and overtime up to today (today included); pla
 | `/api/auth/me/two-factor/off`                                                      | POST                   | Switch two-factor login off with the current `password` (403 if wrong)                                                                                                                                                                                                                                                                                    |
 | `/api/auth/me/two-factor/recovery`                                                 | POST                   | New recovery codes with the current `password`, shown once; the old ones stop working                                                                                                                                                                                                                                                                     |
 | `/api/auth/me/two-factor/new-app`                                                  | POST, PUT              | New authenticator app: start with the current `password` and a current `code` (or a recovery code; 403 if wrong, counts as a failed login), answering the new secret as for the setup; confirm with a `code` of the new app (403 if wrong), which then replaces the old one                                                                               |
-| `/api/settings`                                                                    | GET, PUT               | Start date and opening balance (`balance_start`, `opening_balance` as signed h:mm, e.g. `-1:45`), way of working (`work_mode`: `developer`, `tickets`, `activities` or `times`)                                                                                                                                                                           |
+| `/api/settings`                                                                    | GET, PUT               | Start date and opening balance (`balance_start`, `opening_balance` as signed h:mm, e.g. `-1:45`), way of working (`work_mode`: `tickets`, `activities` or `times`; `developer` reads as `tickets`)                                                                                                                                                        |
 | `/api/theme`                                                                       | GET, PUT               | Color theme of all pages: `system` (follows the system setting), `light` or `dark`                                                                                                                                                                                                                                                                        |
 | `/api/export`                                                                      | GET                    | Your own records as one JSON file to download (format version 2; version 1 is converted on import): settings, schedules, PTO years, services, activity types, tickets, days, entries, all history and flags; file ids in place of database ids                                                                                                            |
 | `/api/setup`                                                                       | GET, POST              | Whether the user's data is set up; set it up at once (start day, opening balance, schedule, PTO of the first year and the next, services); 409 once set up                                                                                                                                                                                                |

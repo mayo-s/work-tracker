@@ -31,7 +31,7 @@ class SetupResource:
     @spec.validate(json=SetupInput, resp=Response('HTTP_409', HTTP_200=SetupStatus), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: SetupInput) -> None:
         """Set up the logged-in user's data at once: start day, opening balance, way of working, work schedule, PTO
-        years and services; a developer gets the activity type Coding too.
+        years and services; with tickets, the activity type Coding too if asked for.
 
         The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409)
         once set up: then the settings page changes everything.
@@ -44,7 +44,7 @@ class SetupResource:
             services = store.services(user_id)
             for service in json.service_models():
                 services.add(service)
-            if json.work_mode == 'developer':
+            if json.work_mode == 'tickets' and json.coding:
                 store.activity_types(user_id).add(new_activity_type(CODING))
             store.finish_setup(user_id)
         resp.media = SetupStatus(done=True)

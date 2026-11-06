@@ -175,7 +175,7 @@ def test_deactivating_ends_the_sessions_and_keeps_the_user(storage, klara):
 def test_settings_before_the_setup(storage, klara):
     rainer = add(storage, RAINER).id  # not the first user, who takes over what a new SQLite database seeds
     settings = run(storage, lambda store: store.load_settings(rainer))
-    assert settings == Settings(balance_start=dt.date.today(), opening_balance=0, work_mode='developer')
+    assert settings == Settings(balance_start=dt.date.today(), opening_balance=0, work_mode='tickets')
     assert run(storage, lambda store: (store.setup_done(rainer), store.load_theme(rainer))) == (False, 'system')
 
 

@@ -43,7 +43,6 @@ test('steps check their values before going on', () => {
 });
 
 test('the setup is about the own data only (root is created before); services only with ticket entries', () => {
-  assert.deepEqual(setupSteps('developer'), ['Start', 'Work schedule', 'PTO', 'Services', 'Summary']);
   assert.deepEqual(setupSteps('tickets'), ['Start', 'Work schedule', 'PTO', 'Services', 'Summary']);
   assert.deepEqual(setupSteps('activities'), ['Start', 'Work schedule', 'PTO', 'Summary']);
 });
@@ -54,14 +53,16 @@ test('setup input leaves out empty services and trims', () => {
   assert.deepEqual(setupInput(state), {
     balance_start: '2027-03-01', opening_balance: '+2:30',
     schedule: { weekly_hours: '40:00', work_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], state: 'BE', company_half_days: true },
-    pto_per_year: 30, pto_first_year: 25, services: [{ short_name: 'AUTH', name: 'auth-service' }], work_mode: 'developer',
+    pto_per_year: 30, pto_first_year: 25, services: [{ short_name: 'AUTH', name: 'auth-service' }], work_mode: 'tickets',
+    coding: true,
   });
-  assert.deepEqual(setupInput({ ...state, workMode: 'times' }).services, []);  // entered before choosing times only
+  const times = setupInput({ ...state, workMode: 'times' });  // services and Coding chosen before choosing times only
+  assert.deepEqual([times.services, times.coding], [[], false]);
 });
 
 test('summary of all steps', () => {
   assert.deepEqual(summary({ ...initialState('2027-03-01'), state: 'HH', companyHalfDays: false }), [
-    ['Way of working', 'Developer'],
+    ['Way of working', 'Tickets and activities, with Coding'],
     ['First day', '01.03.2027'],
     ['Opening balance', '0:00'],
     ['Work schedule', '40:00 h per week, Mon, Tue, Wed, Thu, Fri'],

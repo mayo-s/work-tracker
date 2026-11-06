@@ -233,11 +233,12 @@ def test_setup_of_a_new_user_from_a_file(new_database, klaras_file):
     assert [entry['ticket_key'] for entry in week if entry['ticket_key']] == ['TNG-5213', 'TNG-5214']
 
 
-def test_a_file_without_the_way_of_working_gives_developer(new_database, klaras_file):
+@pytest.mark.parametrize('work_mode', [{}, {'work_mode': 'developer'}])  # none (version 1), the former "Developer"
+def test_a_file_without_the_way_of_working_or_with_developer_gives_tickets(new_database, klaras_file, work_mode):
     client, hans = new_database
-    settings = {key: value for key, value in klaras_file['settings'].items() if key != 'work_mode'}
+    settings = {key: value for key, value in klaras_file['settings'].items() if key != 'work_mode'} | work_mode
     client.simulate_post('/api/setup/import', cookies=hans, json={'data': klaras_file | {'settings': settings}})
-    assert client.simulate_get('/api/settings', cookies=hans).json['work_mode'] == 'developer'
+    assert client.simulate_get('/api/settings', cookies=hans).json['work_mode'] == 'tickets'
 
 
 def test_a_failed_import_leaves_nothing_behind(new_database, klaras_file):

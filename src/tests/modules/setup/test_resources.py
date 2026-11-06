@@ -65,7 +65,15 @@ def test_setup_saves_everything_at_once(new):
     assert [(year['year'], year['allowance']) for year in new.simulate_get('/api/pto-years').json] == [
         (2027, 25.0), (2028, 30.0)]
     assert [service['short_name'] for service in new.simulate_get('/api/services').json] == ['AUTH']
+    assert new.simulate_get('/api/activity-types').json[-1] | {'id': None} == {
+        'id': None, 'name': 'Coding', 'ticket_required': True}  # with tickets, asked for by default
     assert new.simulate_get('/').status == falcon.HTTP_200
+
+
+@pytest.mark.parametrize('changes', [{'coding': False}, {'work_mode': 'activities'}])
+def test_coding_only_with_tickets_and_when_asked_for(new, changes):
+    new.simulate_post('/api/setup', json=SETUP | changes)
+    assert 'Coding' not in [kind['name'] for kind in new.simulate_get('/api/activity-types').json]
 
 
 def test_setup_without_services(new):

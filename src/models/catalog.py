@@ -43,7 +43,7 @@ class ActivityType(DomainModel):
     ticket_required: bool = Field(default=False, description='An entry of this type needs a ticket, e.g. Coding')
 
 
-CODING = 'Coding'  # the activity type of coding work; a default for developers (SPEC 4.2)
+CODING = 'Coding'  # the activity type of coding work; offered in the setup with tickets (SPEC 4.2)
 
 
 def new_activity_type(name: str) -> ActivityType:

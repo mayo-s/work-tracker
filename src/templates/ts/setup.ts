@@ -15,6 +15,7 @@ type Service = { short_name: string; name: string };
 
 export type SetupState = {
   workMode: WorkMode;
+  coding: boolean;  // with tickets: add the activity type Coding
   start: IsoDate;
   opening: string;
   weeklyHours: string;
@@ -52,7 +53,7 @@ export function setupSteps(mode: WorkMode): Step[] {
 
 export function initialState(today: IsoDate): SetupState {
   return {
-    workMode: 'developer', start: today, opening: '0:00', weeklyHours: '40:00', workDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], state: 'BE',
+    workMode: 'tickets', coding: true, start: today, opening: '0:00', weeklyHours: '40:00', workDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], state: 'BE',
     companyHalfDays: true, perYear: '30', firstYear: String(proRata(30, today)), firstYearChanged: false, services: [],
   };
 }
@@ -85,6 +86,7 @@ export function setupInput(state: SetupState): SetupInput {
     services: hasTickets(state.workMode) ? state.services.filter((service) => service.short_name.trim())
       .map((service) => ({ short_name: service.short_name.trim(), name: service.name.trim() })) : [],
     work_mode: state.workMode,
+    coding: hasTickets(state.workMode) && state.coding,
   };
 }
 
@@ -120,7 +122,7 @@ export function summary(state: SetupState): [string, string][] {
   const year = Number(state.start.slice(0, 4));
   const services = setupInput(state).services ?? [];
   const rows: [string, string][] = [
-    ['Way of working', workModeLabel(state.workMode)],
+    ['Way of working', workModeLabel(state.workMode) + (setupInput(state).coding ? ', with Coding' : '')],
     ['First day', formatDate(state.start)],
     ['Opening balance', state.opening.trim()],
     ['Work schedule', `${state.weeklyHours.trim()} h per week, ${state.workDays.join(', ')}`],
@@ -164,8 +166,13 @@ function fileImport(onImport: (file: File | undefined) => void): HTMLElement {
 
 function startStep(state: SetupState, onImport: (file: File | undefined) => void, onMode: () => void): HTMLElement[] {
   const start = input('setup-start', state.start, (value) => (state.start = value), { type: 'date' });
+  const coding = el('input', { type: 'checkbox', id: 'setup-coding', checked: state.coding });
+  coding.addEventListener('change', () => (state.coding = coding.checked));
+  const codingOption = el('label', { class: 'checkbox-field', hidden: !hasTickets(state.workMode) }, coding,
+    'Add the activity type Coding');
   const mode = workModeChoice(state.workMode, (chosen) => {
     state.workMode = chosen;
+    codingOption.hidden = !hasTickets(chosen);
     onMode();
   });
   return [
@@ -177,6 +184,7 @@ function startStep(state: SetupState, onImport: (file: File | undefined) => void
     el('p', {}, 'How do you track your work? It decides which fields, report parts and links the pages show; it can be '
       + 'changed later.'),
     mode,
+    codingOption,
     importNote(),
     fileImport(onImport),
   ];
