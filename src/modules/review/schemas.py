@@ -14,7 +14,7 @@ from src.models.entries import Entry
 from src.models.review import FlagReason, ReviewFlag
 from src.modules.days.schemas import DayView, day_view
 from src.modules.entries.schemas import EntryView, EntryViewer
-from src.modules.importer.tickets import split_keys
+from src.modules.review.tickets import split_keys
 from src.modules.storage.store import Entries, Store
 from src.modules.tickets.schemas import TicketView, ticket_views
 

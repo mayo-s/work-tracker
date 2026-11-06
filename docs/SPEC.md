@@ -11,7 +11,7 @@ AWS Lambda (DynamoDB), see 7.
 - Record working days (start, end, break) and the tasks worked on.
 - Calculate worked time, target time and a running overtime balance.
 - Produce the **monthly work report**: work by activity type, ticket work grouped by service.
-- Import the existing spreadsheet data (2024, 2025, 2026).
+- Take over the existing spreadsheet data (2024, 2025, 2026): done once by an import, removed since (6).
 - Serve non-developers too: each user chooses how they track their work (5.11).
 
 Out of scope for now: export.
@@ -112,7 +112,6 @@ The break can always be overridden (e.g. 3:00 on a long day).
   a move starts a new schedule.
 - Initially one schedule: 40 h, Monday to Friday, Berlin, with company half days, from the balance start (the former
   fixed rules).
-- The spreadsheet import keeps the sheet's own rule (`Sum` − 8:00 per day), independent of the schedules.
 
 ## 4. Task entries
 
@@ -249,7 +248,7 @@ Lists everything that needs attention, each with its reason:
   several selected entries at once.
 - Entries with duration **0:00**.
 - Entries **without a ticket** whose activity type requires one (imported PR reviews).
-- Entries and days **flagged during import** (uncertain ticket ids, weekend hours, …; see 6).
+- Entries and days **flagged during the former import** (uncertain ticket ids, weekend hours, …; see 6).
 - Guessed tickets are grouped by ticket: confirm the key, rename (or merge) the ticket, or **split** its
   entries among several tickets when the spreadsheet line named an alias (`#4347 aka #1482`) or "ff";
   the hours are split evenly in quarter hours. Each of these clears the flags of the ticket's entries.
@@ -491,85 +490,15 @@ the settings at any time:
   page offers no service and its text field says "Words" instead of "Words or ticket key".
 - **Team view**: a member's pages follow the member's way of working, not the viewer's.
 
-## 6. Import (spreadsheet CSV)
+## 6. Import (spreadsheet CSV), removed
 
-Run locally as a command, one CSV per year (e.g. `Time_tracking_DK - 2026_Data.csv`).
-Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `Comment`.
+The yearly spreadsheet exports (2024–2026) were imported once by a local command; it is gone since TASKS.md L.7, and
+data moves between databases by the export and import of 5.8. What it left stays:
 
-### 6.1 Days
-
-- Rows with no start / end and no comment are skipped (future days).
-- The placeholder `08:00–16:00` on weekends, PTO and holidays is ignored.
-- Day comment → day type:
-
-  | Comment | Day type |
-    |---|---|
-  | `PTO`, `<8> PTO` | PTO (full day) |
-  | `PTO` with `Sum` 0:00 (e.g. 30.05.2025) | Overtime off |
-  | `Off sick`, `PTO (off sick)` | Sick (full day) |
-  | holiday names, `Public Holiday …` | Public holiday (cross-checked with the automatic list) |
-  | `0,5 PTO / Heiligabend`, `0,5 PTO / Silvester` | automatic Heiligabend / Silvester |
-
-- **Half days**: a line `4,0 PTO …` or `0,5 PTO` (→ PTO half day), or `4,0 PTO (off sick)` /
-  `4,0 off sick …` (→ sick half day), on a day whose `Sum` is at least 8:00. The sheet
-  extended the end time by the absence, so the import moves the end back by 4:00 (20.06.2024: 07:15–16:00 → 07:15–12:
-  00).
-- **Overtime used**: any other `<hours> PTO …` line (e.g. `2,0 PTO Zahnarzt`, `3,0 PTO TTU`,
-  `4,0 PTO (Wohnungsbesichtigung)` with `Sum` 4:00) is a reminder only → day note; times unchanged.
-- **Weekends**: the sheet stores weekend work as `Sum` − 8:00 (06.12.2025: 08:00–19:30 = 3:30
-  worked). The import keeps those numbers (start, end = start + worked, no break) and **flags**
-  every weekend day with worked time or entries (incl. 09.11.2024 and 25.01.2025, whose
-  hours were not counted in the sheet).
-- An empty `Pause` with start and end set is stored as an explicit 0:00 break (the sheet value is the truth).
-
-### 6.2 Comment lines (one line = one entry)
-
-| Line                                                                                                             | Result                                                                                                                               |
-|------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| `<hours> … <ticket> …`                                                                                           | Coding entry, no service; tickets may appear anywhere in the line (known prefixes, 4.1)                                              |
-| several tickets (`<t1>, <t2>`, `<t1>/<t2>`, `<t1> and <t2>`)                                                     | One entry per ticket, hours split evenly in quarter hours, remainder on the first entries (1:30 / 4 → 0:30, 0:30, 0:15, 0:15)        |
-| `<hours> PR review …` or `<hours> PR …` without a ticket                                                         | Coding entry **without ticket** → review                                                                                             |
-| `<hours> Meeting: <text>`                                                                                        | Activity "Meeting", description = text (tickets stay in the description)                                                             |
-| `<hours> Meeting(s) …`, `Tactical Meeting`, `Teamstufe Meeting`, `Standup`, `Retro`, `Retrospective`, `Planning` | Activity "Meeting", description = whole text                                                                                         |
-| `<hours> TM`, `Tool Management (TM)`, `GCC (Tool Management)`                                                    | Activity "Tool Management"                                                                                                           |
-| `<hours> Anreise / Abreise / Anfahrt / Abfahrt …`                                                                | Activity "Travel", description = text                                                                                                |
-| `<hours> <other text>`                                                                                           | Activity "Other", description = text                                                                                                 |
-| `<ticket> <text>` (no hours)                                                                                     | Entry as for a line with hours, with 0:00 → review                                                                                   |
-| text without hours or ticket                                                                                     | Appended to the day note                                                                                                             |
-
-- Hours use a decimal comma (`1,5` → `1:30`, `0,75` → `0:45`).
-- An activity type the user does not have yet (e.g. Coding, Tool Management) is added by the import.
-
-### 6.3 Ticket clean-up
-
-| Found                            | Stored                                               | Flagged |
-|----------------------------------|------------------------------------------------------|---------|
-| `EINGINE-461`                    | `ENGINE-461`                                         | no      |
-| `TNG 5212`, `TNG4840`, `KP1895`  | `TNG-5212`, `TNG-4840`, `KP-1895`                    | no      |
-| `TNG TNG-4828`                   | `TNG-4828`                                           | no      |
-| `MSI-02`                         | `MSI-2`                                              | no      |
-| `#KP-1494`                       | `KP-1494`                                            | no      |
-| `#4138`, `# 4251` (number only)  | `TNG-4138`, `TNG-4251` (≥ 4000 → TNG, lower → KP)    | yes     |
-| `#4347 aka #1482`, `#4347/#1482` | one entry `TNG-4347`, description gets "aka KP-1482" | yes     |
-| `TNG-2035ff` ("fortfolgend")     | `TNG-2035`; the flag keeps the original text         | yes     |
-
-### 6.4 Safety and reconciliation
-
-- Re-importing a year that already holds data is refused unless replacing is requested explicitly.
-- The data goes to the only user (without users: to the first one created later); with several users the user is
-  named (`--user`, username or e-mail address).
-- The import prints a summary: days, entries, corrections, flagged items.
-- Every imported entry gets an `imported` history line with its original spreadsheet line.
-- **Reconciliation**: per year, the app's overtime is compared with the sheet's (`Sum` − 8:00 per calendar day); days
-  that differ are listed. Expected differences are only
-  the known corrections below.
-
-### 6.5 Known data corrections
-
-- 2024 unpaid leave (marked "PTO" in the sheet): 08.08., 09.08., 04.10., 27.12. and 30.12.2024.
-- 2024 PTO: 17.5 days allowance, 17.5 used → nothing carried over into 2025; 3 days carried over into 2026.
-- The 2026 sheet dashboard already includes 27.10.2026 (6:30) in its total but not in its target;
-  the balance up to 26.10.2026 is 13:45, not 20:15.
+- Each imported entry's history starts with `imported` and the original comment line (4.5).
+- The review (5.4) keeps the import's flags until they are cleared: ticket keys it guessed from old numbers
+  (`#4138` → `TNG-4138`, below 4000 → `KP-…`), aliases (`#4347 aka #1482`) and "ff" (`TNG-2035ff`), for which it
+  suggests a split; and weekend days whose hours the sheet counted differently.
 
 ## 7. Technical
 
@@ -590,15 +519,15 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
     STAGE=Local into .env to run locally; on AWS Lambda the stage is detected`), an unknown value, `STAGE=Local` on
     Lambda, or `WORK_TRACKER_AUTH=off` on Lambda. The container (`Dockerfile`, `compose.yaml`) stops too, until it is
     fixed or removed.
-- The command line tools (importer, `set-password`) work on the local SQLite database only. Tests choose their backend
+- The command line tools (e.g. `set-password`) work on the local SQLite database only. Tests choose their backend
   themselves and do not depend on `STAGE`.
 
 ### 7.2 Storage
 
 - Both backends implement the same repository interfaces (days, entries with history, review flags, tickets, services,
   activity types, schedules, PTO years, settings, users, sessions, teams, invitations, report views). Resources and
-  reports use only these interfaces and a backend-neutral transaction, never SQL; the importer and the command line
-  tools work on SQLite only (7.1). The same contract tests run against both backends (DynamoDB through `moto` in the
+  reports use only these interfaces and a backend-neutral transaction, never SQL; the command line tools work on
+  SQLite only (7.1). The same contract tests run against both backends (DynamoDB through `moto` in the
   tests).
 - SQLite: as before, migrated on start.
 - DynamoDB: one table in `eu-central-1` (Frankfurt), on-demand capacity, point-in-time recovery on; a command creates it.
@@ -624,8 +553,8 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
     e.g. an entry together with its history line, and end with the step that closes them (deleting the old ticket,
     ending the membership). Repeating a change that stopped halfway completes it.
   - Lists are read in full; DynamoDB's paging stays inside the repositories.
-- One table holds all users. Data reaches it through the export and import of 5.8, e.g. a local database: import the
-  spreadsheets locally, export, then import the file in the setup on AWS.
+- One table holds all users. Data reaches it through the export and import of 5.8, e.g. from a local database: export
+  it there, then import the file in the setup on AWS.
 
 ### 7.2a Ids
 

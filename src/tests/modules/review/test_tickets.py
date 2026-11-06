@@ -1,6 +1,6 @@
 import pytest
 
-from src.modules.importer.tickets import CleanedText, bare_key, clean_tickets, find_tickets, split_keys
+from src.modules.review.tickets import CleanedText, bare_key, clean_tickets, find_tickets, split_keys
 
 
 @pytest.mark.parametrize('text, cleaned', [
