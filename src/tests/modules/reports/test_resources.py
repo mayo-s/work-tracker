@@ -78,7 +78,7 @@ def test_invalid_period(client, path):
     assert client.simulate_get(path).status == falcon.HTTP_404
 
 
-def test_month_coding_work_by_service_and_ticket(client, service_ids, activity_ids):
+def test_month_work_of_an_activity_type_by_service_and_ticket(client, service_ids, activity_ids):
     ticket(client, '2026-10-05', 'ENGINE-573', '5:00', 'HUB support', service_id=service_ids['MSB'])
     ticket(client, '2026-10-06', 'ENGINE-573', '2:00', 'HUB support')
     ticket(client, '2026-10-06', 'ENGINE-565', '1:00', 'PR review')
@@ -86,8 +86,9 @@ def test_month_coding_work_by_service_and_ticket(client, service_ids, activity_i
     ticket(client, '2026-10-07', 'ENGINE-594', '1:00', 'test access', service_id=service_ids['MSB'])
     ticket(client, '2026-10-08', 'KP-2203', '2:00', 'refinement', activity_ids['Meeting'])
     ticket(client, '2026-11-02', 'ENGINE-573', '3:00', 'next month')
-    report = client.simulate_get('/api/reports/months/2026-10').json
-    assert report['coding'] == [
+    coding = client.simulate_get('/api/reports/months/2026-10').json['work'][0]
+    assert (coding['activity_type_id'], coding['duration'], coding['descriptions']) == (CODING, '10:00', [])
+    assert coding['services'] == [
         {'service_id': service_ids['HiS'], 'service': 'HiS', 'duration': '1:00', 'tickets': [
             {'ticket_key': 'TNG-5783', 'duration': '1:00', 'descriptions': ['content type alias']},
         ]},
@@ -99,7 +100,6 @@ def test_month_coding_work_by_service_and_ticket(client, service_ids, activity_i
             {'ticket_key': 'ENGINE-565', 'duration': '1:00', 'descriptions': ['PR review']},
         ]},
     ]
-    assert report['coding_total'] == '10:00'
 
 
 def activity(client, date, type_id, duration, note=''):
@@ -109,8 +109,8 @@ def activity(client, date, type_id, duration, note=''):
 
 @pytest.fixture
 def october(client, service_ids, activity_ids):
-    """Coding, other ticket work and activities in October 2026, one coding entry after today (28.10.); a ticket has
-    one service for all its entries."""
+    """Coding, Meetings on tickets and without, and Planning in October 2026, one coding entry after today (28.10.); a
+    ticket has one service for all its entries."""
     work(client, '2026-10-05')
     ticket(client, '2026-10-05', 'ENGINE-573', '3:00', 'HUB support', service_id=service_ids['MSB'])
     ticket(client, '2026-10-05', 'KP-2203', '1:00', 'refinement', activity_ids['Meeting'], service_id=service_ids['MSB'])
@@ -123,9 +123,11 @@ def october(client, service_ids, activity_ids):
     ticket(client, '2026-10-29', 'TNG-5783', '4:00')
 
 
-def test_month_other_ticket_work_activities_and_entries(client, october, service_ids, activity_ids):
+def test_month_work_by_activity_type_most_hours_first(client, october, service_ids):
     report = client.simulate_get('/api/reports/months/2026-10').json
-    assert report['other_work'] == [
+    assert [(work['activity_type'], work['duration'], work['descriptions']) for work in report['work']] == [
+        ('Coding', '7:00', []), ('Meeting', '4:15', ['Jour fixe']), ('Planning', '2:00', ['Jira cleanup'])]
+    assert report['work'][1]['services'] == [
         {'service_id': service_ids['MSB'], 'service': 'MSB', 'duration': '1:30', 'tickets': [
             {'ticket_key': 'KP-2203', 'duration': '1:30', 'descriptions': ['refinement']},
         ]},
@@ -133,26 +135,17 @@ def test_month_other_ticket_work_activities_and_entries(client, october, service
             {'ticket_key': 'KP-2045', 'duration': '1:00', 'descriptions': ['planning']},
         ]},
     ]
-    assert report['activities'] == [
-        {'activity_type_id': activity_ids['Meeting'], 'activity_type': 'Meeting', 'duration': '1:45',
-         'notes': ['Jour fixe']},
-        {'activity_type_id': activity_ids['Planning'], 'activity_type': 'Planning', 'duration': '2:00',
-         'notes': ['Jira cleanup']},
-    ]
-    assert (report['coding_total'], report['other_work_total'], report['activities_total']) == ('7:00', '2:30', '3:45')
-    assert (report['entries'], report['totals']['worked']) == ('9:15', '8:00')  # 29.10. is after today
+    # 29.10. is after today: in the work, not in the hours in entries
+    assert (report['work_total'], report['entries'], report['totals']['worked']) == ('13:15', '9:15', '8:00')
 
 
-def test_year_work_by_service_and_activity_type(client, october, service_ids, activity_ids):
+def test_year_work_by_activity_type_and_by_service(client, october, service_ids):
     report = client.simulate_get('/api/reports/years/2026').json
-    assert report['coding'] == [{'service_id': service_ids['MSB'], 'service': 'MSB', 'duration': '3:00'},
-                                {'service_id': None, 'service': None, 'duration': '4:00'}]
-    assert report['other_work'] == [{'service_id': service_ids['MSB'], 'service': 'MSB', 'duration': '1:30'},
-                                    {'service_id': None, 'service': None, 'duration': '1:00'}]
-    assert [(item['activity_type'], item['duration']) for item in report['activities']] == [
-        ('Meeting', '1:45'), ('Planning', '2:00')]
-    assert (report['coding_total'], report['other_work_total'], report['activities_total'], report['entries']) == (
-        '7:00', '2:30', '3:45', '9:15')
+    assert [(work['activity_type'], work['duration']) for work in report['work']] == [
+        ('Coding', '7:00'), ('Meeting', '4:15'), ('Planning', '2:00')]
+    assert report['services'] == [{'service_id': service_ids['MSB'], 'service': 'MSB', 'duration': '4:30'},
+                                  {'service_id': None, 'service': None, 'duration': '5:00'}]
+    assert (report['work_total'], report['services_total'], report['entries']) == ('13:15', '9:30', '9:15')
 
 
 def test_month_lists_pr_reviews_without_ticket_last(client, database):
@@ -160,7 +153,8 @@ def test_month_lists_pr_reviews_without_ticket_last(client, database):
     with database.transaction() as conn:
         review = Entry(date=dt.date(2026, 10, 6), activity_type_id=CODING, duration=120, description='PR reviews')
         EntryRepository(conn, USER).create(review)
-    [unassigned] = client.simulate_get('/api/reports/months/2026-10').json['coding']
+    [coding] = client.simulate_get('/api/reports/months/2026-10').json['work']
+    [unassigned] = coding['services']
     assert [(work['ticket_key'], work['duration']) for work in unassigned['tickets']] == [('TNG-999', '1:00'), (None, '2:00')]
 
 
@@ -224,5 +218,5 @@ def test_month_descriptions_are_merged_ignoring_case(client):
     ticket(client, '2026-10-07', 'ENGINE-565', '1:00', 'PR Review')
     ticket(client, '2026-10-15', 'ENGINE-565', '1:00', 'PR review')
     ticket(client, '2026-10-19', 'ENGINE-565', '2:00', 'WAF/ACL deployment')
-    [unassigned] = client.simulate_get('/api/reports/months/2026-10').json['coding']
+    [unassigned] = client.simulate_get('/api/reports/months/2026-10').json['work'][0]['services']
     assert unassigned['tickets'][0]['descriptions'] == ['PR Review', 'WAF/ACL deployment']

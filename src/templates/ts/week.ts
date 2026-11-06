@@ -251,14 +251,11 @@ function dayRow(day: DayView, warning: boolean, view: View): HTMLElement {
   );
 }
 
-/** The form of a new entry, or the button that opens it (none in "Times only"). */
-function newEntry(day: DayView, view: View): HTMLElement | null {
+/** The form of a new entry, or the button that opens it. */
+function newEntry(day: DayView, view: View): HTMLElement {
   const editing = view.editing;
   if (editing?.kind === 'entry' && editing.id === null && editing.date === day.date) {
     return el('div', { class: 'entry-editing' }, entryEditor(editorOptions(view, day.date, null)));
-  }
-  if (view.data.workMode === 'times') {
-    return null;
   }
   return button('+ Add entry', () => view.actions.edit({ kind: 'entry', date: day.date, id: null }),
     { 'data-opens': `add-${day.date}` });
@@ -280,8 +277,7 @@ function dayRows(day: DayView, view: View): HTMLElement[] {
     rows.push(el('tr', { class: 'day-editor-row' },
       el('td', { colspan: COLUMNS }, dayEditor(day, view.actions.changed, view.actions.cancel))));
   }
-  const canAdd = !view.readOnly && view.data.workMode !== 'times';
-  if (entries.length || canAdd || (!view.readOnly && day.note)) {
+  if (!view.readOnly || entries.length) {
     rows.push(detailsRow(day, entries, rowClass(day, warning, view.today), view));
   }
   return rows;

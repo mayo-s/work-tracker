@@ -8,7 +8,7 @@ import { fromMinutes, toMinutes } from './durations.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
 import { entriesOfWorked, periodHeader, periodSummary, value } from './week.ts';
-import { ownWorkMode, workParts, type WorkPart } from './work-modes.ts';
+import { hasTickets, ownWorkMode, showsWork } from './work-modes.ts';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -75,28 +75,19 @@ function workCard(title: string, rows: [string, string][], total: string): HTMLE
       : el('p', { class: 'muted' }, 'None'));
 }
 
-function byService(services: YearReport['coding']): [string, string][] {
-  return services.map((service) => [service.service ?? 'No service', service.duration]);
-}
-
-function workCardOf(part: WorkPart, report: YearReport): HTMLElement {
-  switch (part) {
-    case 'coding':
-      return workCard('Coding work', byService(report.coding), report.coding_total);
-    case 'other_work':
-      return workCard('Other ticket work', byService(report.other_work), report.other_work_total);
-    case 'ticket_work':  // no coding work in the year: all ticket work is other ticket work
-      return workCard('Ticket work', byService(report.other_work), report.other_work_total);
-    case 'activities':
-      return workCard('Activities', report.activities.map((activity) => [activity.activity_type, activity.duration]),
-        report.activities_total);
-  }
-}
-
-/** The work cards of the way of working; none (and no "Work" heading) in "Times only" without entries. */
+/** The work cards: hours by activity type, and by service (with ticket and service, or when there is ticket work); none
+ * (and no "Work" heading) in "Times only" without entries. */
 function workCards(report: YearReport, mode: WorkMode): HTMLElement[] {
-  const cards = workParts(mode, report).map((part) => workCardOf(part, report));
-  return cards.length ? [el('h2', { class: 'year-work' }, 'Work'), el('div', { class: 'year-cards' }, ...cards)] : [];
+  if (!showsWork(mode, report.work.length > 0)) {
+    return [];
+  }
+  const services = hasTickets(mode) || report.services.length > 0
+    ? workCard('Services', report.services.map((service) => [service.service ?? 'No service', service.duration]),
+      report.services_total)
+    : null;
+  return [el('h2', { class: 'year-work' }, 'Work'), el('div', { class: 'year-cards' },
+    workCard('Activity types', report.work.map((work) => [work.activity_type, work.duration]), report.work_total),
+    services ?? '')];
 }
 
 function monthsTable(report: YearReport): HTMLElement {

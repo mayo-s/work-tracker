@@ -25,26 +25,10 @@ export async function ownWorkMode(member: string | null): Promise<WorkMode> {
   return member ? 'developer' : (await api.settings()).work_mode;
 }
 
-/** A part of the work report (month, year); "Ticket work" is all ticket work, in place of "Coding work" and "Other
- * ticket work". */
-export type WorkPart = 'coding' | 'other_work' | 'ticket_work' | 'activities';
-
-/** The work of a period (month or year report) as lists: by service, by activity type. */
-type Work = { coding: unknown[]; other_work: unknown[]; activities: unknown[] };
-
-/** The parts of the work report: those of the way of working and those with data in the period (SPEC 5.11). Without
- * coding, ticket work is one part, unless coding work was recorded in the period. */
-export function workParts(mode: WorkMode, work: Work): WorkPart[] {
-  const parts: WorkPart[] = [];
-  if (mode === 'developer' || work.coding.length) {
-    parts.push('coding', 'other_work');
-  } else if (hasTickets(mode) || work.other_work.length) {
-    parts.push('ticket_work');
-  }
-  if (mode !== 'times' || work.activities.length) {
-    parts.push('activities');
-  }
-  return parts;
+/** Whether the month and year report show the work: always, but in "Times only" only when the period holds entries
+ * (SPEC 5.11). */
+export function showsWork(mode: WorkMode, recorded: boolean): boolean {
+  return mode !== 'times' || recorded;
 }
 
 /** Radio buttons of the ways of working; `onChoose` gets the chosen one and its name. */

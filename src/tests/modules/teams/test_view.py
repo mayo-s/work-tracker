@@ -78,7 +78,7 @@ def test_reports_count_from_joining_on(app, hans, ids):
     totals = app.simulate_get('/api/reports/weeks/2026-W45', cookies=hans, params={'member': ids['rainer']}).json['totals']
     assert (totals['worked'], totals['target']) == ('8:00', '24:00')  # Wednesday (no time) to Friday (today)
     month = app.simulate_get('/api/reports/months/2026-11', cookies=hans, params={'member': ids['rainer']}).json
-    assert (month['coding_total'], month['visible_from']) == ('8:00', '2026-11-04')
+    assert (month['work_total'], month['visible_from']) == ('8:00', '2026-11-04')
 
 
 def test_dashboard_without_review_items(app, hans, ids):

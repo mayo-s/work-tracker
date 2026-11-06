@@ -1,5 +1,5 @@
-// Month report (/month): totals, days off and the monthly work report: coding and other ticket work (or all ticket
-// work, without coding) by service and ticket, activities by type; its parts follow the way of working.
+// Month report (/month): totals, days off and the monthly work report by activity type, each with its ticket work by
+// service and ticket and the descriptions of its other entries ("Times only": only when the month holds entries).
 
 import { api, errorText, type DayType, type MonthReport, type WorkMode } from './api.ts';
 import { formatMonth, isoDate, isoMonth, isValidMonth, shiftMonth, type IsoDate } from './dates.ts';
@@ -7,10 +7,10 @@ import { el, scrolling } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
 import { entriesOfWorked, periodHeader, periodSummary } from './week.ts';
-import { ownWorkMode, workParts, type WorkPart } from './work-modes.ts';
+import { ownWorkMode, showsWork } from './work-modes.ts';
 
-type ServiceWork = MonthReport['coding'][number];
-type ActivityWork = MonthReport['activities'][number];
+type ActivityWork = MonthReport['work'][number];
+type ServiceWork = ActivityWork['services'][number];
 
 /** The month from `?month=2026-10`, otherwise the current month. */
 export function monthFromSearch(search: string, today: IsoDate): string {
@@ -54,7 +54,7 @@ function texts(items: string[]): HTMLElement {
     : el('span', { class: 'muted' }, '—');
 }
 
-/** A part of the work report with its total: "Coding work", "Other ticket work", "Ticket work" or "Activities". */
+/** A part of the work report with its total: an activity type, or "Work" when nothing was recorded. */
 function workSection(title: string, total: string, content: HTMLElement | null, empty: string): HTMLElement {
   return el('section', { class: 'work-report' },
     el('div', { class: 'work-service-header' }, el('h2', {}, title),
@@ -67,34 +67,21 @@ function servicesContent(services: ServiceWork[], readOnly: boolean): HTMLElemen
   return services.length ? el('div', {}, ...services.map((work) => serviceSection(work, readOnly))) : null;
 }
 
-function activitiesContent(activities: ActivityWork[]): HTMLElement | null {
-  return activities.length ? scrolling(el('table', {},
-    el('tbody', {}, ...activities.map((activity) => el('tr', {},
-      el('td', { class: 'work-ticket' }, el('strong', {}, activity.activity_type)),
-      el('td', {}, texts(activity.notes)),
-      el('td', { class: 'num' }, activity.duration)))))) : null;
-}
-
-function workSectionOf(part: WorkPart, report: MonthReport): HTMLElement {
-  const readOnly = Boolean(report.visible_from);
-  switch (part) {
-    case 'coding':
-      return workSection('Coding work', report.coding_total, servicesContent(report.coding, readOnly),
-        'No coding work recorded in this month.');
-    case 'other_work':
-      return workSection('Other ticket work', report.other_work_total, servicesContent(report.other_work, readOnly),
-        'No other ticket work recorded in this month.');
-    case 'ticket_work':  // no coding work in the month: all ticket work is other ticket work
-      return workSection('Ticket work', report.other_work_total, servicesContent(report.other_work, readOnly),
-        'No ticket work recorded in this month.');
-    case 'activities':
-      return workSection('Activities', report.activities_total, activitiesContent(report.activities),
-        'No activities recorded in this month.');
-  }
+/** An activity type's part: its ticket work by service and ticket, then the descriptions of its other entries. */
+function activitySection(work: ActivityWork, readOnly: boolean): HTMLElement {
+  const content = [servicesContent(work.services, readOnly), work.descriptions.length ? texts(work.descriptions) : null]
+    .filter((part) => part !== null);
+  return workSection(work.activity_type, work.duration, content.length ? el('div', {}, ...content) : null,
+    'No descriptions.');
 }
 
 function workReport(report: MonthReport, mode: WorkMode): HTMLElement[] {
-  return workParts(mode, report).map((part) => workSectionOf(part, report));
+  if (!showsWork(mode, report.work.length > 0)) {
+    return [];
+  }
+  const readOnly = Boolean(report.visible_from);
+  return report.work.length ? report.work.map((work) => activitySection(work, readOnly))
+    : [workSection('Work', report.work_total, null, 'No work recorded in this month.')];
 }
 
 export async function renderMonthPage(doc: Document): Promise<void> {

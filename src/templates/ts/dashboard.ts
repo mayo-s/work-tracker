@@ -267,10 +267,11 @@ function comingUpSection(items: ComingUp[]): HTMLElement {
       : el('p', {}, 'Nothing planned.'));
 }
 
-/** This year's figures; "Coding hours" only for developers, "Top services" only with ticket entries. */
+/** This year's figures; "Top services" only with ticket and service. */
 function yearSection(figures: DashboardView['this_year'], mode: WorkMode): HTMLElement {
   const row = (label: string, value: string): HTMLElement =>
     el('tr', {}, el('td', {}, label), el('td', { class: 'num' }, value));
+  const types = figures.top_activity_types.map((type) => `${type.activity_type} ${type.duration}`).join(', ');
   const top = figures.top_services.map((service) => `${service.service ?? 'No service'} ${service.duration}`).join(', ');
   return el('section', { class: 'card' },
     el('h2', {}, `This year ${figures.year}`),
@@ -279,7 +280,7 @@ function yearSection(figures: DashboardView['this_year'], mode: WorkMode): HTMLE
       row('Average per day worked', figures.average_per_day_worked),
       row('Sick days', formatDays(figures.sick_days)),
       row('Overtime off', `${figures.overtime_off_days} days`),
-      mode === 'developer' ? row('Coding hours', figures.coding) : null,
+      row('Top activity types', types || '—'),
       hasTickets(mode) ? row('Top services', top || '—') : null)));
 }
 
