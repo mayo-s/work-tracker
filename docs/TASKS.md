@@ -351,7 +351,7 @@ L.16 (a–i) → 9.1 (a–i).
 - [x] **13.2** Setup: the way of working on the start step, the step "Services" only with ticket entries; new users
   get the default activity types Meeting, Travel, Planning, Documentation and Other (no Tool Management; existing
   users keep theirs), and the spreadsheet import adds an activity type the user does not have yet
-- [ ] **13.3** Week: the entry form per way of working (no Coding checkbox, no Ticket / Activity choice, no "Add
+- [x] **13.3** Week: the entry form per way of working (no Coding checkbox, no Ticket / Activity choice, no "Add
   entry" in "Times only"; an existing entry of another kind keeps its full form), and no warning for a day without
   entries in "Times only"
 - [ ] **13.4** Month and year report: parts per way of working or data in the period, "Ticket work" without coding,

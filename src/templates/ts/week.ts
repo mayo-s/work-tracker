@@ -2,6 +2,7 @@
 
 import {
   api, errorText, type ActivityType, type DayView, type EntryView, type PeriodTotals, type ServiceChoice, type WeekReport,
+  type WorkMode,
 } from './api.ts';
 import { addDays, formatDate, formatDay, isoDate, isoWeek, isValidWeek, mondayOf, shiftWeek, type IsoDate } from './dates.ts';
 import { dayEditor } from './day-editor.ts';
@@ -38,9 +39,11 @@ export function visibleDays(days: DayView[], entries: Map<IsoDate, EntryView[]>)
   return days.filter((day) => day.work_day || day.recorded || entries.has(day.date));
 }
 
-/** A past work day of the schedule, of type work, without any entry (in the team view only days in the team). */
-export function needsWarning(day: DayView, entries: EntryView[], today: IsoDate): boolean {
-  return day.date < today && day.day_type === 'work' && day.work_day && entries.length === 0 && day.in_team !== false;
+/** A past work day of the schedule, of type work, without any entry (in the team view only days in the team); not in
+ * "Times only", which records no entries. */
+export function needsWarning(day: DayView, entries: EntryView[], today: IsoDate, mode: WorkMode): boolean {
+  return mode !== 'times' && day.date < today && day.day_type === 'work' && day.work_day && entries.length === 0
+    && day.in_team !== false;
 }
 
 /** The week from `?week=2026-W44`, otherwise the current week. */
@@ -131,7 +134,7 @@ export function entriesOfWorked(entries: string, totals: PeriodTotals): HTMLElem
 
 type WeekData = {
   days: DayView[]; entries: Map<IsoDate, EntryView[]>; report: WeekReport; services: ServiceChoice[];
-  activityTypes: ActivityType[];
+  activityTypes: ActivityType[]; workMode: WorkMode;
 };
 /** What is open: the form of a day, of an entry (id) or of a new entry (null) on a date, or nothing. */
 export type Editing = { kind: 'day'; date: IsoDate } | { kind: 'entry'; date: IsoDate; id: string | null } | null;
@@ -175,7 +178,7 @@ export function entryContent(entry: EntryView, showFlags = true): (HTMLElement |
 function editorOptions(view: View, date: IsoDate, entry: EntryView | null): EntryEditorOptions {
   return {
     date, entry, dayStart: view.data.days.find((day) => day.date === date)?.start ?? null,
-    services: view.data.services, activityTypes: view.data.activityTypes,
+    services: view.data.services, activityTypes: view.data.activityTypes, workMode: view.data.workMode,
     onDone: view.actions.changed, onCancel: view.actions.cancel,
   };
 }
@@ -241,10 +244,14 @@ function dayRow(day: DayView, warning: boolean, view: View): HTMLElement {
   );
 }
 
-function newEntry(day: DayView, view: View): HTMLElement {
+/** The form of a new entry, or the button that opens it (none in "Times only"). */
+function newEntry(day: DayView, view: View): HTMLElement | null {
   const editing = view.editing;
   if (editing?.kind === 'entry' && editing.id === null && editing.date === day.date) {
     return el('div', { class: 'entry-editing' }, entryEditor(editorOptions(view, day.date, null)));
+  }
+  if (view.data.workMode === 'times') {
+    return null;
   }
   return button('+ Add entry', () => view.actions.edit({ kind: 'entry', date: day.date, id: null }),
     { 'data-opens': `add-${day.date}` });
@@ -260,13 +267,14 @@ function detailsRow(day: DayView, entries: EntryView[], className: string | null
 
 function dayRows(day: DayView, view: View): HTMLElement[] {
   const entries = view.data.entries.get(day.date) ?? [];
-  const warning = needsWarning(day, entries, view.today);
+  const warning = needsWarning(day, entries, view.today, view.data.workMode);
   const rows = [dayRow(day, warning, view)];
   if (view.editing?.kind === 'day' && view.editing.date === day.date) {
     rows.push(el('tr', { class: 'day-editor-row' },
       el('td', { colspan: COLUMNS }, dayEditor(day, view.actions.changed, view.actions.cancel))));
   }
-  if (!view.readOnly || entries.length) {
+  const canAdd = !view.readOnly && view.data.workMode !== 'times';
+  if (entries.length || canAdd || (!view.readOnly && day.note)) {
     rows.push(detailsRow(day, entries, rowClass(day, warning, view.today), view));
   }
   return rows;
@@ -304,11 +312,12 @@ function errorCard(error: unknown): HTMLElement {
 
 /** The week of the user, or in the team view of the member (without the lists to choose from, as nothing is edited). */
 async function loadWeek(week: string, member: string | null): Promise<WeekData> {
-  const [days, entries, report, services, activityTypes] = await Promise.all([
+  const [days, entries, report, services, activityTypes, settings] = await Promise.all([
     api.days({ week }, member), api.entries({ week }, member), api.weekReport(week, member),
-    member ? [] : api.serviceChoices(), member ? [] : api.activityTypes(),
+    member ? [] : api.serviceChoices(), member ? [] : api.activityTypes(), member ? null : api.settings(),
   ]);
-  return { days, entries: entriesByDate(entries), report, services, activityTypes };
+  const workMode = settings?.work_mode ?? 'developer';
+  return { days, entries: entriesByDate(entries), report, services, activityTypes, workMode };
 }
 
 export async function renderWeekPage(doc: Document): Promise<void> {
