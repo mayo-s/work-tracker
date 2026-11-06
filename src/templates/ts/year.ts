@@ -8,7 +8,7 @@ import { fromMinutes, toMinutes } from './durations.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
 import { entriesOfWorked, periodHeader, periodSummary, value } from './week.ts';
-import { hasTickets, ownWorkMode, showsWork } from './work-modes.ts';
+import { hasTickets, showsWork } from './work-modes.ts';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -122,10 +122,10 @@ export async function renderYearPage(doc: Document): Promise<void> {
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
     const member = viewedMember(doc.location.search);
-    const [report, mode] = await Promise.all([api.yearReport(year, member), ownWorkMode(member)]);
+    const report = await api.yearReport(year, member);
     const worked = el('div', {}, el('span', { class: 'muted' }, 'Days worked '), el('span', { class: 'num' }, String(report.days_worked)),
       el('span', { class: 'muted' }, ' · average '), el('span', { class: 'num' }, report.average_per_day_worked));
-    const work = workCards(report, mode);
+    const work = workCards(report, report.work_mode);  // the member's way of working in the team view
     root.replaceChildren(
       periodSummary(report.totals, work.length ? entriesOfWorked(report.entries, report.totals) : null, worked),
       el('div', { class: 'year-cards' }, ptoCard(report), daysOffCard(report)),

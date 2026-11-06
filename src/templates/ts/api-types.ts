@@ -1960,6 +1960,12 @@ export interface components {
             coming_up: components["schemas"]["ComingUp"][];
             this_year: components["schemas"]["YearFigures"];
             /**
+             * Work Mode
+             * @description The way of working of the user the report is of (in the team view the member's): it shapes the page
+             * @enum {string}
+             */
+            work_mode: "developer" | "tickets" | "activities" | "times";
+            /**
              * Visible From
              * @description Team view: the first day shown (the member joined the team)
              * @default null
@@ -2347,6 +2353,12 @@ export interface components {
                 [key: string]: number;
             };
             /**
+             * Work Mode
+             * @description The way of working of the user the report is of (in the team view the member's): it shapes the page
+             * @enum {string}
+             */
+            work_mode: "developer" | "tickets" | "activities" | "times";
+            /**
              * Visible From
              * @description Team view: the first day shown (the member joined the team)
              * @default null
@@ -2385,6 +2397,12 @@ export interface components {
              * @description Hours in all entries of the month
              */
             work_total: string;
+            /**
+             * Work Mode
+             * @description The way of working of the user the report is of (in the team view the member's): it shapes the page
+             * @enum {string}
+             */
+            work_mode: "developer" | "tickets" | "activities" | "times";
             /**
              * Visible From
              * @description Team view: the first day shown (the member joined the team)
@@ -2434,6 +2452,12 @@ export interface components {
             services: components["schemas"]["ServiceTotal"][];
             /** Services Total */
             services_total: string;
+            /**
+             * Work Mode
+             * @description The way of working of the user the report is of (in the team view the member's): it shapes the page
+             * @enum {string}
+             */
+            work_mode: "developer" | "tickets" | "activities" | "times";
             /**
              * Visible From
              * @description Team view: the first day shown (the member joined the team)

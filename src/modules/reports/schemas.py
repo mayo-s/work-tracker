@@ -19,6 +19,7 @@ from src.lib.daytypes import DaySummary, DayType
 from src.lib.durations import format_duration, parse_duration
 from src.lib.stays import Stays
 from src.models.entries import Entry
+from src.models.settings import WorkMode
 from src.modules.storage.store import Store
 from src.modules.tickets.schemas import TicketServices
 
@@ -38,10 +39,15 @@ class PeriodTotals(BaseModel):
     balance_out: str = Field(description='Overtime balance at the end of the period (today at the latest)')
 
 
+OwnerWorkMode = Annotated[WorkMode, Field(
+    description="The way of working of the user the report is of (in the team view the member's): it shapes the page")]
+
+
 class WeekReport(BaseModel):
     week: str = Field(examples=['2026-W44'])
     totals: PeriodTotals
     days_off: dict[DayType, int] = Field(description='Weekdays by day type other than work, including planned ones')
+    work_mode: OwnerWorkMode
     visible_from: VisibleFrom = None
 
 
@@ -85,6 +91,7 @@ class MonthReport(BaseModel):
     pto_days: float = Field(description='PTO used and planned in the month')
     work: list[ActivityWork] = Field(description='The work by activity type, most hours first')
     work_total: str = Field(description='Hours in all entries of the month')
+    work_mode: OwnerWorkMode
     visible_from: VisibleFrom = None
 
 
@@ -120,6 +127,7 @@ class YearReport(BaseModel):
     work_total: str = Field(description='Hours in all entries of the year')
     services: list[ServiceTotal] = Field(description='The work on tickets by service, most hours first; without service last')
     services_total: str
+    work_mode: OwnerWorkMode
     visible_from: VisibleFrom = None
 
 
@@ -144,7 +152,8 @@ class Reports:
         sunday = monday + dt.timedelta(days=6)
         ledger = self._ledger_until(sunday)
         totals, days_off = self._totals(ledger, monday, sunday), self._days_off(ledger, monday, sunday)
-        return WeekReport(week=week, totals=totals, days_off=days_off, visible_from=self._visible_from)
+        return WeekReport(week=week, totals=totals, days_off=days_off, work_mode=self._settings.work_mode,
+                          visible_from=self._visible_from)
 
     def month(self, year: int, month: int) -> MonthReport:
         start, end = _month_bounds(year, month)
@@ -157,7 +166,7 @@ class Reports:
             entries=work.total(min(end, self._today)),
             days_off=self._days_off(ledger, start, end),
             pto_days=float(sum(day.pto_days for day in self._period_days(ledger, start, end))),
-            work=by_type, work_total=_sum(by_type),
+            work=by_type, work_total=_sum(by_type), work_mode=self._settings.work_mode,
             visible_from=self._visible_from,
         )
 
@@ -179,7 +188,7 @@ class Reports:
             pto=self._pto(year),
             work=[ActivityTotal(**item.model_dump(exclude={'services', 'descriptions'})) for item in by_type],
             work_total=_sum(by_type),
-            services=_service_totals(services), services_total=_sum(services),
+            services=_service_totals(services), services_total=_sum(services), work_mode=self._settings.work_mode,
             visible_from=self._visible_from,
         )
 

@@ -14,7 +14,7 @@ from src.lib.daytypes import DaySummary, DayType
 from src.lib.durations import format_duration, parse_duration
 from src.lib.public_holidays import holiday_on
 from src.lib.stays import Stays
-from src.modules.reports.schemas import PeriodTotals, PeriodWork, PtoView, Reports, VisibleFrom
+from src.modules.reports.schemas import OwnerWorkMode, PeriodTotals, PeriodWork, PtoView, Reports, VisibleFrom
 from src.modules.review.schemas import review_counts
 from src.modules.storage.store import Store
 
@@ -80,6 +80,7 @@ class DashboardView(BaseModel):
     coming_up: list[ComingUp] = Field(description=f'Public holidays, company half days and planned days off in the next '
                                                   f'{COMING_UP_DAYS} days; days in a row combined')
     this_year: YearFigures
+    work_mode: OwnerWorkMode
     visible_from: VisibleFrom = None
 
 
@@ -110,6 +111,7 @@ class Dashboard(Reports):
             balance_series=self._series(),
             coming_up=self._coming_up(),
             this_year=self._year_figures(year.days_worked, year.average_per_day_worked, year.days_off),
+            work_mode=year.work_mode,
             visible_from=self._visible_from,
         )
 

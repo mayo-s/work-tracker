@@ -6,7 +6,7 @@ import { el, scrolling } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { fullName, viewedMember } from './team-view.ts';
 import { valueClass } from './week.ts';
-import { hasTickets, ownWorkMode } from './work-modes.ts';
+import { hasTickets } from './work-modes.ts';
 import { formatDays } from './year.ts';
 
 type Point = DashboardView['balance_series']['month'][number];
@@ -321,10 +321,10 @@ export async function renderDashboardPage(doc: Document): Promise<void> {
   memberChooser(member).then((chooser) => chooser && doc.querySelector('.week-header')?.append(chooser), () => undefined);
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
-    const [data, mode] = await Promise.all([api.dashboard(member), ownWorkMode(member)]);
+    const data = await api.dashboard(member);
     doc.querySelector('#dashboard-today')!.textContent = `Today, ${formatDate(data.today)} · counted up to today`;
     root.replaceChildren(keyFigures(data), balanceSection(data),
-      el('div', { class: 'dashboard-columns' }, comingUpSection(data.coming_up), yearSection(data.this_year, mode)));
+      el('div', { class: 'dashboard-columns' }, comingUpSection(data.coming_up), yearSection(data.this_year, data.work_mode)));
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },
       errorText(error, 'The dashboard could not be loaded.')));

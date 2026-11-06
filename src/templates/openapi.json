@@ -6139,6 +6139,17 @@
           "this_year": {
             "$ref": "#/components/schemas/YearFigures"
           },
+          "work_mode": {
+            "description": "The way of working of the user the report is of (in the team view the member's): it shapes the page",
+            "enum": [
+              "developer",
+              "tickets",
+              "activities",
+              "times"
+            ],
+            "title": "Work Mode",
+            "type": "string"
+          },
           "visible_from": {
             "anyOf": [
               {
@@ -6165,7 +6176,8 @@
           "review_open",
           "balance_series",
           "coming_up",
-          "this_year"
+          "this_year",
+          "work_mode"
         ],
         "title": "DashboardView",
         "type": "object"
@@ -6957,6 +6969,17 @@
             "title": "Days Off",
             "type": "object"
           },
+          "work_mode": {
+            "description": "The way of working of the user the report is of (in the team view the member's): it shapes the page",
+            "enum": [
+              "developer",
+              "tickets",
+              "activities",
+              "times"
+            ],
+            "title": "Work Mode",
+            "type": "string"
+          },
           "visible_from": {
             "anyOf": [
               {
@@ -6975,7 +6998,8 @@
         "required": [
           "week",
           "totals",
-          "days_off"
+          "days_off",
+          "work_mode"
         ],
         "title": "WeekReport",
         "type": "object"
@@ -7025,6 +7049,17 @@
             "title": "Work Total",
             "type": "string"
           },
+          "work_mode": {
+            "description": "The way of working of the user the report is of (in the team view the member's): it shapes the page",
+            "enum": [
+              "developer",
+              "tickets",
+              "activities",
+              "times"
+            ],
+            "title": "Work Mode",
+            "type": "string"
+          },
           "visible_from": {
             "anyOf": [
               {
@@ -7047,7 +7082,8 @@
           "days_off",
           "pto_days",
           "work",
-          "work_total"
+          "work_total",
+          "work_mode"
         ],
         "title": "MonthReport",
         "type": "object"
@@ -7128,6 +7164,17 @@
             "title": "Services Total",
             "type": "string"
           },
+          "work_mode": {
+            "description": "The way of working of the user the report is of (in the team view the member's): it shapes the page",
+            "enum": [
+              "developer",
+              "tickets",
+              "activities",
+              "times"
+            ],
+            "title": "Work Mode",
+            "type": "string"
+          },
           "visible_from": {
             "anyOf": [
               {
@@ -7155,7 +7202,8 @@
           "work",
           "work_total",
           "services",
-          "services_total"
+          "services_total",
+          "work_mode"
         ],
         "title": "YearReport",
         "type": "object"
