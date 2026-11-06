@@ -12,6 +12,7 @@ import { entryEditor, type EntryEditorOptions } from './entry-editor.ts';
 import { historyPanel } from './history.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember, withMember } from './team-view.ts';
+import { ownWorkMode } from './work-modes.ts';
 
 /** Overtime with a sign: `0:15` → `+0:15`; negative values and zero stay as they are. */
 export function signed(duration: string): string {
@@ -312,11 +313,10 @@ function errorCard(error: unknown): HTMLElement {
 
 /** The week of the user, or in the team view of the member (without the lists to choose from, as nothing is edited). */
 async function loadWeek(week: string, member: string | null): Promise<WeekData> {
-  const [days, entries, report, services, activityTypes, settings] = await Promise.all([
+  const [days, entries, report, services, activityTypes, workMode] = await Promise.all([
     api.days({ week }, member), api.entries({ week }, member), api.weekReport(week, member),
-    member ? [] : api.serviceChoices(), member ? [] : api.activityTypes(), member ? null : api.settings(),
+    member ? [] : api.serviceChoices(), member ? [] : api.activityTypes(), ownWorkMode(member),
   ]);
-  const workMode = settings?.work_mode ?? 'developer';
   return { days, entries: entriesByDate(entries), report, services, activityTypes, workMode };
 }
 

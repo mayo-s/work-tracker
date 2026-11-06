@@ -1,13 +1,14 @@
 // Year report (/year): totals, PTO account, days off, the months with their running balance, and the work by service
-// and activity type.
+// and activity type (its parts follow the way of working).
 
-import { api, errorText, type DayType, type YearReport } from './api.ts';
+import { api, errorText, type DayType, type WorkMode, type YearReport } from './api.ts';
 import { isoDate, isoMonth, type IsoDate } from './dates.ts';
 import { el, scrolling } from './dom.ts';
 import { fromMinutes, toMinutes } from './durations.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
 import { entriesOfWorked, periodHeader, periodSummary, value } from './week.ts';
+import { ownWorkMode, workParts, type WorkPart } from './work-modes.ts';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -74,14 +75,28 @@ function workCard(title: string, rows: [string, string][], total: string): HTMLE
       : el('p', { class: 'muted' }, 'None'));
 }
 
-function workCards(report: YearReport): HTMLElement {
-  const byService = (services: YearReport['coding']): [string, string][] =>
-    services.map((service) => [service.service ?? 'No service', service.duration]);
-  return el('div', { class: 'year-cards' },
-    workCard('Coding work', byService(report.coding), report.coding_total),
-    workCard('Other ticket work', byService(report.other_work), report.other_work_total),
-    workCard('Activities', report.activities.map((activity) => [activity.activity_type, activity.duration]),
-      report.activities_total));
+function byService(services: YearReport['coding']): [string, string][] {
+  return services.map((service) => [service.service ?? 'No service', service.duration]);
+}
+
+function workCardOf(part: WorkPart, report: YearReport): HTMLElement {
+  switch (part) {
+    case 'coding':
+      return workCard('Coding work', byService(report.coding), report.coding_total);
+    case 'other_work':
+      return workCard('Other ticket work', byService(report.other_work), report.other_work_total);
+    case 'ticket_work':  // no coding work in the year: all ticket work is other ticket work
+      return workCard('Ticket work', byService(report.other_work), report.other_work_total);
+    case 'activities':
+      return workCard('Activities', report.activities.map((activity) => [activity.activity_type, activity.duration]),
+        report.activities_total);
+  }
+}
+
+/** The work cards of the way of working; none (and no "Work" heading) in "Times only" without entries. */
+function workCards(report: YearReport, mode: WorkMode): HTMLElement[] {
+  const cards = workParts(mode, report).map((part) => workCardOf(part, report));
+  return cards.length ? [el('h2', { class: 'year-work' }, 'Work'), el('div', { class: 'year-cards' }, ...cards)] : [];
 }
 
 function monthsTable(report: YearReport): HTMLElement {
@@ -115,13 +130,15 @@ export async function renderYearPage(doc: Document): Promise<void> {
   });
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
-    const report = await api.yearReport(year, viewedMember(doc.location.search));
+    const member = viewedMember(doc.location.search);
+    const [report, mode] = await Promise.all([api.yearReport(year, member), ownWorkMode(member)]);
     const worked = el('div', {}, el('span', { class: 'muted' }, 'Days worked '), el('span', { class: 'num' }, String(report.days_worked)),
       el('span', { class: 'muted' }, ' · average '), el('span', { class: 'num' }, report.average_per_day_worked));
-    root.replaceChildren(periodSummary(report.totals, entriesOfWorked(report.entries, report.totals), worked),
+    const work = workCards(report, mode);
+    root.replaceChildren(
+      periodSummary(report.totals, work.length ? entriesOfWorked(report.entries, report.totals) : null, worked),
       el('div', { class: 'year-cards' }, ptoCard(report), daysOffCard(report)),
-      el('h2', {}, 'Months'), monthsTable(report),
-      el('h2', { class: 'year-work' }, 'Work'), workCards(report));
+      el('h2', {}, 'Months'), monthsTable(report), ...work);
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },
       errorText(error, 'The year could not be loaded.')));

@@ -83,14 +83,16 @@ The database (`$WORK_TRACKER_DB`, default `work_tracker.db`) is migrated on star
 all at once.
 
 - `/`: dashboard with key figures (balance, PTO left, this week, open review items), the balance over time, days off
-  coming up and this year's figures.
+  coming up and this year's figures ("Coding hours" only for Developer, "Top services" only with ticket entries).
 - `/week` (`?week=2026-W44`, `&edit=<date>`, `&entry=<id>`): days and entries edited in place, each entry with its
   history; "Book days off" sets PTO, sick, unpaid leave or overtime off for a range, with a preview. The entry form
   follows the way of working: no Coding checkbox in "Tickets without coding", only activities in "Activities only",
   no "Add entry" and no "No entries" warning in "Times only"; an entry of another kind still opens in its full form.
 - `/month`: month and work report (coding and other ticket work by service and ticket, activities by type with their
   notes). `/year`: totals, PTO account, balance by month, work by service and activity type. Both show the hours in
-  entries next to the hours worked ("Entries 152:30 of 160:00 worked").
+  entries next to the hours worked ("Entries 152:30 of 160:00 worked"). Their work parts follow the way of working,
+  plus any part with data in the period: without coding, "Ticket work" replaces "Coding work" and "Other ticket work";
+  "Times only" has no work report.
   Week, month and year have a date field: "Go" opens the week, month or year of that date.
 - `/search` (`?text=…&period=last-12-months`, or `period=custom&start=…&end=…`): finds entries by ticket key or words
   of their description or note, service or activity type (as words or chosen), of all time or a period (This year, Last year, Last 12
