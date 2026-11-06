@@ -72,6 +72,13 @@ def test_entries_with_history_of_the_original_line(conn):
     assert (change.action, change.detail) == (HistoryAction.IMPORTED, '1,5 KP-2035, KP-2044, KP-2045, KP-2053 Refinement')
 
 
+def test_an_activity_type_the_user_does_not_have_is_added(conn):
+    run(conn, 'Date,Start,End,Pause,Sum,Comment\n 03.03.2026 Tue,07:00,15:30,30,8:00,"1,0 Tool Management"\n')
+    added = ActivityTypeRepository(conn, USER).all()[-1]
+    [entry] = EntryRepository(conn, USER).between(dt.date(2026, 3, 3), dt.date(2026, 3, 3))
+    assert (added.name, entry.activity_type_id) == ('Tool Management', added.id)
+
+
 def test_activity_entries_reference_activity_types(conn):
     run(conn)
     meeting = next(activity for activity in ActivityTypeRepository(conn, USER).all() if activity.name == 'Meeting')

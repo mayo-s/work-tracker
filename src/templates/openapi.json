@@ -7598,6 +7598,18 @@
             },
             "title": "Services",
             "type": "array"
+          },
+          "work_mode": {
+            "default": "developer",
+            "description": "Way of working: developer, tickets (no coding), activities (only) or times (only)",
+            "enum": [
+              "developer",
+              "tickets",
+              "activities",
+              "times"
+            ],
+            "title": "Work Mode",
+            "type": "string"
           }
         },
         "required": [

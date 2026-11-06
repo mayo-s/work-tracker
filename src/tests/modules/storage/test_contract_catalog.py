@@ -97,4 +97,5 @@ def test_delete_activity_type_in_use(activity_types, per_call, klara_id):
 
 def test_activity_types_in_the_order_they_were_created(activity_types):
     activity_types.add(ActivityType(name='Incident'))
-    assert [kind.name for kind in activity_types.all()] == ['Tool Management', 'Meeting', 'Travel', 'Other', 'Incident']
+    names = [kind.name for kind in activity_types.all()]
+    assert names == ['Meeting', 'Travel', 'Planning', 'Documentation', 'Other', 'Incident']

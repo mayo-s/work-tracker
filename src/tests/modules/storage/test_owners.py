@@ -3,6 +3,7 @@ import uuid
 
 import pytest
 
+from src.models.base import new_id
 from src.modules.storage import migrations
 from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository
 from src.modules.storage.database import Database
@@ -13,22 +14,30 @@ from src.modules.storage.users import UserRepository
 from src.tests.users import HANS, PASSWORD, RAINER, USER
 
 
+DEFAULTS = ['Meeting', 'Travel', 'Planning', 'Documentation', 'Other']
+
+
 def names(conn, user_id):
     return [activity.name for activity in ActivityTypeRepository(conn, user_id).all()]
 
 
+def services(conn, user_id):
+    return [service.short_name for service in ServiceRepository(conn, user_id).all()]
+
+
 def test_root_takes_nothing_over_and_the_first_user_takes_over_the_records_without_owner(fresh_database):
     with fresh_database.transaction() as conn:
+        conn.execute("INSERT INTO services (id, user_id, short_name, name) VALUES (?, ?, 'MSB', '')", (new_id(), NO_OWNER))
         users = UserRepository(conn)
         root = users.add(RAINER.model_copy(update={'role': 'root'}), PASSWORD)
-        assert (names(conn, root.id), names(conn, NO_OWNER)) == ([], ['Tool Management', 'Meeting', 'Travel', 'Other'])
+        assert (services(conn, root.id), names(conn, root.id), services(conn, NO_OWNER)) == ([], [], ['MSB'])
         hans = users.add(HANS, PASSWORD)  # the first who tracks work
-        assert (names(conn, hans.id), names(conn, NO_OWNER)) == (['Tool Management', 'Meeting', 'Travel', 'Other'], [])
+        assert (services(conn, hans.id), names(conn, hans.id), services(conn, NO_OWNER)) == (['MSB'], DEFAULTS, [])
 
 
 def test_another_user_starts_with_defaults_and_the_setup_to_do(conn):
     hans = UserRepository(conn).add(HANS, PASSWORD)
-    assert (hans.role, names(conn, hans.id)) == ('user', ['Tool Management', 'Meeting', 'Travel', 'Other'])
+    assert (hans.role, names(conn, hans.id)) == ('user', DEFAULTS)
     assert (ServiceRepository(conn, hans.id).all(), setup_done(conn, hans.id)) == ([], False)
     assert len(ServiceRepository(conn, USER).all()) == 5  # the first user's stay theirs
 

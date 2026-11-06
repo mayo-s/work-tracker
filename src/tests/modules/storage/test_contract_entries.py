@@ -39,7 +39,7 @@ def ticket_entry():
 
 @pytest.fixture
 def activity_entry(activity_type_ids):
-    return ActivityEntry(date=MONDAY, activity_type_id=activity_type_ids['Tool Management'], duration=120,
+    return ActivityEntry(date=MONDAY, activity_type_id=activity_type_ids['Planning'], duration=120,
                          note='GCC Tactical')
 
 

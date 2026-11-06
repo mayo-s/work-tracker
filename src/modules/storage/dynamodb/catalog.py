@@ -146,7 +146,7 @@ class DynamoActivityTypes(_DynamoCatalog[ActivityType]):
 
 
 def add_default_activity_types(unit: Unit, user_id: str) -> None:
-    """A new user starts with the four default activity types."""
+    """A new user starts with the default activity types."""
     activity_types = DynamoActivityTypes(unit, user_id)
     for name in DEFAULT_ACTIVITY_TYPES:
         activity_types.add(ActivityType(name=name))

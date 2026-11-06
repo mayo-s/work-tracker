@@ -12,9 +12,10 @@ import { renderEditablePage, tableSection, type EditableTable, type Page } from 
 import { accountSection } from './account.ts';
 import { normalizeOnLeave, type DurationRules } from './duration-input.ts';
 import { field, submit } from './forms.ts';
-import { STATE_NAMES, WEEKDAY_NAMES, WORK_MODES } from './labels.ts';
+import { STATE_NAMES, WEEKDAY_NAMES } from './labels.ts';
 import { activityTypesTable, servicesTable } from './lists.ts';
 import { applyTheme } from './theme.ts';
+import { workModeChoice } from './work-modes.ts';
 
 const BALANCE_FIELDS = ['balance_start', 'opening_balance'] as const;
 const SIGNED: DurationRules = { signed: true };  // the opening balance may be negative
@@ -66,19 +67,14 @@ export function ptoYearInput(values: Record<string, string>): PtoYearInput {
 }
 
 function workModeSection(settings: SettingsView, page: Page): HTMLElement {
-  const choices = WORK_MODES.map(([value, label, meaning]) => {
-    const radio = el('input', { type: 'radio', name: 'work_mode', value, checked: value === settings.work_mode });
-    radio.addEventListener('change', () => {
-      api.saveSettings({ ...settings, work_mode: value })
-        .then(() => page.reload(`Saved the way of working: ${label}`), page.fail);
-    });
-    return el('label', {}, radio, el('span', {}, label, el('span', { class: 'muted' }, ` – ${meaning}`)));
+  const choice = workModeChoice(settings.work_mode, (mode, label) => {
+    api.saveSettings({ ...settings, work_mode: mode }).then(() => page.reload(`Saved the way of working: ${label}`), page.fail);
   });
   return el('section', { class: 'review-section', id: 'work-mode' },
     el('h2', {}, 'Way of working'),
     el('p', { class: 'muted' }, 'How you track your work decides which fields, report parts and links the pages show. '
       + 'Changing it deletes nothing: what you recorded before stays visible.'),
-    el('fieldset', { class: 'work-modes' }, el('legend', {}, 'Way of working'), ...choices));
+    choice);
 }
 
 function balanceSection(settings: SettingsView, page: Page): HTMLElement {

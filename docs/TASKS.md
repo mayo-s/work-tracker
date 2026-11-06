@@ -348,7 +348,7 @@ L.16 (a–i) → 9.1 (a–i).
 - [x] **13.1** The way of working (SPEC 5.11) as a setting: `work_mode` in the settings on both backends (existing
   users get `developer`), `/api/settings`, export and import (a file without it gets `developer`), and a choice on the
   settings page
-- [ ] **13.2** Setup: the way of working on the start step, the step "Services" only with ticket entries; new users
+- [x] **13.2** Setup: the way of working on the start step, the step "Services" only with ticket entries; new users
   get the default activity types Meeting, Travel, Planning, Documentation and Other (no Tool Management; existing
   users keep theirs), and the spreadsheet import adds an activity type the user does not have yet
 - [ ] **13.3** Week: the entry form per way of working (no Coding checkbox, no Ticket / Activity choice, no "Add

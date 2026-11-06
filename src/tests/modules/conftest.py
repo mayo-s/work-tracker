@@ -26,7 +26,7 @@ def storage(request, tmp_path):
 
 @pytest.fixture
 def klara_id(storage):
-    """Klara as the first user, with the default activity types (ids 1 to 4 on both backends)."""
+    """Klara as the first user, with the default activity types."""
     with storage.transaction() as store:
         return store.users().add(KLARA, 'correct horse battery 9!').id
 

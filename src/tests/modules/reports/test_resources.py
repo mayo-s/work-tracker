@@ -118,7 +118,7 @@ def october(client, service_ids, activity_ids):
     activity(client, '2026-10-05', activity_ids['Meeting'], '1:00', 'Jour fixe')
     activity(client, '2026-10-07', activity_ids['Meeting'], '0:30', 'jour fixe')
     activity(client, '2026-10-07', activity_ids['Meeting'], '0:15')
-    activity(client, '2026-10-08', activity_ids['Tool Management'], '2:00', 'Jira cleanup')
+    activity(client, '2026-10-08', activity_ids['Planning'], '2:00', 'Jira cleanup')
     ticket(client, '2026-10-29', 'TNG-5783', '4:00')
 
 
@@ -135,7 +135,7 @@ def test_month_other_ticket_work_activities_and_entries(client, october, service
     assert report['activities'] == [
         {'activity_type_id': activity_ids['Meeting'], 'activity_type': 'Meeting', 'duration': '1:45',
          'notes': ['Jour fixe']},
-        {'activity_type_id': activity_ids['Tool Management'], 'activity_type': 'Tool Management', 'duration': '2:00',
+        {'activity_type_id': activity_ids['Planning'], 'activity_type': 'Planning', 'duration': '2:00',
          'notes': ['Jira cleanup']},
     ]
     assert (report['coding_total'], report['other_work_total'], report['activities_total']) == ('7:00', '2:30', '3:45')
@@ -149,7 +149,7 @@ def test_year_work_by_service_and_activity_type(client, october, service_ids, ac
     assert report['other_work'] == [{'service_id': service_ids['MSB'], 'service': 'MSB', 'duration': '1:30'},
                                     {'service_id': None, 'service': None, 'duration': '1:00'}]
     assert [(item['activity_type'], item['duration']) for item in report['activities']] == [
-        ('Meeting', '1:45'), ('Tool Management', '2:00')]
+        ('Meeting', '1:45'), ('Planning', '2:00')]
     assert (report['coding_total'], report['other_work_total'], report['activities_total'], report['entries']) == (
         '7:00', '2:30', '3:45', '9:15')
 

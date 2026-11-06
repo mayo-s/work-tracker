@@ -44,18 +44,19 @@ def test_file_header_and_settings(store):
 def test_references_use_file_ids(store):
     entries = store.entries(USER)
     entries.delete(entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-1', duration=15)).id)  # database ids from 2
-    store.activity_types(USER).delete(activity_type_id(store, 'Tool Management'))  # activity type ids from 2
+    store.activity_types(USER).delete(activity_type_id(store, 'Meeting'))  # activity type ids from 2
     msb = next(service for service in store.services(USER).all() if service.short_name == 'MSB')
     entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-5213', duration=90, description='bookings'))
     store.tickets(USER).set_service('TNG-5213', msb.id)
-    entries.create(ActivityEntry(date=MONDAY, activity_type_id=activity_type_id(store, 'Meeting'), duration=60))
+    entries.create(ActivityEntry(date=MONDAY, activity_type_id=activity_type_id(store, 'Travel'), duration=60))
     data = export(store)
     services = {service.short_name: service.id for service in data.services}
     kinds = {kind.name: kind.id for kind in data.activity_types}
-    assert sorted(services.values()) == ['1', '2', '3', '4', '5'] and kinds == {'Meeting': '1', 'Travel': '2', 'Other': '3'}
+    assert sorted(services.values()) == ['1', '2', '3', '4', '5']
+    assert kinds == {'Travel': '1', 'Planning': '2', 'Documentation': '3', 'Other': '4'}
     assert next(ticket for ticket in data.tickets if ticket.key == 'TNG-5213').service_id == services['MSB']
     assert [(entry.id, entry.kind) for entry in data.entries] == [('1', 'ticket'), ('2', 'activity')]
-    assert data.entries[1].activity_type_id == kinds['Meeting']
+    assert data.entries[1].activity_type_id == kinds['Travel']
 
 
 def test_deleted_entries_keep_their_history_after_the_entries(store):
@@ -72,16 +73,16 @@ def test_deleted_entries_keep_their_history_after_the_entries(store):
 def test_history_names_activity_types_and_split_entries_by_file_id(store):
     entries = store.entries(USER)
     entries.delete(entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-1', duration=15)).id)
-    tool, meeting = activity_type_id(store, 'Tool Management'), activity_type_id(store, 'Meeting')
-    activity = entries.create(ActivityEntry(date=MONDAY, activity_type_id=tool, duration=60))
-    entries.update(activity.model_copy(update={'activity_type_id': meeting}))
-    store.activity_types(USER).delete(tool)  # no longer in use
+    meeting, travel = activity_type_id(store, 'Meeting'), activity_type_id(store, 'Travel')
+    activity = entries.create(ActivityEntry(date=MONDAY, activity_type_id=meeting, duration=60))
+    entries.update(activity.model_copy(update={'activity_type_id': travel}))
+    store.activity_types(USER).delete(meeting)  # no longer in use
     ticket = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-2', duration=60))
     entries.split(ticket.id, ['TNG-2', 'TNG-3'])
     data = export(store)
     assert [(entry.id, entry.kind) for entry in data.entries] == [('1', 'activity'), ('2', 'ticket'), ('3', 'ticket')]
     updated = next(line for line in data.history if line.action == HistoryAction.UPDATED)
-    assert updated.changes['activity_type_id'] == (None, '1')  # Tool Management is gone, Meeting is the first type
+    assert updated.changes['activity_type_id'] == (None, '1')  # Meeting is gone, Travel is the first type
     split_off = next(line for line in data.history if line.detail.startswith('Split from'))
     assert (split_off.entry_id, split_off.detail) == ('3', 'Split from entry 2')
 
