@@ -35,7 +35,8 @@ const PAGES: Record<string, () => Promise<void>> = {
   team: async () => (await import('./team.ts')).renderTeamPage(document),
 };
 
-/** Shows the number of open review items next to the Review link; the review page keeps it up to date itself. */
+/** Shows the Review link with the number of open review items while there are any (SPEC 5.4); the review page shows
+ * the link anyway and keeps the count up to date itself. */
 async function showReviewCount(): Promise<void> {
   const { api } = await import('./api.ts');
   const { showReviewBadge } = await import('./review.ts');
@@ -103,7 +104,9 @@ const page = document.querySelector<HTMLElement>('#app')?.dataset.page;
 const nav = document.querySelector('.app-nav');
 if (nav && !['login', 'register', 'setup', 'password', 'two-factor'].includes(page ?? '')) {
   markCurrentPage(nav, window.location.pathname);
-  if (page !== 'review') {
+  if (page === 'review') {
+    nav.querySelector<HTMLElement>('a[href="/review"]')!.hidden = false;
+  } else {
     showReviewCount().catch(() => undefined);  // the count is a hint; pages work without it
   }
   showUser(headerEnd(document.querySelector('.app-header')!), nav).catch(() => undefined);

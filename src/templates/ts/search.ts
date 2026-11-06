@@ -1,12 +1,16 @@
 // Search (/search): finds entries by text, service or activity type, of all time or a period, and sums them up by
 // ticket or activity type and by month. The criteria are in the URL (`?text=…&period=last-12-months`, or
-// `period=custom&start=…&end=…`); the page turns the period into the dates the API takes.
+// `period=custom&start=…&end=…`); the page turns the period into the dates the API takes. Without ticket entries
+// (way of working), the page offers no service.
 
-import { api, errorText, type ActivityType, type EntryView, type SearchResult, type ServiceChoice } from './api.ts';
+import {
+  api, errorText, type ActivityType, type EntryView, type SearchResult, type ServiceChoice, type WorkMode,
+} from './api.ts';
 import { addDays, formatDate, formatMonth, isoDate, isoMonth, shiftMonth, weekLink, type IsoDate } from './dates.ts';
 import { button, el, scrolling } from './dom.ts';
 import { detailsButton } from './entry-details.ts';
 import { entryContent } from './week.ts';
+import { hasTickets, ownWorkMode } from './work-modes.ts';
 
 const NO_SERVICE = 'none';
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -108,14 +112,27 @@ export function scopeCriteria(value: string): Pick<SearchCriteria, 'service_id' 
   return { service_id: kind === 'service' ? id || null : null, activity_type_id: kind === 'activity' ? id || null : null };
 }
 
-function scopeOptions(services: ServiceChoice[], activityTypes: ActivityType[]): HTMLElement[] {
-  return [
+/** The labels of the text field and the select: without ticket entries there are no ticket keys and services. */
+export function searchLabels(mode: WorkMode): { text: string; scope: string } {
+  return hasTickets(mode) ? { text: 'Words or ticket key', scope: 'Service or activity type' }
+    : { text: 'Words', scope: 'Activity type' };
+}
+
+function scopeOptions(services: ServiceChoice[], activityTypes: ActivityType[], mode: WorkMode): HTMLElement[] {
+  const activities = el('optgroup', { label: 'Activity type' },
+    ...activityTypes.map((type) => el('option', { value: `activity:${type.id}` }, type.name)));
+  return hasTickets(mode) ? [
     el('optgroup', { label: 'Service' },
       ...services.map((service) => el('option', { value: `service:${service.id}` }, service.short_name)),
       el('option', { value: `service:${NO_SERVICE}` }, 'No service')),
-    el('optgroup', { label: 'Activity type' },
-      ...activityTypes.map((type) => el('option', { value: `activity:${type.id}` }, type.name))),
-  ];
+    activities,
+  ] : [activities];
+}
+
+function labelFields(doc: Document, mode: WorkMode): void {
+  const labels = searchLabels(mode);
+  doc.querySelector('label[for="search-text"]')!.textContent = labels.text;
+  doc.querySelector('label[for="search-scope"]')!.textContent = labels.scope;
 }
 
 /** Fills the form with the criteria; From and To show only for a custom period; Search opens the URL of the new ones. */
@@ -214,8 +231,9 @@ export async function renderSearchPage(doc: Document): Promise<void> {
   const fail = (error: unknown): void => root.prepend(el('div', { class: 'card is-warning', role: 'alert' },
     errorText(error, 'Something went wrong.')));
   try {
-    const [services, activityTypes] = await Promise.all([api.serviceChoices(), api.activityTypes()]);
-    fillForm(form, criteria, scopeOptions(services, activityTypes), doc);
+    const [services, activityTypes, mode] = await Promise.all([api.serviceChoices(), api.activityTypes(), ownWorkMode(null)]);
+    labelFields(doc, mode);
+    fillForm(form, criteria, scopeOptions(services, activityTypes, mode), doc);
     if (!doc.location.search) {  // nothing asked yet
       return;
     }
