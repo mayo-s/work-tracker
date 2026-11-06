@@ -15,6 +15,7 @@ export type ChangeView = Schemas['ChangeView'];
 export type TicketView = Schemas['TicketView'];
 export type RenameView = Schemas['RenameView'];
 export type AssignmentResult = Schemas['AssignmentResult'];
+export type AssignedEntries = Schemas['AssignedEntries'];
 export type Service = Schemas['Service'];
 export type ServiceInput = Schemas['ServiceInput'];
 export type ServiceChoice = Schemas['ServiceChoice'];
@@ -191,6 +192,9 @@ export const api = {
   entryHistory: (id: string) => request<ChangeView[]>('GET', `/api/entries/${segment(id)}/history`),
   splitEntry: (id: string, ticketKeys: string[]) =>
     request<EntryView[]>('POST', `/api/entries/${segment(id)}/split`, { ticket_keys: ticketKeys }),
+  assignActivityType: (entryIds: string[], activityTypeId: string) =>
+    request<AssignedEntries>('POST', '/api/entries/assign-activity-type',
+      { entry_ids: entryIds, activity_type_id: activityTypeId }),
 
   tickets: (withoutService = false) =>
     request<TicketView[]>('GET', withoutService ? '/api/tickets?without_service=true' : '/api/tickets'),

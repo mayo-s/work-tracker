@@ -1,8 +1,9 @@
-// Review page (/review): tickets without service, entries and days that need attention after the import.
+// Review page (/review): tickets without service, entries without activity type, and entries and days that need
+// attention after the import.
 
 import {
-  api, errorText, type DayView, type EntryView, type ReviewCounts, type ReviewEntry, type ReviewReason, type ReviewView,
-  type ServiceChoice, type TicketView,
+  api, errorText, type ActivityType, type DayView, type EntryView, type ReviewCounts, type ReviewEntry, type ReviewReason,
+  type ReviewView, type ServiceChoice, type TicketView,
 } from './api.ts';
 import { formatDate, formatDay, weekLink } from './dates.ts';
 import { button, el, onEscape, scrolling } from './dom.ts';
@@ -56,6 +57,14 @@ export function filterTickets(tickets: TicketView[], text: string): TicketView[]
   return filter ? tickets.filter((ticket) => ticket.key.includes(filter)) : tickets;
 }
 
+/** Entries whose ticket key starts with, or whose description or activity type contains, the filter text (ignoring
+ * case). */
+export function filterEntries(items: ReviewEntry[], text: string): ReviewEntry[] {
+  const filter = text.trim().toLowerCase();
+  return items.filter(({ entry }) => (entry.ticket_key ?? '').toLowerCase().startsWith(filter)
+    || entry.description.toLowerCase().includes(filter));
+}
+
 /** Flagged entries of one guessed ticket key, e.g. TNG-4057 from `#4057` in the spreadsheet. */
 export type GuessedTicket = {
   key: string;
@@ -68,8 +77,11 @@ export type GuessedTicket = {
   splits: Record<string, ReviewEntry['split_on_import']>;
 };
 
-/** Guessed tickets grouped by key (in order of their first entry), and the entries that need a fix of their own. */
-export function groupReview(entries: ReviewEntry[]): { guessed: GuessedTicket[]; others: ReviewEntry[] } {
+/** Guessed tickets grouped by key (in order of their first entry), the entries without activity type (to choose one
+ * for several at once), and the other entries that need a fix of their own. */
+export function groupReview(entries: ReviewEntry[]): {
+  guessed: GuessedTicket[]; untyped: ReviewEntry[]; others: ReviewEntry[];
+} {
   const guessed = new Map<string, GuessedTicket>();
   const others: ReviewEntry[] = [];
   for (const item of entries) {
@@ -94,7 +106,8 @@ export function groupReview(entries: ReviewEntry[]): { guessed: GuessedTicket[];
       others.push({ ...item, reasons });
     }
   }
-  return { guessed: [...guessed.values()], others };
+  const untyped = others.filter((item) => item.reasons.includes('no_activity_type'));
+  return { guessed: [...guessed.values()], untyped, others: others.filter((item) => !untyped.includes(item)) };
 }
 
 /** Tickets to split a guessed ticket into, if its spreadsheet line had an alias or "ff"; null if there is nothing to split. */
@@ -102,7 +115,10 @@ export function splitSuggestion(group: GuessedTicket): string[] | null {
   return group.suggested.length ? [...new Set([group.key, ...group.suggested])] : null;
 }
 
-type Page = { data: ReviewView; services: ServiceChoice[]; reload: (message: string) => void; fail: (error: unknown) => void };
+type Page = {
+  data: ReviewView; services: ServiceChoice[]; activityTypes: ActivityType[]; reload: (message: string) => void;
+  fail: (error: unknown) => void;
+};
 
 function act(page: Page, action: () => Promise<unknown>, message: string): void {
   action().then(() => page.reload(message), page.fail);
@@ -149,20 +165,63 @@ function renameAction(key: string, page: Page, cell: HTMLElement, flagIds: strin
   return rename;
 }
 
-function ticketRow(ticket: TicketView, page: Page, selected: Set<string>, onSelect: () => void): HTMLElement {
-  const checkbox = el('input', { type: 'checkbox', 'aria-label': `Select ${ticket.key}`, checked: selected.has(ticket.key) });
-  checkbox.addEventListener('change', () => {
-    if (checkbox.checked) {
-      selected.add(ticket.key);
-    } else {
-      selected.delete(ticket.key);
-    }
-    onSelect();
+/** Rows to select (each `data-key`), with a filter, "select all shown" and a button that assigns the chosen value of
+ * `choice` to the selected rows. `shown` gives the keys a filter text leaves. */
+type BulkAssign = {
+  noun: [string, string]; filterLabel: string; placeholder: string; choice: HTMLSelectElement;
+  shown: (text: string) => Set<string>; assign: (keys: string[]) => void;
+};
+
+function bulkAssign(options: BulkAssign): {
+  toolbar: HTMLElement; selectAll: HTMLInputElement; select: (row: HTMLElement) => HTMLElement;
+} {
+  const selected = new Set<string>();
+  const rows: HTMLElement[] = [];
+  const filter = el('input', { type: 'search', placeholder: options.placeholder, 'aria-label': options.filterLabel });
+  const selectAll = el('input', { type: 'checkbox', 'aria-label': `Select all shown ${options.noun[1]}` });
+  const assign = el('button', { type: 'button', class: 'primary', disabled: true }, 'Assign');
+  filter.addEventListener('input', () => {
+    const shown = options.shown(filter.value);
+    rows.forEach((row) => (row.hidden = !shown.has(row.dataset.key ?? '')));
+    selectAll.checked = false;
   });
+  selectAll.addEventListener('change', () => {
+    for (const row of rows.filter((item) => !item.hidden)) {
+      const checkbox = row.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+      checkbox.checked = selectAll.checked;
+      checkbox.dispatchEvent(new Event('change'));
+    }
+  });
+  assign.addEventListener('click', () => options.assign([...selected]));
+  /** The row with its checkbox in a first cell. */
+  const select = (row: HTMLElement): HTMLElement => {
+    const key = row.dataset.key ?? '';
+    const checkbox = el('input', { type: 'checkbox', 'aria-label': `Select ${row.dataset.label ?? key}` });
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        selected.add(key);
+      } else {
+        selected.delete(key);
+      }
+      assign.disabled = selected.size === 0;
+      assign.textContent = selected.size ? `Assign to ${selected.size} selected` : 'Assign';
+    });
+    row.prepend(el('td', { class: 'select-cell' }, checkbox));
+    rows.push(row);
+    return row;
+  };
+  return { toolbar: el('div', { class: 'review-toolbar' }, filter, options.choice, assign), selectAll, select };
+}
+
+/** A count with its noun in the singular or plural, e.g. `2 tickets`. */
+function counted(count: number, noun: [string, string]): string {
+  return `${count} ${count === 1 ? noun[0] : noun[1]}`;
+}
+
+function ticketRow(ticket: TicketView, page: Page): HTMLElement {
   const actions = el('td', { class: 'row-actions' });
   actions.append(renameAction(ticket.key, page, actions));
   return el('tr', { 'data-key': ticket.key },
-    el('td', { class: 'select-cell' }, checkbox),
     el('td', {}, el('strong', {}, ticket.key)),
     el('td', { class: 'num' }, String(ticket.entries)),
     actions);
@@ -175,42 +234,26 @@ function serviceSelect(services: ServiceChoice[]): HTMLSelectElement {
 
 function ticketsSection(page: Page): HTMLElement {
   const tickets = page.data.tickets_without_service;
-  const selected = new Set<string>();
-  const filter = el('input', { type: 'search', placeholder: 'Filter, e.g. AGA or TNG-49', 'aria-label': 'Filter tickets' });
-  const selectAll = el('input', { type: 'checkbox', 'aria-label': 'Select all shown tickets' });
-  const services = serviceSelect(page.services);
-  const assign = el('button', { type: 'button', class: 'primary', disabled: true }, 'Assign');
-  const rows = tickets.map((ticket) => ticketRow(ticket, page, selected, () => update()));
-  const update = (): void => {
-    assign.disabled = selected.size === 0;
-    assign.textContent = selected.size ? `Assign to ${selected.size} selected` : 'Assign';
-  };
-  filter.addEventListener('input', () => {
-    const shown = new Set(filterTickets(tickets, filter.value).map((ticket) => ticket.key));
-    rows.forEach((row) => (row.hidden = !shown.has(row.dataset.key ?? '')));
-    selectAll.checked = false;
-  });
-  selectAll.addEventListener('change', () => {
-    for (const row of rows.filter((item) => !item.hidden)) {
-      const checkbox = row.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
-      checkbox.checked = selectAll.checked;
-      checkbox.dispatchEvent(new Event('change'));
-    }
-  });
-  assign.addEventListener('click', () => {
-    const service = page.services.find((item) => String(item.id) === services.value);
-    act(page, () => api.assignService([...selected], services.value),
-      `${service?.short_name ?? 'Service'} assigned to ${selected.size} ${selected.size === 1 ? 'ticket' : 'tickets'}`);
+  const noun: [string, string] = ['ticket', 'tickets'];
+  const choice = serviceSelect(page.services);
+  const bulk = bulkAssign({
+    noun, filterLabel: 'Filter tickets', placeholder: 'Filter, e.g. AGA or TNG-49', choice,
+    shown: (text) => new Set(filterTickets(tickets, text).map((ticket) => ticket.key)),
+    assign: (keys) => {
+      const service = page.services.find((item) => String(item.id) === choice.value);
+      act(page, () => api.assignService(keys, choice.value),
+        `${service?.short_name ?? 'Service'} assigned to ${counted(keys.length, noun)}`);
+    },
   });
   return el('section', { class: 'review-section', id: 'tickets' },
     el('h2', {}, 'Tickets without service ', el('span', { class: 'badge warning' }, String(tickets.length))),
     el('p', { class: 'muted' }, 'A service applies to all entries of a ticket. Filter, select, then assign.'),
-    tickets.length ? el('div', { class: 'review-toolbar' }, filter, services, assign) : null,
+    tickets.length ? bulk.toolbar : null,
     tickets.length
       ? scrolling(el('table', { class: 'review-table' },
-        el('thead', {}, el('tr', {}, el('th', { class: 'select-cell' }, selectAll), el('th', {}, 'Ticket'),
+        el('thead', {}, el('tr', {}, el('th', { class: 'select-cell' }, bulk.selectAll), el('th', {}, 'Ticket'),
           el('th', { class: 'num' }, 'Entries'), el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
-        el('tbody', {}, ...rows)))
+        el('tbody', {}, ...tickets.map((ticket) => bulk.select(ticketRow(ticket, page))))))
       : el('p', {}, 'All tickets have a service.'),
   );
 }
@@ -299,7 +342,8 @@ function guessedSection(groups: GuessedTicket[], page: Page): HTMLElement {
 function entryRow(item: ReviewEntry, page: Page): HTMLElement {
   const entry = item.entry;
   const link = weekLink(entry.date, `entry=${entry.id}`);
-  return el('tr', {},
+  const label = `${entry.ticket_key ?? entry.description} of ${formatDate(entry.date)}`;  // for its checkbox
+  return el('tr', { 'data-key': entry.id, 'data-label': label },
     el('td', { class: 'num' }, el('a', { href: link }, formatDate(entry.date))),
     el('td', {},
       el('div', { class: 'entry' }, ...entryContent(entry, false)),
@@ -310,11 +354,45 @@ function entryRow(item: ReviewEntry, page: Page): HTMLElement {
       ...flagActions(entry.flags.filter(() => item.reasons.includes('uncertain_ticket')), page)));
 }
 
+function activityTypeSelect(activityTypes: ActivityType[]): HTMLSelectElement {
+  return el('select', { 'aria-label': 'Activity type to assign' },
+    ...activityTypes.map((type) => el('option', { value: type.id ?? '' }, type.name)));
+}
+
+/** Former ticket entries whose activity was unclear (SPEC 4.6): choose one, also for several at once. */
+function untypedSection(untyped: ReviewEntry[], page: Page): HTMLElement | null {
+  if (!untyped.length) {
+    return null;
+  }
+  const noun: [string, string] = ['entry', 'entries'];
+  const choice = activityTypeSelect(page.activityTypes);
+  const bulk = bulkAssign({
+    noun, filterLabel: 'Filter entries', placeholder: 'Filter, e.g. TNG-49 or investigation', choice,
+    shown: (text) => new Set(filterEntries(untyped, text).map((item) => item.entry.id)),
+    assign: (ids) => {
+      const type = page.activityTypes.find((item) => item.id === choice.value);
+      act(page, () => api.assignActivityType(ids, choice.value),
+        `${type?.name ?? 'Activity type'} assigned to ${counted(ids.length, noun)}`);
+    },
+  });
+  return el('section', { class: 'review-section', id: 'activity-types' },
+    el('h2', {}, 'Entries without activity type ', el('span', { class: 'badge warning' }, String(untyped.length))),
+    el('p', { class: 'muted' }, 'Ticket entries from before every entry had an activity type, whose activity was not '
+      + 'clear. Filter, select, then assign.'),
+    bulk.toolbar,
+    scrolling(el('table', { class: 'review-table' },
+      el('thead', {}, el('tr', {}, el('th', { class: 'select-cell' }, bulk.selectAll), el('th', {}, 'Date'),
+        el('th', {}, 'Entry'), el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
+      el('tbody', {}, ...untyped.map((item) => bulk.select(entryRow(  // the section names the missing activity type
+        { ...item, reasons: item.reasons.filter((reason) => reason !== 'no_activity_type') }, page)))))),
+  );
+}
+
 function entriesSection(others: ReviewEntry[], page: Page): HTMLElement {
   return el('section', { class: 'review-section', id: 'entries' },
     el('h2', {}, 'Entries ', el('span', { class: 'badge warning' }, String(others.length))),
-    el('p', { class: 'muted' }, 'Entries without duration, without activity type, or without the ticket their activity type requires; open them in '
-      + 'the week view to fix them.'),
+    el('p', { class: 'muted' }, 'Entries without duration or without the ticket their activity type requires; open them '
+      + 'in the week view to fix them.'),
     others.length
       ? scrolling(el('table', { class: 'review-table' }, el('tbody', {}, ...others.map((item) => entryRow(item, page)))))
       : el('p', {}, 'Nothing to review.'),
@@ -359,10 +437,13 @@ export async function renderReviewPage(doc: Document): Promise<void> {
   };
   const load = async (message = ''): Promise<void> => {
     try {
-      const [data, services] = await Promise.all([api.review(), api.serviceChoices()]);
-      const page: Page = { data, services, reload: (text) => void load(text), fail: (error) => show(errorText(error), true) };
-      const { guessed, others } = groupReview(data.entries);
-      root.replaceChildren(guessedSection(guessed, page), entriesSection(others, page), daysSection(page), ticketsSection(page));
+      const [data, services, activityTypes] = await Promise.all([api.review(), api.serviceChoices(), api.activityTypes()]);
+      const page: Page = {
+        data, services, activityTypes, reload: (text) => void load(text), fail: (error) => show(errorText(error), true),
+      };
+      const { guessed, untyped, others } = groupReview(data.entries);
+      root.replaceChildren(guessedSection(guessed, page), untypedSection(untyped, page) ?? '', entriesSection(others, page),
+        daysSection(page), ticketsSection(page));
       showReviewBadge(doc, data.counts);
       show(message);
     } catch (error) {

@@ -4,7 +4,9 @@
 import falcon
 from spectree import Response
 
-from src.modules.entries.schemas import ChangeView, EntryInput, EntrySplitInput, EntryView, EntryViewer
+from src.modules.entries.schemas import (
+    ActivityTypeAssignment, AssignedEntries, ChangeView, EntryInput, EntrySplitInput, EntryView, EntryViewer,
+)
 from src.modules.auth.sessions import current_user
 from src.models.entries import Entry
 from src.modules.storage.errors import ConflictError, NotFoundError
@@ -14,6 +16,7 @@ from src.utils.spec import spec
 
 TAGS = ['Entries']
 ID_PARAMETER = {'entry_id': 'Id of the entry'}
+ITEMS_PER_ENTRY = 4  # on DynamoDB: the entry (deleted and written again), its pointer and its history line
 
 
 class EntryCollection:
@@ -80,6 +83,28 @@ class EntrySplit:
         with self._storage.transaction() as store:
             user_id = current_user(req)
             resp.media = EntryViewer(store, user_id).views(store.entries(user_id).split(entry_id, json.ticket_keys))
+
+
+class EntryActivityTypeAssignment:
+    def __init__(self, storage: Storage) -> None:
+        self._storage = storage
+
+    @spec.validate(json=ActivityTypeAssignment, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=AssignedEntries), tags=TAGS)
+    def on_post(self, req: falcon.Request, resp: falcon.Response, json: ActivityTypeAssignment) -> None:
+        """Give several entries one activity type (e.g. those the review lists without one), each change recorded in
+        the entry's history. An unknown entry (404), an unknown activity type or one that requires a ticket some of the
+        entries lack (409) change nothing."""
+        with self._storage.transaction() as store:
+            user_id = current_user(req)
+            entries = store.entries(user_id)
+            changed = [entries.get(entry_id).model_copy(update={'activity_type_id': json.activity_type_id})
+                       for entry_id in dict.fromkeys(json.entry_ids)]
+            for entry in changed:
+                _check_ticket(store, user_id, entry)
+            for entry in changed:
+                store.make_room(ITEMS_PER_ENTRY)
+                entries.update(entry)
+            resp.media = AssignedEntries(assigned=len(changed))
 
 
 class EntryHistory:

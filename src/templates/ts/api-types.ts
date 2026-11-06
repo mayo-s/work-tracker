@@ -95,6 +95,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/entries/assign-activity-type": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Give several entries one activity type (e.g. those the review lists without one), each change recorded in the entry's history. An unknown entry (404), an unknown activity type or one that requires a ticket some of the entries lack (409) change nothing. */
+        post: operations["post__api_entries_assign-activity-type"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/entries/{entry_id}": {
         parameters: {
             query?: never;
@@ -2233,6 +2250,27 @@ export interface components {
              */
             ticket_keys: string[];
         };
+        /** ActivityTypeAssignment */
+        ActivityTypeAssignment: {
+            /**
+             * Entry Ids
+             * @description The entries to change
+             */
+            entry_ids: string[];
+            /**
+             * Activity Type Id
+             * @description One of the user's activity types
+             */
+            activity_type_id: string;
+        };
+        /** AssignedEntries */
+        AssignedEntries: {
+            /**
+             * Assigned
+             * @description Number of distinct entries changed
+             */
+            assigned: number;
+        };
         /** ChangeViewList */
         ChangeViewList: components["schemas"]["ChangeView"][];
         /** PtoYearList */
@@ -4065,6 +4103,53 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["EntryView"];
                 };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_entries_assign-activity-type": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityTypeAssignment"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignedEntries"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Conflict */
             409: {

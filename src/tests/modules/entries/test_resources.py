@@ -163,3 +163,27 @@ def test_entry_change_fits_the_day_too(client):
     entry = create(client, TICKET)
     changed = client.simulate_put(f'/api/entries/{entry["id"]}', json=TICKET | {'duration': '4:15'})
     assert changed.status == falcon.HTTP_409
+
+
+def test_assign_an_activity_type_to_several_entries(client, database, ids):
+    with database.transaction() as conn:
+        entries = EntryRepository(conn, USER)
+        former = [entries.create(Entry(date=dt.date(2026, 10, 27), ticket_key='TNG-1', duration=60)).id,
+                  entries.create(Entry(date=dt.date(2026, 10, 28), duration=30)).id]  # no ticket
+    body = {'entry_ids': [*former, former[0]], 'activity_type_id': ids['Planning']}
+    assert client.simulate_post('/api/entries/assign-activity-type', json=body).json == {'assigned': 2}
+    assert [client.simulate_get(f'/api/entries/{entry_id}').json['activity_type'] for entry_id in former] == [
+        'Planning', 'Planning']
+    [_, change] = client.simulate_get(f'/api/entries/{former[0]}/history').json
+    assert (change['action'], change['changes']) == ('updated', {'activity_type_id': [None, ids['Planning']]})
+
+
+@pytest.mark.parametrize('unknown, activity_type, status', [([UNKNOWN], 'Planning', 404), ([], 'Coding', 409)])
+def test_an_assignment_that_fails_changes_nothing(client, database, ids, unknown, activity_type, status):
+    with database.transaction() as conn:
+        entries = EntryRepository(conn, USER)
+        former = [entries.create(Entry(date=dt.date(2026, 10, 27), ticket_key='TNG-1', duration=60)).id,
+                  entries.create(Entry(date=dt.date(2026, 10, 28), duration=30)).id]  # Coding needs a ticket
+    body = {'entry_ids': [*former, *unknown], 'activity_type_id': ids[activity_type]}
+    assert client.simulate_post('/api/entries/assign-activity-type', json=body).status_code == status
+    assert client.simulate_get(f'/api/entries/{former[0]}').json['activity_type'] is None

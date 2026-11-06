@@ -385,7 +385,7 @@ L.16 (a–i) → 9.1 (a–i).
   chunks, safe to repeat (its first migration, SPEC 7.2); the API, the entry form (activity type first, ticket and
   service per way of working), export version 2 (version 1 converted), the spreadsheet import and "Ticket required"
   in the settings' activity types
-- [ ] **13.8** Review: choose the activity type of entries without one, also for several at once
+- [x] **13.8** Review: choose the activity type of entries without one, also for several at once
 - [ ] **13.9** Reports, dashboard and search by activity type (SPEC 5.0, 5.2, 5.3, 5.10, 5.11): the work report by
   activity type in place of coding / other ticket work, "Top activity types" in place of "Coding hours"; "Times
   only" with entries optional ("Add entry", the search field, the work report when the period holds entries)
@@ -395,10 +395,11 @@ L.16 (a–i) → 9.1 (a–i).
 - [ ] **L.6** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g.
   `2,0 PTO Dentist`, today only a day note) as a value, and show them in the year report next to the days off.
   On hold: kept as day notes for now, to see how hours off are used in practice
-- [ ] **L.7** i18n - add a flag icon dropdown next to the dark mode icon to switch ui language to german, english,
+- [ ] **L.7** Clean up - remove spreadsheet import functionality
+- [ ] **L.8** i18n - add a flag icon dropdown next to the dark mode icon to switch ui language to german, english,
   spanish
-- [ ] **L.8** Quarter Hour - remove quarter hour rule, track exact times; "Start now" and "End now" on today's day in
+- [ ] **L.9** Quarter Hour - remove quarter hour rule, track exact times; "Start now" and "End now" on today's day in
   the week view set the start and end time to the current time
-- [ ] **L.9** Ways of working: after 13.9, review whether the four are still needed, or two switches (ticket and
+- [ ] **L.10** Ways of working: after 13.9, review whether the four are still needed, or two switches (ticket and
   service; entries expected) do the same
 - 
