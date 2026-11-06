@@ -8,7 +8,6 @@ MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR
 QUARTER_HOUR = 15
 
 _CLOCK = re.compile(r'(\d{1,2}):(\d{2})')
-_DECIMAL_HOURS = re.compile(r'\d+(?:[,.]\d+)?')
 _HOURS = r'(\d+(?:[,.]\d+)?)'  # whole or decimal hours, with a point or a comma
 
 
@@ -43,13 +42,6 @@ def parse_duration(text: str) -> int:
         if match := pattern.fullmatch(cleaned):
             return to_minutes(text, match)
     raise TimeFormatError(f'Invalid duration {text!r}, expected e.g. 1:30, 1.5, 1h30m or 90m')
-
-
-def parse_hours_minutes(text: str) -> int:
-    """Parse strictly `h:mm` (`1:30`, `12:00`), e.g. the spreadsheet's `Sum` column."""
-    if not (match := _DURATION_FORMATS[0][0].fullmatch(text.strip())):
-        raise TimeFormatError(f'Invalid duration {text!r}, expected h:mm')
-    return _from_clock_format(text, match)
 
 
 def _from_clock_format(text: str, match: re.Match) -> int:
@@ -106,17 +98,6 @@ def format_duration(minutes: int) -> str:
     sign = '-' if minutes < 0 else ''
     hours, rest = divmod(abs(minutes), MINUTES_PER_HOUR)
     return f'{sign}{hours}:{rest:02d}'
-
-
-def parse_decimal_hours(text: str) -> int:
-    """Parse spreadsheet hours with a decimal comma (`1,5`, `0,75`, `8`) into minutes."""
-    cleaned = text.strip()
-    if not _DECIMAL_HOURS.fullmatch(cleaned):
-        raise TimeFormatError(f'Invalid hours {text!r}, expected e.g. 1,5')
-    minutes = Decimal(cleaned.replace(',', '.')) * MINUTES_PER_HOUR
-    if minutes != minutes.to_integral_value():
-        raise TimeFormatError(f'Hours {text!r} are not a whole number of minutes')
-    return int(minutes)
 
 
 def is_quarter_hour(minutes: int) -> bool:

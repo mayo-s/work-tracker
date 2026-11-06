@@ -6,9 +6,7 @@ from src.lib.durations import (
     format_duration,
     is_quarter_hour,
     parse_clock,
-    parse_decimal_hours,
     parse_duration,
-    parse_hours_minutes,
     parse_signed_duration,
     split_evenly,
 )
@@ -73,17 +71,6 @@ def test_format_duration():
     assert [format_duration(minutes) for minutes in (0, 90, 1500, -15)] == ['0:00', '1:30', '25:00', '-0:15']
 
 
-@pytest.mark.parametrize('text, minutes', [('8', 480), ('1,5', 90), ('1.25', 75), (' 4,0 ', 240)])
-def test_parse_decimal_hours(text, minutes):
-    assert parse_decimal_hours(text) == minutes
-
-
-@pytest.mark.parametrize('text', ['', ',5', '1,', '1,5h', '-1', '1:30', '0,333'])
-def test_parse_decimal_hours_rejects_invalid(text):
-    with pytest.raises(TimeFormatError):
-        parse_decimal_hours(text)
-
-
 def test_is_quarter_hour():
     assert [is_quarter_hour(minutes) for minutes in (0, 90, -15, 20)] == [True, True, True, False]
 
@@ -102,9 +89,3 @@ def test_split_evenly(total, parts, shares):
 def test_split_evenly_rejects_invalid(total, parts):
     with pytest.raises(ValueError):
         split_evenly(total, parts)
-
-
-@pytest.mark.parametrize('text', ['1.5', '8', '1h30m'])
-def test_hours_minutes_stay_strict(text):
-    with pytest.raises(TimeFormatError):
-        parse_hours_minutes(text)

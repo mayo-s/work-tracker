@@ -5,8 +5,8 @@ monthly work report. A Falcon REST API with a small browser frontend, backed by 
 
 The project was, despite a manual ramp up phase, mostly implemented using claude.ai.
 
-> Calculation rules, storage, spreadsheet import, REST API and frontend are done; later ideas are listed in
-> `docs/TASKS.md`.
+> Calculation rules, storage, REST API and frontend are done; later ideas are listed in `docs/TASKS.md`. The data of
+> the former spreadsheet came in once by a CSV import, which is gone since (TASKS.md L.7).
 
 ## Requirements
 
@@ -54,20 +54,6 @@ From the first day on, each work day counts its full target as missing until its
 Moving from another Work Tracker (e.g. local to AWS): "Export my data" in its settings, then "Import" that file in
 the first setup step instead of the steps. Only for a user without days and entries; a file that does not fit writes
 nothing, and on AWS an import that stopped halfway is replaced by importing again.
-
-## Import the spreadsheet
-
-One CSV export per year, into `$WORK_TRACKER_DB` (default `work_tracker.db`):
-
-```shell
-pipenv run python -m src.modules.importer "examples/Time_tracking_DK - 2024_Data.csv"
-pipenv run python -m src.modules.importer "examples/Time_tracking_DK - 2024_Data.csv" --replace  # import a year again
-```
-
-A year is imported in one transaction (an error writes nothing); `--replace` first deletes its days, entries, history
-and flags, tickets keep their services. The data goes to the only user who is not root (before there is one, to the
-first created); with several, `--user LOGIN` (username or e-mail address) names one. A reconciliation then compares
-every day up to today with the sheet and shows the overtime balance and the year's PTO account.
 
 ## Run the app
 
@@ -379,7 +365,7 @@ All times and durations are whole minutes.
 
 | Module            | Rules                                                                                                                                                                                                                                                                                                                                                     |
 |-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `durations`       | Parse and format clock times (`HH:MM`), durations (`h:mm`, `1.5`, `1,5`, `1h30m`, `90m`, signed `-1:45` for balances; the spreadsheet's strictly `h:mm`) and decimal-comma hours (`1,5`); split durations evenly in quarter hours                                                                                                                         |
+| `durations`       | Parse and format clock times (`HH:MM`), durations (`h:mm`, `1.5`, `1,5`, `1h30m`, `90m`, signed `-1:45` for balances); split durations evenly in quarter hours                                                                                                                                                                                            |
 | `worktime`        | Worked time = end − start − break; without a break, the legal minimum applies (German ArbZG §4: 0:30 beyond 6 h, 0:45 beyond 9 h)                                                                                                                                                                                                                         |
 | `public_holidays` | Public holidays of a German federal state (via `holidays`), plus Heiligabend and Silvester as company half days if they apply                                                                                                                                                                                                                             |
 | `daytypes`        | Day types (see below) with their share of the daily target and PTO used; days off of the schedule have no target. Overtime = worked − target                                                                                                                                                                                                              |
@@ -416,7 +402,7 @@ Pydantic models; times in minutes, validated on creation and assignment.
 | `entries`   | `Entry`: activity type, optional ticket, duration (quarter hours), description; `former_entries`: the conversion of SPEC 4.6                                             |
 | `catalog`   | `Service`, `ServiceChoice` (with its team), `ActivityType` and `Ticket` (key like `ENGINE-461`, remembers its service; an invalid key is refused with a message to show) |
 | `history`   | `EntryChange`: one line of an entry's history (created, imported, updated, renamed, merged, split, deleted) with the changed fields, old → new                           |
-| `review`    | `ReviewFlag`: import flag on an entry or a day (uncertain ticket, weekend hours)                                                                                         |
+| `review`    | `ReviewFlag`: flag of the former spreadsheet import on an entry or a day (uncertain ticket, weekend hours)                                                               |
 | `schedules` | `Schedule`: valid from, minutes per week, work days (ISO weekdays), federal state, company half days                                                                     |
 | `users`     | `User`: random UUID, username and e-mail address (unique), first and last name, role (admin, user), active, registered and last login                                    |
 | `teams`     | `Team`, `Membership` (joined on, left on, team role: member or team admin), `Member` (account and team role), `Invitation` (by e-mail address)                           |
@@ -427,8 +413,8 @@ Pydantic models; times in minutes, validated on creation and assignment.
 
 Resources and reports use only the interfaces in `store`: a `Storage` opens a transaction (commit on success,
 rollback on error), whose `Store` hands out the repositories, each bound to one user's data. The SQLite backend
-(`sqlite`) runs them on one connection per transaction, foreign keys enforced; the importer and the command line
-tools use SQLite directly.
+(`sqlite`) runs them on one connection per transaction, foreign keys enforced; the command line tools use SQLite
+directly.
 
 The DynamoDB backend (`dynamodb`, for AWS Lambda) holds the same records with the same rules in one table for all
 users (the key layout is in `keys.py`). A transaction collects its writes and sends them at the end in one
@@ -639,19 +625,3 @@ erDiagram
         TEXT detail
     }
 ```
-
-## Import (`src/modules/importer`)
-
-Imports the yearly spreadsheet exports (CSV with `Date`, `Start`, `End`, `Pause`, `Sum`, `Comment`).
-
-| Module        | Contents                                                                                                                                                                                                                                                                                 |
-|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `sheet`       | Read a CSV into one `SheetRow` per day: date (weekday checked), times, pause, sum and comment lines; detects empty future days and placeholder times (08:00–16:00 without break)                                                                                                         |
-| `lines`       | Split leading decimal-comma hours off a comment line (`1,5 KP-2035 refinement` → 1:30)                                                                                                                                                                                                   |
-| `days`        | Day type (PTO, sick, half days, overtime off; holidays automatic), times (placeholders dropped, half days end 4:00 earlier, weekends `Sum` − 8:00), notes for overtime used, weekend flags                                                                                               |
-| `tickets`     | Ticket keys (KP, TNG, ENGINE, AGA, MSI) and their clean-up: typos corrected (`EINGINE-`, `TNG4840`, `MSI-02`, `#KP-1494`); guessed keys flagged (`#4138` → `TNG-4138`, `#4347 aka #1482`, `TNG-2035ff`); `split_keys`: the tickets to split such a line among, which the review suggests |
-| `comments`    | Comment lines → entries: tickets anywhere in a line (several tickets split evenly), PR reviews without ticket, Meeting, Tool Management, Travel, Other; lines without hours or ticket become day notes                                                                                   |
-| `corrections` | Known corrections the sheet cannot express: 2024 unpaid leave days (marked "PTO")                                                                                                                                                                                                        |
-| `run`         | Import one year for a user in a single transaction: days, entries (history line with the original comment line), review flags; adds activity types the user lacks (e.g. Coding, Tool Management); refuses years with data unless replacing; summary                                      |
-| `reconcile`   | Compare an imported year with the sheet (`Sum` − 8:00 per day, up to today): differing days, overtime balance, PTO account                                                                                                                                                               |
-| `__main__`    | Command line: `python -m src.modules.importer SHEET.csv [--replace] [--user LOGIN] [--db PATH]`                                                                                                                                                                                          |

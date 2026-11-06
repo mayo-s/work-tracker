@@ -395,7 +395,8 @@ L.16 (a–i) → 9.1 (a–i).
 - [ ] **L.6** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g.
   `2,0 PTO Dentist`, today only a day note) as a value, and show them in the year report next to the days off.
   On hold: kept as day notes for now, to see how hours off are used in practice
-- [ ] **L.7** Clean up - remove spreadsheet import functionality
+- [x] **L.7** Clean up - remove spreadsheet import functionality (the command and its tests; its ticket clean-up moved
+  into the review, which still suggests splits for guessed tickets of imported data)
 - [ ] **L.8** i18n - add a flag icon dropdown next to the dark mode icon to switch ui language to german, english,
   spanish
 - [ ] **L.9** Quarter Hour - remove quarter hour rule, track exact times; "Start now" and "End now" on today's day in
@@ -405,3 +406,6 @@ L.16 (a–i) → 9.1 (a–i).
   activities" (they differed only in Coding at the setup, now a checkbox there)
 - [ ] **L.11** Team audit: team admin and auditor need a page to not just see entries of a person, but also see a team
   report. 
+- [ ] **L.12** Clean up the review's import parts once no imported data needs them: guessed tickets and their splits,
+  the original spreadsheet line, weekend-hour day flags (storage on both backends, export format, the split and flag
+  endpoints)

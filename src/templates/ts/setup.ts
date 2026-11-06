@@ -148,13 +148,6 @@ function duration(element: HTMLInputElement, rules: DurationRules): HTMLInputEle
   return element;
 }
 
-function importNote(): HTMLElement {
-  return el('div', { class: 'card card-surface setup-note' },
-    el('strong', {}, 'Coming from the spreadsheet? '),
-    'Import its yearly CSV exports first (README, "Import the spreadsheet"), e.g. ',
-    el('code', {}, 'pipenv run python -m src.modules.importer "SHEET.csv"'), ', then finish the setup here.');
-}
-
 function fileImport(onImport: (file: File | undefined) => void): HTMLElement {
   const file = el('input', { type: 'file', id: 'setup-import-file', accept: '.json,application/json' });
   return el('div', { class: 'card card-surface setup-note' },
@@ -185,7 +178,6 @@ function startStep(state: SetupState, onImport: (file: File | undefined) => void
       + 'changed later.'),
     mode,
     codingOption,
-    importNote(),
     fileImport(onImport),
   ];
 }

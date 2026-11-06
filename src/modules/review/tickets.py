@@ -1,4 +1,5 @@
-"""Recognizing ticket keys in spreadsheet comments, including the clean-up of typos and old ticket numbers."""
+"""Ticket keys in the spreadsheet lines of imported entries, including the clean-up of typos and old ticket numbers: the
+review suggests a split for a line that named an alias or "ff". (The spreadsheet import itself is gone, TASKS.md L.7.)"""
 
 import re
 from dataclasses import dataclass
