@@ -10,7 +10,7 @@ AWS Lambda (DynamoDB), see 7.
 
 - Record working days (start, end, break) and the tasks worked on.
 - Calculate worked time, target time and a running overtime balance.
-- Produce the **monthly work report**: coding work grouped by service.
+- Produce the **monthly work report**: work by activity type, ticket work grouped by service.
 - Import the existing spreadsheet data (2024, 2025, 2026).
 - Serve non-developers too: each user chooses how they track their work (5.11).
 
@@ -117,33 +117,35 @@ The break can always be overridden (e.g. 3:00 on a long day).
 ## 4. Task entries
 
 Task entries belong to a day. The sum of entries does **not** need to match the worked
-time (meetings, breaks etc. are not logged). Two kinds:
+time (meetings, breaks etc. are not logged). Every entry is an activity, optionally on a ticket:
 
-### 4.1 Ticket entry
+| Field         | Notes                                                                                                |
+|---------------|------------------------------------------------------------------------------------------------------|
+| Activity type | From the managed list (4.2), e.g. Coding or Meeting                                                  |
+| Duration      | `h:mm`, quarter-hour steps                                                                           |
+| Ticket        | Optional, one per entry, format `PREFIX-NUMBER` (e.g. `ENGINE-461`); required by some activity types |
+| Service       | Of the ticket, from the managed service list (4.3); may be unassigned                                |
+| Description   | Free text (e.g. "PR Review", "new computer setup", "Hackathon Picard")                               |
 
-| Field       | Notes                                                                                             |
-|-------------|---------------------------------------------------------------------------------------------------|
-| Ticket      | One ticket per entry, format `PREFIX-NUMBER` (e.g. `ENGINE-461`); required when entered in the UI |
-| Service     | From the managed service list; may be unassigned                                                  |
-| Duration    | `h:mm`, quarter-hour steps                                                                        |
-| Description | Free text                                                                                         |
-| Coding      | Checkbox, **unchecked by default**                                                                |
+### 4.1 Tickets
 
 - Known prefixes: **KP** (Kundenportal), **TNG**, **ENGINE**, **AGA**, **MSI**.
-- PR reviews are ticket entries (marked as coding).
+- PR reviews are **Coding** (a look into code); a refinement is a **Meeting**.
 - The service is stored **per ticket**: picking a known ticket pre-fills its service, and
   changing it applies to all entries of that ticket.
 - **Renaming a ticket** (e.g. during review) moves all its entries to the new key; each entry's
   history records it (4.5). Renaming to a ticket that already exists merges both; the existing
   ticket keeps its service (it takes the renamed ticket's service only if it has none).
 
-### 4.2 Activity entry
+### 4.2 Activity types (managed list)
 
-| Field         | Notes                                                                           |
-|---------------|---------------------------------------------------------------------------------|
-| Activity type | Managed list, initially **Meeting**, **Travel**, **Planning**, **Documentation**, **Other** |
-| Duration      | `h:mm`, quarter-hour steps                                                      |
-| Note          | Free text (e.g. "new computer setup", "Hackathon Picard")                       |
+| Field           | Notes                                                              |
+|-----------------|--------------------------------------------------------------------|
+| Name            | e.g. Meeting                                                       |
+| Ticket required | An entry of this type needs a ticket (e.g. Coding); off by default |
+
+Initially **Coding** (ticket required; only in the way of working Developer, 5.11), **Meeting**, **Travel**,
+**Planning**, **Documentation** and **Other**.
 
 ### 4.3 Services (managed list)
 
@@ -178,6 +180,17 @@ Every change to a task entry is recorded, so it can be checked later what change
 - Visible on the entry (week view, review page); entries with changes after creation show a marker.
 - Days have no history for now.
 
+### 4.6 Former ticket and activity entries
+
+Until TASKS.md 13.7, an entry was either a ticket entry (with a Coding checkbox) or an activity entry. The migration
+and the import of an export file of version 1 (5.8) convert them:
+
+- An activity entry keeps its activity type; its note becomes the description.
+- A ticket entry marked as coding becomes **Coding**; a user without that activity type gets it (ticket required).
+- Another ticket entry becomes Coding when its description names a PR review, Meeting when it names a refinement,
+  and otherwise gets **no activity type** and goes to the review (5.4), where one is chosen.
+- An entry's history keeps its lines as they were (e.g. `coding: no → yes`).
+
 ## 5. Views
 
 ### 5.0 Dashboard (start page)
@@ -191,7 +204,8 @@ Every change to a task entry is recorded, so it can be checked later what change
   arrow keys show each value; all values also as a table.
 - Coming up in the next 60 days: public holidays, company half days and planned days off (days in a row combined);
   a company half day says that it takes 0.5 PTO by itself.
-- This year: days worked and average, sick days, overtime-off days, coding hours and the top three services.
+- This year: days worked and average, sick days, overtime-off days, the top three activity types and the top three
+  services.
 
 ### 5.1 Week
 
@@ -208,9 +222,8 @@ Every change to a task entry is recorded, so it can be checked later what change
 
 ### 5.2 Month report
 
-- **Coding work by service → ticket**: hours plus the entry descriptions. Unassigned entries are listed separately.
-- **Other ticket work** (ticket entries not marked as coding) the same way, by service → ticket.
-- **Activities** by activity type: hours plus the notes.
+- **Work by activity type** (most hours first): hours per type; its entries with a ticket by service → ticket with
+  their descriptions (tickets without service listed separately), the others with their descriptions.
 - Worked vs. target, overtime for the month, balance at month end; the hours in entries next to the hours worked
   ("Entries 152:30 of 160:00 worked", the same days: up to today).
 - Previous / next / current month, and a date field whose "Go" opens the month of that date.
@@ -222,7 +235,7 @@ Replaces the spreadsheet dashboard:
 
 - Per year: worked total, target, average per day worked, overtime for the year, balance carried in and out.
 - Per month: worked, target, overtime.
-- Coding work and other ticket work by service, activities by type (hours and totals); the hours in entries next to
+- Work by activity type and, for entries with a ticket, by service (hours and totals); the hours in entries next to
   the hours worked.
 - Previous / next / current year, and a date field whose "Go" opens the year of that date.
 - PTO carried over / allowance / used / remaining; sick, overtime-off and unpaid days.
@@ -231,19 +244,20 @@ Replaces the spreadsheet dashboard:
 
 Lists everything that needs attention, each with its reason:
 
-- Ticket entries whose ticket has **no service**; services can be assigned per ticket,
-  also for several selected tickets at once.
+- Tickets with **no service**; services can be assigned per ticket, also for several selected tickets at once.
+- Entries **without activity type** (former ticket entries, 4.6); an activity type can be chosen per entry, also for
+  several selected entries at once.
 - Entries with duration **0:00**.
-- Ticket entries **without a ticket** (imported PR reviews).
+- Entries **without a ticket** whose activity type requires one (imported PR reviews).
 - Entries and days **flagged during import** (uncertain ticket ids, weekend hours, …; see 6).
 - Guessed tickets are grouped by ticket: confirm the key, rename (or merge) the ticket, or **split** its
   entries among several tickets when the spreadsheet line named an alias (`#4347 aka #1482`) or "ff";
   the hours are split evenly in quarter hours. Each of these clears the flags of the ticket's entries.
 - A spreadsheet line the import already split among several tickets shows that split under the original
   line ("Split on import: TNG-4138 3:00 · TNG-4139 3:00"), so it is not split a second time.
-- Each entry shows its description (or note) and the original spreadsheet line; "Details" (a button, for keyboard
-  and touch) opens a dialog with the whole entry: date and weekday with the day's times, duration, ticket or activity,
-  service, coding, description, flags, history and a link to its week. For a guessed ticket, all its entries.
+- Each entry shows its description and the original spreadsheet line; "Details" (a button, for keyboard and touch)
+  opens a dialog with the whole entry: date and weekday with the day's times, duration, activity type, ticket,
+  service, description, flags, history and a link to its week. For a guessed ticket, all its entries.
 
 An item leaves the list once the reason is fixed or the flag is cleared.
 
@@ -339,7 +353,7 @@ corners, one accent color. Warnings are the only loud element.
   another user's service or activity type 409.
 - A user is identified by a random UUID and has one app role; in a team, the membership has a team role; an auditor
   is assigned to teams. The first user who is not root takes over all records of a database used without users. A
-  new user (not root) starts with the five default activity types (4.2) and goes through the setup; "Log out" is there
+  new user (not root) starts with the default activity types of their way of working (4.2) and goes through the setup; "Log out" is there
   during the setup too, and after the next login the setup continues.
 - App roles:
   - **root** runs the app: exactly one, created once (in the setup of a new database, or with "Create root admin"
@@ -396,16 +410,16 @@ corners, one accent color. Warnings are the only loud element.
 
 - Export: "Export my data" on the settings page downloads one JSON file of the user's own records: days, entries with
   their history (also of deleted entries), review flags, tickets, services, activity types, work schedules, PTO years,
-  settings and theme. It starts with `{"format": "work-tracker", "version": 1, "exported_at": …}`; every record has a
+  settings and theme. It starts with `{"format": "work-tracker", "version": 2, "exported_at": …}`; every record has a
   file id (1, 2, …), and references inside the file use them, also in history lines. Team services the tickets use are
   included by short name, name and team.
 - Not in the file: password, sessions, users, teams, memberships, invitations and the report view log.
 - Import: in `/setup`, a user without days and entries may upload such a file instead of entering the setup data.
-  Settings, work schedules and PTO years come from the file, its activity types replace the four defaults, team
+  Settings, work schedules and PTO years come from the file, its activity types replace the defaults, team
   services become personal services (as on leaving a team), and the setup is done. A summary shows the counts per
   type.
-- A file of an unknown format or a newer version is refused, and so is a file referring to records it does not hold;
-  both are checked before anything is written, so nothing is.
+- A file of version 1 is converted as in 4.6. A file of an unknown format or a newer version is refused, and so is a
+  file referring to records it does not hold; both are checked before anything is written, so nothing is.
 - SQLite imports in one transaction: if it fails, nothing stays. DynamoDB writes atomic chunks; an import that stops
   halfway (e.g. a timeout on AWS) marks the account, the setup stays open, and importing the file again first removes
   what the unfinished import wrote. Finishing the setup is the last step and clears the mark.
@@ -444,7 +458,7 @@ corners, one accent color. Warnings are the only loud element.
   month or Custom (From and To, each optional). It searches on "Search" or Enter, and the criteria go into the URL
   (bookmarks, Back).
 - An entry matches when every word, ignoring case, starts its ticket key (`ENGINE-59` finds ENGINE-590…599) or is a
-  part of its description or note, of its service (short name or name: `MSB`, `bookings`) or of its activity type.
+  part of its description, of its service (short name or name: `MSB`, `bookings`) or of its activity type.
 - Results: total hours and number of entries, by ticket or activity type (most hours first) and by month (linking to
   the month report), and the entries, newest first, each linking to its week and with "Details" (5.4). The list
   shows the newest 100 entries and "Show all" for the rest; the sums always count all.
@@ -454,29 +468,29 @@ corners, one accent color. Warnings are the only loud element.
 Not everyone who tracks time is a developer. Each user chooses a **way of working** in the setup and can change it in
 the settings at any time:
 
-| Way of working     | For                         | Ticket entries | Coding | Warning: day without entries |
-|--------------------|-----------------------------|----------------|--------|------------------------------|
-| Developer          | developers (as before)      | yes            | yes    | yes                          |
-| Tickets, no coding | product owners, QA, design  | yes            | no     | yes                          |
-| Activities only    | HR, office, sales           | no             | no     | yes                          |
-| Times only         | start, end and break only   | no entries     | no     | no                           |
+| Way of working     | For                                   | Ticket and service | Coding (setup) | Warning: day without entries |
+|--------------------|---------------------------------------|--------------------|----------------|------------------------------|
+| Developer          | developers (as before)                | yes                | yes            | yes                          |
+| Tickets, no coding | product owners, QA, design            | yes                | no             | yes                          |
+| Activities only    | HR, office, sales                     | no                 | no             | yes                          |
+| Times only         | start, end and break; entries if any  | no                 | no             | no                           |
 
-- It only shapes the pages: the data model and the API stay the same and accept every entry. Changing it never
-  deletes or changes records; what was recorded before stays visible and editable where it appears. The default
-  activity types (4.2) are the same for all.
+- It only shapes the pages and the default activity types of the setup: the data model and the API stay the same and
+  accept every entry. Changing it never deletes or changes records; what was recorded before stays visible and
+  editable where it appears. The activity type Coding (4.2) is a default only for Developer; the others are the same
+  for all.
 - Existing users and an export file without it (5.8) get **Developer**; the setup preselects Developer. API
   `/api/settings`: `work_mode`, one of `developer`, `tickets`, `activities`, `times`.
-- **Setup**: the way of working is chosen on the start step. The step "Services" only comes with ticket entries.
-- **Entry form** (week): "Tickets, no coding" leaves out the Coding checkbox (new entries are not coding); "Activities
-  only" leaves out the Ticket / Activity choice and opens an activity entry; "Times only" offers no "Add entry". An
-  existing entry of another kind still opens in its full form.
-- **Month and year report**: a part is shown when the way of working has it or when it holds data in the period.
-  Without coding, ticket work is one part, "Ticket work", in place of "Coding work" and "Other ticket work"; "Times
-  only" shows no work report, only the times, overtime and days off.
-- **Dashboard**: "Coding hours" only for Developer, "Top services" only with ticket entries.
-- **Search**: no search field in the navigation in "Times only"; without ticket entries the search page offers no
-  service and its text field says "Words" instead of "Words or ticket key".
+- **Setup**: the way of working is chosen on the start step. The step "Services" only comes with ticket and service.
+- **Entry form** (week): the activity type comes first; ticket and service only with ticket and service, and without
+  them the activity types that require a ticket are not offered. An entry that has a ticket still shows it.
+- **Month and year report**: "Times only" shows the work report only when the period holds entries.
+- **Dashboard**: "Top services" only with ticket and service.
+- **Search**: the search field in the navigation for every way of working; without ticket and service the search
+  page offers no service and its text field says "Words" instead of "Words or ticket key".
 - **Team view**: a member's pages follow the member's way of working, not the viewer's.
+- The four ways of working are kept for now; whether two switches (ticket and service; entries expected) would do
+  instead is reviewed later (TASKS.md L.9).
 
 ## 6. Import (spreadsheet CSV)
 
@@ -513,19 +527,19 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 
 | Line                                                                                                             | Result                                                                                                                               |
 |------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| `<hours> … <ticket> …`                                                                                           | Ticket entry, no service; tickets may appear anywhere in the line; coding checked for known prefixes (4.1)                           |
-| several tickets (`<t1>, <t2>`, `<t1>/<t2>`, `<t1> and <t2>`)                                                     | One ticket entry per ticket, hours split evenly in quarter hours, remainder on the first entries (1:30 / 4 → 0:30, 0:30, 0:15, 0:15) |
-| `<hours> PR review …` or `<hours> PR …` without a ticket                                                         | Ticket entry **without ticket**, coding checked → review                                                                             |
-| `<hours> Meeting: <text>`                                                                                        | Activity "Meeting", note = text (tickets stay in the note)                                                                           |
-| `<hours> Meeting(s) …`, `Tactical Meeting`, `Teamstufe Meeting`, `Standup`, `Retro`, `Retrospective`, `Planning` | Activity "Meeting", note = whole text                                                                                                |
+| `<hours> … <ticket> …`                                                                                           | Coding entry, no service; tickets may appear anywhere in the line; a ticket of an unknown prefix: no activity type → review (4.1)    |
+| several tickets (`<t1>, <t2>`, `<t1>/<t2>`, `<t1> and <t2>`)                                                     | One entry per ticket, hours split evenly in quarter hours, remainder on the first entries (1:30 / 4 → 0:30, 0:30, 0:15, 0:15)        |
+| `<hours> PR review …` or `<hours> PR …` without a ticket                                                         | Coding entry **without ticket** → review                                                                                             |
+| `<hours> Meeting: <text>`                                                                                        | Activity "Meeting", description = text (tickets stay in the description)                                                             |
+| `<hours> Meeting(s) …`, `Tactical Meeting`, `Teamstufe Meeting`, `Standup`, `Retro`, `Retrospective`, `Planning` | Activity "Meeting", description = whole text                                                                                         |
 | `<hours> TM`, `Tool Management (TM)`, `GCC (Tool Management)`                                                    | Activity "Tool Management"                                                                                                           |
-| `<hours> Anreise / Abreise / Anfahrt / Abfahrt …`                                                                | Activity "Travel", note = text                                                                                                       |
-| `<hours> <other text>`                                                                                           | Activity "Other", note = text                                                                                                        |
-| `<ticket> <text>` (no hours)                                                                                     | Ticket entry with 0:00 → review                                                                                                      |
+| `<hours> Anreise / Abreise / Anfahrt / Abfahrt …`                                                                | Activity "Travel", description = text                                                                                                |
+| `<hours> <other text>`                                                                                           | Activity "Other", description = text                                                                                                 |
+| `<ticket> <text>` (no hours)                                                                                     | Entry as for a line with hours, with 0:00 → review                                                                                   |
 | text without hours or ticket                                                                                     | Appended to the day note                                                                                                             |
 
 - Hours use a decimal comma (`1,5` → `1:30`, `0,75` → `0:45`).
-- An activity type the user does not have yet (e.g. Tool Management) is added by the import.
+- An activity type the user does not have yet (e.g. Coding, Tool Management) is added by the import.
 
 ### 6.3 Ticket clean-up
 

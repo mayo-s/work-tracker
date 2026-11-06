@@ -374,12 +374,20 @@ L.16 (a–i) → 9.1 (a–i).
   entries in "Times only"
 - [x] **13.4** Month and year report: parts per way of working or data in the period, "Ticket work" without coding,
   no work report in "Times only"; dashboard: "Coding hours" and "Top services" per way of working
-- [ ] **13.5** Navigation: "Review" only while items are open (with their count) and on the review page itself, for
-  every way of working (SPEC 5.4); search: no search field in "Times only", the search page without service and with
-  "Words" when there are no ticket entries
-- [ ] **13.6** Team view: a member's pages in the member's way of working
-- [ ] **13.7** Activities vs Tickets: all activities may have an optional ticket field. Coding becomes a default
-  activity where ticket is a mandatory field.
+- [x] **13.5** Navigation: "Review" only while items are open (with their count) and on the review page itself, for
+  every way of working (SPEC 5.4); search: the search page without service and with "Words" when there are no
+  ticket entries
+- [ ] **13.6** Team view: a member's pages in the member's way of working (after 13.9)
+- [ ] **13.7** One kind of entry (SPEC 4, 4.6): every entry has an activity type, an optional ticket and a
+  description; activity types get "Ticket required", Coding is a default for Developer; the migration on both
+  backends converts the former entries (coding → Coding, PR review → Coding, refinement → Meeting, the rest without
+  activity type), the API, the entry form (activity type first, ticket and service per way of working), export
+  version 2 (version 1 converted) and the spreadsheet import
+- [ ] **13.8** Review: entries without activity type (choose one, also for several at once), "no ticket" only where
+  the activity type requires one; "Ticket required" in the settings' activity types
+- [ ] **13.9** Reports, dashboard and search by activity type (SPEC 5.0, 5.2, 5.3, 5.10, 5.11): the work report by
+  activity type in place of coding / other ticket work, "Top activity types" in place of "Coding hours"; "Times
+  only" with entries optional ("Add entry", the search field, the work report when the period holds entries)
 
 ## Later (to be discussed)
 
@@ -390,4 +398,6 @@ L.16 (a–i) → 9.1 (a–i).
   spanish
 - [ ] **L.8** Quarter Hour - remove quarter hour rule, track exact times; "Start now" and "End now" on today's day in
   the week view set the start and end time to the current time
+- [ ] **L.9** Ways of working: after 13.9, review whether the four are still needed, or two switches (ticket and
+  service; entries expected) do the same
 - 

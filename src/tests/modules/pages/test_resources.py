@@ -85,7 +85,7 @@ def test_main_navigation_links_all_pages(client):
     assert '<a href="/week">Week</a>' in html
     assert '<a href="/month">Month</a>' in html
     assert '<a href="/year">Year</a>' in html
-    assert '<a href="/review">Review</a>' in html
+    assert '<a href="/review" hidden>Review</a>' in html  # shown while items are open
     assert '<a href="/settings">Settings</a>' in html
 
 

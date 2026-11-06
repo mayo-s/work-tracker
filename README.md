@@ -98,10 +98,11 @@ all at once.
   of their description or note, service or activity type (as words or chosen), of all time or a period (This year, Last year, Last 12
   months, This month, Custom), and sums them up by ticket or activity type and by month; it lists the newest 100
   entries ("Show all" for the rest), each linking to its week and with "Details". Every other page has a search field
-  in the navigation that opens it.
+  in the navigation that opens it; without ticket entries the page offers no service and asks for "Words".
 - `/review`: what needs attention after an import (guessed tickets, entries without duration or ticket, flagged days,
   tickets without service), each entry with its description and spreadsheet line; "Details" shows the whole entry
-  with its day, flags and history. The count next to "Review" in the navigation follows every action on the page.
+  with its day, flags and history. "Review" shows in the navigation only while items are open (with their count) and
+  on the review page itself; the count follows every action on the page.
 - `/settings`: way of working (Developer, Tickets without coding, Activities only or Times only: what the pages offer;
   existing users and older export files are Developer), overtime balance, work schedules, PTO years, services and
   activity types, color theme, "Export my data", account. The moon or sun between the name and "Log out" in the

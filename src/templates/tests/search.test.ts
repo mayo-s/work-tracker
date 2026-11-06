@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
-  apiQuery, criteriaFromSearch, describePeriod, periodRange, scopeCriteria, scopeValue, searchQuery, type SearchCriteria,
+  apiQuery, criteriaFromSearch, describePeriod, periodRange, scopeCriteria, scopeValue, searchLabels, searchQuery,
+  type SearchCriteria,
 } from '../ts/search.ts';
 
 const TODAY = '2026-11-05';
@@ -53,4 +54,9 @@ test('a choice of the select is a service, no service, an activity type or nothi
     { service_id: null, activity_type_id: 'a2' }, { service_id: null, activity_type_id: null },
   ]);
   assert.deepEqual(choices.map((value) => scopeValue(scopeCriteria(value))), choices);
+});
+
+test('without ticket entries the search asks for words and an activity type', () => {
+  assert.deepEqual(searchLabels('tickets'), { text: 'Words or ticket key', scope: 'Service or activity type' });
+  assert.deepEqual(searchLabels('activities'), { text: 'Words', scope: 'Activity type' });
 });
