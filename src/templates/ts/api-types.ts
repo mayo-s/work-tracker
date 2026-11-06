@@ -2670,6 +2670,13 @@ export interface components {
              * @default []
              */
             services?: components["schemas"]["ServiceInput"][];
+            /**
+             * Work Mode
+             * @description Way of working: developer, tickets (no coding), activities (only) or times (only)
+             * @default developer
+             * @enum {string}
+             */
+            work_mode?: "developer" | "tickets" | "activities" | "times";
         };
         /** SetupImportInput */
         SetupImportInput: {

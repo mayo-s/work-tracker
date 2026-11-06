@@ -36,16 +36,16 @@ def count(db, table):
 
 def test_migrate_twice_keeps_data_once(fresh_database):
     fresh_database.migrate()
-    assert count(fresh_database, 'activity_types') == 4
+    assert count(fresh_database, 'work_schedules') == 1
 
 
 def test_new_database_starts_clean(fresh_database):
+    """Without the original setup's services, PTO years and activity types: the first user gets the defaults."""
     with fresh_database.transaction() as conn:
-        names = [row['name'] for row in conn.execute('SELECT name FROM activity_types ORDER BY id')]
         setup_done = conn.execute("SELECT value FROM user_settings WHERE user_id = ? AND key = 'setup_done'",
                                   (NO_OWNER,)).fetchone()[0]
-    assert names == ['Tool Management', 'Meeting', 'Travel', 'Other']
-    assert (count(fresh_database, 'services'), count(fresh_database, 'pto_years'), setup_done) == (0, 0, '0')
+    assert (count(fresh_database, 'services'), count(fresh_database, 'pto_years'), count(fresh_database, 'activity_types'),
+            setup_done) == (0, 0, 0, '0')
 
 
 def test_database_in_use_keeps_its_data_and_counts_as_set_up(tmp_path, monkeypatch):
@@ -59,7 +59,7 @@ def test_database_in_use_keeps_its_data_and_counts_as_set_up(tmp_path, monkeypat
     with db.transaction() as conn:
         setup_done = conn.execute("SELECT value FROM user_settings WHERE user_id = ? AND key = 'setup_done'",
                                   (NO_OWNER,)).fetchone()[0]
-    assert (count(db, 'services'), count(db, 'pto_years'), setup_done) == (5, 4, '1')
+    assert (count(db, 'services'), count(db, 'pto_years'), count(db, 'activity_types'), setup_done) == (5, 4, 4, '1')
 
 
 def test_a_team_admin_becomes_a_user_who_is_team_admin_of_their_team(tmp_path, monkeypatch):

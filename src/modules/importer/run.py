@@ -10,6 +10,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from src.lib.daytypes import DayType
+from src.models.catalog import ActivityType
 from src.models.days import Day
 from src.models.entries import ActivityEntry, Entry, TicketEntry
 from src.models.history import HistoryAction
@@ -134,7 +135,8 @@ class _YearImporter:
     ) -> None:
         self._days = DayRepository(conn, user_id)
         self._entries = EntryRepository(conn, user_id, clock)
-        self._activity_ids = {activity.name.lower(): activity.id for activity in ActivityTypeRepository(conn, user_id).all()}
+        self._activity_types = ActivityTypeRepository(conn, user_id)
+        self._activity_ids = {activity.name.lower(): activity.id for activity in self._activity_types.all()}
         self._summary = summary
 
     def add(self, imported: ImportedDay) -> None:
@@ -175,9 +177,10 @@ class _YearImporter:
         except ValidationError as error:
             raise SheetImportError(f'{date}: {parsed.source!r}: {error}') from error
 
-    def _activity_id(self, name: str) -> int:
+    def _activity_id(self, name: str) -> str:
+        """The user's activity type of that name; one they do not have yet (e.g. Tool Management) is added."""
         if name.lower() not in self._activity_ids:
-            raise SheetImportError(f'Activity type {name!r} does not exist')
+            self._activity_ids[name.lower()] = self._activity_types.add(ActivityType(name=name)).id
         return self._activity_ids[name.lower()]
 
     def _count(self, parsed: ParsedEntry) -> None:

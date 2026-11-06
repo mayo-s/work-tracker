@@ -2,17 +2,19 @@
 // saved at once with "Start", or from the file of "Export my data".
 
 import { rootForm } from './account.ts';
-import { api, errorText, type ImportSummary, type SetupImportInput, type SetupInput } from './api.ts';
+import { api, errorText, type ImportSummary, type SetupImportInput, type SetupInput, type WorkMode } from './api.ts';
 import { formatDate, isoDate, type IsoDate } from './dates.ts';
 import { button, el } from './dom.ts';
 import { checkDuration, normalizeOnLeave, type DurationRules } from './duration-input.ts';
 import { field } from './forms.ts';
 import { STATE_NAMES, WEEKDAY_NAMES } from './labels.ts';
+import { hasTickets, workModeChoice, workModeLabel } from './work-modes.ts';
 
 type Weekday = (typeof WEEKDAY_NAMES)[number];
 type Service = { short_name: string; name: string };
 
 export type SetupState = {
+  workMode: WorkMode;
   start: IsoDate;
   opening: string;
   weeklyHours: string;
@@ -27,7 +29,7 @@ export type SetupState = {
 
 export type Step = 'Start' | 'Work schedule' | 'PTO' | 'Services' | 'Summary';
 
-export const STEPS: Step[] = ['Start', 'Work schedule', 'PTO', 'Services', 'Summary'];
+const STEPS: Step[] = ['Start', 'Work schedule', 'PTO', 'Services', 'Summary'];
 const EXPORT_VERSION = 1;  // the newest export file version this app reads
 const OPENING: DurationRules = { signed: true };
 const WEEKLY_HOURS: DurationRules = { limit: 168 * 60 };
@@ -43,9 +45,14 @@ export function proRata(perYear: number, start: IsoDate): number {
   return Math.ceil((perYear * countedMonths(start) * 2) / 12 - 1e-9) / 2;
 }
 
+/** The steps for a way of working: services only with ticket entries. */
+export function setupSteps(mode: WorkMode): Step[] {
+  return hasTickets(mode) ? STEPS : STEPS.filter((step) => step !== 'Services');
+}
+
 export function initialState(today: IsoDate): SetupState {
   return {
-    start: today, opening: '0:00', weeklyHours: '40:00', workDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], state: 'BE',
+    workMode: 'developer', start: today, opening: '0:00', weeklyHours: '40:00', workDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], state: 'BE',
     companyHalfDays: true, perYear: '30', firstYear: String(proRata(30, today)), firstYearChanged: false, services: [],
   };
 }
@@ -75,8 +82,9 @@ export function setupInput(state: SetupState): SetupInput {
     },
     pto_per_year: Number(state.perYear),
     pto_first_year: Number(state.firstYear),
-    services: state.services.filter((service) => service.short_name.trim())
-      .map((service) => ({ short_name: service.short_name.trim(), name: service.name.trim() })),
+    services: hasTickets(state.workMode) ? state.services.filter((service) => service.short_name.trim())
+      .map((service) => ({ short_name: service.short_name.trim(), name: service.name.trim() })) : [],
+    work_mode: state.workMode,
   };
 }
 
@@ -107,19 +115,23 @@ export function importSummary(summary: ImportSummary): [string, string][] {
   ].map(([label, count]) => [String(label), String(count)]);
 }
 
-/** The summary of step 5 as label and value. */
+/** The summary of the last step as label and value. */
 export function summary(state: SetupState): [string, string][] {
   const year = Number(state.start.slice(0, 4));
   const services = setupInput(state).services ?? [];
-  return [
+  const rows: [string, string][] = [
+    ['Way of working', workModeLabel(state.workMode)],
     ['First day', formatDate(state.start)],
     ['Opening balance', state.opening.trim()],
     ['Work schedule', `${state.weeklyHours.trim()} h per week, ${state.workDays.join(', ')}`],
     ['Public holidays',
       (STATE_NAMES[state.state] ?? state.state) + (state.companyHalfDays ? ', 24.12. / 31.12. half days' : '')],
     ['PTO', `${state.firstYear} days in ${year}, ${state.perYear} days from ${year + 1}`],
-    ['Services', services.length ? services.map((service) => service.short_name).join(', ') : 'none yet'],
   ];
+  if (hasTickets(state.workMode)) {
+    rows.push(['Services', services.length ? services.map((service) => service.short_name).join(', ') : 'none yet']);
+  }
+  return rows;
 }
 
 function input(id: string, value: string, onInput: (value: string) => void, attributes = {}): HTMLInputElement {
@@ -150,14 +162,21 @@ function fileImport(onImport: (file: File | undefined) => void): HTMLElement {
     button('Import', () => onImport(file.files?.[0]), { class: null }));
 }
 
-function startStep(state: SetupState, onImport: (file: File | undefined) => void): HTMLElement[] {
+function startStep(state: SetupState, onImport: (file: File | undefined) => void, onMode: () => void): HTMLElement[] {
   const start = input('setup-start', state.start, (value) => (state.start = value), { type: 'date' });
+  const mode = workModeChoice(state.workMode, (chosen) => {
+    state.workMode = chosen;
+    onMode();
+  });
   return [
     el('p', {}, 'The overtime balance counts from the first day on, e.g. the first day at a new job.'),
     el('div', { class: 'setup-fields' },
       field('setup', 'start', 'First day', start),
       field('setup', 'opening', 'Opening balance', duration(input('setup-opening', state.opening, (value) => (state.opening = value)), OPENING),
         'Overtime taken over, e.g. 12:30, -1:45 or 1.5; otherwise 0:00.')),
+    el('p', {}, 'How do you track your work? It decides which fields, report parts and links the pages show; it can be '
+      + 'changed later.'),
+    mode,
     importNote(),
     fileImport(onImport),
   ];
@@ -250,10 +269,10 @@ function progress(names: Step[], step: number): HTMLElement {
 }
 
 function stepContent(
-  state: SetupState, name: Step, draw: () => void, onImport: (file: File | undefined) => void,
+  state: SetupState, name: Step, draw: () => void, onImport: (file: File | undefined) => void, onMode: () => void,
 ): HTMLElement[] {
   const builders: Record<Step, () => HTMLElement[]> = {
-    'Start': () => startStep(state, onImport),
+    'Start': () => startStep(state, onImport, onMode),
     'Work schedule': () => scheduleStep(state),
     'PTO': () => ptoStep(state), 'Services': () => servicesStep(state, draw), 'Summary': () => summaryStep(state),
   };
@@ -275,7 +294,7 @@ export async function renderSetupPage(doc: Document): Promise<void> {
     return;
   }
   const state = initialState(isoDate(new Date()));
-  const names = STEPS;
+  const names = (): Step[] => setupSteps(state.workMode);
   let step = 0;
   const error = el('p', { class: 'field-error', role: 'alert', hidden: true });
   root.addEventListener('input', () => (error.hidden = true));
@@ -284,7 +303,7 @@ export async function renderSetupPage(doc: Document): Promise<void> {
     error.hidden = false;
   };
   const go = (next: number): void => {
-    const problem = next > step ? stepError(state, names[step]!) : null;
+    const problem = next > step ? stepError(state, names()[step]!) : null;
     if (problem) {
       fail(problem);
       return;
@@ -320,14 +339,16 @@ export async function renderSetupPage(doc: Document): Promise<void> {
     if (!state.firstYearChanged) {
       state.firstYear = String(proRata(Number(state.perYear) || 0, state.start));
     }
-    const content = stepContent(state, names[step]!, draw, importFile);
+    const steps = names();
+    const content = stepContent(state, steps[step]!, draw, importFile,
+      () => root.querySelector('.setup-steps')?.replaceWith(progress(names(), step)));  // keeps the focus on the choice
     error.hidden = true;
-    root.replaceChildren(progress(names, step),
+    root.replaceChildren(progress(steps, step),
       el('section', { class: 'card setup-step', 'aria-labelledby': 'setup-step-title' },
-        el('h2', { id: 'setup-step-title' }, `${step + 1}. ${names[step]}`), ...content, error,
+        el('h2', { id: 'setup-step-title' }, `${step + 1}. ${steps[step]}`), ...content, error,
         el('div', { class: 'form-actions' },
           step > 0 ? button('Back', () => go(step - 1), { class: null }) : null,
-          step < names.length - 1 ? button('Next', () => go(step + 1), { class: 'primary' })
+          step < steps.length - 1 ? button('Next', () => go(step + 1), { class: 'primary' })
             : button('Start', startCounting, { class: 'primary' }))));
     root.querySelector<HTMLElement>('.setup-step input, .setup-step select')?.focus();
   };

@@ -11,7 +11,7 @@ from src.modules.storage.users import UserRepository
 from src.tests.users import KLARA, PASSWORD, USER
 
 # The original setup's services and PTO years, which a new database no longer brings along (migration 6), for the
-# first user, who takes over the new database's seeds (activity types, settings, work schedule)
+# first user, who takes over the new database's seeds (settings, work schedule)
 ORIGINAL_SETUP = f"""
     INSERT INTO services (id, user_id, short_name, name) VALUES
         ('{new_id()}', '{USER}', 'O365', 'office-integration-service'),

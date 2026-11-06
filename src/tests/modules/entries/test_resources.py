@@ -37,9 +37,9 @@ def test_create_ticket_entry(client):
 
 
 def test_create_activity_entry(client, ids):
-    body = {'kind': 'activity', 'date': '2026-10-28', 'duration': '4:00', 'activity_type_id': ids['Tool Management']}
+    body = {'kind': 'activity', 'date': '2026-10-28', 'duration': '4:00', 'activity_type_id': ids['Planning']}
     entry = create(client, body)
-    assert (entry['activity_type'], entry['ticket_key'], entry['description']) == ('Tool Management', None, None)
+    assert (entry['activity_type'], entry['ticket_key'], entry['description']) == ('Planning', None, None)
 
 
 def test_service_is_remembered_by_the_ticket(client, ids):

@@ -636,4 +636,10 @@ MIGRATIONS: tuple[Migration, ...] = (
     """
     ALTER TABLE users ADD COLUMN two_factor_new_secret TEXT;
     """,
+    # 24: an empty database drops the original setup's activity types (with Tool Management, TASKS.md 13.2): its first
+    # user starts with the defaults like everyone else
+    """
+    DELETE FROM activity_types WHERE user_id = '00000000-0000-0000-0000-000000000000'
+        AND NOT EXISTS (SELECT 1 FROM days) AND NOT EXISTS (SELECT 1 FROM entries);
+    """,
 )

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
-  countedMonths, importSummary, initialState, parseExportFile, proRata, setupInput, stepError, STEPS, summary,
+  countedMonths, importSummary, initialState, parseExportFile, proRata, setupInput, setupSteps, stepError, summary,
 } from '../ts/setup.ts';
 
 test('the start month counts if starting by the 15th', () => {
@@ -42,8 +42,10 @@ test('steps check their values before going on', () => {
   assert.equal(stepError(state, 'Services'), null);
 });
 
-test('the setup is about the own data only: no login step (root is created before)', () => {
-  assert.deepEqual(STEPS, ['Start', 'Work schedule', 'PTO', 'Services', 'Summary']);
+test('the setup is about the own data only (root is created before); services only with ticket entries', () => {
+  assert.deepEqual(setupSteps('developer'), ['Start', 'Work schedule', 'PTO', 'Services', 'Summary']);
+  assert.deepEqual(setupSteps('tickets'), ['Start', 'Work schedule', 'PTO', 'Services', 'Summary']);
+  assert.deepEqual(setupSteps('activities'), ['Start', 'Work schedule', 'PTO', 'Summary']);
 });
 
 test('setup input leaves out empty services and trims', () => {
@@ -52,12 +54,14 @@ test('setup input leaves out empty services and trims', () => {
   assert.deepEqual(setupInput(state), {
     balance_start: '2027-03-01', opening_balance: '+2:30',
     schedule: { weekly_hours: '40:00', work_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], state: 'BE', company_half_days: true },
-    pto_per_year: 30, pto_first_year: 25, services: [{ short_name: 'AUTH', name: 'auth-service' }],
+    pto_per_year: 30, pto_first_year: 25, services: [{ short_name: 'AUTH', name: 'auth-service' }], work_mode: 'developer',
   });
+  assert.deepEqual(setupInput({ ...state, workMode: 'times' }).services, []);  // entered before choosing times only
 });
 
 test('summary of all steps', () => {
   assert.deepEqual(summary({ ...initialState('2027-03-01'), state: 'HH', companyHalfDays: false }), [
+    ['Way of working', 'Developer'],
     ['First day', '01.03.2027'],
     ['Opening balance', '0:00'],
     ['Work schedule', '40:00 h per week, Mon, Tue, Wed, Thu, Fri'],
@@ -65,6 +69,8 @@ test('summary of all steps', () => {
     ['PTO', '25 days in 2027, 30 days from 2028'],
     ['Services', 'none yet'],
   ]);
+  assert.deepEqual(summary({ ...initialState('2027-03-01'), workMode: 'activities' }).map(([label]) => label),
+    ['Way of working', 'First day', 'Opening balance', 'Work schedule', 'Public holidays', 'PTO']);
 });
 
 test('an export file is read when it has the format and a known version', () => {

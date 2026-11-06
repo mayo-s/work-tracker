@@ -9,7 +9,7 @@ from src.models.base import new_id
 NO_OWNER = '00000000-0000-0000-0000-000000000000'
 PERSONAL_TABLES = ('user_settings', 'services', 'activity_types', 'tickets', 'days', 'entries', 'entry_history',
                    'review_flags', 'pto_years', 'work_schedules')
-DEFAULT_ACTIVITY_TYPES = ('Tool Management', 'Meeting', 'Travel', 'Other')
+DEFAULT_ACTIVITY_TYPES = ('Meeting', 'Travel', 'Planning', 'Documentation', 'Other')
 
 
 def take_over_unowned(conn: sqlite3.Connection, user_id: str) -> None:
