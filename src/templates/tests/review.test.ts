@@ -5,7 +5,7 @@ import { test } from 'node:test';
 
 import type { EntryView, ReviewEntry, TicketView } from '../ts/api.ts';
 import {
-  describeSplit, entryTexts, filterTickets, groupReview, reviewTotal, splitSuggestion,
+  describeSplit, entryTexts, filterEntries, filterTickets, groupReview, reviewTotal, splitSuggestion,
 } from '../ts/review.ts';
 
 const TICKETS: TicketView[] = ['AGA-39', 'AGA-40', 'TNG-4950', 'TNG-5214'].map((key) => ({ key, service_id: null, service: null, entries: 1 }));
@@ -22,16 +22,25 @@ test('filtering tickets by part of the key, case-insensitive', () => {
   assert.equal(filterTickets(TICKETS, 'KP').length, 0);
 });
 
+test('filtering entries by the start of the ticket key or part of the description, ignoring case', () => {
+  const items = [reviewEntry(1, '2026-10-27', 'TNG-4950', [], [], [], [], 'Investigation'),
+    reviewEntry(2, '2026-10-28', 'KP-1951', [], [], [], [], 'documentation')];
+  assert.deepEqual(filterEntries(items, 'tng-49').map((item) => item.entry.id), [1]);
+  assert.deepEqual(filterEntries(items, 'DOC').map((item) => item.entry.id), [2]);
+  assert.deepEqual(filterEntries(items, '1951').map((item) => item.entry.id), []);  // the key from its start only
+  assert.equal(filterEntries(items, '').length, 2);
+});
+
 function reviewEntry(
   id: number, date: string, key: string | null, reasons: ReviewEntry['reasons'], flags: [number, string][] = [],
-  split: ReviewEntry['split_on_import'] = [], suggestion: string[] = [],
+  split: ReviewEntry['split_on_import'] = [], suggestion: string[] = [], description = '',
 ): ReviewEntry {
   return {
     original: null,
     split_on_import: split,
     split_suggestion: suggestion,
     entry: {
-      id, kind: 'ticket', date, duration: '1:00', ticket_key: key, changed: false,
+      id, date, duration: '1:00', ticket_key: key, description, changed: false,
       flags: flags.map(([flagId, detail]) => ({ id: flagId, reason: 'uncertain_ticket', detail })),
     } as ReviewEntry['entry'],
     reasons,
@@ -39,13 +48,15 @@ function reviewEntry(
 }
 
 test('guessed tickets are grouped by key, other reasons stay per entry', () => {
-  const { guessed, others } = groupReview([
+  const { guessed, untyped, others } = groupReview([
     reviewEntry(1, '2024-06-24', 'TNG-4057', ['uncertain_ticket'], [[11, '6,0 #4057 update appointment status']]),
     reviewEntry(2, '2024-06-25', 'TNG-4057', ['uncertain_ticket'], [[12, '6,0 #4057 adapt service']]),
     reviewEntry(3, '2024-07-04', null, ['no_ticket']),
     reviewEntry(4, '2024-07-05', 'TNG-4159', ['uncertain_ticket', 'zero_duration'], [[14, '#4159']]),
     reviewEntry(5, '2024-07-08', 'TNG-4057', ['uncertain_ticket'], [[15, '6,0 #4057 update appointment status']]),
+    reviewEntry(6, '2024-07-09', 'TNG-4200', ['no_activity_type', 'zero_duration']),
   ]);
+  assert.deepEqual(untyped.map((item) => [item.entry.id, item.reasons]), [[6, ['no_activity_type', 'zero_duration']]]);
   assert.deepEqual(guessed.map((group) => [group.key, group.entries.map((entry) => entry.id), group.flagIds]), [
     ['TNG-4057', [1, 2, 5], [11, 12, 15]],
     ['TNG-4159', [4], [14]],

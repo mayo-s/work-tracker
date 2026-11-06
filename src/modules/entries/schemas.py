@@ -54,6 +54,17 @@ class EntrySplitInput(BaseModel):
                                          description='The entry keeps the first ticket; the hours are split evenly')
 
 
+class ActivityTypeAssignment(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    entry_ids: list[str] = Field(min_length=1, description='The entries to change')
+    activity_type_id: str = Field(description='One of the user\'s activity types')
+
+
+class AssignedEntries(BaseModel):
+    assigned: int = Field(description='Number of distinct entries changed')
+
+
 class EntryFlagView(BaseModel):
     id: str
     reason: FlagReason

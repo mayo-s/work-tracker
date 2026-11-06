@@ -490,7 +490,7 @@ the settings at any time:
   page offers no service and its text field says "Words" instead of "Words or ticket key".
 - **Team view**: a member's pages follow the member's way of working, not the viewer's.
 - The four ways of working are kept for now; whether two switches (ticket and service; entries expected) would do
-  instead is reviewed later (TASKS.md L.9).
+  instead is reviewed later (TASKS.md L.10).
 
 ## 6. Import (spreadsheet CSV)
 

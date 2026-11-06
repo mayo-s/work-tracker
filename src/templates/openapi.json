@@ -545,6 +545,55 @@
         }
       }
     },
+    "/api/entries/assign-activity-type": {
+      "post": {
+        "summary": "Give several entries one activity type (e.g. those the review lists without one), each change recorded in the entry's history. An unknown entry (404), an unknown activity type or one that requires a ticket some of the entries lack (409) change nothing.",
+        "operationId": "post__api_entries_assign-activity-type",
+        "description": "",
+        "tags": [
+          "Entries"
+        ],
+        "parameters": [],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignedEntries"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivityTypeAssignment"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/entries/{entry_id}": {
       "delete": {
         "summary": "Delete an entry and its review flags; its history is kept.",
@@ -6712,6 +6761,45 @@
           "ticket_keys"
         ],
         "title": "EntrySplitInput",
+        "type": "object"
+      },
+      "ActivityTypeAssignment": {
+        "additionalProperties": false,
+        "properties": {
+          "entry_ids": {
+            "description": "The entries to change",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Entry Ids",
+            "type": "array"
+          },
+          "activity_type_id": {
+            "description": "One of the user's activity types",
+            "title": "Activity Type Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_ids",
+          "activity_type_id"
+        ],
+        "title": "ActivityTypeAssignment",
+        "type": "object"
+      },
+      "AssignedEntries": {
+        "properties": {
+          "assigned": {
+            "description": "Number of distinct entries changed",
+            "title": "Assigned",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assigned"
+        ],
+        "title": "AssignedEntries",
         "type": "object"
       },
       "ChangeViewList": {

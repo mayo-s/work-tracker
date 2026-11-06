@@ -20,7 +20,9 @@ from src.modules.auth.setup_token import SetupToken
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
 from src.modules.dashboard.resources import DashboardResource
 from src.modules.days.resources import DayCollection, DayItem, DayRange
-from src.modules.entries.resources import EntryCollection, EntryHistory, EntryItem, EntrySplit
+from src.modules.entries.resources import (
+    EntryActivityTypeAssignment, EntryCollection, EntryHistory, EntryItem, EntrySplit,
+)
 from src.modules.pages.resources import (
     STATIC_DIR, Page, PageSettings, Redirect, RegisterPage, RevalidateStaticFiles, StartPage,
 )
@@ -88,6 +90,7 @@ def create_app(
     app.add_route('/api/days/range', DayRange(storage))
     app.add_route('/api/days/{date:dt("%Y-%m-%d")}', DayItem(storage))
     app.add_route('/api/entries', EntryCollection(storage))
+    app.add_route('/api/entries/assign-activity-type', EntryActivityTypeAssignment(storage))
     app.add_route('/api/entries/{entry_id}', EntryItem(storage))
     app.add_route('/api/entries/{entry_id}/history', EntryHistory(storage))
     app.add_route('/api/entries/{entry_id}/split', EntrySplit(storage))
