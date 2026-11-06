@@ -1,11 +1,12 @@
 // Dashboard (start page /): key figures, the overtime balance over time, days off coming up and this year's figures.
 
-import { api, errorText, type DashboardView } from './api.ts';
+import { api, errorText, type DashboardView, type WorkMode } from './api.ts';
 import { formatDate, formatDay, formatMonth, type IsoDate } from './dates.ts';
 import { el, scrolling } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { fullName, viewedMember } from './team-view.ts';
 import { valueClass } from './week.ts';
+import { hasTickets, ownWorkMode } from './work-modes.ts';
 import { formatDays } from './year.ts';
 
 type Point = DashboardView['balance_series']['month'][number];
@@ -266,7 +267,8 @@ function comingUpSection(items: ComingUp[]): HTMLElement {
       : el('p', {}, 'Nothing planned.'));
 }
 
-function yearSection(figures: DashboardView['this_year']): HTMLElement {
+/** This year's figures; "Coding hours" only for developers, "Top services" only with ticket entries. */
+function yearSection(figures: DashboardView['this_year'], mode: WorkMode): HTMLElement {
   const row = (label: string, value: string): HTMLElement =>
     el('tr', {}, el('td', {}, label), el('td', { class: 'num' }, value));
   const top = figures.top_services.map((service) => `${service.service ?? 'No service'} ${service.duration}`).join(', ');
@@ -277,8 +279,8 @@ function yearSection(figures: DashboardView['this_year']): HTMLElement {
       row('Average per day worked', figures.average_per_day_worked),
       row('Sick days', formatDays(figures.sick_days)),
       row('Overtime off', `${figures.overtime_off_days} days`),
-      row('Coding hours', figures.coding),
-      row('Top services', top || '—'))));
+      mode === 'developer' ? row('Coding hours', figures.coding) : null,
+      hasTickets(mode) ? row('Top services', top || '—') : null)));
 }
 
 type Choice = [string, string];  // user id, name
@@ -318,10 +320,10 @@ export async function renderDashboardPage(doc: Document): Promise<void> {
   memberChooser(member).then((chooser) => chooser && doc.querySelector('.week-header')?.append(chooser), () => undefined);
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
-    const data = await api.dashboard(member);
+    const [data, mode] = await Promise.all([api.dashboard(member), ownWorkMode(member)]);
     doc.querySelector('#dashboard-today')!.textContent = `Today, ${formatDate(data.today)} · counted up to today`;
     root.replaceChildren(keyFigures(data), balanceSection(data),
-      el('div', { class: 'dashboard-columns' }, comingUpSection(data.coming_up), yearSection(data.this_year)));
+      el('div', { class: 'dashboard-columns' }, comingUpSection(data.coming_up), yearSection(data.this_year, mode)));
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },
       errorText(error, 'The dashboard could not be loaded.')));

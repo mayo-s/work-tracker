@@ -1,6 +1,6 @@
 // The ways of working (SPEC 5.11): what a user tracks, and the choice of it in the setup and the settings.
 
-import type { WorkMode } from './api.ts';
+import { api, type WorkMode } from './api.ts';
 import { el } from './dom.ts';
 
 /** Name and meaning of each way of working. */
@@ -18,6 +18,33 @@ export function workModeLabel(mode: WorkMode): string {
 /** Whether entries can be ticket entries (and services matter). */
 export function hasTickets(mode: WorkMode): boolean {
   return mode === 'developer' || mode === 'tickets';
+}
+
+/** The way of working of the user; in the team view (a `member`) the pages stay as they were (TASKS.md 13.6). */
+export async function ownWorkMode(member: string | null): Promise<WorkMode> {
+  return member ? 'developer' : (await api.settings()).work_mode;
+}
+
+/** A part of the work report (month, year); "Ticket work" is all ticket work, in place of "Coding work" and "Other
+ * ticket work". */
+export type WorkPart = 'coding' | 'other_work' | 'ticket_work' | 'activities';
+
+/** The work of a period (month or year report) as lists: by service, by activity type. */
+type Work = { coding: unknown[]; other_work: unknown[]; activities: unknown[] };
+
+/** The parts of the work report: those of the way of working and those with data in the period (SPEC 5.11). Without
+ * coding, ticket work is one part, unless coding work was recorded in the period. */
+export function workParts(mode: WorkMode, work: Work): WorkPart[] {
+  const parts: WorkPart[] = [];
+  if (mode === 'developer' || work.coding.length) {
+    parts.push('coding', 'other_work');
+  } else if (hasTickets(mode) || work.other_work.length) {
+    parts.push('ticket_work');
+  }
+  if (mode !== 'times' || work.activities.length) {
+    parts.push('activities');
+  }
+  return parts;
 }
 
 /** Radio buttons of the ways of working; `onChoose` gets the chosen one and its name. */

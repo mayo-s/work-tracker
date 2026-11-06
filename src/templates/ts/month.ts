@@ -1,12 +1,13 @@
-// Month report (/month): totals, days off and the monthly work report: coding and other ticket work by service and
-// ticket, activities by type.
+// Month report (/month): totals, days off and the monthly work report: coding and other ticket work (or all ticket
+// work, without coding) by service and ticket, activities by type; its parts follow the way of working.
 
-import { api, errorText, type DayType, type MonthReport } from './api.ts';
+import { api, errorText, type DayType, type MonthReport, type WorkMode } from './api.ts';
 import { formatMonth, isoDate, isoMonth, isValidMonth, shiftMonth, type IsoDate } from './dates.ts';
 import { el, scrolling } from './dom.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
 import { entriesOfWorked, periodHeader, periodSummary } from './week.ts';
+import { ownWorkMode, workParts, type WorkPart } from './work-modes.ts';
 
 type ServiceWork = MonthReport['coding'][number];
 type ActivityWork = MonthReport['activities'][number];
@@ -53,7 +54,7 @@ function texts(items: string[]): HTMLElement {
     : el('span', { class: 'muted' }, '—');
 }
 
-/** A part of the work report with its total: "Coding work", "Other ticket work" or "Activities". */
+/** A part of the work report with its total: "Coding work", "Other ticket work", "Ticket work" or "Activities". */
 function workSection(title: string, total: string, content: HTMLElement | null, empty: string): HTMLElement {
   return el('section', { class: 'work-report' },
     el('div', { class: 'work-service-header' }, el('h2', {}, title),
@@ -74,16 +75,26 @@ function activitiesContent(activities: ActivityWork[]): HTMLElement | null {
       el('td', { class: 'num' }, activity.duration)))))) : null;
 }
 
-function workReport(report: MonthReport): HTMLElement[] {
+function workSectionOf(part: WorkPart, report: MonthReport): HTMLElement {
   const readOnly = Boolean(report.visible_from);
-  return [
-    workSection('Coding work', report.coding_total, servicesContent(report.coding, readOnly),
-      'No coding work recorded in this month.'),
-    workSection('Other ticket work', report.other_work_total, servicesContent(report.other_work, readOnly),
-      'No other ticket work recorded in this month.'),
-    workSection('Activities', report.activities_total, activitiesContent(report.activities),
-      'No activities recorded in this month.'),
-  ];
+  switch (part) {
+    case 'coding':
+      return workSection('Coding work', report.coding_total, servicesContent(report.coding, readOnly),
+        'No coding work recorded in this month.');
+    case 'other_work':
+      return workSection('Other ticket work', report.other_work_total, servicesContent(report.other_work, readOnly),
+        'No other ticket work recorded in this month.');
+    case 'ticket_work':  // no coding work in the month: all ticket work is other ticket work
+      return workSection('Ticket work', report.other_work_total, servicesContent(report.other_work, readOnly),
+        'No ticket work recorded in this month.');
+    case 'activities':
+      return workSection('Activities', report.activities_total, activitiesContent(report.activities),
+        'No activities recorded in this month.');
+  }
+}
+
+function workReport(report: MonthReport, mode: WorkMode): HTMLElement[] {
+  return workParts(mode, report).map((part) => workSectionOf(part, report));
 }
 
 export async function renderMonthPage(doc: Document): Promise<void> {
@@ -99,9 +110,12 @@ export async function renderMonthPage(doc: Document): Promise<void> {
   });
   root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
   try {
-    const report = await api.monthReport(month, viewedMember(doc.location.search));
-    root.replaceChildren(periodSummary(report.totals, entriesOfWorked(report.entries, report.totals), daysOff(report)),
-      ...workReport(report));
+    const member = viewedMember(doc.location.search);
+    const [report, mode] = await Promise.all([api.monthReport(month, member), ownWorkMode(member)]);
+    const parts = workReport(report, mode);
+    root.replaceChildren(
+      periodSummary(report.totals, parts.length ? entriesOfWorked(report.entries, report.totals) : null, daysOff(report)),
+      ...parts);
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },
       errorText(error, 'The month could not be loaded.')));
