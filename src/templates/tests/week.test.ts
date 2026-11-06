@@ -47,12 +47,12 @@ test('days off of the schedule only when something was recorded', () => {
 
 test('warning for past work days without entries', () => {
   const today = '2026-10-28';
-  assert.ok(needsWarning(day('2026-10-27', 'Tue'), [], today, 'developer'));
-  assert.ok(!needsWarning(day('2026-10-27', 'Tue'), [entry('2026-10-27')], today, 'developer'));
-  assert.ok(!needsWarning(day('2026-10-28', 'Wed'), [], today, 'developer'), 'not today');
-  assert.ok(!needsWarning(day('2026-10-29', 'Thu'), [], today, 'developer'), 'not in the future');
-  assert.ok(!needsWarning(day('2026-10-27', 'Tue', { day_type: 'pto' }), [], today, 'developer'), 'not on days off');
-  assert.ok(!needsWarning(day('2026-10-25', 'Sun', { work_day: false }), [], today, 'developer'), 'not on days off of the schedule');
+  assert.ok(needsWarning(day('2026-10-27', 'Tue'), [], today, 'tickets'));
+  assert.ok(!needsWarning(day('2026-10-27', 'Tue'), [entry('2026-10-27')], today, 'tickets'));
+  assert.ok(!needsWarning(day('2026-10-28', 'Wed'), [], today, 'tickets'), 'not today');
+  assert.ok(!needsWarning(day('2026-10-29', 'Thu'), [], today, 'tickets'), 'not in the future');
+  assert.ok(!needsWarning(day('2026-10-27', 'Tue', { day_type: 'pto' }), [], today, 'tickets'), 'not on days off');
+  assert.ok(!needsWarning(day('2026-10-25', 'Sun', { work_day: false }), [], today, 'tickets'), 'not on days off of the schedule');
   assert.ok(needsWarning(day('2026-10-27', 'Tue'), [], today, 'activities'));
   assert.ok(!needsWarning(day('2026-10-27', 'Tue'), [], today, 'times'), 'not in times only');
 });
@@ -88,8 +88,8 @@ test('entry to edit from the address, only within the shown week', () => {
 test('a work day of the schedule may be any weekday', () => {
   const days = [day('2026-10-30', 'Fri', { work_day: false, target: '0:00' }), day('2026-10-31', 'Sat')];
   assert.deepEqual(visibleDays(days, new Map()).map((item) => item.weekday), ['Sat']);
-  assert.ok(!needsWarning(days[0]!, [], '2026-11-02', 'developer'));
-  assert.ok(needsWarning(days[1]!, [], '2026-11-02', 'developer'));
+  assert.ok(!needsWarning(days[0]!, [], '2026-11-02', 'tickets'));
+  assert.ok(needsWarning(days[1]!, [], '2026-11-02', 'tickets'));
 });
 
 test('the key of the button that opened a form', () => {

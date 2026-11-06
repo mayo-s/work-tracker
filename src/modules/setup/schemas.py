@@ -27,8 +27,8 @@ class SetupInput(BaseModel):
     pto_per_year: Days = Field(default=Decimal(30), description='PTO days per year, entered for the year after the first')
     pto_first_year: Days = Field(description='PTO days of the first year, e.g. pro rata')
     services: list[ServiceInput] = Field(default=[], description='Services of the job; more can be added later')
-    work_mode: WorkMode = Field(default='developer', description='Way of working: developer, tickets (no coding), '
-                                'activities (only) or times (only)')
+    work_mode: WorkMode = 'tickets'
+    coding: bool = Field(default=True, description='With tickets: add the activity type Coding, which requires a ticket')
 
     def settings(self) -> Settings:
         return Settings(balance_start=self.balance_start, opening_balance=parse_signed_duration(self.opening_balance),

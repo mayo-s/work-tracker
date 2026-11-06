@@ -386,7 +386,7 @@ export interface paths {
         get: operations["get__api_setup"];
         put?: never;
         /**
-         * Set up the logged-in user's data at once: start day, opening balance, way of working, work schedule, PTO years and services; a developer gets the activity type Coding too.
+         * Set up the logged-in user's data at once: start day, opening balance, way of working, work schedule, PTO years and services; with tickets, the activity type Coding too if asked for.
          * @description The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything.
          */
         post: operations["post__api_setup"];
@@ -1964,7 +1964,7 @@ export interface components {
              * @description The way of working of the user the report is of (in the team view the member's): it shapes the page
              * @enum {string}
              */
-            work_mode: "developer" | "tickets" | "activities" | "times";
+            work_mode: "tickets" | "activities" | "times";
             /**
              * Visible From
              * @description Team view: the first day shown (the member joined the team)
@@ -2357,7 +2357,7 @@ export interface components {
              * @description The way of working of the user the report is of (in the team view the member's): it shapes the page
              * @enum {string}
              */
-            work_mode: "developer" | "tickets" | "activities" | "times";
+            work_mode: "tickets" | "activities" | "times";
             /**
              * Visible From
              * @description Team view: the first day shown (the member joined the team)
@@ -2402,7 +2402,7 @@ export interface components {
              * @description The way of working of the user the report is of (in the team view the member's): it shapes the page
              * @enum {string}
              */
-            work_mode: "developer" | "tickets" | "activities" | "times";
+            work_mode: "tickets" | "activities" | "times";
             /**
              * Visible From
              * @description Team view: the first day shown (the member joined the team)
@@ -2457,7 +2457,7 @@ export interface components {
              * @description The way of working of the user the report is of (in the team view the member's): it shapes the page
              * @enum {string}
              */
-            work_mode: "developer" | "tickets" | "activities" | "times";
+            work_mode: "tickets" | "activities" | "times";
             /**
              * Visible From
              * @description Team view: the first day shown (the member joined the team)
@@ -2693,11 +2693,17 @@ export interface components {
             services?: components["schemas"]["ServiceInput"][];
             /**
              * Work Mode
-             * @description Way of working: developer, tickets (no coding), activities (only) or times (only)
-             * @default developer
+             * @description Way of working: tickets (and activities), activities (only) or times (only); it shapes the pages, not the data
+             * @default tickets
              * @enum {string}
              */
-            work_mode?: "developer" | "tickets" | "activities" | "times";
+            work_mode?: "tickets" | "activities" | "times";
+            /**
+             * Coding
+             * @description With tickets: add the activity type Coding, which requires a ticket
+             * @default true
+             */
+            coding?: boolean;
         };
         /** SetupImportInput */
         SetupImportInput: {
@@ -2746,10 +2752,10 @@ export interface components {
             opening_balance: string;
             /**
              * Work Mode
-             * @description Way of working: developer, tickets (no coding), activities (only) or times (only); it shapes the pages, not the data
+             * @description Way of working: tickets (and activities), activities (only) or times (only); it shapes the pages, not the data
              * @enum {string}
              */
-            work_mode: "developer" | "tickets" | "activities" | "times";
+            work_mode: "tickets" | "activities" | "times";
         };
         /** ThemeView */
         ThemeView: {
@@ -3677,11 +3683,11 @@ export interface components {
             opening_balance?: number;
             /**
              * Work Mode
-             * @description Way of working: developer, tickets (no coding), activities (only) or times (only); it shapes the pages, not the data
-             * @default developer
+             * @description Way of working: tickets (and activities), activities (only) or times (only); it shapes the pages, not the data
+             * @default tickets
              * @enum {string}
              */
-            work_mode?: "developer" | "tickets" | "activities" | "times";
+            work_mode?: "tickets" | "activities" | "times";
         };
         /**
          * Ticket

@@ -86,7 +86,7 @@ def test_the_pages_follow_the_members_way_of_working(app, hans, ids):
     modes = [app.simulate_get(path, cookies=hans, params=member).json['work_mode'] for path in (
         '/api/dashboard', '/api/reports/weeks/2026-W45', '/api/reports/months/2026-11', '/api/reports/years/2026')]
     assert modes == ['activities'] * 4
-    assert app.simulate_get('/api/dashboard', cookies=hans).json['work_mode'] == 'developer'  # Hans's own
+    assert app.simulate_get('/api/dashboard', cookies=hans).json['work_mode'] == 'tickets'  # Hans's own
 
 
 def test_dashboard_without_review_items(app, hans, ids):

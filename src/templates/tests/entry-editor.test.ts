@@ -19,7 +19,7 @@ function values(changes: Partial<EntryFormValues> = {}): EntryFormValues {
 }
 
 test('ticket and service per way of working; types that require a ticket only with them', () => {
-  assert.deepEqual(entryForm('developer', null, TYPES), { ticket: true, activityTypes: TYPES });
+  assert.deepEqual(entryForm('tickets', null, TYPES), { ticket: true, activityTypes: TYPES });
   assert.deepEqual(entryForm('activities', null, TYPES), { ticket: false, activityTypes: [MEETING] });
   assert.deepEqual(entryForm('activities', REVIEW, TYPES), { ticket: true, activityTypes: TYPES });  // keeps its ticket
 });

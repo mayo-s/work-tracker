@@ -1086,6 +1086,10 @@ button.button-danger {
   width: auto;
 }
 
+.checkbox-field[hidden] {
+  display: none;
+}
+
 .list-form select {
   flex: 1 1 10rem;
   width: auto;

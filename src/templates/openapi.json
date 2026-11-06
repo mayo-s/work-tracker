@@ -1711,7 +1711,7 @@
         }
       },
       "post": {
-        "summary": "Set up the logged-in user's data at once: start day, opening balance, way of working, work schedule, PTO years and services; a developer gets the activity type Coding too.",
+        "summary": "Set up the logged-in user's data at once: start day, opening balance, way of working, work schedule, PTO years and services; with tickets, the activity type Coding too if asked for.",
         "operationId": "post__api_setup",
         "description": "The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything.",
         "tags": [
@@ -6142,7 +6142,6 @@
           "work_mode": {
             "description": "The way of working of the user the report is of (in the team view the member's): it shapes the page",
             "enum": [
-              "developer",
               "tickets",
               "activities",
               "times"
@@ -6972,7 +6971,6 @@
           "work_mode": {
             "description": "The way of working of the user the report is of (in the team view the member's): it shapes the page",
             "enum": [
-              "developer",
               "tickets",
               "activities",
               "times"
@@ -7052,7 +7050,6 @@
           "work_mode": {
             "description": "The way of working of the user the report is of (in the team view the member's): it shapes the page",
             "enum": [
-              "developer",
               "tickets",
               "activities",
               "times"
@@ -7167,7 +7164,6 @@
           "work_mode": {
             "description": "The way of working of the user the report is of (in the team view the member's): it shapes the page",
             "enum": [
-              "developer",
               "tickets",
               "activities",
               "times"
@@ -7657,16 +7653,21 @@
             "type": "array"
           },
           "work_mode": {
-            "default": "developer",
-            "description": "Way of working: developer, tickets (no coding), activities (only) or times (only)",
+            "default": "tickets",
+            "description": "Way of working: tickets (and activities), activities (only) or times (only); it shapes the pages, not the data",
             "enum": [
-              "developer",
               "tickets",
               "activities",
               "times"
             ],
             "title": "Work Mode",
             "type": "string"
+          },
+          "coding": {
+            "default": true,
+            "description": "With tickets: add the activity type Coding, which requires a ticket",
+            "title": "Coding",
+            "type": "boolean"
           }
         },
         "required": [
@@ -7767,9 +7768,8 @@
             "type": "string"
           },
           "work_mode": {
-            "description": "Way of working: developer, tickets (no coding), activities (only) or times (only); it shapes the pages, not the data",
+            "description": "Way of working: tickets (and activities), activities (only) or times (only); it shapes the pages, not the data",
             "enum": [
-              "developer",
               "tickets",
               "activities",
               "times"
@@ -9778,10 +9778,9 @@
             "type": "integer"
           },
           "work_mode": {
-            "default": "developer",
-            "description": "Way of working: developer, tickets (no coding), activities (only) or times (only); it shapes the pages, not the data",
+            "default": "tickets",
+            "description": "Way of working: tickets (and activities), activities (only) or times (only); it shapes the pages, not the data",
             "enum": [
-              "developer",
               "tickets",
               "activities",
               "times"

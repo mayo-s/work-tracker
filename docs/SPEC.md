@@ -144,7 +144,7 @@ time (meetings, breaks etc. are not logged). Every entry is an activity, optiona
 | Name            | e.g. Meeting                                                       |
 | Ticket required | An entry of this type needs a ticket (e.g. Coding); off by default |
 
-Initially **Coding** (ticket required; only in the way of working Developer, 5.11), **Meeting**, **Travel**,
+Initially **Coding** (ticket required; offered in the setup with tickets, 5.11), **Meeting**, **Travel**,
 **Planning**, **Documentation** and **Other**.
 
 ### 4.3 Services (managed list)
@@ -468,20 +468,21 @@ corners, one accent color. Warnings are the only loud element.
 Not everyone who tracks time is a developer. Each user chooses a **way of working** in the setup and can change it in
 the settings at any time:
 
-| Way of working     | For                                   | Ticket and service | Coding (setup) | Warning: day without entries |
-|--------------------|---------------------------------------|--------------------|----------------|------------------------------|
-| Developer          | developers (as before)                | yes                | yes            | yes                          |
-| Tickets, no coding | product owners, QA, design            | yes                | no             | yes                          |
-| Activities only    | HR, office, sales                     | no                 | no             | yes                          |
-| Times only         | start, end and break; entries if any  | no                 | no             | no                           |
+| Way of working         | For                                                 | Ticket and service | Warning: day without entries |
+|------------------------|-----------------------------------------------------|--------------------|------------------------------|
+| Tickets and activities | developers, product owners, QA, design              | yes                | yes                          |
+| Activities only        | HR, office, sales                                   | no                 | yes                          |
+| Times only             | start, end and break; entries if any                | no                 | no                           |
 
 - It only shapes the pages and the default activity types of the setup: the data model and the API stay the same and
   accept every entry. Changing it never deletes or changes records; what was recorded before stays visible and
-  editable where it appears. The activity type Coding (4.2) is a default only for Developer; the others are the same
-  for all.
-- Existing users and an export file without it (5.8) get **Developer**; the setup preselects Developer. API
-  `/api/settings`: `work_mode`, one of `developer`, `tickets`, `activities`, `times`.
-- **Setup**: the way of working is chosen on the start step. The step "Services" only comes with ticket and service.
+  editable where it appears. The default activity types (4.2) are the same for all; with tickets, the setup also
+  offers Coding (checked).
+- Existing users and an export file without it (5.8) get **Tickets and activities**, and so do the former "Developer"
+  and "Tickets, no coding" (they differed only in Coding at the setup; TASKS.md L.10). API `/api/settings`:
+  `work_mode`, one of `tickets`, `activities`, `times` (a stored or imported `developer` reads as `tickets`).
+- **Setup**: the way of working is chosen on the start step, preselected "Tickets and activities", with "Add the
+  activity type Coding". The step "Services" only comes with ticket and service.
 - **Entry form** (week): the activity type comes first; ticket and service only with ticket and service, and without
   them the activity types that require a ticket are not offered. An entry that has a ticket still shows it.
 - **Month and year report**: "Times only" shows the work report only when the period holds entries.
@@ -489,8 +490,6 @@ the settings at any time:
 - **Search**: the search field in the navigation for every way of working; without ticket and service the search
   page offers no service and its text field says "Words" instead of "Words or ticket key".
 - **Team view**: a member's pages follow the member's way of working, not the viewer's.
-- The four ways of working are kept for now; whether two switches (ticket and service; entries expected) would do
-  instead is reviewed later (TASKS.md L.10).
 
 ## 6. Import (spreadsheet CSV)
 
