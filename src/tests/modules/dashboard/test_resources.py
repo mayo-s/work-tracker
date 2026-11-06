@@ -5,6 +5,7 @@ from falcon import testing
 
 from src.app import create_app
 from src.modules.storage.settings import load_settings, save_settings
+from src.tests.ids import CODING
 from src.tests.users import USER
 
 TODAY = dt.date(2026, 10, 28)  # a Wednesday
@@ -30,7 +31,7 @@ def dashboard(client):
 def test_key_figures(client):
     work(client, '2026-10-26', end='17:30')  # 9:00, +1:00
     work(client, '2026-10-27')  # 8:00
-    body = {'kind': 'ticket', 'date': '2026-10-27', 'duration': '0:00', 'ticket_key': 'ENGINE-597'}
+    body = {'activity_type_id': CODING, 'date': '2026-10-27', 'duration': '0:00', 'ticket_key': 'ENGINE-597'}
     client.simulate_post('/api/entries', json=body)  # for review: a ticket without service and an entry with 0:00
     result = dashboard(client)
     # 01.09.–28.10.: 42 weekdays, 40 of them without times (today too): 2:00 − 40 × 8:00 + 1:00
@@ -74,7 +75,7 @@ def test_this_year(client):
     work(client, '2026-10-26')
     client.simulate_put('/api/days/2026-10-05', json={'day_type': 'sick'})
     client.simulate_put('/api/days/2026-10-06', json={'day_type': 'sick_half', 'start': '08:00', 'end': '12:00'})
-    body = {'kind': 'ticket', 'date': '2026-10-26', 'duration': '3:00', 'ticket_key': 'ENGINE-597', 'coding': True}
+    body = {'activity_type_id': CODING, 'date': '2026-10-26', 'duration': '3:00', 'ticket_key': 'ENGINE-597'}
     client.simulate_post('/api/entries', json=body)
     figures = dashboard(client)['this_year']
     assert (figures['year'], figures['days_worked'], figures['sick_days']) == (2026, 2, 1.5)

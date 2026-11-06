@@ -10,10 +10,10 @@ from collections.abc import Callable, Iterable
 from pydantic import TypeAdapter
 
 from src.models.base import new_id
-from src.models.entries import ActivityEntry, Entry, TicketEntry
+from src.models.entries import Entry
 from src.models.history import EntryChange, HistoryAction
 from src.models.review import FlagReason, ReviewFlag
-from src.modules.storage.dynamodb.catalog import activity_type_key
+from src.modules.storage.dynamodb.catalog import ACTIVITY_TYPE, activity_type_key
 from src.modules.storage.dynamodb.days import day_key
 from src.modules.storage.dynamodb.flags import add_flag, all_flags, delete_flags, flag_key
 from src.modules.storage.dynamodb.keys import user_partition
@@ -43,13 +43,14 @@ def _entry(item: Item) -> Entry:
     return _ENTRY.validate_python(attributes(item))
 
 
-def _incomplete(entry: Entry) -> bool:
-    """0:00, or a ticket entry without a ticket."""
-    return entry.duration == 0 or (isinstance(entry, TicketEntry) and entry.ticket_key is None)
+def _incomplete(entry: Entry, ticket_required: set[str]) -> bool:
+    """0:00, no activity type, or no ticket though the activity type requires one."""
+    return (entry.duration == 0 or entry.activity_type_id is None
+            or (entry.ticket_key is None and entry.activity_type_id in ticket_required))
 
 
 class DynamoEntries(EntryRules):
-    """Ticket and activity entries of one user; every change is written to the entry's history. `clock` provides the
+    """Task entries of one user; every change is written to the entry's history. `clock` provides the
     history timestamps."""
 
     def __init__(self, unit: Unit, user_id: str, clock: Callable[[], dt.datetime] | None = None) -> None:
@@ -70,9 +71,16 @@ class DynamoEntries(EntryRules):
         return [_entry(item) for item in items]
 
     def for_review(self) -> list[Entry]:
-        """Entries with 0:00, ticket entries without ticket and flagged entries, by date."""
+        """Entries with 0:00, without activity type, without the ticket their activity type requires, and flagged
+        entries, by date."""
         flagged = {flag.entry_id for flag in all_flags(self._unit, self._pk) if flag.entry_id is not None}
-        return [entry for entry in self.between(dt.date.min, dt.date.max) if entry.id in flagged or _incomplete(entry)]
+        required = self._ticket_required()
+        return [entry for entry in self.between(dt.date.min, dt.date.max)
+                if entry.id in flagged or _incomplete(entry, required)]
+
+    def _ticket_required(self) -> set[str]:
+        """The ids of the activity types that require a ticket."""
+        return {item['id'] for item in self._unit.query_prefix(self._pk, ACTIVITY_TYPE) if item.get('ticket_required')}
 
     def restore(self, entry: Entry) -> Entry:
         """Store an entry without a history line (its history comes along, e.g. from an export file); its ticket is
@@ -139,10 +147,10 @@ class DynamoEntries(EntryRules):
         return [line for line in lines if line['entry_id'] in ids]
 
     def _check_references(self, entry: Entry) -> None:
-        """A ticket entry's ticket is created if needed; an activity entry needs one of the user's activity types."""
-        if isinstance(entry, TicketEntry) and entry.ticket_key:
+        """An entry's ticket is created if needed; its activity type is one of the user's."""
+        if entry.ticket_key:
             ensure_ticket(self._unit, self._pk, entry.ticket_key)
-        if isinstance(entry, ActivityEntry) and not self._unit.get(self._pk, activity_type_key(entry.activity_type_id)):
+        if entry.activity_type_id is not None and not self._unit.get(self._pk, activity_type_key(entry.activity_type_id)):
             raise ConflictError(f'Cannot save entry: unknown activity type {entry.activity_type_id}')
 
     def _replace(self, old: Entry, entry: Entry) -> None:

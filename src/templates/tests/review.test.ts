@@ -75,10 +75,8 @@ test('the split of the import is kept per original line', () => {
   assert.equal(describeSplit(split), 'TNG-4138 3:00 · TNG-4139 3:00');
 });
 
-test('descriptions and notes of entries, each once ignoring case', () => {
-  const entries = [
-    { kind: 'ticket', description: 'PR Review' }, { kind: 'ticket', description: '' }, { kind: 'ticket', description: 'pr review' },
-    { kind: 'activity', note: 'Sprint planning' }, { kind: 'ticket', description: ' adapt tests ' },
-  ] as EntryView[];
+test('descriptions of entries, each once ignoring case', () => {
+  const entries = ['PR Review', '', 'pr review', 'Sprint planning', ' adapt tests '].map((description) => ({ description })) as
+    EntryView[];
   assert.deepEqual(entryTexts(entries), ['PR Review', 'Sprint planning', 'adapt tests']);
 });

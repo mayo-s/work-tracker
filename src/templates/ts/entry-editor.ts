@@ -1,21 +1,20 @@
-// Form to add or change a task entry: a ticket entry or an activity entry.
+// Form to add or change a task entry: an activity, optionally on a ticket (SPEC 4).
 
 import {
   api, ApiError, type ActivityType, type EntryInput, type EntryView, type ServiceChoice, type WorkMode,
 } from './api.ts';
 import { el } from './dom.ts';
 import { clockMinutes, normalizeOnLeave, settleDuration, type DurationRules } from './duration-input.ts';
-import { field, formFooter, submit } from './forms.ts';
+import { field, formFooter, showErrors, submit } from './forms.ts';
 import { serviceOptions } from './lists.ts';
+import { hasTickets } from './work-modes.ts';
 
-export type EntryKind = 'ticket' | 'activity';
 export type EntryFormValues = {
-  kind: EntryKind; duration: string; ticket_key: string; service_id: string; description: string; coding: boolean;
-  activity_type_id: string; note: string;
+  activity_type_id: string; duration: string; ticket_key: string; service_id: string; description: string;
 };
 
 const PREFIX = 'entry';
-const FIELDS = ['duration', 'ticket_key', 'service_id', 'description', 'coding', 'activity_type_id', 'note'] as const;
+const FIELDS = ['activity_type_id', 'duration', 'ticket_key', 'service_id', 'description'] as const;
 
 export type EntryEditorOptions = {
   date: string;
@@ -33,46 +32,49 @@ export function entryRules(dayStart: string | null): DurationRules {
   return { limit: 24 * 60 - (clockMinutes(dayStart ?? '') ?? 0), quarter: true };
 }
 
-/** What the form offers in a way of working (SPEC 5.11): the Ticket / Activity choice, the Coding checkbox and the
- * kind of a new entry. An existing entry the way of working does not record (e.g. a ticket entry in "Activities only",
- * a coding entry in "Tickets, no coding") opens in the full form, so nothing of it is lost. */
-export function entryForm(mode: WorkMode, entry: EntryView | null): { choice: boolean; coding: boolean; kind: EntryKind } {
-  const kind = mode === 'activities' ? 'activity' : 'ticket';
-  const fits = mode === 'developer' || (mode === 'tickets' && !entry?.coding)
-    || (mode === 'activities' && entry?.kind !== 'ticket');
-  if (entry && !fits) {
-    return { choice: true, coding: true, kind };
-  }
-  return { choice: mode !== 'activities', coding: mode === 'developer', kind };
+/** What the form offers in a way of working (SPEC 5.11): ticket and service, and the activity types to choose. Without
+ * ticket and service, types that require a ticket are left out; an entry that has a ticket (or such a type) still
+ * shows them, so nothing of it is lost. */
+export function entryForm(mode: WorkMode, entry: EntryView | null, activityTypes: ActivityType[]): {
+  ticket: boolean; activityTypes: ActivityType[];
+} {
+  const ticket = hasTickets(mode) || Boolean(entry?.ticket_key);
+  return {
+    ticket,
+    activityTypes: activityTypes.filter((type) => ticket || !type.ticket_required || type.id === entry?.activity_type_id),
+  };
 }
 
-export function entryFormValues(entry: EntryView | null, newKind: EntryKind = 'ticket'): EntryFormValues {
+/** A new entry starts with the first activity type that requires a ticket (e.g. Coding) where tickets are entered. */
+export function entryFormValues(entry: EntryView | null, offered: ActivityType[] = [], ticket = false): EntryFormValues {
+  const first = ticket ? offered.find((type) => type.ticket_required)?.id : undefined;
   return {
-    kind: entry?.kind ?? newKind,
+    activity_type_id: entry ? entry.activity_type_id ?? '' : first ?? '',
     duration: entry?.duration ?? '',
     ticket_key: entry?.ticket_key ?? '',
-    service_id: entry?.service_id != null ? String(entry.service_id) : '',
+    service_id: entry?.service_id ?? '',
     description: entry?.description ?? '',
-    coding: entry?.coding ?? false,
-    activity_type_id: entry?.activity_type_id != null ? String(entry.activity_type_id) : '',
-    note: entry?.note ?? '',
   };
 }
 
-/** The API input; `service_id` only if the service was changed (it applies to all entries of the ticket). */
-export function entryInput(values: EntryFormValues, date: string, serviceChanged: boolean): EntryInput {
-  const duration = values.duration.trim();
-  if (values.kind === 'activity') {
-    return {
-      kind: 'activity', date, duration, activity_type_id: values.activity_type_id || null,
-      note: values.note.trim(),
-    };
+/** What has to be fixed before saving, as [field, message]: an activity type, and the ticket the type requires. */
+export function entryProblem(values: EntryFormValues, activityTypes: ActivityType[]): [string, string] | null {
+  const type = activityTypes.find((item) => item.id === values.activity_type_id);
+  if (!type) {
+    return ['activity_type_id', 'Choose an activity type.'];
   }
+  return type.ticket_required && !values.ticket_key.trim() ? ['ticket_key', `${type.name} needs a ticket.`] : null;
+}
+
+/** The API input; `service_id` only with a ticket and if the service was changed (it applies to all the ticket's
+ * entries). */
+export function entryInput(values: EntryFormValues, date: string, serviceChanged: boolean): EntryInput {
+  const ticketKey = values.ticket_key.trim().toUpperCase() || null;
   const input: EntryInput = {
-    kind: 'ticket', date, duration, ticket_key: values.ticket_key.trim().toUpperCase() || null,
-    description: values.description.trim(), coding: values.coding,
+    date, activity_type_id: values.activity_type_id, duration: values.duration.trim(), ticket_key: ticketKey,
+    description: values.description.trim(),
   };
-  if (serviceChanged) {
+  if (ticketKey && serviceChanged) {
     input.service_id = values.service_id || null;
   }
   return input;
@@ -93,26 +95,13 @@ function input(name: string, value: string, placeholder: string, extra: Record<s
   });
 }
 
-function kindToggle(kind: EntryKind, locked: boolean): HTMLElement {
-  const option = (value: EntryKind, label: string): HTMLElement => el('label', { class: 'kind-option' },
-    el('input', { type: 'radio', name: 'kind', value, checked: kind === value, disabled: locked && kind !== value }), label);
-  return el('fieldset', { class: 'kind-toggle' }, el('legend', { class: 'visually-hidden' }, 'Kind'),
-    option('ticket', 'Ticket'), option('activity', 'Activity'));
-}
-
 function values(form: HTMLFormElement): EntryFormValues {
   const data = new FormData(form);
   const text = (name: string): string => String(data.get(name) ?? '');
   return {
-    kind: text('kind') === 'activity' ? 'activity' : 'ticket', duration: text('duration'), ticket_key: text('ticket_key'),
-    service_id: text('service_id'), description: text('description'), coding: data.get('coding') === 'on',
-    activity_type_id: text('activity_type_id'), note: text('note'),
+    activity_type_id: text('activity_type_id'), duration: text('duration'), ticket_key: text('ticket_key'),
+    service_id: text('service_id'), description: text('description'),
   };
-}
-
-function showKind(form: HTMLFormElement): void {
-  const kind = values(form).kind;
-  form.querySelectorAll<HTMLElement>('[data-kind]').forEach((element) => (element.hidden = element.dataset.kind !== kind));
 }
 
 /** Pre-fills the service a known ticket remembers; unknown tickets keep the chosen service. */
@@ -130,38 +119,28 @@ async function prefillService(form: HTMLFormElement, serviceSelect: HTMLSelectEl
   }
 }
 
-function onlyFor(kind: EntryKind, element: HTMLElement): HTMLElement {
-  element.dataset.kind = kind;
-  return element;
-}
-
 function fields(initial: EntryFormValues, options: EntryEditorOptions): HTMLElement {
+  const form = entryForm(options.workMode, options.entry, options.activityTypes);
+  const activities = form.activityTypes.map((type): [string, string] => [type.id ?? '', type.name]);
   const services = serviceOptions(options.services, (service) => service.short_name);
-  const activities = options.activityTypes.map((activity): [string, string] => [activity.id ?? '', activity.name]);
-  const form = entryForm(options.workMode, options.entry);
-  return el('div', {},
-    form.choice ? kindToggle(initial.kind, options.entry !== null)
-      : el('input', { type: 'hidden', name: 'kind', value: initial.kind }),
-    el('div', { class: 'entry-editor-fields' },
-      field(PREFIX, 'duration', 'Duration', input('duration', initial.duration, '1:30'), 'e.g. 1.5 or 90m'),
-      onlyFor('ticket', field(PREFIX, 'ticket_key', 'Ticket', input('ticket_key', initial.ticket_key, 'ENGINE-461'))),
-      onlyFor('ticket', field(PREFIX, 'service_id', 'Service', select('service_id', initial.service_id, '— no service —', services),
-        ' ')),
-      form.coding ? onlyFor('ticket', el('label', { class: 'coding-option' },
-        el('input', { type: 'checkbox', name: 'coding', id: `${PREFIX}-coding`, checked: initial.coding }), 'Coding')) : null,
-      onlyFor('ticket', field(PREFIX, 'description', 'Description', input('description', initial.description, 'What was done'))),
-      onlyFor('activity', field(PREFIX, 'activity_type_id', 'Activity',
-        select('activity_type_id', initial.activity_type_id, '— choose —', activities))),
-      onlyFor('activity', field(PREFIX, 'note', 'Note', input('note', initial.note, 'Optional'))),
-    ),
+  return el('div', { class: 'entry-editor-fields' },
+    field(PREFIX, 'activity_type_id', 'Activity', select('activity_type_id', initial.activity_type_id, '— choose —', activities)),
+    field(PREFIX, 'duration', 'Duration', input('duration', initial.duration, '1:30'), 'e.g. 1.5 or 90m'),
+    form.ticket ? field(PREFIX, 'ticket_key', 'Ticket', input('ticket_key', initial.ticket_key, 'ENGINE-461')) : null,
+    form.ticket ? field(PREFIX, 'service_id', 'Service', select('service_id', initial.service_id, '— no service —', services),
+      ' ') : null,
+    field(PREFIX, 'description', 'Description', input('description', initial.description, 'What was done')),
   );
 }
 
-function wire(form: HTMLFormElement, options: EntryEditorOptions, serviceChanged: { value: boolean }): void {
-  const serviceSelect = form.querySelector<HTMLSelectElement>(`#${PREFIX}-service_id`)!;
+/** The ticket field pre-fills the service; choosing a service says that it applies to all entries of the ticket. */
+function wireService(form: HTMLFormElement, serviceChanged: { value: boolean }): void {
+  const serviceSelect = form.querySelector<HTMLSelectElement>(`#${PREFIX}-service_id`);
+  if (!serviceSelect) {
+    return;  // no ticket and service in this way of working
+  }
   const serviceHint = serviceSelect.parentElement!.querySelector<HTMLElement>('.field-hint')!;
-  form.querySelectorAll('input[name="kind"]').forEach((radio) => radio.addEventListener('change', () => showKind(form)));
-  form.querySelector('#entry-ticket_key')!.addEventListener('change', () => {
+  form.querySelector(`#${PREFIX}-ticket_key`)!.addEventListener('change', () => {
     serviceChanged.value = false;
     void prefillService(form, serviceSelect, serviceHint);
   });
@@ -170,11 +149,20 @@ function wire(form: HTMLFormElement, options: EntryEditorOptions, serviceChanged
     const key = values(form).ticket_key.trim().toUpperCase();
     serviceHint.textContent = key ? `Applies to all entries of ${key}` : '';
   });
+}
+
+function wire(form: HTMLFormElement, options: EntryEditorOptions, serviceChanged: { value: boolean }): void {
+  wireService(form, serviceChanged);
   const duration = form.querySelector<HTMLInputElement>(`#${PREFIX}-duration`)!;
   const rules = entryRules(options.dayStart);
   normalizeOnLeave(duration, () => rules);
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    const problem = entryProblem(values(form), options.activityTypes);
+    if (problem) {
+      showErrors(form, PREFIX, FIELDS, [{ loc: [problem[0]], msg: problem[1] }], '');
+      return;
+    }
     if (!await settleDuration(duration, rules)) {
       return;
     }
@@ -193,12 +181,12 @@ function wire(form: HTMLFormElement, options: EntryEditorOptions, serviceChanged
 
 /** The editor of a new or existing entry of a day. */
 export function entryEditor(options: EntryEditorOptions): HTMLFormElement {
-  const initial = entryFormValues(options.entry, entryForm(options.workMode, options.entry).kind);
+  const offered = entryForm(options.workMode, options.entry, options.activityTypes);
+  const initial = entryFormValues(options.entry, offered.activityTypes, offered.ticket);
   const form = el('form', { class: 'entry-editor', 'aria-label': options.entry ? 'Edit entry' : 'New entry', novalidate: true },
     fields(initial, options),
     ...formFooter(options.entry ? 'Delete entry' : null),
   );
   wire(form, options, { value: options.entry === null });
-  showKind(form);
   return form;
 }

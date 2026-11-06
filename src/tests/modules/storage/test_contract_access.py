@@ -6,7 +6,7 @@ import datetime as dt
 import pytest
 
 from src.models.catalog import ActivityType, Service
-from src.models.entries import ActivityEntry, TicketEntry
+from src.models.entries import Entry
 from src.models.review import FlagReason
 from src.models.teams import Team
 from src.modules.storage.errors import ConflictError, NotFoundError
@@ -27,7 +27,7 @@ def klaras(storage, klara_id, klara_schedule, klara_pto_years, service_ids, acti
     """One of Klara's records of each kind, and an invitation for Klara to a team."""
     with storage.transaction() as store:
         entries = store.entries(klara_id)
-        entry = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4138', duration=60, description='secret'))
+        entry = entries.create(Entry(date=MONDAY, ticket_key='TNG-4138', duration=60, description='secret'))
         team = store.teams().add(Team(name='Platform'))
         store.invitations().invite(team.id, 'klara.himmel@example.com', klara_id)
         return {
@@ -88,7 +88,7 @@ def test_another_users_ids_are_unknown(storage, klaras, hans):
 
 
 def test_another_users_records_cannot_be_used_or_seen(storage, klaras, hans, klara_id):
-    activity = ActivityEntry(date=MONDAY, activity_type_id=klaras['activity_type'].id, duration=60)
+    activity = Entry(date=MONDAY, activity_type_id=klaras['activity_type'].id, duration=60)
     with pytest.raises(ConflictError):
         run(storage, lambda store: store.entries(hans).create(activity))
     run(storage, lambda store: store.tickets(hans).ensure('TNG-1'))

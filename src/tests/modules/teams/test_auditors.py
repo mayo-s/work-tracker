@@ -9,9 +9,11 @@ from falcon import testing
 
 from src.app import create_app
 from src.models.days import Day
-from src.models.entries import TicketEntry
+from src.models.catalog import CODING, new_activity_type
+from src.models.entries import Entry
 from src.models.settings import Settings
 from src.models.teams import Team
+from src.modules.storage.catalog import ActivityTypeRepository
 from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.settings import finish_setup, save_settings
@@ -44,9 +46,10 @@ def ids(database):
         save_settings(conn, ids['rainer'], Settings(balance_start=MONDAY))
         finish_setup(conn, ids['rainer'])
         days, entries = DayRepository(conn, ids['rainer']), EntryRepository(conn, ids['rainer'])
+        coding = ActivityTypeRepository(conn, ids['rainer']).add(new_activity_type(CODING)).id
         for day in DAYS:
             days.save(Day(date=day, start=8 * 60, end=16 * 60 + 30, note='doctor'))
-            entries.create(TicketEntry(date=day, ticket_key='TNG-1', duration=480, description='bug fix', coding=True))
+            entries.create(Entry(date=day, activity_type_id=coding, ticket_key='TNG-1', duration=480, description='bug fix'))
     return ids
 
 

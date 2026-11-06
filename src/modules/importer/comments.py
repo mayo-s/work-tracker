@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from src.lib.durations import split_evenly
+from src.models.catalog import CODING
 from src.modules.importer.lines import split_hours
 from src.modules.importer.tickets import TICKET, CleanedText, clean_tickets, find_tickets
 
@@ -24,14 +25,13 @@ TOOL_MANAGEMENT, MEETING, TRAVEL, OTHER = 'Tool Management', 'Meeting', 'Travel'
 
 @dataclass(frozen=True)
 class ParsedEntry:
-    """A task entry from one comment line: a ticket entry, or an activity entry if `activity` is set."""
+    """A task entry from one comment line: Coding on a ticket (or a PR review without one), or another activity."""
 
     duration: int
     source: str  # the original comment line, kept in the entry's history
+    activity: str  # activity type name
     ticket_key: str | None = None
-    activity: str | None = None  # activity type name
-    text: str = ''  # description of a ticket entry, note of an activity entry
-    coding: bool = False
+    text: str = ''  # the description
     uncertain_ticket: bool = False  # the ticket key was guessed during clean-up: flag for review
     ticket_corrected: bool = False  # an obvious typo in the ticket key was corrected
 
@@ -69,14 +69,14 @@ def _is_meeting(rest: str) -> bool:
 
 
 def _ticket_entries(minutes: int, line: str, cleaned: CleanedText, tickets: list[str]) -> list[ParsedEntry]:
-    """One entry per ticket, the hours split evenly in quarter hours."""
+    """One Coding entry per ticket, the hours split evenly in quarter hours."""
     if not tickets:
         return []
     description = _description(cleaned)
     shares = split_evenly(minutes, len(tickets))
     return [
         ParsedEntry(
-            share, line, key, text=description, coding=True,
+            share, line, CODING, key, text=description,
             uncertain_ticket=cleaned.uncertain, ticket_corrected=cleaned.corrected,
         )
         for key, share in zip(tickets, shares)
@@ -92,12 +92,12 @@ def _description(cleaned: CleanedText) -> str:
 
 def _activity_entry(minutes: int, line: str, rest: str) -> ParsedEntry:
     if _PR_REVIEW.match(rest):
-        return ParsedEntry(minutes, line, text=rest, coding=True)  # a PR review without ticket, for review
+        return ParsedEntry(minutes, line, CODING, text=rest)  # a PR review without ticket, for review
     if match := _MEETING.match(rest):
-        return ParsedEntry(minutes, line, activity=MEETING, text=rest[match.end():])
+        return ParsedEntry(minutes, line, MEETING, text=rest[match.end():])
     if _MEETING_NAMES.match(rest):
-        return ParsedEntry(minutes, line, activity=MEETING, text=rest)  # e.g. 'Standup', 'Tactical Meeting'
+        return ParsedEntry(minutes, line, MEETING, text=rest)  # e.g. 'Standup', 'Tactical Meeting'
     if _TOOL_MANAGEMENT.match(rest):
-        return ParsedEntry(minutes, line, activity=TOOL_MANAGEMENT, text=_TOOL_MANAGEMENT_NAMES.sub('', rest).strip(' ()'))
+        return ParsedEntry(minutes, line, TOOL_MANAGEMENT, text=_TOOL_MANAGEMENT_NAMES.sub('', rest).strip(' ()'))
     activity = TRAVEL if _TRAVEL.match(rest) else OTHER
-    return ParsedEntry(minutes, line, activity=activity, text=rest)
+    return ParsedEntry(minutes, line, activity, text=rest)

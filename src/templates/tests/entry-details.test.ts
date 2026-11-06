@@ -22,10 +22,12 @@ test('the day of an entry with its times, its day type unless work', () => {
     'Mon 02.03.2026 · PTO ½ · 08:00–12:00, break 0:00, worked 4:00');
 });
 
-test('the fields of a ticket entry and of an activity entry', () => {
-  const ticket = { kind: 'ticket', duration: '6:00', ticket_key: null, service: null, coding: true, description: 'PR reviews' };
-  assert.deepEqual(entryFields(ticket as EntryView), [
-    ['Duration', '6:00'], ['Ticket', 'No ticket'], ['Service', '—'], ['Coding', 'Yes'], ['Description', 'PR reviews']]);
-  const activity = { kind: 'activity', duration: '1:00', activity_type: 'Meeting', note: '' };
-  assert.deepEqual(entryFields(activity as EntryView), [['Duration', '1:00'], ['Activity', 'Meeting'], ['Note', '—']]);
+test('the fields of an entry; a missing ticket only where its activity type requires one', () => {
+  const review = { duration: '6:00', activity_type: 'Coding', ticket_required: true, ticket_key: null, service: null,
+    description: 'PR reviews' };
+  assert.deepEqual(entryFields(review as EntryView), [
+    ['Duration', '6:00'], ['Activity', 'Coding'], ['Ticket', 'No ticket'], ['Service', '—'], ['Description', 'PR reviews']]);
+  const meeting = { ...review, activity_type: 'Meeting', ticket_required: false, description: '' };
+  assert.deepEqual(entryFields(meeting as EntryView).slice(1), [
+    ['Activity', 'Meeting'], ['Ticket', '—'], ['Service', '—'], ['Description', '—']]);
 });

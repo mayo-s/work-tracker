@@ -8,7 +8,7 @@ from src.lib.balances import DayRecord
 from src.lib.daytypes import DayType
 from src.lib.durations import parse_clock, parse_duration
 from src.models.days import Day
-from src.models.entries import ActivityEntry
+from src.models.entries import Entry
 from src.models.review import FlagReason
 from src.modules.storage.errors import NotFoundError
 
@@ -81,6 +81,6 @@ def test_add_list_and_clear_flags(days):
 
 def test_day_flags_ignore_entry_flags(days, per_call, klara_id, activity_type_ids):
     entries = per_call(lambda store: store.entries(klara_id))
-    entry = entries.create(ActivityEntry(date=MONDAY, activity_type_id=activity_type_ids['Meeting'], duration=0))
+    entry = entries.create(Entry(date=MONDAY, activity_type_id=activity_type_ids['Meeting'], duration=0))
     entries.add_flag(entry.id, FlagReason.UNCERTAIN_TICKET)
     assert days.day_flags() == []

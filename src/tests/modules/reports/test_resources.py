@@ -5,10 +5,11 @@ import pytest
 from falcon import testing
 
 from src.app import create_app
-from src.models.entries import TicketEntry
+from src.models.entries import Entry
 from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.settings import load_settings, save_settings
+from src.tests.ids import CODING
 from src.tests.users import USER
 
 TODAY = dt.date(2026, 10, 28)
@@ -40,9 +41,9 @@ def work(client, date, start='08:00', end='16:30', break_time='0:30'):
     assert client.simulate_put(f'/api/days/{date}', json=body).status == falcon.HTTP_200
 
 
-def ticket(client, date, key, duration, description='', coding=True, **extra):
-    body = {'kind': 'ticket', 'date': date, 'duration': duration, 'ticket_key': key, 'description': description,
-            'coding': coding}
+def ticket(client, date, key, duration, description='', activity_type_id=CODING, **extra):
+    body = {'activity_type_id': activity_type_id, 'date': date, 'duration': duration, 'ticket_key': key,
+            'description': description}
     assert client.simulate_post('/api/entries', json=body | extra).status == falcon.HTTP_201
 
 
@@ -77,13 +78,13 @@ def test_invalid_period(client, path):
     assert client.simulate_get(path).status == falcon.HTTP_404
 
 
-def test_month_coding_work_by_service_and_ticket(client, service_ids):
+def test_month_coding_work_by_service_and_ticket(client, service_ids, activity_ids):
     ticket(client, '2026-10-05', 'ENGINE-573', '5:00', 'HUB support', service_id=service_ids['MSB'])
     ticket(client, '2026-10-06', 'ENGINE-573', '2:00', 'HUB support')
     ticket(client, '2026-10-06', 'ENGINE-565', '1:00', 'PR review')
     ticket(client, '2026-10-07', 'TNG-5783', '1:00', 'content type alias', service_id=service_ids['HiS'])
     ticket(client, '2026-10-07', 'ENGINE-594', '1:00', 'test access', service_id=service_ids['MSB'])
-    ticket(client, '2026-10-08', 'KP-2203', '2:00', 'refinement', coding=False)
+    ticket(client, '2026-10-08', 'KP-2203', '2:00', 'refinement', activity_ids['Meeting'])
     ticket(client, '2026-11-02', 'ENGINE-573', '3:00', 'next month')
     report = client.simulate_get('/api/reports/months/2026-10').json
     assert report['coding'] == [
@@ -102,7 +103,7 @@ def test_month_coding_work_by_service_and_ticket(client, service_ids):
 
 
 def activity(client, date, type_id, duration, note=''):
-    body = {'kind': 'activity', 'date': date, 'duration': duration, 'activity_type_id': type_id, 'note': note}
+    body = {'date': date, 'duration': duration, 'activity_type_id': type_id, 'description': note}
     assert client.simulate_post('/api/entries', json=body).status == falcon.HTTP_201
 
 
@@ -112,9 +113,9 @@ def october(client, service_ids, activity_ids):
     one service for all its entries."""
     work(client, '2026-10-05')
     ticket(client, '2026-10-05', 'ENGINE-573', '3:00', 'HUB support', service_id=service_ids['MSB'])
-    ticket(client, '2026-10-05', 'KP-2203', '1:00', 'refinement', coding=False, service_id=service_ids['MSB'])
-    ticket(client, '2026-10-06', 'KP-2203', '0:30', 'Refinement', coding=False)
-    ticket(client, '2026-10-06', 'KP-2045', '1:00', 'planning', coding=False)
+    ticket(client, '2026-10-05', 'KP-2203', '1:00', 'refinement', activity_ids['Meeting'], service_id=service_ids['MSB'])
+    ticket(client, '2026-10-06', 'KP-2203', '0:30', 'Refinement', activity_ids['Meeting'])
+    ticket(client, '2026-10-06', 'KP-2045', '1:00', 'planning', activity_ids['Meeting'])
     activity(client, '2026-10-05', activity_ids['Meeting'], '1:00', 'Jour fixe')
     activity(client, '2026-10-07', activity_ids['Meeting'], '0:30', 'jour fixe')
     activity(client, '2026-10-07', activity_ids['Meeting'], '0:15')
@@ -157,7 +158,7 @@ def test_year_work_by_service_and_activity_type(client, october, service_ids, ac
 def test_month_lists_pr_reviews_without_ticket_last(client, database):
     ticket(client, '2026-10-05', 'TNG-999', '1:00')
     with database.transaction() as conn:
-        review = TicketEntry(date=dt.date(2026, 10, 6), duration=120, description='PR reviews', coding=True)
+        review = Entry(date=dt.date(2026, 10, 6), activity_type_id=CODING, duration=120, description='PR reviews')
         EntryRepository(conn, USER).create(review)
     [unassigned] = client.simulate_get('/api/reports/months/2026-10').json['coding']
     assert [(work['ticket_key'], work['duration']) for work in unassigned['tickets']] == [('TNG-999', '1:00'), (None, '2:00')]

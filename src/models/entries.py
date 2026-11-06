@@ -1,7 +1,7 @@
-"""Task entries of a day: ticket entries and activity entries."""
+"""Task entries of a day: an activity, optionally on a ticket (SPEC 4)."""
 
 import datetime as dt
-from typing import Annotated, Literal
+from typing import Annotated
 
 from pydantic import AfterValidator, Field
 
@@ -23,23 +23,11 @@ Duration = Annotated[
 ]
 
 
-class TicketEntry(DomainModel):
-    kind: Literal['ticket'] = 'ticket'
+class Entry(DomainModel):
     id: RecordId | None = None
     date: dt.date
-    ticket_key: TicketKey | None = Field(default=None, description='None only for imported entries awaiting review')
+    activity_type_id: RecordId | None = Field(
+        default=None, description='None only for former entries awaiting review (SPEC 4.6)')
+    ticket_key: TicketKey | None = Field(default=None, description='Required by some activity types, e.g. Coding')
     duration: Duration
     description: str = Field(default='', max_length=1000)
-    coding: bool = False
-
-
-class ActivityEntry(DomainModel):
-    kind: Literal['activity'] = 'activity'
-    id: RecordId | None = None
-    date: dt.date
-    activity_type_id: RecordId
-    duration: Duration
-    note: str = Field(default='', max_length=1000)
-
-
-Entry = Annotated[TicketEntry | ActivityEntry, Field(discriminator='kind')]

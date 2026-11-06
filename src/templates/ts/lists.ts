@@ -73,12 +73,19 @@ export function activityTypesTable(activityTypes: ActivityType[]): EditableTable
   return {
     id: 'activity-types',
     title: 'Activity types',
-    hint: 'For entries without a ticket, e.g. meetings or travel. A type used by entries cannot be deleted.',
+    hint: 'Every entry has one, e.g. Coding, Meeting or Travel; an entry of a type that requires a ticket needs one. A '
+      + 'type used by entries cannot be deleted.',
     noun: 'activity type',
-    fields: [{ name: 'name', label: 'Name', maxLength: 50, required: true }],
-    items: activityTypes.map((type) => ({ id: type.id!, label: type.name, values: { name: type.name } })),
+    fields: [
+      { name: 'name', label: 'Name', maxLength: 50, required: true },
+      { name: 'ticket_required', label: 'Ticket required', required: false, type: 'checkbox', defaultValue: 'false',
+        format: (value) => (value === 'true' ? 'yes' : 'no') },
+    ],
+    items: activityTypes.map((type) => ({
+      id: type.id!, label: type.name, values: { name: type.name, ticket_required: String(type.ticket_required ?? false) },
+    })),
     save: (id, input) => {
-      const type = { name: input['name'] ?? '' };
+      const type = { name: input['name'] ?? '', ticket_required: input['ticket_required'] === 'true' };
       return id === null ? api.addActivityType(type) : api.updateActivityType(id, type);
     },
     remove: (id) => api.deleteActivityType(id),

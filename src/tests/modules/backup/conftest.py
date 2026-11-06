@@ -6,7 +6,7 @@ import pytest
 
 from src.models.audit import AuditEntry
 from src.models.catalog import Service
-from src.models.entries import TicketEntry
+from src.models.entries import Entry
 from src.models.teams import Auditor, ReportView, Team
 from src.models.users import TwoFactor
 from src.modules.backup.full import make_backup
@@ -30,7 +30,7 @@ def add_everything(storage, klara_id):
         service = store.team_services(platform.id).add(Service(short_name='API', name='public-api'))
         teams.join(hans, platform.id)
         teams.delete(billing.id)
-        store.entries(hans).create(TicketEntry(date=MONDAY, ticket_key='API-7', duration=90))
+        store.entries(hans).create(Entry(date=MONDAY, ticket_key='API-7', duration=90))
         store.tickets(hans).set_service('API-7', service.id)
         store.invitations(lambda: NOW).invite(platform.id, 'rainer.zufall@example.com', klara_id)
         store.auditors().assign(Auditor(team_id=platform.id, user_id=klara_id, assigned_by=klara_id, assigned_at=NOW))

@@ -3,12 +3,13 @@ import datetime as dt
 import falcon
 import pytest
 
-from src.models.entries import TicketEntry
+from src.models.entries import Entry
 from src.models.history import HistoryAction
 from src.models.review import FlagReason
 from src.modules.storage.catalog import ServiceRepository
 from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
+from src.tests.ids import CODING
 from src.tests.users import USER
 
 
@@ -19,7 +20,7 @@ def his(database):
 
 
 def add_entry(client, key, duration='1:00', date='2026-03-02'):
-    body = {'kind': 'ticket', 'date': date, 'duration': duration, 'ticket_key': key}
+    body = {'activity_type_id': CODING, 'date': date, 'duration': duration, 'ticket_key': key}
     return client.simulate_post('/api/entries', json=body).json
 
 
@@ -58,14 +59,14 @@ def test_entry_with_zero_duration_leaves_once_fixed(client):
     entry = add_entry(client, 'KP-2045', duration='0:00')
     [item] = get_review(client)['entries']
     assert (item['entry']['id'], item['reasons'], item['original']) == (entry['id'], ['zero_duration'], None)
-    body = {'kind': 'ticket', 'date': '2026-03-02', 'duration': '0:45', 'ticket_key': 'KP-2045'}
+    body = {'activity_type_id': CODING, 'date': '2026-03-02', 'duration': '0:45', 'ticket_key': 'KP-2045'}
     client.simulate_put(f'/api/entries/{entry["id"]}', json=body)
     assert get_review(client)['entries'] == []
 
 
 def test_entry_without_ticket(client, database):
     with database.transaction() as conn:
-        review_entry = TicketEntry(date=dt.date(2025, 11, 26), duration=360, description='PR reviews', coding=True)
+        review_entry = Entry(date=dt.date(2025, 11, 26), activity_type_id=CODING, duration=360, description='PR reviews')
         EntryRepository(conn, USER).create(review_entry)
     [item] = get_review(client)['entries']
     assert (item['entry']['description'], item['reasons']) == ('PR reviews', ['no_ticket'])
@@ -120,10 +121,10 @@ def test_entry_split_on_import_is_shown(client, database):
     with database.transaction() as conn:
         repository = EntryRepository(conn, USER)
         for key in ('TNG-4138', 'TNG-4139'):
-            created = repository.create(TicketEntry(date=dt.date(2024, 6, 10), ticket_key=key, duration=180),
-                                        HistoryAction.IMPORTED, line)
+            entry = Entry(date=dt.date(2024, 6, 10), activity_type_id=CODING, ticket_key=key, duration=180)
+            created = repository.create(entry, HistoryAction.IMPORTED, line)
             repository.add_flag(created.id, FlagReason.UNCERTAIN_TICKET, line)
-        next_day = TicketEntry(date=dt.date(2024, 6, 11), ticket_key='TNG-4138', duration=60)
+        next_day = Entry(date=dt.date(2024, 6, 11), activity_type_id=CODING, ticket_key='TNG-4138', duration=60)
         repository.create(next_day, HistoryAction.IMPORTED, line)  # the same line on another day: not part of the split
     items = get_review(client)['entries']
     assert [item['split_on_import'] for item in items] == [
@@ -133,8 +134,8 @@ def test_entry_split_on_import_is_shown(client, database):
 def test_entry_imported_alone_has_no_split(client, database):
     with database.transaction() as conn:
         repository = EntryRepository(conn, USER)
-        created = repository.create(TicketEntry(date=dt.date(2024, 6, 19), ticket_key='TNG-4156', duration=60),
-                                    HistoryAction.IMPORTED, '1,0 #4156')
+        entry = Entry(date=dt.date(2024, 6, 19), activity_type_id=CODING, ticket_key='TNG-4156', duration=60)
+        created = repository.create(entry, HistoryAction.IMPORTED, '1,0 #4156')
         repository.add_flag(created.id, FlagReason.UNCERTAIN_TICKET, '1,0 #4156')
     [item] = get_review(client)['entries']
     assert (item['split_on_import'], item['original']) == ([], '1,0 #4156')
@@ -144,7 +145,7 @@ def test_an_alias_is_suggested_for_a_split(client, database):
     line = '6,0 #4347 aka #1482 check permission'
     with database.transaction() as conn:
         repository = EntryRepository(conn, USER)
-        created = repository.create(TicketEntry(date=dt.date(2024, 7, 1), ticket_key='TNG-4347', duration=360),
-                                    HistoryAction.IMPORTED, line)
+        entry = Entry(date=dt.date(2024, 7, 1), activity_type_id=CODING, ticket_key='TNG-4347', duration=360)
+        created = repository.create(entry, HistoryAction.IMPORTED, line)
         repository.add_flag(created.id, FlagReason.UNCERTAIN_TICKET, line)
     assert get_review(client)['entries'][0]['split_suggestion'] == ['TNG-4347', 'KP-1482']

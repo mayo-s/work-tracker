@@ -6,6 +6,7 @@ A migration is a SQL script, or a function for what SQL cannot do. Never change 
 import sqlite3
 from collections.abc import Callable
 
+from src.modules.storage.entry_kinds import to_one_kind
 from src.modules.storage.record_ids import to_record_ids
 
 Migration = str | Callable[[sqlite3.Connection], None]
@@ -642,4 +643,6 @@ MIGRATIONS: tuple[Migration, ...] = (
     DELETE FROM activity_types WHERE user_id = '00000000-0000-0000-0000-000000000000'
         AND NOT EXISTS (SELECT 1 FROM days) AND NOT EXISTS (SELECT 1 FROM entries);
     """,
+    # 25: one kind of entry (TASKS.md 13.7): an activity, optionally on a ticket; activity types get "ticket required"
+    to_one_kind,
 )

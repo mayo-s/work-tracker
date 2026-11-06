@@ -527,7 +527,7 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
 
 | Line                                                                                                             | Result                                                                                                                               |
 |------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| `<hours> … <ticket> …`                                                                                           | Coding entry, no service; tickets may appear anywhere in the line; a ticket of an unknown prefix: no activity type → review (4.1)    |
+| `<hours> … <ticket> …`                                                                                           | Coding entry, no service; tickets may appear anywhere in the line (known prefixes, 4.1)                                              |
 | several tickets (`<t1>, <t2>`, `<t1>/<t2>`, `<t1> and <t2>`)                                                     | One entry per ticket, hours split evenly in quarter hours, remainder on the first entries (1:30 / 4 → 0:30, 0:30, 0:15, 0:15)        |
 | `<hours> PR review …` or `<hours> PR …` without a ticket                                                         | Coding entry **without ticket** → review                                                                                             |
 | `<hours> Meeting: <text>`                                                                                        | Activity "Meeting", description = text (tickets stay in the description)                                                             |
@@ -611,6 +611,13 @@ Columns: `Date` (` DD.MM.YYYY Ddd`), `Start`, `End`, `Pause` (minutes), `Sum`, `
     since the deletion can come late.
   - A schema version item takes the place of `PRAGMA user_version`: the app refuses a table written by a newer
     version, and later data changes are numbered scripts like the SQLite migrations.
+  - Items have no fixed schema: a new attribute missing on older items reads as its default (e.g. `work_mode`,
+    `ticket_required`), so only changed attributes need a migration. The first one (version 2, TASKS.md 13.7) rewrites
+    every entry item in place to the one kind of entry (4.6), in small atomic chunks (an entry, with the activity type
+    its user gets if needed); keys and history lines stay. It skips items already converted and saves the new version
+    last, so a run that stops halfway (e.g. a Lambda timeout) is finished by the next start.
+  - The rules of a data change are written once in Python and shared by the SQLite migration, the DynamoDB migration
+    and the import of an older export file (5.8), so they cannot drift apart.
   - A transaction collects its writes and sends them at its end, so its reads see them and a failure writes
     nothing; ids are random UUIDv7, in the order of creation.
   - A change touching at most 100 items is atomic, as in SQLite (DynamoDB's transaction limit). Larger changes

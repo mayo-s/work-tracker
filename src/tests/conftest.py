@@ -8,10 +8,11 @@ from src.models.base import new_id
 from src.modules.storage.database import Database
 from src.modules.storage.dynamodb.table import REGION, Table, create_table
 from src.modules.storage.users import UserRepository
+from src.tests.ids import CODING
 from src.tests.users import KLARA, PASSWORD, USER
 
 # The original setup's services and PTO years, which a new database no longer brings along (migration 6), for the
-# first user, who takes over the new database's seeds (settings, work schedule)
+# first user, who takes over the new database's seeds (settings, work schedule); as a developer, she has Coding
 ORIGINAL_SETUP = f"""
     INSERT INTO services (id, user_id, short_name, name) VALUES
         ('{new_id()}', '{USER}', 'O365', 'office-integration-service'),
@@ -21,6 +22,7 @@ ORIGINAL_SETUP = f"""
         ('{new_id()}', '{USER}', 'TTS', 'text-transformation-service');
     INSERT INTO pto_years (user_id, year, allowance)
         VALUES ('{USER}', 2024, '17.5'), ('{USER}', 2025, '31'), ('{USER}', 2026, '31'), ('{USER}', 2027, '30');
+    INSERT INTO activity_types (id, user_id, name, ticket_required) VALUES ('{CODING}', '{USER}', 'Coding', 1);
     UPDATE user_settings SET value = '1' WHERE user_id = '{USER}' AND key = 'setup_done';
 """
 

@@ -3,13 +3,13 @@
 import datetime as dt
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Literal, Self
+from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from src.lib.durations import format_duration, parse_duration
 from src.models.catalog import TicketKey
-from src.models.entries import ActivityEntry, Entry, TicketEntry
+from src.models.entries import Entry
 from src.models.history import HistoryAction
 from src.models.review import FlagReason
 from src.modules.storage.store import Store
@@ -18,52 +18,33 @@ from src.utils.api import DurationText, check_domain
 
 
 class EntryInput(BaseModel):
-    """A ticket entry (ticket_key, description, coding) or an activity entry (activity_type_id, note)."""
+    """An activity, optionally on a ticket (SPEC 4)."""
 
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
 
-    kind: Literal['ticket', 'activity']
     date: dt.date
+    activity_type_id: str = Field(description='One of the user\'s activity types; some require a ticket (e.g. Coding)')
     duration: DurationText = Field(description='In quarter hours, e.g. 1:30, 1.5, 1,5, 1h30m or 90m; answered as h:mm')
     ticket_key: str | None = Field(default=None, examples=['ENGINE-461'])
     service_id: str | None = Field(
-        default=None, description="Ticket entries: set the ticket's service (applies to all its entries); omit to keep it"
+        default=None, description="With a ticket: set the ticket's service (applies to all its entries); omit to keep it"
     )
     description: str = ''
-    coding: bool = False
-    activity_type_id: str | None = None
-    note: str = ''
 
     @model_validator(mode='after')
-    def check_kind(self) -> Self:
-        if self.kind == 'ticket':
-            self._check_ticket_entry()
-        else:
-            self._check_activity_entry()
+    def check_entry(self) -> Self:
+        if 'service_id' in self.model_fields_set and not self.ticket_key:
+            raise ValueError('a service is set on a ticket: service_id needs a ticket_key')
         check_domain(self.to_entry)
         return self
 
-    def _check_ticket_entry(self) -> None:
-        if not self.ticket_key:
-            raise ValueError('a ticket entry needs a ticket_key')
-        if self.activity_type_id is not None or self.note:
-            raise ValueError('a ticket entry has no activity_type_id or note')
-
-    def _check_activity_entry(self) -> None:
-        if self.activity_type_id is None:
-            raise ValueError('an activity entry needs an activity_type_id')
-        if self.ticket_key or 'service_id' in self.model_fields_set or self.description or self.coding:
-            raise ValueError('an activity entry has no ticket_key, service_id, description or coding')
-
     @property
     def sets_service(self) -> bool:
-        return self.kind == 'ticket' and 'service_id' in self.model_fields_set
+        return 'service_id' in self.model_fields_set
 
     def to_entry(self, entry_id: str | None = None) -> Entry:
-        common = {'id': entry_id, 'date': self.date, 'duration': parse_duration(self.duration)}
-        if self.kind == 'ticket':
-            return TicketEntry(**common, ticket_key=self.ticket_key, description=self.description, coding=self.coding)
-        return ActivityEntry(**common, activity_type_id=self.activity_type_id, note=self.note)
+        return Entry(id=entry_id, date=self.date, activity_type_id=self.activity_type_id, ticket_key=self.ticket_key or None,
+                     duration=parse_duration(self.duration), description=self.description)
 
 
 class EntrySplitInput(BaseModel):
@@ -81,17 +62,15 @@ class EntryFlagView(BaseModel):
 
 class EntryView(BaseModel):
     id: str
-    kind: Literal['ticket', 'activity']
     date: dt.date
     duration: str
-    ticket_key: str | None = None
-    service_id: str | None = None
-    service: str | None = Field(default=None, description="Short name of the ticket's service")
-    description: str | None = None
-    coding: bool = False
-    activity_type_id: str | None = None
-    activity_type: str | None = None
-    note: str | None = None
+    activity_type_id: str | None = Field(description='None only for former entries awaiting review')
+    activity_type: str | None
+    ticket_required: bool = Field(description='Its activity type requires a ticket')
+    ticket_key: str | None
+    service_id: str | None
+    service: str | None = Field(description="Short name of the ticket's service")
+    description: str
     changed: bool = Field(description='Changed after it was created or imported (see its history)')
     flags: list[EntryFlagView]
 
@@ -110,7 +89,7 @@ class EntryViewer:
     def __init__(self, store: Store, user_id: str) -> None:
         self._entries = store.entries(user_id)
         self._services = TicketServices(store, user_id)
-        self._activity_types = {activity.id: activity.name for activity in store.activity_types(user_id).all()}
+        self._activity_types = {activity.id: activity for activity in store.activity_types(user_id).all()}
 
     def views(self, entries: Iterable[Entry]) -> list[EntryView]:
         entries = list(entries)
@@ -124,17 +103,12 @@ class EntryViewer:
         return self.views([entry])[0]
 
     def _view(self, entry: Entry, changed: bool, flags: list[EntryFlagView]) -> EntryView:
-        common = {
-            'id': entry.id, 'kind': entry.kind, 'date': entry.date, 'duration': format_duration(entry.duration),
-            'changed': changed, 'flags': flags,
-        }
-        if isinstance(entry, TicketEntry):
-            service_id = self._services.of_ticket(entry.ticket_key)
-            return EntryView(
-                **common, ticket_key=entry.ticket_key, service_id=service_id, service=self._services.name(service_id),
-                description=entry.description, coding=entry.coding,
-            )
+        activity_type = self._activity_types.get(entry.activity_type_id)
+        service_id = self._services.of_ticket(entry.ticket_key)
         return EntryView(
-            **common, activity_type_id=entry.activity_type_id,
-            activity_type=self._activity_types.get(entry.activity_type_id), note=entry.note,
+            id=entry.id, date=entry.date, duration=format_duration(entry.duration), activity_type_id=entry.activity_type_id,
+            activity_type=activity_type.name if activity_type else None,
+            ticket_required=bool(activity_type and activity_type.ticket_required), ticket_key=entry.ticket_key,
+            service_id=service_id, service=self._services.name(service_id), description=entry.description,
+            changed=changed, flags=flags,
         )

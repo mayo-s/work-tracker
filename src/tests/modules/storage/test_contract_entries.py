@@ -5,7 +5,7 @@ import datetime as dt
 import pytest
 
 from src.models.base import new_id
-from src.models.entries import ActivityEntry, TicketEntry
+from src.models.entries import Entry
 from src.models.history import EntryChange, HistoryAction
 from src.models.review import FlagReason
 from src.modules.storage.errors import ConflictError, NotFoundError
@@ -33,26 +33,28 @@ def tickets(per_call, klara_id):
 
 
 @pytest.fixture
-def ticket_entry():
-    return TicketEntry(date=MONDAY, ticket_key='ENGINE-597', duration=90, description='europace permissions', coding=True)
+def ticket_entry(coding_id):
+    return Entry(date=MONDAY, activity_type_id=coding_id, ticket_key='ENGINE-597', duration=90,
+                 description='europace permissions')
 
 
 @pytest.fixture
 def activity_entry(activity_type_ids):
-    return ActivityEntry(date=MONDAY, activity_type_id=activity_type_ids['Planning'], duration=120,
-                         note='GCC Tactical')
+    return Entry(date=MONDAY, activity_type_id=activity_type_ids['Planning'], duration=120, description='GCC Tactical')
 
 
 def test_create_and_get(entries, tickets, ticket_entry, activity_entry):
-    without_ticket = TicketEntry(date=MONDAY, duration=360, description='PR reviews zipkin lib', coding=True)
-    for entry in (ticket_entry, without_ticket, activity_entry):
+    without_ticket = Entry(date=MONDAY, activity_type_id=ticket_entry.activity_type_id, duration=360,
+                           description='PR reviews zipkin lib')
+    former = Entry(date=MONDAY, ticket_key='TNG-1', duration=60, description='investigation')  # no activity type yet
+    for entry in (ticket_entry, without_ticket, activity_entry, former):
         created = entries.create(entry)
         assert entries.get(created.id) == created
-    assert [ticket.key for ticket in tickets.all()] == ['ENGINE-597']  # the entry's ticket is created with it
+    assert [ticket.key for ticket in tickets.all()] == ['ENGINE-597', 'TNG-1']  # an entry's ticket is created with it
 
 
 def test_create_with_unknown_activity_type(entries):
-    unknown = ActivityEntry(date=MONDAY, activity_type_id=new_id(), duration=60)
+    unknown = Entry(date=MONDAY, activity_type_id=new_id(), duration=60)
     with pytest.raises(ConflictError):
         entries.create(unknown)
 
@@ -64,15 +66,15 @@ def test_create_records_initial_values(entries, ticket_entry):
     assert change.changed_at == NOW
     assert change.changes == {
         'date': (None, '2026-10-26'),
+        'activity_type_id': (None, ticket_entry.activity_type_id),
         'ticket_key': (None, 'ENGINE-597'),
         'duration': (None, 90),
         'description': (None, 'europace permissions'),
-        'coding': (None, True),
     }
 
 
 def test_import_records_original_line(entries):
-    entry = TicketEntry(date=dt.date(2026, 2, 17), ticket_key='TNG-5213', duration=90)
+    entry = Entry(date=dt.date(2026, 2, 17), ticket_key='TNG-5213', duration=90)
     created = entries.create(entry, HistoryAction.IMPORTED, '3,0 TNG-5213, TNG-5214')
     [change] = entries.history(created.id)
     assert change.action is HistoryAction.IMPORTED
@@ -105,14 +107,6 @@ def test_update_without_changes_records_nothing(entries, ticket_entry):
     assert len(entries.history(created.id)) == 1
 
 
-@SHARED_RULE
-def test_update_cannot_change_kind(entries, ticket_entry, activity_type_ids):
-    created = entries.create(ticket_entry)
-    activity = ActivityEntry(id=created.id, date=MONDAY, activity_type_id=activity_type_ids['Meeting'], duration=90)
-    with pytest.raises(ConflictError):
-        entries.update(activity)
-
-
 def test_missing_entry(entries, ticket_entry):
     with pytest.raises(NotFoundError):
         entries.get(404)
@@ -131,7 +125,7 @@ def test_delete_removes_entry_and_flags_and_keeps_history_with_last_values(entri
     assert (entries.between(MONDAY, MONDAY), entries.flags_of(created.id)) == ([], [])
     actions = [change.action for change in entries.history(created.id)]
     assert actions == [HistoryAction.CREATED, HistoryAction.DELETED]
-    assert entries.history(created.id)[-1].changes['note'] == ('GCC Tactical', None)
+    assert entries.history(created.id)[-1].changes['description'] == ('GCC Tactical', None)
 
 
 def test_all_history_includes_deleted_entries_in_written_order(entries, ticket_entry, activity_entry):
@@ -163,7 +157,7 @@ def test_changed_marks_entries_changed_after_creation(entries, ticket_entry, act
     unchanged = entries.create(ticket_entry)
     imported = entries.create(activity_entry, HistoryAction.IMPORTED)
     changed = entries.create(ticket_entry)
-    entries.update(changed.model_copy(update={'coding': False}))
+    entries.update(changed.model_copy(update={'description': 'europace roles'}))
     assert entries.changed([unchanged.id, imported.id, changed.id]) == {changed.id}
     assert entries.changed([]) == set()
 
@@ -188,19 +182,22 @@ def test_entries_for_review(entries, ticket_entry, activity_entry):
     entries.create(ticket_entry)
     entries.create(activity_entry)
     zero = entries.create(ticket_entry.model_copy(update={'duration': 0, 'date': MONDAY + dt.timedelta(days=1)}))
-    no_ticket = entries.create(TicketEntry(date=MONDAY - dt.timedelta(days=1), duration=360, coding=True))
+    sunday = MONDAY - dt.timedelta(days=1)
+    no_ticket = entries.create(ticket_entry.model_copy(update={'ticket_key': None, 'date': sunday}))  # Coding needs one
+    no_type = entries.create(Entry(date=sunday, ticket_key='TNG-1', duration=60))
     flagged = entries.create(activity_entry)
     entries.add_flag(flagged.id, FlagReason.UNCERTAIN_TICKET)
-    assert [entry.id for entry in entries.for_review()] == [no_ticket.id, flagged.id, zero.id]
+    assert [entry.id for entry in entries.for_review()] == [no_ticket.id, no_type.id, flagged.id, zero.id]
 
 
-def test_split_entry_evenly_with_history(entries, tickets):
+def test_split_entry_evenly_with_history(entries, tickets, coding_id):
     entry = entries.create(
-        TicketEntry(date=MONDAY, ticket_key='TNG-4347', duration=360, description='adapt tests', coding=True)
+        Entry(date=MONDAY, activity_type_id=coding_id, ticket_key='TNG-4347', duration=360, description='adapt tests')
     )
     first, second = entries.split(entry.id, ['tng-4347', 'KP-1482'])
     assert (first.id, first.ticket_key, first.duration) == (entry.id, 'TNG-4347', 180)
-    assert (second.ticket_key, second.duration, second.description, second.coding) == ('KP-1482', 180, 'adapt tests', True)
+    assert (second.ticket_key, second.duration, second.description, second.activity_type_id) == (
+        'KP-1482', 180, 'adapt tests', coding_id)
     original = entries.history(entry.id)[-1]
     assert (original.action, original.changes, original.detail) == (
         HistoryAction.SPLIT, {'duration': (360, 180)}, 'Split into TNG-4347, KP-1482')
@@ -210,20 +207,17 @@ def test_split_entry_evenly_with_history(entries, tickets):
 
 
 @SHARED_RULE
-@pytest.mark.parametrize('kind, keys', [
-    ('ticket', ['TNG-4347']), ('ticket', ['TNG-4347', 'tng-4347']), ('activity', ['TNG-1', 'TNG-2']),
-])
-def test_split_needs_a_ticket_entry_and_two_different_tickets(entries, activity_entry, kind, keys):
-    ticket_entry = TicketEntry(date=MONDAY, ticket_key='TNG-4347', duration=60)
-    entry = entries.create(ticket_entry if kind == 'ticket' else activity_entry)
+@pytest.mark.parametrize('keys', [['TNG-4347'], ['TNG-4347', 'tng-4347']])
+def test_split_needs_two_different_tickets(entries, keys):
+    entry = entries.create(Entry(date=MONDAY, ticket_key='TNG-4347', duration=60))
     with pytest.raises(ConflictError):
         entries.split(entry.id, keys)
 
 
 def test_imported_lines(entries):
-    first = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4138', duration=180), HistoryAction.IMPORTED, '3,0 #4138')
-    entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-4139', duration=60), HistoryAction.IMPORTED, '1,0 #4139')
-    created = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-5882', duration=60))
+    first = entries.create(Entry(date=MONDAY, ticket_key='TNG-4138', duration=180), HistoryAction.IMPORTED, '3,0 #4138')
+    entries.create(Entry(date=MONDAY, ticket_key='TNG-4139', duration=60), HistoryAction.IMPORTED, '1,0 #4139')
+    created = entries.create(Entry(date=MONDAY, ticket_key='TNG-5882', duration=60))
     assert entries.imported_lines([first.id, created.id]) == {first.id: '3,0 #4138'}
 
 

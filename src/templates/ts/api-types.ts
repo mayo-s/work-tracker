@@ -87,7 +87,7 @@ export interface paths {
         /** Entries of a week or date range, by date and in the order they were created; `member` shows a member of the team admin's team (team view: from the day they joined the team). */
         get: operations["get__api_entries"];
         put?: never;
-        /** Create an entry; a new ticket is created, `service_id` sets the ticket's service. The duration takes e.g. `1:30`, `1.5`, `1h30m` or `90m`, in quarter hours, at most the rest of the day from its start (409). */
+        /** Create an entry; a new ticket is created, `service_id` sets the ticket's service. The duration takes e.g. `1:30`, `1.5`, `1h30m` or `90m`, in quarter hours, at most the rest of the day from its start (409). An activity type that requires a ticket (e.g. Coding) is entered with one (409). */
         post: operations["post__api_entries"];
         delete?: never;
         options?: never;
@@ -104,7 +104,7 @@ export interface paths {
         };
         /** One entry. */
         get: operations["get__api_entries_{entry_id}"];
-        /** Change an entry; only changed fields are written to its history. The kind cannot change. */
+        /** Change an entry; only changed fields are written to its history. */
         put: operations["put__api_entries_{entry_id}"];
         post?: never;
         /** Delete an entry and its review flags; its history is kept. */
@@ -140,7 +140,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Divide a ticket entry among several tickets (e.g. an alias like #4347 aka #1482), hours split evenly. */
+        /** Divide an entry among several tickets (e.g. an alias like #4347 aka #1482), hours split evenly. */
         post: operations["post__api_entries_{entry_id}_split"];
         delete?: never;
         options?: never;
@@ -369,7 +369,7 @@ export interface paths {
         get: operations["get__api_setup"];
         put?: never;
         /**
-         * Set up the logged-in user's data at once: start day, opening balance, work schedule, PTO years and services.
+         * Set up the logged-in user's data at once: start day, opening balance, way of working, work schedule, PTO years and services; a developer gets the activity type Coding too.
          * @description The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything.
          */
         post: operations["post__api_setup"];
@@ -1864,6 +1864,12 @@ export interface components {
              * @example Travel
              */
             name: string;
+            /**
+             * Ticket Required
+             * @description An entry of this type needs a ticket, e.g. Coding
+             * @default false
+             */
+            ticket_required?: boolean;
         };
         /** ActivityType */
         ActivityType: {
@@ -1877,6 +1883,12 @@ export interface components {
              * @description e.g. Tool Management
              */
             name: string;
+            /**
+             * Ticket Required
+             * @description An entry of this type needs a ticket, e.g. Coding
+             * @default false
+             */
+            ticket_required?: boolean;
         };
         /** MemberQuery */
         MemberQuery: {
@@ -2130,19 +2142,19 @@ export interface components {
         EntryViewList: components["schemas"]["EntryView"][];
         /**
          * EntryInput
-         * @description A ticket entry (ticket_key, description, coding) or an activity entry (activity_type_id, note).
+         * @description An activity, optionally on a ticket (SPEC 4).
          */
         EntryInput: {
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "ticket" | "activity";
             /**
              * Date
              * Format: date
              */
             date: string;
+            /**
+             * Activity Type Id
+             * @description One of the user's activity types; some require a ticket (e.g. Coding)
+             */
+            activity_type_id: string;
             /**
              * Duration
              * @description In quarter hours, e.g. 1:30, 1.5, 1,5, 1h30m or 90m; answered as h:mm
@@ -2157,7 +2169,7 @@ export interface components {
             ticket_key?: string | null;
             /**
              * Service Id
-             * @description Ticket entries: set the ticket's service (applies to all its entries); omit to keep it
+             * @description With a ticket: set the ticket's service (applies to all its entries); omit to keep it
              * @default null
              */
             service_id?: string | null;
@@ -2166,31 +2178,11 @@ export interface components {
              * @default
              */
             description?: string;
-            /**
-             * Coding
-             * @default false
-             */
-            coding?: boolean;
-            /**
-             * Activity Type Id
-             * @default null
-             */
-            activity_type_id?: string | null;
-            /**
-             * Note
-             * @default
-             */
-            note?: string;
         };
         /** EntryView */
         EntryView: {
             /** Id */
             id: string;
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "ticket" | "activity";
             /**
              * Date
              * Format: date
@@ -2199,46 +2191,28 @@ export interface components {
             /** Duration */
             duration: string;
             /**
-             * Ticket Key
-             * @default null
+             * Activity Type Id
+             * @description None only for former entries awaiting review
              */
-            ticket_key?: string | null;
+            activity_type_id: string | null;
+            /** Activity Type */
+            activity_type: string | null;
             /**
-             * Service Id
-             * @default null
+             * Ticket Required
+             * @description Its activity type requires a ticket
              */
-            service_id?: string | null;
+            ticket_required: boolean;
+            /** Ticket Key */
+            ticket_key: string | null;
+            /** Service Id */
+            service_id: string | null;
             /**
              * Service
              * @description Short name of the ticket's service
-             * @default null
              */
-            service?: string | null;
-            /**
-             * Description
-             * @default null
-             */
-            description?: string | null;
-            /**
-             * Coding
-             * @default false
-             */
-            coding?: boolean;
-            /**
-             * Activity Type Id
-             * @default null
-             */
-            activity_type_id?: string | null;
-            /**
-             * Activity Type
-             * @default null
-             */
-            activity_type?: string | null;
-            /**
-             * Note
-             * @default null
-             */
-            note?: string | null;
+            service: string | null;
+            /** Description */
+            description: string;
             /**
              * Changed
              * @description Changed after it was created or imported (see its history)
@@ -2564,7 +2538,7 @@ export interface components {
         SearchQuery: {
             /**
              * Text
-             * @description Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note, of the service (short name or name) or of the activity type
+             * @description Words that all must match, ignoring case: the start of the ticket key, or a part of the description, of the service (short name or name) or of the activity type
              * @default
              */
             text?: string;
@@ -2923,7 +2897,7 @@ export interface components {
             /** Days */
             days: components["schemas"]["Day"][];
             /** Entries */
-            entries: (components["schemas"]["TicketEntry"] | components["schemas"]["ActivityEntry"])[];
+            entries: components["schemas"]["Entry"][];
             /**
              * History
              * @description All history lines, also of deleted entries, in written order
@@ -3264,8 +3238,11 @@ export interface components {
         JsonValue: unknown;
         /** ActivityWork */
         ActivityWork: {
-            /** Activity Type Id */
-            activity_type_id: string;
+            /**
+             * Activity Type Id
+             * @description None: entries still without activity type (see the review)
+             */
+            activity_type_id: string | null;
             /** Activity Type */
             activity_type: string;
             /** Duration */
@@ -3301,8 +3278,11 @@ export interface components {
         };
         /** ActivityTotal */
         ActivityTotal: {
-            /** Activity Type Id */
-            activity_type_id: string;
+            /**
+             * Activity Type Id
+             * @description None: entries still without activity type (see the review)
+             */
+            activity_type_id: string | null;
             /** Activity Type */
             activity_type: string;
             /** Duration */
@@ -3356,7 +3336,7 @@ export interface components {
          * ReviewReason
          * @enum {string}
          */
-        ReviewReason: "zero_duration" | "no_ticket" | "uncertain_ticket";
+        ReviewReason: "zero_duration" | "no_ticket" | "no_activity_type" | "uncertain_ticket";
         /** SplitPart */
         SplitPart: {
             /** Ticket Key */
@@ -3429,39 +3409,6 @@ export interface components {
              */
             company_half_days?: boolean;
         };
-        /** ActivityEntry */
-        ActivityEntry: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "activity";
-            /**
-             * Id
-             * @default null
-             */
-            id?: string | null;
-            /**
-             * Date
-             * Format: date
-             */
-            date: string;
-            /**
-             * Activity Type Id
-             * @description A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…
-             */
-            activity_type_id: string;
-            /**
-             * Duration
-             * @description Minutes, in quarter hours
-             */
-            duration: number;
-            /**
-             * Note
-             * @default
-             */
-            note?: string;
-        };
         /** Day */
         Day: {
             /**
@@ -3495,6 +3442,41 @@ export interface components {
              * @default
              */
             note?: string;
+        };
+        /** Entry */
+        Entry: {
+            /**
+             * Id
+             * @default null
+             */
+            id?: string | null;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Activity Type Id
+             * @description None only for former entries awaiting review (SPEC 4.6)
+             * @default null
+             */
+            activity_type_id?: string | null;
+            /**
+             * Ticket Key
+             * @description Required by some activity types, e.g. Coding
+             * @default null
+             */
+            ticket_key?: string | null;
+            /**
+             * Duration
+             * @description Minutes, in quarter hours
+             */
+            duration: number;
+            /**
+             * Description
+             * @default
+             */
+            description?: string;
         };
         /**
          * EntryChange
@@ -3654,45 +3636,6 @@ export interface components {
              * @default null
              */
             service_id?: string | null;
-        };
-        /** TicketEntry */
-        TicketEntry: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "ticket";
-            /**
-             * Id
-             * @default null
-             */
-            id?: string | null;
-            /**
-             * Date
-             * Format: date
-             */
-            date: string;
-            /**
-             * Ticket Key
-             * @description None only for imported entries awaiting review
-             * @default null
-             */
-            ticket_key?: string | null;
-            /**
-             * Duration
-             * @description Minutes, in quarter hours
-             */
-            duration: number;
-            /**
-             * Description
-             * @default
-             */
-            description?: string;
-            /**
-             * Coding
-             * @default false
-             */
-            coding?: boolean;
         };
         /** InvitationView */
         InvitationView: {
@@ -4749,7 +4692,7 @@ export interface operations {
     get__api_search: {
         parameters: {
             query?: {
-                /** @description Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note, of the service (short name or name) or of the activity type */
+                /** @description Words that all must match, ignoring case: the start of the ticket key, or a part of the description, of the service (short name or name) or of the activity type */
                 text?: string;
                 /** @description Only ticket entries of this service; `none`: tickets without service */
                 service_id?: string | null;

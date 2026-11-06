@@ -5,7 +5,7 @@ import datetime as dt
 import pytest
 from pydantic import ValidationError
 
-from src.models.entries import ActivityEntry, TicketEntry
+from src.models.entries import Entry
 from src.models.history import HistoryAction
 from src.modules.storage.errors import ConflictError, NotFoundError
 
@@ -31,14 +31,13 @@ def rename(storage, klara_id):
 
 
 def ticket_entry(key, day=1):
-    return TicketEntry(date=dt.date(2026, 3, day), ticket_key=key, duration=60, description=f'work on {key}')
+    return Entry(date=dt.date(2026, 3, day), ticket_key=key, duration=60, description=f'work on {key}')
 
 
 def test_rename_moves_the_entries_with_a_history_line_each(rename, entries, tickets, service_ids, activity_type_ids):
     first, second = entries.create(ticket_entry('TNG-2035')), entries.create(ticket_entry('TNG-2035', 2))
     other = entries.create(ticket_entry('TNG-5214'))
-    activity = entries.create(ActivityEntry(date=dt.date(2026, 3, 1), activity_type_id=activity_type_ids['Meeting'],
-                                            duration=60))
+    activity = entries.create(Entry(date=dt.date(2026, 3, 1), activity_type_id=activity_type_ids['Meeting'], duration=60))
     tickets.set_service('TNG-2035', service_ids['ImmoDrop'])
     result = rename(' tng-2035', 'kp-2035 ')
     assert (result.action, result.moved, result.ticket.key) == (HistoryAction.RENAMED, 2, 'KP-2035')

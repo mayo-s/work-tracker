@@ -501,7 +501,7 @@
         }
       },
       "post": {
-        "summary": "Create an entry; a new ticket is created, `service_id` sets the ticket's service. The duration takes e.g. `1:30`, `1.5`, `1h30m` or `90m`, in quarter hours, at most the rest of the day from its start (409).",
+        "summary": "Create an entry; a new ticket is created, `service_id` sets the ticket's service. The duration takes e.g. `1:30`, `1.5`, `1h30m` or `90m`, in quarter hours, at most the rest of the day from its start (409). An activity type that requires a ticket (e.g. Coding) is entered with one (409).",
         "operationId": "post__api_entries",
         "description": "",
         "tags": [
@@ -628,7 +628,7 @@
         }
       },
       "put": {
-        "summary": "Change an entry; only changed fields are written to its history. The kind cannot change.",
+        "summary": "Change an entry; only changed fields are written to its history.",
         "operationId": "put__api_entries_{entry_id}",
         "description": "",
         "tags": [
@@ -733,7 +733,7 @@
     },
     "/api/entries/{entry_id}/split": {
       "post": {
-        "summary": "Divide a ticket entry among several tickets (e.g. an alias like #4347 aka #1482), hours split evenly.",
+        "summary": "Divide an entry among several tickets (e.g. an alias like #4347 aka #1482), hours split evenly.",
         "operationId": "post__api_entries_{entry_id}_split",
         "description": "",
         "tags": [
@@ -1317,13 +1317,13 @@
             "in": "query",
             "schema": {
               "default": "",
-              "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note, of the service (short name or name) or of the activity type",
+              "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description, of the service (short name or name) or of the activity type",
               "maxLength": 200,
               "title": "Text",
               "type": "string"
             },
             "required": false,
-            "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note, of the service (short name or name) or of the activity type"
+            "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description, of the service (short name or name) or of the activity type"
           },
           {
             "name": "service_id",
@@ -1662,7 +1662,7 @@
         }
       },
       "post": {
-        "summary": "Set up the logged-in user's data at once: start day, opening balance, work schedule, PTO years and services.",
+        "summary": "Set up the logged-in user's data at once: start day, opening balance, way of working, work schedule, PTO years and services; a developer gets the activity type Coding too.",
         "operationId": "post__api_setup",
         "description": "The schedule applies from the start day; PTO is entered for the first year and the year after. Refused (409) once set up: then the settings page changes everything.",
         "tags": [
@@ -5958,6 +5958,12 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "ticket_required": {
+            "default": false,
+            "description": "An entry of this type needs a ticket, e.g. Coding",
+            "title": "Ticket Required",
+            "type": "boolean"
           }
         },
         "required": [
@@ -5988,6 +5994,12 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "ticket_required": {
+            "default": false,
+            "description": "An entry of this type needs a ticket, e.g. Coding",
+            "title": "Ticket Required",
+            "type": "boolean"
           }
         },
         "required": [
@@ -6502,19 +6514,16 @@
       },
       "EntryInput": {
         "additionalProperties": false,
-        "description": "A ticket entry (ticket_key, description, coding) or an activity entry (activity_type_id, note).",
+        "description": "An activity, optionally on a ticket (SPEC 4).",
         "properties": {
-          "kind": {
-            "enum": [
-              "ticket",
-              "activity"
-            ],
-            "title": "Kind",
-            "type": "string"
-          },
           "date": {
             "format": "date",
             "title": "Date",
+            "type": "string"
+          },
+          "activity_type_id": {
+            "description": "One of the user's activity types; some require a ticket (e.g. Coding)",
+            "title": "Activity Type Id",
             "type": "string"
           },
           "duration": {
@@ -6550,40 +6559,18 @@
               }
             ],
             "default": null,
-            "description": "Ticket entries: set the ticket's service (applies to all its entries); omit to keep it",
+            "description": "With a ticket: set the ticket's service (applies to all its entries); omit to keep it",
             "title": "Service Id"
           },
           "description": {
             "default": "",
             "title": "Description",
             "type": "string"
-          },
-          "coding": {
-            "default": false,
-            "title": "Coding",
-            "type": "boolean"
-          },
-          "activity_type_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Activity Type Id"
-          },
-          "note": {
-            "default": "",
-            "title": "Note",
-            "type": "string"
           }
         },
         "required": [
-          "kind",
           "date",
+          "activity_type_id",
           "duration"
         ],
         "title": "EntryInput",
@@ -6595,14 +6582,6 @@
             "title": "Id",
             "type": "string"
           },
-          "kind": {
-            "enum": [
-              "ticket",
-              "activity"
-            ],
-            "title": "Kind",
-            "type": "string"
-          },
           "date": {
             "format": "date",
             "title": "Date",
@@ -6611,60 +6590,6 @@
           "duration": {
             "title": "Duration",
             "type": "string"
-          },
-          "ticket_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Ticket Key"
-          },
-          "service_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Service Id"
-          },
-          "service": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Short name of the ticket's service",
-            "title": "Service"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Description"
-          },
-          "coding": {
-            "default": false,
-            "title": "Coding",
-            "type": "boolean"
           },
           "activity_type_id": {
             "anyOf": [
@@ -6675,7 +6600,7 @@
                 "type": "null"
               }
             ],
-            "default": null,
+            "description": "None only for former entries awaiting review",
             "title": "Activity Type Id"
           },
           "activity_type": {
@@ -6687,10 +6612,14 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Activity Type"
           },
-          "note": {
+          "ticket_required": {
+            "description": "Its activity type requires a ticket",
+            "title": "Ticket Required",
+            "type": "boolean"
+          },
+          "ticket_key": {
             "anyOf": [
               {
                 "type": "string"
@@ -6699,8 +6628,34 @@
                 "type": "null"
               }
             ],
-            "default": null,
-            "title": "Note"
+            "title": "Ticket Key"
+          },
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Id"
+          },
+          "service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Short name of the ticket's service",
+            "title": "Service"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
           },
           "changed": {
             "description": "Changed after it was created or imported (see its history)",
@@ -6717,9 +6672,15 @@
         },
         "required": [
           "id",
-          "kind",
           "date",
           "duration",
+          "activity_type_id",
+          "activity_type",
+          "ticket_required",
+          "ticket_key",
+          "service_id",
+          "service",
+          "description",
           "changed",
           "flags"
         ],
@@ -7402,7 +7363,7 @@
         "properties": {
           "text": {
             "default": "",
-            "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description or note, of the service (short name or name) or of the activity type",
+            "description": "Words that all must match, ignoring case: the start of the ticket key, or a part of the description, of the service (short name or name) or of the activity type",
             "maxLength": 200,
             "title": "Text",
             "type": "string"
@@ -8081,7 +8042,7 @@
           },
           "version": {
             "description": "Format version; a newer one cannot be imported",
-            "maximum": 1,
+            "maximum": 2,
             "minimum": 1,
             "title": "Version",
             "type": "integer"
@@ -8148,21 +8109,7 @@
           },
           "entries": {
             "items": {
-              "discriminator": {
-                "mapping": {
-                  "activity": "#/components/schemas/ActivityEntry",
-                  "ticket": "#/components/schemas/TicketEntry"
-                },
-                "propertyName": "kind"
-              },
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/TicketEntry"
-                },
-                {
-                  "$ref": "#/components/schemas/ActivityEntry"
-                }
-              ]
+              "$ref": "#/components/schemas/Entry"
             },
             "title": "Entries",
             "type": "array"
@@ -8866,8 +8813,16 @@
       "ActivityWork": {
         "properties": {
           "activity_type_id": {
-            "title": "Activity Type Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None: entries still without activity type (see the review)",
+            "title": "Activity Type Id"
           },
           "activity_type": {
             "title": "Activity Type",
@@ -8977,8 +8932,16 @@
       "ActivityTotal": {
         "properties": {
           "activity_type_id": {
-            "title": "Activity Type Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None: entries still without activity type (see the review)",
+            "title": "Activity Type Id"
           },
           "activity_type": {
             "title": "Activity Type",
@@ -9118,6 +9081,7 @@
         "enum": [
           "zero_duration",
           "no_ticket",
+          "no_activity_type",
           "uncertain_ticket"
         ],
         "title": "ReviewReason",
@@ -9290,60 +9254,6 @@
         "title": "ScheduleTerms",
         "type": "object"
       },
-      "ActivityEntry": {
-        "additionalProperties": false,
-        "properties": {
-          "kind": {
-            "const": "activity",
-            "default": "activity",
-            "title": "Kind",
-            "type": "string"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Id"
-          },
-          "date": {
-            "format": "date",
-            "title": "Date",
-            "type": "string"
-          },
-          "activity_type_id": {
-            "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
-            "title": "Activity Type Id",
-            "type": "string"
-          },
-          "duration": {
-            "description": "Minutes, in quarter hours",
-            "maximum": 1440,
-            "minimum": 0,
-            "title": "Duration",
-            "type": "integer"
-          },
-          "note": {
-            "default": "",
-            "maxLength": 1000,
-            "title": "Note",
-            "type": "string"
-          }
-        },
-        "required": [
-          "date",
-          "activity_type_id",
-          "duration"
-        ],
-        "title": "ActivityEntry",
-        "type": "object"
-      },
       "Day": {
         "additionalProperties": false,
         "properties": {
@@ -9419,6 +9329,77 @@
           "date"
         ],
         "title": "Day",
+        "type": "object"
+      },
+      "Entry": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "activity_type_id": {
+            "anyOf": [
+              {
+                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "None only for former entries awaiting review (SPEC 4.6)",
+            "title": "Activity Type Id"
+          },
+          "ticket_key": {
+            "anyOf": [
+              {
+                "description": "Ticket key, e.g. ENGINE-461",
+                "maxLength": 30,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Required by some activity types, e.g. Coding",
+            "title": "Ticket Key"
+          },
+          "duration": {
+            "description": "Minutes, in quarter hours",
+            "maximum": 1440,
+            "minimum": 0,
+            "title": "Duration",
+            "type": "integer"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "duration"
+        ],
+        "title": "Entry",
         "type": "object"
       },
       "EntryChange": {
@@ -9716,74 +9697,6 @@
           "key"
         ],
         "title": "Ticket",
-        "type": "object"
-      },
-      "TicketEntry": {
-        "additionalProperties": false,
-        "properties": {
-          "kind": {
-            "const": "ticket",
-            "default": "ticket",
-            "title": "Kind",
-            "type": "string"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Id"
-          },
-          "date": {
-            "format": "date",
-            "title": "Date",
-            "type": "string"
-          },
-          "ticket_key": {
-            "anyOf": [
-              {
-                "description": "Ticket key, e.g. ENGINE-461",
-                "maxLength": 30,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "None only for imported entries awaiting review",
-            "title": "Ticket Key"
-          },
-          "duration": {
-            "description": "Minutes, in quarter hours",
-            "maximum": 1440,
-            "minimum": 0,
-            "title": "Duration",
-            "type": "integer"
-          },
-          "description": {
-            "default": "",
-            "maxLength": 1000,
-            "title": "Description",
-            "type": "string"
-          },
-          "coding": {
-            "default": false,
-            "title": "Coding",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "date",
-          "duration"
-        ],
-        "title": "TicketEntry",
         "type": "object"
       },
       "InvitationView": {

@@ -10,7 +10,7 @@ from falcon import testing
 from src.app import create_app
 from src.models.catalog import Service
 from src.models.days import Day
-from src.models.entries import ActivityEntry, TicketEntry
+from src.models.entries import Entry
 from src.models.review import FlagReason
 from src.models.schedules import Schedule
 from src.models.teams import Team
@@ -53,12 +53,12 @@ def record_klaras_work(store, klara):
     days, entries = store.days(klara), store.entries(klara, clock=lambda: NOW)
     days.save(Day(date=MONDAY, day_type='work', start=480, end=990, note='release'))
     days.add_flag(MONDAY, FlagReason.WEEKEND_HOURS, 'Sa 2:00')
-    entries.delete(entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-1', duration=15)).id)
+    entries.delete(entries.create(Entry(date=MONDAY, ticket_key='TNG-1', duration=15)).id)
     planning, meeting = kind_id(store, 'Planning', klara), kind_id(store, 'Meeting', klara)
-    activity = entries.create(ActivityEntry(date=MONDAY, activity_type_id=planning, duration=60, note='retro'))
+    activity = entries.create(Entry(date=MONDAY, activity_type_id=planning, duration=60, description='retro'))
     entries.update(activity.model_copy(update={'activity_type_id': meeting}))
     store.activity_types(klara).delete(planning)
-    ticket = entries.create(TicketEntry(date=MONDAY, ticket_key='TNG-5213', duration=120, description='bookings'))
+    ticket = entries.create(Entry(date=MONDAY, ticket_key='TNG-5213', duration=120, description='bookings'))
     entries.split(ticket.id, ['TNG-5213', 'TNG-5214'])
     entries.add_flag(ticket.id, FlagReason.UNCERTAIN_TICKET, '#5213')
     msb = next(service for service in store.services(klara).all() if service.short_name == 'MSB')
@@ -77,7 +77,7 @@ def test_imported_records_belong_to_the_importing_user(store, hans, klara_id):
     record_klaras_work(store, klara_id)
     import_data(store, hans, export_data(store, klara_id, NOW))
     entries = store.entries(hans).between(MONDAY, MONDAY)
-    assert [entry.ticket_key for entry in entries if entry.kind == 'ticket'] == ['TNG-5213', 'TNG-5214']
+    assert [entry.ticket_key for entry in entries if entry.ticket_key] == ['TNG-5213', 'TNG-5214']
     assert entries[0].activity_type_id == kind_id(store, 'Meeting', hans)
     assert [line.action for line in store.entries(hans).history(entries[1].id)] == ['created', 'split']
     assert store.days(hans).get(MONDAY).note == 'release'
@@ -132,7 +132,7 @@ def add_entries(storage, user_id, count):
             entries = store.entries(user_id, clock=lambda: NOW)
             for number in range(start, min(start + 20, count)):
                 day = MONDAY - dt.timedelta(days=number)
-                entries.create(TicketEntry(date=day, ticket_key=f'TNG-{number + 1}', duration=60))
+                entries.create(Entry(date=day, ticket_key=f'TNG-{number + 1}', duration=60))
 
 
 def import_file(storage, user_id, data):
@@ -230,7 +230,7 @@ def test_setup_of_a_new_user_from_a_file(new_database, klaras_file):
     assert (result.status, result.json['entries'], result.json['days']) == (falcon.HTTP_200, 3, 1)
     assert client.simulate_get('/api/setup', cookies=hans).json == {'done': True}
     week = client.simulate_get('/api/entries', cookies=hans, params={'week': '2026-W44'}).json
-    assert [entry['ticket_key'] for entry in week if entry['kind'] == 'ticket'] == ['TNG-5213', 'TNG-5214']
+    assert [entry['ticket_key'] for entry in week if entry['ticket_key']] == ['TNG-5213', 'TNG-5214']
 
 
 def test_a_file_without_the_way_of_working_gives_developer(new_database, klaras_file):
@@ -251,13 +251,29 @@ def test_a_failed_import_leaves_nothing_behind(new_database, klaras_file):
 
 @pytest.mark.parametrize('change, message', [
     ({'format': 'spreadsheet'}, 'This is no Work Tracker export file'),
-    ({'version': 2}, 'The file has version 2; this Work Tracker reads up to version 1'),
+    ({'version': 3}, 'The file has version 3; this Work Tracker reads up to version 2'),
 ])
 def test_other_formats_and_newer_versions_are_refused(new_database, klaras_file, change, message):
     client, hans = new_database
     result = client.simulate_post('/api/setup/import', cookies=hans, json={'data': klaras_file | change})
     assert result.status_code == 422
     assert message in result.text
+
+
+def test_a_file_of_version_1_gets_entries_of_one_kind(new_database, klaras_file):
+    """Ticket and activity entries as converted in SPEC 4.6: a PR review becomes Coding, which the file gets."""
+    client, hans = new_database
+    meeting = next(kind['id'] for kind in klaras_file['activity_types'] if kind['name'] == 'Meeting')
+    entries = [
+        {'id': '1', 'kind': 'ticket', 'date': '2026-10-26', 'ticket_key': 'TNG-1', 'duration': 60, 'description': 'PR review',
+         'coding': False},
+        {'id': '2', 'kind': 'activity', 'date': '2026-10-26', 'activity_type_id': meeting, 'duration': 30, 'note': 'Standup'},
+    ]
+    version_1 = klaras_file | {'version': 1, 'entries': entries, 'history': [], 'review_flags': []}
+    assert client.simulate_post('/api/setup/import', cookies=hans, json={'data': version_1}).status == falcon.HTTP_200
+    week = client.simulate_get('/api/entries', cookies=hans, params={'week': '2026-W44'}).json
+    assert [(entry['activity_type'], entry['ticket_required'], entry['description']) for entry in week] == [
+        ('Coding', True, 'PR review'), ('Meeting', False, 'Standup')]
 
 
 def test_a_set_up_user_cannot_import(client, klaras_file):

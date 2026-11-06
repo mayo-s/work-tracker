@@ -10,14 +10,14 @@ from pydantic import JsonValue
 from src.lib.durations import MINUTES_PER_DAY, format_clock, format_duration, split_evenly
 from src.models.base import new_id
 from src.models.catalog import Ticket
-from src.models.entries import ActivityEntry, Entry, TicketEntry
+from src.models.entries import Entry
 from src.models.history import EntryChange, HistoryAction
 from src.models.review import FlagReason, ReviewFlag
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.store import Changes
 from src.modules.storage.tickets import TicketRepository
 
-_ENTRY_COLUMNS = 'id, date, kind, ticket_key, activity_type_id, duration, text, coding'
+_ENTRY_COLUMNS = 'id, date, activity_type_id, ticket_key, duration, description'
 _HISTORY_COLUMNS = 'id, entry_id, changed_at, action, changes, detail'
 _FLAG_COLUMNS = 'id, entry_id, reason, detail'
 
@@ -28,22 +28,17 @@ def history_time() -> dt.datetime:
 
 
 def _to_entry(row: sqlite3.Row) -> Entry:
-    common = {'id': row['id'], 'date': row['date'], 'duration': row['duration']}
-    if row['kind'] == 'ticket':
-        return TicketEntry(**common, ticket_key=row['ticket_key'], description=row['text'], coding=bool(row['coding']))
-    return ActivityEntry(**common, activity_type_id=row['activity_type_id'], note=row['text'])
+    return Entry(**dict(row))
 
 
 def _to_values(entry: Entry) -> tuple:
-    """Column values for date, kind, ticket_key, activity_type_id, duration, text, coding."""
-    if isinstance(entry, TicketEntry):
-        return entry.date.isoformat(), entry.kind, entry.ticket_key, None, entry.duration, entry.description, entry.coding
-    return entry.date.isoformat(), entry.kind, None, entry.activity_type_id, entry.duration, entry.note, False
+    """Column values for date, activity_type_id, ticket_key, duration, description."""
+    return entry.date.isoformat(), entry.activity_type_id, entry.ticket_key, entry.duration, entry.description
 
 
 def entry_fields(entry: Entry) -> dict[str, JsonValue]:
     """The fields a history line records changes of."""
-    return entry.model_dump(mode='json', exclude={'id', 'kind'})
+    return entry.model_dump(mode='json', exclude={'id'})
 
 
 def field_changes(old: dict[str, JsonValue], new: dict[str, JsonValue]) -> Changes:
@@ -60,9 +55,9 @@ def _to_flag(row: sqlite3.Row) -> ReviewFlag:
 
 
 class EntryRules:
-    """The rules of entries on every backend: creating, changing, splitting and deleting write the history, the kind of
-    an entry stays. A backend's repository stores them: `get`, `restore`, `restore_history`, `_check_references`,
-    `_replace` (an entry in place of its old version) and `_remove` (an entry and its review flags)."""
+    """The rules of entries on every backend: creating, changing, splitting and deleting write the history. A backend's
+    repository stores them: `get`, `restore`, `restore_history`, `_check_references`, `_replace` (an entry in place of
+    its old version) and `_remove` (an entry and its review flags)."""
 
     _clock: Callable[[], dt.datetime]
 
@@ -73,10 +68,8 @@ class EntryRules:
         return created
 
     def update(self, entry: Entry, action: HistoryAction = HistoryAction.UPDATED, detail: str = '') -> Entry:
-        """Replace an entry; only changed fields are recorded. The kind of an entry cannot change."""
+        """Replace an entry; only changed fields are recorded."""
         old = self.get(entry.id)
-        if old.kind != entry.kind:
-            raise ConflictError(f'Entry {entry.id} is a {old.kind} entry, not a {entry.kind} entry')
         if changes := field_changes(entry_fields(old), entry_fields(entry)):
             self._check_references(entry)
             self._replace(old, entry)
@@ -84,14 +77,15 @@ class EntryRules:
         return entry
 
     def split(self, entry_id: str, ticket_keys: Sequence[str]) -> list[Entry]:
-        """Divide a ticket entry among several tickets, the hours split evenly in quarter hours.
+        """Divide an entry among several tickets, the hours split evenly in quarter hours.
 
-        The entry itself gets the first ticket; the others become new entries with the same date and description.
+        The entry itself gets the first ticket; the others become new entries with the same date, activity type and
+        description.
         """
         entry = self.get(entry_id)
         keys = list(dict.fromkeys(Ticket(key=key).key for key in ticket_keys))
-        if not isinstance(entry, TicketEntry) or len(keys) < 2:
-            raise ConflictError('Only a ticket entry can be split, into at least two different tickets')
+        if len(keys) < 2:
+            raise ConflictError('An entry is split into at least two different tickets')
         shares = split_evenly(entry.duration, len(keys))
         first = self.update(
             entry.model_copy(update={'ticket_key': keys[0], 'duration': shares[0]}), HistoryAction.SPLIT,
@@ -120,7 +114,7 @@ class EntryRules:
 
 
 class EntryRepository(EntryRules):
-    """Ticket and activity entries of one user; every change is written to the entry's history.
+    """Task entries of one user; every change is written to the entry's history.
 
     Works within the transaction of the given connection. `clock` provides the history timestamps.
     """
@@ -147,10 +141,12 @@ class EntryRepository(EntryRules):
         return [_to_entry(row) for row in rows]
 
     def for_review(self) -> list[Entry]:
-        """Entries with 0:00, ticket entries without ticket and flagged entries, by date."""
+        """Entries with 0:00, without activity type, without the ticket their activity type requires, and flagged
+        entries, by date."""
         rows = self._conn.execute(
             f'SELECT {_ENTRY_COLUMNS} FROM entries '
-            "WHERE user_id = ? AND (duration = 0 OR (kind = 'ticket' AND ticket_key IS NULL) "
+            'WHERE user_id = ? AND (duration = 0 OR activity_type_id IS NULL OR (ticket_key IS NULL AND activity_type_id IN '
+            '(SELECT id FROM activity_types WHERE ticket_required)) '
             'OR id IN (SELECT entry_id FROM review_flags WHERE entry_id IS NOT NULL)) ORDER BY date, id',
             (self._user,),
         )
@@ -162,8 +158,8 @@ class EntryRepository(EntryRules):
         self._check_references(entry)
         restored = entry.model_copy(update={'id': new_id()})
         self._write(
-            'INSERT INTO entries (id, user_id, date, kind, ticket_key, activity_type_id, duration, text, coding) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO entries (id, user_id, date, activity_type_id, ticket_key, duration, description) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?)',
             (restored.id, self._user, *_to_values(entry)),
         )
         return restored
@@ -242,16 +238,16 @@ class EntryRepository(EntryRules):
         check_fits(entry, row[0] if row else None)
 
     def _check_references(self, entry: Entry) -> None:
-        """A ticket entry's ticket is created if needed; an activity entry needs one of the user's activity types."""
-        if isinstance(entry, TicketEntry) and entry.ticket_key:
+        """An entry's ticket is created if needed; its activity type is one of the user's."""
+        if entry.ticket_key:
             self._tickets.ensure(entry.ticket_key)
-        if isinstance(entry, ActivityEntry) and not self._owned('activity_types', entry.activity_type_id):
+        if entry.activity_type_id is not None and not self._owned('activity_types', entry.activity_type_id):
             raise ConflictError(f'Cannot save entry: unknown activity type {entry.activity_type_id}')
 
     def _replace(self, old: Entry, entry: Entry) -> None:
         self._write(
-            'UPDATE entries SET date = ?, kind = ?, ticket_key = ?, activity_type_id = ?, duration = ?, text = ?, '
-            'coding = ? WHERE id = ? AND user_id = ?',
+            'UPDATE entries SET date = ?, activity_type_id = ?, ticket_key = ?, duration = ?, description = ? '
+            'WHERE id = ? AND user_id = ?',
             (*_to_values(entry), entry.id, self._user),
         )
 

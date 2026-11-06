@@ -4,7 +4,7 @@ import datetime as dt
 import re
 
 from src.models.catalog import ActivityType, ServiceChoice, Ticket
-from src.models.entries import ActivityEntry, Entry
+from src.models.entries import Entry
 from src.models.history import EntryChange, HistoryAction
 from src.models.review import ReviewFlag
 from src.models.schedules import Schedule
@@ -71,10 +71,8 @@ class _Export:
         return [self._entry(entry) for entry in self._store.entries(self._user).between(dt.date.min, dt.date.max)]
 
     def _entry(self, entry: Entry) -> Entry:
-        update: dict = {'id': self._entries(entry.id)}
-        if isinstance(entry, ActivityEntry):
-            update['activity_type_id'] = self._activity_types.known(entry.activity_type_id)
-        return entry.model_copy(update=update)
+        return entry.model_copy(update={
+            'id': self._entries(entry.id), 'activity_type_id': self._activity_types.known(entry.activity_type_id)})
 
     def _history(self) -> list[EntryChange]:
         """Deleted entries are only in the history; they get the file ids after the entries'."""

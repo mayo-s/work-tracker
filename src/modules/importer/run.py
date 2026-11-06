@@ -10,9 +10,9 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from src.lib.daytypes import DayType
-from src.models.catalog import ActivityType
+from src.models.catalog import CODING, new_activity_type
 from src.models.days import Day
-from src.models.entries import ActivityEntry, Entry, TicketEntry
+from src.models.entries import Entry
 from src.models.history import HistoryAction
 from src.models.review import FlagReason
 from src.modules.importer.comments import ParsedEntry, parse_comment
@@ -38,7 +38,7 @@ class ImportSummary:
     year: int
     replaced: bool = False
     days: Counter = field(default_factory=Counter)  # stored days by day type
-    entries: Counter = field(default_factory=Counter)  # 'ticket', 'activity', 'zero', 'no ticket'
+    entries: Counter = field(default_factory=Counter)  # 'ticket' (Coding), 'activity', 'zero', 'no ticket'
     corrected_tickets: int = 0
     unpaid_leave: int = 0
     flagged_entries: int = 0
@@ -166,25 +166,20 @@ class _YearImporter:
 
     def _to_entry(self, date: dt.date, parsed: ParsedEntry) -> Entry:
         try:
-            if parsed.activity is None:
-                return TicketEntry(
-                    date=date, ticket_key=parsed.ticket_key, duration=parsed.duration,
-                    description=parsed.text, coding=parsed.coding,
-                )
-            return ActivityEntry(
-                date=date, activity_type_id=self._activity_id(parsed.activity), duration=parsed.duration, note=parsed.text
-            )
+            return Entry(date=date, activity_type_id=self._activity_id(parsed.activity), ticket_key=parsed.ticket_key,
+                         duration=parsed.duration, description=parsed.text)
         except ValidationError as error:
             raise SheetImportError(f'{date}: {parsed.source!r}: {error}') from error
 
     def _activity_id(self, name: str) -> str:
-        """The user's activity type of that name; one they do not have yet (e.g. Tool Management) is added."""
+        """The user's activity type of that name; one they do not have yet (e.g. Coding, Tool Management) is added."""
         if name.lower() not in self._activity_ids:
-            self._activity_ids[name.lower()] = self._activity_types.add(ActivityType(name=name)).id
+            self._activity_ids[name.lower()] = self._activity_types.add(new_activity_type(name)).id
         return self._activity_ids[name.lower()]
 
     def _count(self, parsed: ParsedEntry) -> None:
-        self._summary.entries['activity' if parsed.activity else 'ticket'] += 1
+        coding = parsed.activity == CODING
+        self._summary.entries['ticket' if coding else 'activity'] += 1
         self._summary.entries['zero'] += parsed.duration == 0
-        self._summary.entries['no ticket'] += parsed.activity is None and parsed.ticket_key is None
+        self._summary.entries['no ticket'] += coding and parsed.ticket_key is None
         self._summary.corrected_tickets += parsed.ticket_corrected

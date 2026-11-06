@@ -40,6 +40,15 @@ class ServiceChoice(Service):
 class ActivityType(DomainModel):
     id: RecordId | None = None
     name: str = Field(min_length=1, max_length=50, description='e.g. Tool Management')
+    ticket_required: bool = Field(default=False, description='An entry of this type needs a ticket, e.g. Coding')
+
+
+CODING = 'Coding'  # the activity type of coding work; a default for developers (SPEC 4.2)
+
+
+def new_activity_type(name: str) -> ActivityType:
+    """An activity type to add by name, e.g. by an import; Coding requires a ticket."""
+    return ActivityType(name=name, ticket_required=name.casefold() == CODING.casefold())
 
 
 class Ticket(DomainModel):

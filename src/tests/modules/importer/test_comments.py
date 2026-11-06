@@ -3,8 +3,8 @@ import pytest
 from src.modules.importer.comments import ParsedEntry, parse_comment, parse_line
 
 
-def entry(duration, source, ticket_key=None, activity=None, text='', coding=False):
-    return ParsedEntry(duration, source, ticket_key, activity, text, coding)
+def entry(duration, source, activity, ticket_key=None, text=''):
+    return ParsedEntry(duration, source, activity, ticket_key, text)
 
 
 @pytest.mark.parametrize('line, ticket, text', [
@@ -17,7 +17,7 @@ def entry(duration, source, ticket_key=None, activity=None, text='', coding=Fals
 ])
 def test_ticket_entry(line, ticket, text):
     [parsed] = parse_line(line)
-    assert (parsed.ticket_key, parsed.text, parsed.coding, parsed.source) == (ticket, text, True, line)
+    assert (parsed.ticket_key, parsed.text, parsed.activity, parsed.source) == (ticket, text, 'Coding', line)
 
 
 def test_ticket_entry_duration():
@@ -43,7 +43,7 @@ def test_several_tickets_split_evenly(line, tickets, durations, text):
     ('3,0 PR lead-notification-service', 180, 'PR lead-notification-service'),
 ])
 def test_pr_review_without_ticket(line, duration, text):
-    assert parse_line(line) == [entry(duration, line, text=text, coding=True)]
+    assert parse_line(line) == [entry(duration, line, 'Coding', text=text)]
 
 
 @pytest.mark.parametrize('line, activity, text', [
@@ -70,7 +70,7 @@ def test_pr_review_without_ticket(line, duration, text):
 ])
 def test_activity_entry(line, activity, text):
     [parsed] = parse_line(line)
-    assert (parsed.activity, parsed.text, parsed.ticket_key, parsed.coding) == (activity, text, None, False)
+    assert (parsed.activity, parsed.text, parsed.ticket_key) == (activity, text, None)
 
 
 @pytest.mark.parametrize('line, tickets', [
@@ -93,7 +93,7 @@ def test_note_lines(line):
 
 def test_parse_comment_separates_entries_and_notes():
     parsed = parse_comment(['Anreise LÜBECK', '3,0 KP-2058', '2,0 Meeting: TM und KI Koordination', 'ICE 1,5 h delay'])
-    assert [(entry.ticket_key, entry.activity) for entry in parsed.entries] == [('KP-2058', None), (None, 'Meeting')]
+    assert [(entry.ticket_key, entry.activity) for entry in parsed.entries] == [('KP-2058', 'Coding'), (None, 'Meeting')]
     assert parsed.notes == ('Anreise LÜBECK', 'ICE 1,5 h delay')
 
 

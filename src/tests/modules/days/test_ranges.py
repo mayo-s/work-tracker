@@ -1,6 +1,8 @@
 import falcon
 import pytest
 
+from src.tests.ids import CODING
+
 SUMMER = {'start': '2026-07-11', 'end': '2026-08-02', 'day_type': 'pto', 'note': 'summer holidays'}
 
 
@@ -9,7 +11,7 @@ def book(client, body):
 
 
 def entry(client, date):
-    body = {'kind': 'ticket', 'date': date, 'duration': '1:00', 'ticket_key': 'TNG-5882'}
+    body = {'activity_type_id': CODING, 'date': date, 'duration': '1:00', 'ticket_key': 'TNG-5882'}
     assert client.simulate_post('/api/entries', json=body).status == falcon.HTTP_201
 
 

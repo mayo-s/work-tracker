@@ -5,7 +5,7 @@ import datetime as dt
 import pytest
 
 from src.models.catalog import ActivityType, Service
-from src.models.entries import ActivityEntry
+from src.models.entries import Entry
 from src.modules.storage.errors import ConflictError, NotFoundError
 
 
@@ -90,7 +90,7 @@ def test_add_duplicate_activity_type(activity_types):
 def test_delete_activity_type_in_use(activity_types, per_call, klara_id):
     meeting = activity_types.all()[1]
     per_call(lambda store: store.entries(klara_id)).create(
-        ActivityEntry(date=dt.date(2026, 10, 26), activity_type_id=meeting.id, duration=60))
+        Entry(date=dt.date(2026, 10, 26), activity_type_id=meeting.id, duration=60))
     with pytest.raises(ConflictError, match='used by entries'):
         activity_types.delete(meeting.id)
 
