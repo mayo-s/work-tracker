@@ -1,6 +1,8 @@
 // Form to add or change a task entry: a ticket entry or an activity entry.
 
-import { api, ApiError, type ActivityType, type EntryInput, type EntryView, type ServiceChoice } from './api.ts';
+import {
+  api, ApiError, type ActivityType, type EntryInput, type EntryView, type ServiceChoice, type WorkMode,
+} from './api.ts';
 import { el } from './dom.ts';
 import { clockMinutes, normalizeOnLeave, settleDuration, type DurationRules } from './duration-input.ts';
 import { field, formFooter, submit } from './forms.ts';
@@ -21,6 +23,7 @@ export type EntryEditorOptions = {
   dayStart: string | null;  // the day's start time, e.g. 08:00: an entry fits the rest of the day
   services: ServiceChoice[];
   activityTypes: ActivityType[];
+  workMode: WorkMode;
   onDone: () => void;
   onCancel: () => void;
 };
@@ -30,9 +33,22 @@ export function entryRules(dayStart: string | null): DurationRules {
   return { limit: 24 * 60 - (clockMinutes(dayStart ?? '') ?? 0), quarter: true };
 }
 
-export function entryFormValues(entry: EntryView | null): EntryFormValues {
+/** What the form offers in a way of working (SPEC 5.11): the Ticket / Activity choice, the Coding checkbox and the
+ * kind of a new entry. An existing entry the way of working does not record (e.g. a ticket entry in "Activities only",
+ * a coding entry in "Tickets, no coding") opens in the full form, so nothing of it is lost. */
+export function entryForm(mode: WorkMode, entry: EntryView | null): { choice: boolean; coding: boolean; kind: EntryKind } {
+  const kind = mode === 'activities' ? 'activity' : 'ticket';
+  const fits = mode === 'developer' || (mode === 'tickets' && !entry?.coding)
+    || (mode === 'activities' && entry?.kind !== 'ticket');
+  if (entry && !fits) {
+    return { choice: true, coding: true, kind };
+  }
+  return { choice: mode !== 'activities', coding: mode === 'developer', kind };
+}
+
+export function entryFormValues(entry: EntryView | null, newKind: EntryKind = 'ticket'): EntryFormValues {
   return {
-    kind: entry?.kind ?? 'ticket',
+    kind: entry?.kind ?? newKind,
     duration: entry?.duration ?? '',
     ticket_key: entry?.ticket_key ?? '',
     service_id: entry?.service_id != null ? String(entry.service_id) : '',
@@ -122,15 +138,17 @@ function onlyFor(kind: EntryKind, element: HTMLElement): HTMLElement {
 function fields(initial: EntryFormValues, options: EntryEditorOptions): HTMLElement {
   const services = serviceOptions(options.services, (service) => service.short_name);
   const activities = options.activityTypes.map((activity): [string, string] => [activity.id ?? '', activity.name]);
+  const form = entryForm(options.workMode, options.entry);
   return el('div', {},
-    kindToggle(initial.kind, options.entry !== null),
+    form.choice ? kindToggle(initial.kind, options.entry !== null)
+      : el('input', { type: 'hidden', name: 'kind', value: initial.kind }),
     el('div', { class: 'entry-editor-fields' },
       field(PREFIX, 'duration', 'Duration', input('duration', initial.duration, '1:30'), 'e.g. 1.5 or 90m'),
       onlyFor('ticket', field(PREFIX, 'ticket_key', 'Ticket', input('ticket_key', initial.ticket_key, 'ENGINE-461'))),
       onlyFor('ticket', field(PREFIX, 'service_id', 'Service', select('service_id', initial.service_id, '— no service —', services),
         ' ')),
-      onlyFor('ticket', el('label', { class: 'coding-option' },
-        el('input', { type: 'checkbox', name: 'coding', id: `${PREFIX}-coding`, checked: initial.coding }), 'Coding')),
+      form.coding ? onlyFor('ticket', el('label', { class: 'coding-option' },
+        el('input', { type: 'checkbox', name: 'coding', id: `${PREFIX}-coding`, checked: initial.coding }), 'Coding')) : null,
       onlyFor('ticket', field(PREFIX, 'description', 'Description', input('description', initial.description, 'What was done'))),
       onlyFor('activity', field(PREFIX, 'activity_type_id', 'Activity',
         select('activity_type_id', initial.activity_type_id, '— choose —', activities))),
@@ -175,7 +193,7 @@ function wire(form: HTMLFormElement, options: EntryEditorOptions, serviceChanged
 
 /** The editor of a new or existing entry of a day. */
 export function entryEditor(options: EntryEditorOptions): HTMLFormElement {
-  const initial = entryFormValues(options.entry);
+  const initial = entryFormValues(options.entry, entryForm(options.workMode, options.entry).kind);
   const form = el('form', { class: 'entry-editor', 'aria-label': options.entry ? 'Edit entry' : 'New entry', novalidate: true },
     fields(initial, options),
     ...formFooter(options.entry ? 'Delete entry' : null),

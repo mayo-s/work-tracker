@@ -85,7 +85,9 @@ all at once.
 - `/`: dashboard with key figures (balance, PTO left, this week, open review items), the balance over time, days off
   coming up and this year's figures.
 - `/week` (`?week=2026-W44`, `&edit=<date>`, `&entry=<id>`): days and entries edited in place, each entry with its
-  history; "Book days off" sets PTO, sick, unpaid leave or overtime off for a range, with a preview.
+  history; "Book days off" sets PTO, sick, unpaid leave or overtime off for a range, with a preview. The entry form
+  follows the way of working: no Coding checkbox in "Tickets without coding", only activities in "Activities only",
+  no "Add entry" and no "No entries" warning in "Times only"; an entry of another kind still opens in its full form.
 - `/month`: month and work report (coding and other ticket work by service and ticket, activities by type with their
   notes). `/year`: totals, PTO account, balance by month, work by service and activity type. Both show the hours in
   entries next to the hours worked ("Entries 152:30 of 160:00 worked").
