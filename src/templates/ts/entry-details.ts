@@ -7,12 +7,18 @@ import { button, el } from './dom.ts';
 import { historyPanel } from './history.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 
+function describeTimes(day: DayView): string {
+  if (!day.start) {
+    return 'no times';
+  }
+  return day.end ? `${day.start}–${day.end}, break ${day.break_time}, worked ${day.worked}` : `from ${day.start}, no end yet`;
+}
+
 /** `Mon 02.03.2026 · 08:00–16:30, break 0:30, worked 8:00`; the day type unless work, e.g. `Sat 06.12.2025 · PTO · no
  * times`. */
 export function describeDay(day: DayView): string {
   const type = day.holiday ?? (day.day_type === 'work' ? null : DAY_TYPE_LABELS[day.day_type]);
-  const times = day.start && day.end ? `${day.start}–${day.end}, break ${day.break_time}, worked ${day.worked}` : 'no times';
-  return [`${formatDay(day.date, day.weekday)}${day.date.slice(0, 4)}`, type, times].filter(Boolean).join(' · ');
+  return [`${formatDay(day.date, day.weekday)}${day.date.slice(0, 4)}`, type, describeTimes(day)].filter(Boolean).join(' · ');
 }
 
 /** The fields of an entry as label and value. */

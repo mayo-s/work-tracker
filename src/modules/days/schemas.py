@@ -11,7 +11,7 @@ from src.lib.durations import format_clock, format_duration, parse_clock, parse_
 from src.lib.public_holidays import holiday_on
 from src.lib.schedules import STANDARD, WorkSchedule
 from src.lib.stays import Stays
-from src.lib.worktime import legal_break
+from src.lib.worktime import best_end, legal_break
 from src.models.days import Day
 from src.utils.api import ClockText, DurationText, check_domain
 
@@ -31,7 +31,7 @@ class DayInput(BaseModel):
 
     @model_validator(mode='after')
     def check_day(self) -> Self:
-        """Start and end together, end after start, break not longer than presence."""
+        """An end or a break only with a start, end after start, break not longer than presence."""
         check_domain(lambda: self.to_day(dt.date.min))
         return self
 
@@ -56,7 +56,8 @@ class DayView(BaseModel):
     holiday: str | None = Field(description='Name of the public holiday or company half day')
     recorded: bool
     start: str | None
-    end: str | None
+    end: str | None = Field(description='Empty with a start: the day is open and counts as nothing worked yet')
+    best_end: str | None = Field(description='An open day: the end that meets the target, without overtime or loss')
     break_time: str | None = Field(description='Effective break, h:mm')
     break_default: bool = Field(description='True if the break is the legal minimum')
     worked: str
@@ -82,8 +83,9 @@ def day_view(date: dt.date, day: Day | None, schedule: WorkSchedule = STANDARD) 
         recorded=day is not None,
         start=_text(record.start, format_clock),
         end=_text(record.end, format_clock),
+        best_end=_text(best_end(record.start, summary.target, record.break_minutes) if record.is_open else None, format_clock),
         break_time=_text(_effective_break(record), format_duration),
-        break_default=record.start is not None and record.break_minutes is None,
+        break_default=record.end is not None and record.break_minutes is None,
         worked=format_duration(summary.worked),
         target=format_duration(summary.target),
         overtime=format_duration(summary.overtime),
@@ -94,8 +96,8 @@ def day_view(date: dt.date, day: Day | None, schedule: WorkSchedule = STANDARD) 
 
 
 def _effective_break(day: Day) -> int | None:
-    if day.start is None:
-        return None
+    if day.end is None:
+        return day.break_minutes  # an open day has only the one entered
     return day.break_minutes if day.break_minutes is not None else legal_break(day.end - day.start)
 
 
@@ -112,6 +114,6 @@ def team_view_day(day: DayView, stays: Stays) -> DayView:
     they left, between stays) without any data."""
     if stays.shows(day.date):
         return day.model_copy(update={'note': ''})
-    empty = {'recorded': False, 'start': None, 'end': None, 'break_time': None, 'break_default': False, 'worked': '0:00',
-             'target': '0:00', 'overtime': '0:00', 'pto_days': 0.0, 'note': '', 'in_team': False}
+    empty = {'recorded': False, 'start': None, 'end': None, 'best_end': None, 'break_time': None, 'break_default': False,
+             'worked': '0:00', 'target': '0:00', 'overtime': '0:00', 'pto_days': 0.0, 'note': '', 'in_team': False}
     return day.model_copy(update=empty)

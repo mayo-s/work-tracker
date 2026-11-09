@@ -107,7 +107,8 @@ class Dashboard(Reports):
             this_week=self.week(week, monday).totals,
             week_target=format_duration(sum(day.target for day in self._period_days(self._ledger, monday,
                                                                                     monday + dt.timedelta(days=6)))),
-            review_open=0 if self._visible_from else sum(review_counts(self._store, self._user).model_dump().values()),
+            review_open=0 if self._visible_from else sum(
+                review_counts(self._store, self._user, self._today).model_dump().values()),
             balance_series=self._series(),
             coming_up=self._coming_up(),
             this_year=self._year_figures(year.days_worked, year.average_per_day_worked, year.days_off),

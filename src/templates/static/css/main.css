@@ -858,6 +858,10 @@ button.button-danger {
   margin-left: var(--space-1);
 }
 
+.clock-button {
+  margin-left: var(--space-2);
+}
+
 .select-cell {
   width: 2.5rem;
 }

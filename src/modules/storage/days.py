@@ -41,6 +41,15 @@ class DayRepository:
         )
         return [_to_day(row) for row in rows]
 
+    def open_before(self, date: dt.date) -> list[Day]:
+        """Days before the date with a start but no end, in date order."""
+        rows = self._conn.execute(
+            f'SELECT {_DAY_COLUMNS} FROM days '
+            'WHERE user_id = ? AND date < ? AND start_time IS NOT NULL AND end_time IS NULL ORDER BY date',
+            (self._user, date.isoformat()),
+        )
+        return [_to_day(row) for row in rows]
+
     def records(self, start: dt.date, end: dt.date) -> dict[dt.date, DayRecord]:
         """Worked time and day type of the recorded days, as input for balances."""
         return {day.date: day.to_record() for day in self.between(start, end)}

@@ -24,17 +24,22 @@ class Day(DomainModel):
 
     @model_validator(mode='after')
     def check_times(self) -> Self:
-        if (self.start is None) != (self.end is None):
-            raise ValueError('start and end must be set together')
+        if self.start is None and self.end is not None:
+            raise ValueError('an end needs a start')
         if self.start is None and self.break_minutes is not None:
-            raise ValueError('a break needs start and end')
-        if self.start is not None:
+            raise ValueError('a break needs a start')
+        if self.end is not None:
             worked_time(self.start, self.end, self.break_minutes)  # rejects end before start and too long breaks
         return self
 
     @property
+    def is_open(self) -> bool:
+        """Started, but without an end yet: counts as nothing worked (SPEC 3.3)."""
+        return self.start is not None and self.end is None
+
+    @property
     def worked(self) -> int:
-        if self.start is None:
+        if self.end is None:
             return 0
         return worked_time(self.start, self.end, self.break_minutes)
 

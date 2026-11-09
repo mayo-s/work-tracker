@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import type { ReviewEntry, TicketView } from '../ts/api.ts';
-import { filterEntries, filterTickets, groupReview } from '../ts/review.ts';
+import { filterEntries, filterTickets, groupReview, reviewTotal } from '../ts/review.ts';
 
 const TICKETS: TicketView[] = ['AGA-39', 'AGA-40', 'TNG-4950', 'TNG-5214'].map((key) => ({ key, service_id: null, service: null, entries: 1 }));
 
@@ -33,4 +33,8 @@ test('entries without activity type are chosen together, the others stay per ent
     reviewEntry('e2', null, ['no_ticket']),
   ]);
   assert.deepEqual([untyped.map((item) => item.entry.id), others.map((item) => item.entry.id)], [['e1'], ['e2']]);
+});
+
+test('the review total counts every kind of item', () => {
+  assert.equal(reviewTotal({ tickets_without_service: 1, entries: 2, open_days: 3 }), 6);
 });

@@ -1,6 +1,6 @@
 """Presence, legal break and worked time of a day, all in minutes."""
 
-from src.lib.durations import format_clock
+from src.lib.durations import MINUTES_PER_DAY, format_clock
 
 SIX_HOURS = 6 * 60
 NINE_HOURS = 9 * 60
@@ -38,3 +38,18 @@ def worked_time(start: int, end: int, break_minutes: int | None = None) -> int:
     if not 0 <= break_minutes <= presence:
         raise ValueError(f'Break {break_minutes} must be between 0 and the presence time {presence}')
     return presence - break_minutes
+
+
+def best_end(start: int, target: int, break_minutes: int | None = None) -> int | None:
+    """The end at which the worked time meets the target: no overtime, no loss. Without a break the legal minimum
+    applies. None without a target, or if that end would pass midnight."""
+    if target <= 0:
+        return None
+    end = start + target + (_legal_break_for_work(target) if break_minutes is None else break_minutes)
+    return end if end < MINUTES_PER_DAY else None
+
+
+def _legal_break_for_work(worked: int) -> int:
+    if worked <= SIX_HOURS:
+        return 0
+    return SHORT_BREAK if worked <= NINE_HOURS else LONG_BREAK

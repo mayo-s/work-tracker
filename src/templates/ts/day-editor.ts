@@ -1,7 +1,7 @@
 // Form to record a day in the week view: day type, times, break and note.
 
 import { api, type DayInput, type DayType, type DayView } from './api.ts';
-import { formatDay } from './dates.ts';
+import { clockTime, formatDay, isoDate } from './dates.ts';
 import { el } from './dom.ts';
 import { clockMinutes, normalizeOnLeave, settleDuration, type DurationRules } from './duration-input.ts';
 import { field, formFooter, submit } from './forms.ts';
@@ -35,6 +35,12 @@ export function dayInput(values: DayFormValues): DayInput {
     }
   }
   return input;
+}
+
+/** The API input that saves the current time as the day's start or end, keeping the rest of the day; null if it is no
+ * longer that day (a page left open overnight). */
+export function clockedInput(day: DayView, name: 'start' | 'end', now: Date): DayInput | null {
+  return isoDate(now) === day.date ? dayInput({ ...formValues(day), [name]: clockTime(now) }) : null;
 }
 
 function textInput(name: string, value: string, placeholder: string, inputmode = 'numeric'): HTMLInputElement {
@@ -71,7 +77,8 @@ export function dayEditor(day: DayView, onDone: () => void, onCancel: () => void
     el('div', { class: 'day-editor-fields' },
       field(PREFIX, 'day_type', 'Day type', typeSelect(initial.day_type)),
       field(PREFIX, 'start', 'Start', textInput('start', initial.start, '08:00')),
-      field(PREFIX, 'end', 'End', textInput('end', initial.end, '16:30')),
+      field(PREFIX, 'end', 'End', textInput('end', initial.end, day.best_end ?? '16:30'),
+        day.best_end ? `Best end ${day.best_end}: the target, without overtime or loss; empty: the day stays open` : undefined),
       field(PREFIX, 'break_time', 'Break', textInput('break_time', initial.break_time, 'legal', 'text'),
         'e.g. 0:30 or 45m; empty: legal minimum'),
       field(PREFIX, 'note', 'Note', el('textarea', { id: `${PREFIX}-note`, name: 'note', rows: 2,

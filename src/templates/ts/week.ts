@@ -5,8 +5,9 @@ import {
   type WorkMode,
 } from './api.ts';
 import { addDays, formatDate, formatDay, isoDate, isoWeek, isValidWeek, mondayOf, shiftWeek, type IsoDate } from './dates.ts';
-import { dayEditor } from './day-editor.ts';
+import { clockedInput, dayEditor } from './day-editor.ts';
 import { daysOffForm } from './days-off.ts';
+import { ask } from './dialog.ts';
 import { button, el, scrolling } from './dom.ts';
 import { entryEditor, type EntryEditorOptions } from './entry-editor.ts';
 import { historyPanel } from './history.ts';
@@ -44,6 +45,19 @@ export function visibleDays(days: DayView[], entries: Map<IsoDate, EntryView[]>)
 export function needsWarning(day: DayView, entries: EntryView[], today: IsoDate, mode: WorkMode): boolean {
   return mode !== 'times' && day.date < today && day.day_type === 'work' && day.work_day && entries.length === 0
     && day.in_team !== false;
+}
+
+/** A past day with a start but no end; today's may still be running. */
+export function leftOpen(day: DayView, today: IsoDate): boolean {
+  return Boolean(day.start) && !day.end && day.date < today;
+}
+
+/** What "now" would set on the day: the start of today while it has none, its end while it is open. */
+export function clockField(day: DayView, today: IsoDate): 'start' | 'end' | null {
+  if (day.date !== today || (day.start && day.end)) {
+    return null;
+  }
+  return day.start ? 'end' : 'start';
 }
 
 /** The week from `?week=2026-W44`, otherwise the current week. */
@@ -144,6 +158,7 @@ type View = {
 };
 type Actions = {
   edit: (editing: Editing) => void; cancel: () => void; changed: () => void; toggleHistory: (entryId: string) => void;
+  clock: (day: DayView, name: 'start' | 'end') => void;
 };
 
 const COLUMNS = 8;
@@ -207,12 +222,31 @@ function entryItem(entry: EntryView, view: View): HTMLElement {
   );
 }
 
-function dayCell(day: DayView, warning: boolean, today: IsoDate): HTMLElement {
+function dayCell(day: DayView, warnings: string[], today: IsoDate): HTMLElement {
   return el('td', {},
     day.date === today ? el('strong', {}, formatDay(day.date, day.weekday)) : formatDay(day.date, day.weekday),
     day.holiday ? el('div', { class: 'muted' }, day.holiday) : null,
-    warning ? el('div', {}, el('span', { class: 'badge warning' }, 'No entries')) : null,
+    ...warnings.map((warning) => el('div', {}, el('span', { class: 'badge warning' }, warning))),
   );
+}
+
+/** "Start now" or "End now" on today's row, saved at once; not while a form is open, as saving redraws the page. */
+function clockButton(day: DayView, view: View): HTMLElement | null {
+  const name = view.readOnly || view.editing ? null : clockField(day, view.today);
+  return name && button(name === 'start' ? 'Start now' : 'End now', () => view.actions.clock(day, name),
+    { class: 'button-small primary clock-button', 'data-opens': `clock-${day.date}` });
+}
+
+/** Start and end; an open day shows the end that meets its target instead. The button sits here, as this column stays on
+ * screen on narrow screens, where the table scrolls sideways. */
+function timesCell(day: DayView, view: View): HTMLElement {
+  const clock = clockButton(day, view);
+  if (!day.start) {
+    return el('td', {}, el('span', { class: 'muted' }, '—'), clock);
+  }
+  return day.end ? el('td', {}, el('span', { class: 'num' }, `${day.start}–${day.end}`))
+    : el('td', {}, el('span', { class: 'num' }, `${day.start}–`), day.best_end ? el('span',
+      { class: 'num muted', title: 'The end that meets the target, without overtime or loss' }, ` best ${day.best_end}`) : null, clock);
 }
 
 function rowClass(day: DayView, warning: boolean, today: IsoDate): string | null {
@@ -223,21 +257,21 @@ function rowClass(day: DayView, warning: boolean, today: IsoDate): string | null
 /** A day before the member joined the team (team view): no data. */
 function outsideTeamRow(day: DayView, view: View): HTMLElement {
   return el('tr', { class: rowClass(day, false, view.today) },
-    dayCell(day, false, view.today),
+    dayCell(day, [], view.today),
     el('td', { colspan: COLUMNS - 1 }, el('span', { class: 'muted' }, 'Not in this team')));
 }
 
-function dayRow(day: DayView, warning: boolean, view: View): HTMLElement {
+function dayRow(day: DayView, warnings: string[], view: View): HTMLElement {
   if (day.in_team === false) {
     return outsideTeamRow(day, view);
   }
   const editingDay = view.editing?.kind === 'day' && view.editing.date === day.date;
   const edit = editingDay || view.readOnly ? null : button('Edit', () => view.actions.edit({ kind: 'day', date: day.date }),
     { 'aria-label': `Edit ${formatDay(day.date, day.weekday)}`, 'data-opens': `day-${day.date}` });
-  return el('tr', { class: rowClass(day, warning, view.today) },
-    dayCell(day, warning, view.today),
+  return el('tr', { class: rowClass(day, warnings.length > 0, view.today) },
+    dayCell(day, warnings, view.today),
     el('td', {}, day.day_type === 'work' ? null : el('span', { class: 'badge' }, dayTypeLabel(day))),
-    el('td', {}, day.start ? el('span', { class: 'num' }, `${day.start}–${day.end}`) : el('span', { class: 'muted' }, '—')),
+    timesCell(day, view),
     el('td', { class: 'num' }, day.break_time ?? '', day.break_default ? el('span', { class: 'muted' }, ' legal') : null),
     el('td', { class: 'num' }, day.worked),
     el('td', { class: 'num muted' }, day.target),
@@ -266,14 +300,15 @@ function detailsRow(day: DayView, entries: EntryView[], className: string | null
 
 function dayRows(day: DayView, view: View): HTMLElement[] {
   const entries = view.data.entries.get(day.date) ?? [];
-  const warning = needsWarning(day, entries, view.today, view.data.workMode);
-  const rows = [dayRow(day, warning, view)];
+  const warnings = [needsWarning(day, entries, view.today, view.data.workMode) ? 'No entries' : '',
+    leftOpen(day, view.today) ? 'No end' : ''].filter(Boolean);
+  const rows = [dayRow(day, warnings, view)];
   if (view.editing?.kind === 'day' && view.editing.date === day.date) {
     rows.push(el('tr', { class: 'day-editor-row' },
       el('td', { colspan: COLUMNS }, dayEditor(day, view.actions.changed, view.actions.cancel))));
   }
   if (!view.readOnly || entries.length) {
-    rows.push(detailsRow(day, entries, rowClass(day, warning, view.today), view));
+    rows.push(detailsRow(day, entries, rowClass(day, warnings.length > 0, view.today), view));
   }
   return rows;
 }
@@ -376,6 +411,17 @@ export async function renderWeekPage(doc: Document): Promise<void> {
     toggleHistory: (entryId) => {
       history = history === entryId ? null : entryId;
       draw();
+    },
+    clock: (day, name) => {
+      const input = clockedInput(day, name, new Date());
+      if (!input) {
+        doc.location.reload();  // the page stayed open past midnight: show the new day, and write nothing on the old one
+        return;
+      }
+      api.saveDay(day.date, input).then(() => {
+        returnFocus = { key: `clock-${day.date}`, date: day.date };
+        return load();
+      }, (error: unknown) => ask('The time was not saved', [errorText(error)], [], 'Close'));
     },
   };
 

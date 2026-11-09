@@ -55,6 +55,26 @@ def test_record_a_day_then_add_and_change_an_entry(logged_in):
     expect(page.locator('.entry', has_text='TNG-5882')).to_contain_text('2:00')
 
 
+def test_start_and_end_now_on_today(logged_in):
+    page = logged_in('hans')
+    page.clock.set_fixed_time('2026-10-28T08:12:00')
+    page.goto('/week?week=2026-W44')
+    page.click('button:has-text("Start now")')
+    row = page.locator('tr', has=page.locator('[aria-label="Edit Wed 28.10."]'))
+    expect(row).to_contain_text('08:12– best 16:42')
+    expect(row).to_contain_text('-8:00')
+    expect(page.locator('button:has-text("Start now")')).to_have_count(0)
+    page.click('[aria-label="Edit Wed 28.10."]')
+    expect(page.locator('#day-end')).to_have_attribute('placeholder', '16:42')
+    expect(page.locator('button:has-text("End now")')).to_have_count(0)  # saving would close the form
+    page.click('.day-editor button:has-text("Cancel")')
+    page.clock.set_fixed_time('2026-10-28T16:50:00')
+    page.click('button:has-text("End now")')
+    expect(row).to_contain_text('08:12–16:50')
+    expect(row).to_contain_text('+0:08')
+    expect(page.locator('button:has-text("End now")')).to_have_count(0)
+
+
 def test_choose_an_activity_type_rename_the_ticket_and_assign_a_service(logged_in):
     page = logged_in('hans')
     page.goto('/review')

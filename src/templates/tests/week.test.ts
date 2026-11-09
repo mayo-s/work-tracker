@@ -5,13 +5,13 @@ import { test } from 'node:test';
 
 import type { DayView, EntryView } from '../ts/api.ts';
 import {
-  dayTypeLabel, editFromSearch, entriesByDate, entryFromSearch, needsWarning, openerKey, shownDays, signed, valueClass,
-  visibleDays, weekFromSearch,
+  clockField, dayTypeLabel, editFromSearch, entriesByDate, entryFromSearch, leftOpen, needsWarning, openerKey, shownDays, signed,
+  valueClass, visibleDays, weekFromSearch,
 } from '../ts/week.ts';
 
 function day(date: string, weekday: string, changes: Partial<DayView> = {}): DayView {
   return {
-    date, weekday, day_type: 'work', automatic: true, holiday: null, recorded: false, start: null, end: null,
+    date, weekday, day_type: 'work', automatic: true, holiday: null, recorded: false, start: null, end: null, best_end: null,
     break_time: null, break_default: false, worked: '0:00', target: '8:00', overtime: '-8:00', pto_days: 0, work_day: true, note: '',
     ...changes,
   };
@@ -103,4 +103,20 @@ test('a company half day shows that it takes half a PTO day by itself', () => {
   assert.equal(dayTypeLabel({ day_type: 'company_half_day', pto_days: 0.5 }), 'Company half day · 0.5 PTO (half free)');
   assert.equal(dayTypeLabel({ day_type: 'company_half_day', pto_days: 0 }), 'Company half day');  // e.g. on a weekend
   assert.equal(dayTypeLabel({ day_type: 'pto_half', pto_days: 0.5 }), 'PTO ½');
+});
+
+test('"now" offers the start of today, then its end, then nothing', () => {
+  const today = '2026-10-28';
+  assert.equal(clockField(day(today, 'Wed'), today), 'start');
+  assert.equal(clockField(day(today, 'Wed', { start: '08:12' }), today), 'end');
+  assert.equal(clockField(day(today, 'Wed', { start: '08:12', end: '16:42' }), today), null);
+  assert.equal(clockField(day('2026-10-27', 'Tue', { start: '08:12' }), today), null);
+});
+
+test('a past day with a start but no end is left open; today may still be running', () => {
+  const today = '2026-10-28';
+  assert.ok(leftOpen(day('2026-10-27', 'Tue', { start: '08:12' }), today));
+  assert.ok(!leftOpen(day(today, 'Wed', { start: '08:12' }), today));
+  assert.ok(!leftOpen(day('2026-10-27', 'Tue', { start: '08:12', end: '16:42' }), today));
+  assert.ok(!leftOpen(day('2026-10-27', 'Tue'), today));
 });

@@ -4,8 +4,9 @@ import pytest
 from pydantic import ValidationError
 
 from src.lib.daytypes import DayType
+from src.lib.stays import Stays
 from src.models.days import Day
-from src.modules.days.schemas import DayInput, day_view
+from src.modules.days.schemas import DayInput, day_view, team_view_day
 
 
 def test_day_input_to_day():
@@ -14,7 +15,7 @@ def test_day_input_to_day():
 
 
 @pytest.mark.parametrize('data', [
-    {'start': '08:00'},
+    {'end': '16:00'},
     {'start': '16:00', 'end': '08:00'},
     {'start': '08:00', 'end': '12:00', 'break_time': '5:00'},
     {'break_time': '0:30'},
@@ -35,6 +36,23 @@ def test_view_with_legal_break():
     view = day_view(dt.date(2026, 10, 28), Day(date=dt.date(2026, 10, 28), start=435, end=960))
     assert (view.start, view.end, view.break_time, view.break_default) == ('07:15', '16:00', '0:30', True)
     assert (view.worked, view.overtime) == ('8:15', '0:15')
+
+
+def test_view_of_open_day():
+    date = dt.date(2026, 10, 28)
+    view = day_view(date, Day(date=date, start=492))
+    assert (view.start, view.end, view.best_end) == ('08:12', None, '16:42')
+    assert (view.break_time, view.break_default, view.worked, view.overtime) == (None, False, '0:00', '-8:00')
+    assert day_view(date, Day(date=date, start=492, break_minutes=60)).best_end == '17:12'
+    saturday = dt.date(2026, 10, 31)
+    assert day_view(saturday, Day(date=saturday, start=492)).best_end is None  # no target
+    assert day_view(date, Day(date=date, start=492, end=990)).best_end is None
+
+
+def test_team_view_shows_nothing_of_an_open_day_outside_the_stay():
+    date = dt.date(2026, 10, 28)
+    outside = team_view_day(day_view(date, Day(date=date, start=492)), Stays(((dt.date(2026, 11, 2), None),)))
+    assert (outside.start, outside.best_end) == (None, None)
 
 
 def test_view_of_holiday_and_half_pto():

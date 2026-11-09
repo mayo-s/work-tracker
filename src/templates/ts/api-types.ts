@@ -1996,8 +1996,16 @@ export interface components {
             recorded: boolean;
             /** Start */
             start: string | null;
-            /** End */
+            /**
+             * End
+             * @description Empty with a start: the day is open and counts as nothing worked yet
+             */
             end: string | null;
+            /**
+             * Best End
+             * @description An open day: the end that meets the target, without overtime or loss
+             */
+            best_end: string | null;
             /**
              * Break Time
              * @description Effective break, h:mm
@@ -2428,6 +2436,11 @@ export interface components {
              * @description Entries with 0:00, without activity type or without the ticket it requires, by date
              */
             entries: components["schemas"]["ReviewEntry"][];
+            /**
+             * Open Days
+             * @description Past days with a start but no end, by date
+             */
+            open_days: components["schemas"]["DayView"][];
         };
         /** ReviewCounts */
         ReviewCounts: {
@@ -2435,6 +2448,8 @@ export interface components {
             tickets_without_service: number;
             /** Entries */
             entries: number;
+            /** Open Days */
+            open_days: number;
         };
         /** ScheduleViewList */
         ScheduleViewList: components["schemas"]["ScheduleView"][];

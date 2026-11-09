@@ -21,8 +21,14 @@ def test_day_with_legal_break():
     assert day.to_record() == DayRecord(parse_duration('8:15'), None)
 
 
+def test_open_day_counts_as_nothing_worked():
+    day = Day(date=DATE, start=parse_clock('08:15'), break_minutes=60)
+    assert (day.is_open, day.worked) == (True, 0)
+    assert not Day(date=DATE).is_open
+
+
 @pytest.mark.parametrize('times', [
-    {'start': 480},
+    {'end': 480},
     {'break_minutes': 30},
     {'start': 960, 'end': 480},
     {'start': 480, 'end': 720, 'break_minutes': 241},

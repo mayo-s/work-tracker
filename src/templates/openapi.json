@@ -6211,7 +6211,20 @@
                 "type": "null"
               }
             ],
+            "description": "Empty with a start: the day is open and counts as nothing worked yet",
             "title": "End"
+          },
+          "best_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "An open day: the end that meets the target, without overtime or loss",
+            "title": "Best End"
           },
           "break_time": {
             "anyOf": [
@@ -6271,6 +6284,7 @@
           "recorded",
           "start",
           "end",
+          "best_end",
           "break_time",
           "break_default",
           "worked",
@@ -7083,12 +7097,21 @@
             },
             "title": "Entries",
             "type": "array"
+          },
+          "open_days": {
+            "description": "Past days with a start but no end, by date",
+            "items": {
+              "$ref": "#/components/schemas/DayView"
+            },
+            "title": "Open Days",
+            "type": "array"
           }
         },
         "required": [
           "counts",
           "tickets_without_service",
-          "entries"
+          "entries",
+          "open_days"
         ],
         "title": "ReviewView",
         "type": "object"
@@ -7102,11 +7125,16 @@
           "entries": {
             "title": "Entries",
             "type": "integer"
+          },
+          "open_days": {
+            "title": "Open Days",
+            "type": "integer"
           }
         },
         "required": [
           "tickets_without_service",
-          "entries"
+          "entries",
+          "open_days"
         ],
         "title": "ReviewCounts",
         "type": "object"

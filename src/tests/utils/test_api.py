@@ -47,15 +47,15 @@ def test_times_reject_invalid(data):
 
 
 class Checked(BaseModel):
-    start: int
+    end: int
 
     @model_validator(mode='after')
     def check(self):
-        check_domain(lambda: Day(date=dt.date(2026, 10, 28), start=self.start))
+        check_domain(lambda: Day(date=dt.date(2026, 10, 28), end=self.end))
         return self
 
 
 def test_check_domain_passes_on_messages_only():
-    with pytest.raises(ValidationError, match='start and end must be set together') as error:
-        Checked(start=480)
+    with pytest.raises(ValidationError, match='an end needs a start') as error:
+        Checked(end=480)
     assert 'datetime.date' not in str(error.value.errors())

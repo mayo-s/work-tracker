@@ -86,6 +86,10 @@ The break can always be overridden (e.g. 3:00 on a long day).
 
 - **Worked** = end − start − break
 - **Overtime (day)** = worked − target; all hours on days off of the schedule (e.g. weekends) count as overtime.
+- An **open day** has a start but no end yet: it counts like a day without times (nothing worked, a work day is −8:00)
+  until it has an end. Its **best end** is the end that meets the day's target, with no overtime and no loss:
+  start + target + the entered break, or else the legal break for that work (8:00 from 08:12 ends at 16:42). There is
+  none without a target or past midnight.
 - **Overtime balance** starts at **0:00 on 01.06.2024** and is carried over across years.
   Days before that date are ignored; future days are not counted. Today counts, even before times
   are entered (a work day without times is −8:00 until then, as in the spreadsheet).
@@ -211,6 +215,10 @@ and the import of an export file of version 1 (5.8) convert them:
 - Per day: day type (a company half day as "Company half day · 0.5 PTO (half free)"), start / end / break, worked
   vs. target, overtime, the task entries and the warning.
 - Add, edit and delete days and entries inline; open an entry's history (4.5).
+- **Start now** and **End now** on today's row save the current time, to the minute, at once: "Start now" while the
+  day has no start, "End now" while it is open, and neither while a form is open; corrections go through "Edit". An
+  open day shows its best end (3.3) next to the start and as the placeholder of the End field; a past one shows the
+  warning "No end".
 - **Book days off** as a range (from, to, full-day type: PTO, sick, unpaid leave or overtime off; optional note): only
   the work days of the schedule get the type, public holidays and company half days stay automatic. A preview shows
   the days and the PTO used, and names company half days in the range with their 0.5 PTO, booked automatically; days that already hold times or entries are listed in a popup to skip them, book them too
@@ -241,6 +249,7 @@ Replaces the spreadsheet dashboard:
 
 Lists everything that needs attention, each with its reason:
 
+- Past **open days** (3.3), with their start and best end and a link to edit the day; today's may still be running.
 - Tickets with **no service**; services can be assigned per ticket, also for several selected tickets at once.
 - Entries **without activity type** (former ticket entries, 4.6); an activity type can be chosen per entry, also for
   several selected entries at once.
@@ -278,7 +287,7 @@ corners, one accent color. Warnings are the only loud element.
 
 - **Negative** overtime and balance are shown as a warning (including −8:00 on a work day without
   times yet), **positive** ones in mint green, zero in normal text.
-- Warnings: a past work day without entries and the review count.
+- Warnings: a past work day without entries, a past open day and the review count.
 - Font: **Inter**, stored in the project (woff2 files with their OFL license); no external font or CDN
   requests. Tabular digits for times and durations, so columns line up.
 - All colors, sizes and spacings are CSS variables in one stylesheet. **Dark mode** is a second set of color

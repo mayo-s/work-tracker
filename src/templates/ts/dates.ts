@@ -14,6 +14,11 @@ export function isoDate(date: Date): IsoDate {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+/** The time of day `08:12`, to the minute. */
+export function clockTime(date: Date): string {
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function parseIsoDate(value: IsoDate): Date {
   const [year = 0, month = 1, day = 1] = value.split('-').map(Number);
   return new Date(year, month - 1, day);

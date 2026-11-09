@@ -4,12 +4,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import type { DayView } from '../ts/api.ts';
-import { dayInput, formValues } from '../ts/day-editor.ts';
+import { clockedInput, dayInput, formValues } from '../ts/day-editor.ts';
 
 function day(changes: Partial<DayView> = {}): DayView {
   return {
     date: '2026-10-28', weekday: 'Wed', day_type: 'work', automatic: true, holiday: null, recorded: true, start: '07:15',
-    end: '16:00', break_time: '0:30', break_default: true, worked: '8:15', target: '8:00', overtime: '0:15', pto_days: 0, work_day: true,
+    end: '16:00', best_end: null, break_time: '0:30', break_default: true, worked: '8:15', target: '8:00', overtime: '0:15', pto_days: 0, work_day: true,
     note: 'OFFICE DAY', ...changes,
   };
 }
@@ -27,4 +27,16 @@ test('day input leaves out empty fields and trims', () => {
     { note: 'Anreise', start: '7:15', end: '16:00' });
   assert.deepEqual(dayInput({ day_type: 'pto', start: '', end: '', break_time: '0:00', note: '' }),
     { note: '', day_type: 'pto', break_time: '0:00' });
+});
+
+test('"now" saves the current time, to the minute, and keeps the rest of the day', () => {
+  const open = day({ start: null, end: null, break_time: null, break_default: false });
+  assert.deepEqual(clockedInput(open, 'start', new Date(2026, 9, 28, 8, 12, 40)), { note: 'OFFICE DAY', start: '08:12' });
+  const started = day({ day_type: 'sick_half', automatic: false, end: null, break_time: '1:00', break_default: false });
+  assert.deepEqual(clockedInput(started, 'end', new Date(2026, 9, 28, 16, 42)),
+    { note: 'OFFICE DAY', day_type: 'sick_half', start: '07:15', end: '16:42', break_time: '1:00' });
+});
+
+test('"now" writes nothing once it is no longer that day', () => {
+  assert.equal(clockedInput(day(), 'start', new Date(2026, 9, 29, 0, 5)), null);
 });

@@ -29,9 +29,10 @@ def get_review(client):
 
 def test_empty_review(client):
     assert get_review(client) == {
-        'counts': {'tickets_without_service': 0, 'entries': 0},
+        'counts': {'tickets_without_service': 0, 'entries': 0, 'open_days': 0},
         'tickets_without_service': [],
         'entries': [],
+        'open_days': [],
     }
 
 
@@ -73,4 +74,13 @@ def test_entry_without_activity_type(client, database):
         EntryRepository(conn, USER).create(Entry(date=dt.date(2025, 11, 26), ticket_key='TNG-1', duration=60))
     [item] = get_review(client)['entries']
     assert item['reasons'] == ['no_activity_type']
-    assert client.simulate_get('/api/review/counts').json == {'tickets_without_service': 1, 'entries': 1}
+    assert client.simulate_get('/api/review/counts').json == {'tickets_without_service': 1, 'entries': 1, 'open_days': 0}
+
+
+def test_past_open_days_leave_once_they_have_an_end(client):
+    client.simulate_put('/api/days/2026-03-02', json={'start': '08:12'})
+    client.simulate_put(f'/api/days/{dt.date.today()}', json={'start': '08:00'})  # today's may still be running
+    assert [(day['date'], day['best_end']) for day in get_review(client)['open_days']] == [('2026-03-02', '16:42')]
+    assert client.simulate_get('/api/review/counts').json['open_days'] == 1
+    client.simulate_put('/api/days/2026-03-02', json={'start': '08:12', 'end': '16:42'})
+    assert get_review(client)['open_days'] == []

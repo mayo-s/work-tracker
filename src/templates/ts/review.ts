@@ -1,8 +1,8 @@
-// Review page (/review): entries without activity type, other entries with something missing, and tickets without
-// service.
+// Review page (/review): past days without an end, entries without activity type, other entries with something missing,
+// and tickets without service.
 
 import {
-  api, errorText, type ActivityType, type ReviewCounts, type ReviewEntry, type ReviewReason, type ReviewView,
+  api, errorText, type ActivityType, type DayView, type ReviewCounts, type ReviewEntry, type ReviewReason, type ReviewView,
   type ServiceChoice, type TicketView,
 } from './api.ts';
 import { formatDate, weekLink } from './dates.ts';
@@ -18,7 +18,7 @@ export const REASON_LABELS: Record<ReviewReason, string> = {
 };
 
 export function reviewTotal(counts: ReviewCounts): number {
-  return counts.tickets_without_service + counts.entries;
+  return counts.tickets_without_service + counts.entries + counts.open_days;
 }
 
 /** Shows the number of open review items next to the Review link of the navigation, as a warning badge (none at 0),
@@ -241,6 +241,25 @@ function untypedSection(untyped: ReviewEntry[], page: Page): HTMLElement | null 
   );
 }
 
+function openDayRow(day: DayView): HTMLElement {
+  const link = weekLink(day.date, `edit=${day.date}`);
+  return el('tr', {},
+    el('td', { class: 'num' }, el('a', { href: link }, formatDate(day.date))),
+    el('td', {}, el('span', { class: 'num' }, `Start ${day.start}`),
+      day.best_end ? el('span', { class: 'num muted' }, ` · best end ${day.best_end}`) : null),
+    el('td', { class: 'row-actions' }, el('a', { class: 'button button-small', href: link }, 'Open')));
+}
+
+function openDaysSection(days: DayView[]): HTMLElement | null {
+  if (!days.length) {
+    return null;
+  }
+  return el('section', { class: 'review-section', id: 'open-days' },
+    el('h2', {}, 'Days without an end ', el('span', { class: 'badge warning' }, String(days.length))),
+    el('p', { class: 'muted' }, 'A day with a start but no end counts as nothing worked until it has an end.'),
+    scrolling(el('table', { class: 'review-table' }, el('tbody', {}, ...days.map(openDayRow)))));
+}
+
 function entriesSection(others: ReviewEntry[], page: Page): HTMLElement {
   return el('section', { class: 'review-section', id: 'entries' },
     el('h2', {}, 'Entries ', el('span', { class: 'badge warning' }, String(others.length))),
@@ -270,7 +289,8 @@ export async function renderReviewPage(doc: Document): Promise<void> {
         data, services, activityTypes, reload: (text) => void load(text), fail: (error) => show(errorText(error), true),
       };
       const { untyped, others } = groupReview(data.entries);
-      root.replaceChildren(untypedSection(untyped, page) ?? '', entriesSection(others, page), ticketsSection(page));
+      root.replaceChildren(openDaysSection(data.open_days) ?? '', untypedSection(untyped, page) ?? '',
+        entriesSection(others, page), ticketsSection(page));
       showReviewBadge(doc, data.counts);
       show(message);
     } catch (error) {

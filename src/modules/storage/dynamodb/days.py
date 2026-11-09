@@ -31,6 +31,10 @@ class DynamoDays:
         """Recorded days from start to end (inclusive), in date order."""
         return [Day(**attributes(item)) for item in self._unit.query(self._pk, day_key(start), day_key(end))]
 
+    def open_before(self, date: dt.date) -> list[Day]:
+        """Days before the date with a start but no end, in date order."""
+        return [day for day in self.between(dt.date.min, date - dt.timedelta(days=1)) if day.is_open]
+
     def records(self, start: dt.date, end: dt.date) -> dict[dt.date, DayRecord]:
         """Worked time and day type of the recorded days, as input for balances."""
         return {day.date: day.to_record() for day in self.between(start, end)}

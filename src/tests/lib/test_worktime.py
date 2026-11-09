@@ -1,7 +1,7 @@
 import pytest
 
 from src.lib.durations import parse_clock, parse_duration
-from src.lib.worktime import legal_break, presence_time, worked_time
+from src.lib.worktime import best_end, legal_break, presence_time, worked_time
 
 
 def test_presence_time():
@@ -48,3 +48,23 @@ def test_worked_time_rejects_invalid_break(break_minutes):
     start, end = parse_clock('08:00'), parse_clock('12:00')
     with pytest.raises(ValueError):
         worked_time(start, end, break_minutes)
+
+
+@pytest.mark.parametrize('target, break_minutes, end', [
+    ('6:00', None, '14:00'),  # no legal break up to 6 h of work
+    ('6:01', None, '14:31'),
+    ('8:00', None, '16:30'),
+    ('9:00', None, '17:30'),
+    ('9:01', None, '17:46'),
+    ('8:00', 60, '17:00'),  # the entered break
+    ('8:00', 0, '16:00'),
+])
+def test_best_end_meets_the_target(target, break_minutes, end):
+    start = parse_clock('08:00')
+    assert best_end(start, parse_duration(target), break_minutes) == parse_clock(end)
+    assert worked_time(start, parse_clock(end), break_minutes) == parse_duration(target)
+
+
+def test_no_best_end_without_a_target_or_past_midnight():
+    assert best_end(parse_clock('08:00'), 0) is None
+    assert best_end(parse_clock('16:00'), parse_duration('8:00')) is None

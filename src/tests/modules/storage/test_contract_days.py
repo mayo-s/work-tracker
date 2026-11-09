@@ -52,6 +52,14 @@ def test_records_for_balances(days):
     }
 
 
+def test_open_days_before_a_date(days):
+    for offset in (1, 0, 2):
+        days.save(Day(date=MONDAY + dt.timedelta(days=offset), start=parse_clock('08:00')))
+    days.save(Day(date=MONDAY - dt.timedelta(days=1), note='no times'))
+    days.save(Day(date=MONDAY - dt.timedelta(days=2), start=parse_clock('08:00'), end=parse_clock('12:00')))
+    assert [day.date for day in days.open_before(MONDAY + dt.timedelta(days=2))] == [MONDAY, MONDAY + dt.timedelta(days=1)]
+
+
 def test_delete_day(days):
     days.save(WORK_DAY)
     days.delete(MONDAY)
