@@ -96,11 +96,10 @@ all at once.
   UI components with their HTML. `/apidoc/swagger`, `/apidoc/redoc`, `/apidoc/scalar`: API documentation (spec:
   `/apidoc/openapi.json`).
 
-Durations are entered as `1:30`, `1.5`, `1h30m` or `90m`; a plain number too long for the day is asked about as
-minutes, a time that is no quarter hour offers the two nearest. Company half days (24.12., 31.12.) take 0.5 PTO by
-themselves. Former links forward (`/?week=…`, `/lists`). All pages meet WCAG 2.2 AA in both themes (axe-core) and on
-narrow screens or zoomed in down to 320 CSS px, where wide tables scroll sideways in their own area; Escape closes
-inline forms.
+Durations are entered as `1:30`, `1.5`, `1h30m` or `90m`, in any whole minutes; a plain number too long for the day
+is asked about as minutes. Company half days (24.12., 31.12.) take 0.5 PTO by themselves. Former links forward
+(`/?week=…`, `/lists`). All pages meet WCAG 2.2 AA in both themes (axe-core) and on narrow screens or zoomed in down
+to 320 CSS px, where wide tables scroll sideways in their own area; Escape closes inline forms.
 
 ## Deploy to AWS
 
@@ -362,7 +361,7 @@ All times and durations are whole minutes.
 
 | Module            | Rules                                                                                                                                                                                                                                                                                                                                                     |
 |-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `durations`       | Parse and format clock times (`HH:MM`), durations (`h:mm`, `1.5`, `1,5`, `1h30m`, `90m`, signed `-1:45` for balances); split durations evenly in quarter hours                                                                                                                                                                                            |
+| `durations`       | Parse and format clock times (`HH:MM`), durations (`h:mm`, `1.5`, `1,5`, `1h30m`, `90m`, signed `-1:45` for balances)                                                                                                                                                                                                                                     |
 | `worktime`        | Worked time = end − start − break; without a break, the legal minimum applies (German ArbZG §4: 0:30 beyond 6 h, 0:45 beyond 9 h)                                                                                                                                                                                                                         |
 | `public_holidays` | Public holidays of a German federal state (via `holidays`), plus Heiligabend and Silvester as company half days if they apply                                                                                                                                                                                                                             |
 | `daytypes`        | Day types (see below) with their share of the daily target and PTO used; days off of the schedule have no target. Overtime = worked − target                                                                                                                                                                                                              |
@@ -396,7 +395,7 @@ Pydantic models; times in minutes, validated on creation and assignment.
 | Module      | Models                                                                                                                                                                   |
 |-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `days`      | `Day`: date, day type (empty = automatic), start / end, break (empty = legal minimum), note; provides worked time                                                        |
-| `entries`   | `Entry`: activity type, optional ticket, duration (quarter hours), description; `former_entries`: the conversion of SPEC 4.6                                             |
+| `entries`   | `Entry`: activity type, optional ticket, duration, description; `former_entries`: the conversion of SPEC 4.6                                                             |
 | `catalog`   | `Service`, `ServiceChoice` (with its team), `ActivityType` and `Ticket` (key like `ENGINE-461`, remembers its service; an invalid key is refused with a message to show) |
 | `history`   | `EntryChange`: one line of an entry's history (created, imported, updated, renamed, merged, split, deleted) with the changed fields, old → new                           |
 | `schedules` | `Schedule`: valid from, minutes per week, work days (ISO weekdays), federal state, company half days                                                                     |

@@ -37,8 +37,8 @@ class EntryCollection:
     @spec.validate(json=EntryInput, resp=Response('HTTP_409', HTTP_201=EntryView), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: EntryInput) -> None:
         """Create an entry; a new ticket is created, `service_id` sets the ticket's service. The duration takes e.g.
-        `1:30`, `1.5`, `1h30m` or `90m`, in quarter hours, at most the rest of the day from its start (409). An activity
-        type that requires a ticket (e.g. Coding) is entered with one (409)."""
+        `1:30`, `1.5`, `1h30m` or `90m`, at most the rest of the day from its start (409). An activity type that
+        requires a ticket (e.g. Coding) is entered with one (409)."""
         with self._storage.transaction() as store:
             view = _save(store, current_user(req), json)
         resp.status = falcon.HTTP_201

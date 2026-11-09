@@ -377,7 +377,7 @@ L.16 (a–i) → 9.1 (a–i).
 - [x] **13.5** Navigation: "Review" only while items are open (with their count) and on the review page itself, for
   every way of working (SPEC 5.4); search: the search page without service and with "Words" when there are no
   ticket entries
-- [ ] **13.6** Team view: a member's pages in the member's way of working (after 13.9)
+- [x] **13.6** Team view: a member's pages in the member's way of working (after 13.9)
 - [x] **13.7** One kind of entry (SPEC 4, 4.6): every entry has an activity type, an optional ticket and a
   description; activity types get "Ticket required", Coding is a default for Developer; the migration on both
   backends converts the former entries (coding → Coding, PR review → Coding, refinement → Meeting, the rest without
@@ -399,8 +399,14 @@ L.16 (a–i) → 9.1 (a–i).
   into the review, which still suggests splits for guessed tickets of imported data)
 - [ ] **L.8** i18n - add a flag icon dropdown next to the dark mode icon to switch ui language to german, english,
   spanish
-- [ ] **L.9** Quarter Hour - remove quarter hour rule, track exact times; "Start now" and "End now" on today's day in
-  the week view set the start and end time to the current time
+- [ ] **L.9** Exact times, in steps:
+    - [x] **L.9a** No more quarter-hour rule: an entry's duration may be any whole minutes, in the form and the API;
+      the popup offering the two nearest quarter hours is gone
+    - [ ] **L.9b** "Start now" and "End now" on today's day in the week view save the current time, to the minute, at
+      once. "Start now" shows while no start is set, "End now" while the day is open (a start without an end);
+      corrections go through "Edit". An open day counts like a day without times (nothing worked yet) and shows the
+      best end time as a placeholder: the time at which the day's target is reached with its break, so no overtime and
+      no loss. A past day left open goes to the review with a warning until it has an end
 - [x] **L.10** Ways of working: after 13.9, review whether the four are still needed, or two switches (ticket and
   service; entries expected) do the same. Result: three; "Developer" and "Tickets, no coding" became "Tickets and
   activities" (they differed only in Coding at the setup, now a checkbox there)

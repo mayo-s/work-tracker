@@ -87,7 +87,7 @@ export interface paths {
         /** Entries of a week or date range, by date and in the order they were created; `member` shows a member of the team admin's team (team view: from the day they joined the team). */
         get: operations["get__api_entries"];
         put?: never;
-        /** Create an entry; a new ticket is created, `service_id` sets the ticket's service. The duration takes e.g. `1:30`, `1.5`, `1h30m` or `90m`, in quarter hours, at most the rest of the day from its start (409). An activity type that requires a ticket (e.g. Coding) is entered with one (409). */
+        /** Create an entry; a new ticket is created, `service_id` sets the ticket's service. The duration takes e.g. `1:30`, `1.5`, `1h30m` or `90m`, at most the rest of the day from its start (409). An activity type that requires a ticket (e.g. Coding) is entered with one (409). */
         post: operations["post__api_entries"];
         delete?: never;
         options?: never;
@@ -2144,7 +2144,7 @@ export interface components {
             activity_type_id: string;
             /**
              * Duration
-             * @description In quarter hours, e.g. 1:30, 1.5, 1,5, 1h30m or 90m; answered as h:mm
+             * @description E.g. 1:30, 1.5, 1,5, 1h30m or 90m; answered as h:mm
              * @example 1:30
              */
             duration: string;
@@ -3433,7 +3433,7 @@ export interface components {
             ticket_key?: string | null;
             /**
              * Duration
-             * @description Minutes, in quarter hours
+             * @description Minutes
              */
             duration: number;
             /**

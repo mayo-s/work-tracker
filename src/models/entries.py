@@ -3,24 +3,13 @@
 import datetime as dt
 from typing import Annotated
 
-from pydantic import AfterValidator, Field
+from pydantic import Field
 
-from src.lib.durations import MINUTES_PER_DAY, is_quarter_hour
+from src.lib.durations import MINUTES_PER_DAY
 from src.models.base import DomainModel, RecordId
 from src.models.catalog import TicketKey
 
-
-def _check_quarter_hour(minutes: int) -> int:
-    if not is_quarter_hour(minutes):
-        raise ValueError('duration must be in quarter hours')
-    return minutes
-
-
-Duration = Annotated[
-    int,
-    Field(ge=0, le=MINUTES_PER_DAY, description='Minutes, in quarter hours'),
-    AfterValidator(_check_quarter_hour),
-]
+Duration = Annotated[int, Field(ge=0, le=MINUTES_PER_DAY, description='Minutes')]
 
 
 class Entry(DomainModel):

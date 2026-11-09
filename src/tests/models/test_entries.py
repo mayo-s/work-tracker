@@ -17,7 +17,7 @@ def test_a_former_entry_may_wait_for_its_activity_type():
     assert Entry(date=DATE, ticket_key='TNG-1', duration=60).activity_type_id is None
 
 
-@pytest.mark.parametrize('duration', [-15, 10, 1455])
+@pytest.mark.parametrize('duration', [-15, 1455])
 def test_duration_rejects_invalid(duration):
     with pytest.raises(ValidationError):
         Entry(date=DATE, ticket_key='KP-1951', duration=duration)

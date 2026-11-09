@@ -27,9 +27,9 @@ export type EntryEditorOptions = {
   onCancel: () => void;
 };
 
-/** An entry is in quarter hours and at most as long as the rest of its day (from 08:00: 16:00; no start: 24:00). */
+/** An entry is at most as long as the rest of its day (from 08:00: 16:00; no start: 24:00). */
 export function entryRules(dayStart: string | null): DurationRules {
-  return { limit: 24 * 60 - (clockMinutes(dayStart ?? '') ?? 0), quarter: true };
+  return { limit: 24 * 60 - (clockMinutes(dayStart ?? '') ?? 0) };
 }
 
 /** What the form offers in a way of working (SPEC 5.11): ticket and service, and the activity types to choose. Without

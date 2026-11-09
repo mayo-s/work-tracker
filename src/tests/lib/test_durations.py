@@ -4,7 +4,6 @@ from src.lib.durations import (
     TimeFormatError,
     format_clock,
     format_duration,
-    is_quarter_hour,
     parse_clock,
     parse_duration,
     parse_signed_duration,
@@ -68,7 +67,3 @@ def test_parse_signed_duration_rejects_invalid(text):
 
 def test_format_duration():
     assert [format_duration(minutes) for minutes in (0, 90, 1500, -15)] == ['0:00', '1:30', '25:00', '-0:15']
-
-
-def test_is_quarter_hour():
-    assert [is_quarter_hour(minutes) for minutes in (0, 90, -15, 20)] == [True, True, True, False]

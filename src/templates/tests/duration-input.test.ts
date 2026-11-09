@@ -1,4 +1,4 @@
-// Tests of the duration fields: the formats read, the limits and quarter hours; run with `npm test`.
+// Tests of the duration fields: the formats read and the limits; run with `npm test`.
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -25,12 +25,12 @@ test('plain numbers are marked, signed durations only where allowed', () => {
   assert.deepEqual(parseDuration('-1.5', true), { minutes: -90, bare: true });
 });
 
-test('an entry fits the rest of its day, in quarter hours', () => {
+test('an entry fits the rest of its day, in any minutes', () => {
   const rules = entryRules('08:00');
   assert.deepEqual(checkDuration('1.5', rules), { kind: 'ok', minutes: 90 });
   assert.deepEqual(checkDuration('90', rules), { kind: 'minutes', hours: '90', minutes: 90 });
   assert.deepEqual(checkDuration('17h', rules), { kind: 'over', limit: 960 });
-  assert.deepEqual(checkDuration('1.1', rules), { kind: 'quarter', minutes: 66, down: 60, up: 75 });
+  assert.deepEqual(checkDuration('1.1', rules), { kind: 'ok', minutes: 66 });
   assert.deepEqual(checkDuration('', rules), { kind: 'empty' });
   assert.deepEqual(checkDuration('soon', rules), { kind: 'invalid' });
   assert.equal(entryRules(null).limit, 24 * 60);

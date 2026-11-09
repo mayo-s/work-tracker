@@ -5,7 +5,6 @@ from decimal import Decimal
 
 MINUTES_PER_HOUR = 60
 MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR
-QUARTER_HOUR = 15
 
 _CLOCK = re.compile(r'(\d{1,2}):(\d{2})')
 _HOURS = r'(\d+(?:[,.]\d+)?)'  # whole or decimal hours, with a point or a comma
@@ -98,7 +97,3 @@ def format_duration(minutes: int) -> str:
     sign = '-' if minutes < 0 else ''
     hours, rest = divmod(abs(minutes), MINUTES_PER_HOUR)
     return f'{sign}{hours}:{rest:02d}'
-
-
-def is_quarter_hour(minutes: int) -> bool:
-    return minutes % QUARTER_HOUR == 0

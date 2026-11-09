@@ -61,7 +61,11 @@ def test_unknown_service_rolls_back_the_entry(client):
 
 
 def test_create_rejects_invalid_entry(client):
-    assert client.simulate_post('/api/entries', json=TICKET | {'duration': '0:20'}).status_code == 422
+    assert client.simulate_post('/api/entries', json=TICKET | {'duration': 'soon'}).status_code == 422
+
+
+def test_create_takes_exact_minutes(client):
+    assert create(client, TICKET | {'duration': '0:07'})['duration'] == '0:07'
 
 
 def test_list_entries_of_a_week(client, ids):

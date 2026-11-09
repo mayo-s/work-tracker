@@ -24,7 +24,7 @@ Out of scope for now: export.
 | Dates (UI)  | `DD.MM.YYYY`; weeks start on Monday                                                                                                                            |
 | Dates (API) | ISO 8601 `YYYY-MM-DD`                                                                                                                                          |
 | Times       | 24 h format `HH:MM`                                                                                                                                            |
-| Durations   | Shown as `h:mm` (e.g. `1:30`); entered also as `1.5`, `1,5`, `1h30m`, `1h30`, `90m` (see 2.1); task entries in quarter-hour steps (`:00`, `:15`, `:30`, `:45`) |
+| Durations   | Shown as `h:mm` (e.g. `1:30`); entered also as `1.5`, `1,5`, `1h30m`, `1h30`, `90m` (see 2.1); in whole minutes                                                |
 
 ### 2.1 Entering durations
 
@@ -36,8 +36,6 @@ Out of scope for now: export.
   refused, naming the limit.
 - A plain number (`2`, `90`) means hours if that fits the limit; otherwise the form asks "Did you mean 90 minutes
   (1:30)?" before saving.
-- Entries stay in quarter hours: for `1.1` (1:06) the form offers 1:00 and 1:15 (the nearest one first) or cancel.
-  Breaks and hours per week need no quarter hours.
 
 ## 3. Days
 
@@ -121,7 +119,7 @@ time (meetings, breaks etc. are not logged). Every entry is an activity, optiona
 | Field         | Notes                                                                                                |
 |---------------|------------------------------------------------------------------------------------------------------|
 | Activity type | From the managed list (4.2), e.g. Coding or Meeting                                                  |
-| Duration      | `h:mm`, quarter-hour steps                                                                           |
+| Duration      | `h:mm`, in whole minutes                                                                             |
 | Ticket        | Optional, one per entry, format `PREFIX-NUMBER` (e.g. `ENGINE-461`); required by some activity types |
 | Service       | Of the ticket, from the managed service list (4.3); may be unassigned                                |
 | Description   | Free text (e.g. "PR Review", "new computer setup", "Hackathon Picard")                               |

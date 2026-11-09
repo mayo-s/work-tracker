@@ -30,7 +30,6 @@ def test_entry_input_without_ticket():
 
 @pytest.mark.parametrize('data', [
     {'duration': '1:30', 'ticket_key': 'ENGINE-597'},
-    {'activity_type_id': SECOND, 'duration': '1:20'},
     {'activity_type_id': SECOND, 'duration': '1:00', 'ticket_key': 'ENGINE 597'},
     {'activity_type_id': SECOND, 'duration': '1:00', 'service_id': FIRST},
 ])

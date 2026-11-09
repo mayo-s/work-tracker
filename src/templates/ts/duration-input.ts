@@ -1,19 +1,18 @@
-// Duration fields: the formats people type (1:30, 1.5, 1,5, 1h30m, 90m), the limit of a field and quarter hours.
+// Duration fields: the formats people type (1:30, 1.5, 1,5, 1h30m, 90m) and the limit of a field.
 
 import { ask } from './dialog.ts';
 import { fromMinutes } from './durations.ts';
 
 /** Minutes, and whether they were typed as a plain number (read as hours; the field may ask about minutes). */
 export type Duration = { minutes: number; bare: boolean };
-/** `limit`: the most a field allows; `quarter`: entries stay in quarter hours; `signed`: a minus is allowed. */
-export type DurationRules = { limit?: number; quarter?: boolean; signed?: boolean };
-/** What a typed duration needs: nothing, a question (minutes instead of hours, a quarter hour), or the API's error. */
+/** `limit`: the most a field allows; `signed`: a minus is allowed. */
+export type DurationRules = { limit?: number; signed?: boolean };
+/** What a typed duration needs: nothing, a question (minutes instead of hours), or the API's error. */
 export type DurationCheck =
   | { kind: 'empty' | 'invalid' }
   | { kind: 'ok'; minutes: number }
   | { kind: 'over'; limit: number }
-  | { kind: 'minutes'; hours: string; minutes: number }
-  | { kind: 'quarter'; minutes: number; down: number; up: number };
+  | { kind: 'minutes'; hours: string; minutes: number };
 
 const HOURS = String.raw`(\d+(?:[.,]\d+)?)`;
 const toNumber = (text: string): number => Number(text.replace(',', '.'));
@@ -59,9 +58,6 @@ export function checkDuration(text: string, rules: DurationRules): DurationCheck
     return bare && /^\d+$/.test(typed) && Number(typed) <= rules.limit
       ? { kind: 'minutes', hours: typed, minutes: Number(typed) } : { kind: 'over', limit: rules.limit };
   }
-  if (rules.quarter && minutes % 15) {
-    return { kind: 'quarter', minutes, down: minutes - (minutes % 15), up: minutes - (minutes % 15) + 15 };
-  }
   return { kind: 'ok', minutes };
 }
 
@@ -70,15 +66,15 @@ export function checkDuration(text: string, rules: DurationRules): DurationCheck
 export function normalizeOnLeave(input: HTMLInputElement, rules: () => DurationRules): void {
   input.addEventListener('change', () => {  // fires when a changed field is left
     const check = checkDuration(input.value, rules());
-    if (check.kind === 'ok' || check.kind === 'quarter') {
+    if (check.kind === 'ok') {
       input.value = fromMinutes(check.minutes);
       input.dispatchEvent(new Event('input', { bubbles: true }));  // forms that keep their values in state follow
     }
   });
 }
 
-/** Settles the field before saving: asks whether a plain number over the limit means minutes, and offers the quarter
- * hours around a time that is none. False if cancelled; other problems are left to the API's answer. */
+/** Settles the field before saving: asks whether a plain number over the limit means minutes. False if cancelled;
+ * other problems are left to the API's answer. */
 export async function settleDuration(input: HTMLInputElement, rules: DurationRules): Promise<boolean> {
   const check = checkDuration(input.value, rules);
   if (check.kind === 'minutes') {
@@ -89,18 +85,6 @@ export async function settleDuration(input: HTMLInputElement, rules: DurationRul
       return false;
     }
     input.value = fromMinutes(check.minutes);
-    return settleDuration(input, rules);
-  }
-  if (check.kind === 'quarter') {
-    const nearest = check.minutes - check.down < check.up - check.minutes ? check.down : check.up;
-    const choices = [check.down, check.up].filter((minutes) => minutes > 0)
-      .map((minutes) => ({ label: fromMinutes(minutes), value: minutes, primary: minutes === nearest }));
-    const chosen = await ask(`${fromMinutes(check.minutes)} is not a quarter hour`,
-      ['Entries are kept in quarter hours. Which one do you mean?'], choices);
-    if (chosen === null) {
-      return false;
-    }
-    input.value = fromMinutes(chosen);
     return true;
   }
   if (check.kind === 'ok') {

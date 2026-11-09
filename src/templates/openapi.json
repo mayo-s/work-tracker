@@ -501,7 +501,7 @@
         }
       },
       "post": {
-        "summary": "Create an entry; a new ticket is created, `service_id` sets the ticket's service. The duration takes e.g. `1:30`, `1.5`, `1h30m` or `90m`, in quarter hours, at most the rest of the day from its start (409). An activity type that requires a ticket (e.g. Coding) is entered with one (409).",
+        "summary": "Create an entry; a new ticket is created, `service_id` sets the ticket's service. The duration takes e.g. `1:30`, `1.5`, `1h30m` or `90m`, at most the rest of the day from its start (409). An activity type that requires a ticket (e.g. Coding) is entered with one (409).",
         "operationId": "post__api_entries",
         "description": "",
         "tags": [
@@ -6481,7 +6481,7 @@
             "type": "string"
           },
           "duration": {
-            "description": "In quarter hours, e.g. 1:30, 1.5, 1,5, 1h30m or 90m; answered as h:mm",
+            "description": "E.g. 1:30, 1.5, 1,5, 1h30m or 90m; answered as h:mm",
             "examples": [
               "1:30"
             ],
@@ -9232,7 +9232,7 @@
             "title": "Ticket Key"
           },
           "duration": {
-            "description": "Minutes, in quarter hours",
+            "description": "Minutes",
             "maximum": 1440,
             "minimum": 0,
             "title": "Duration",
