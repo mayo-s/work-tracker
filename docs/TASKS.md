@@ -428,7 +428,8 @@ L.16 (a–i) → 9.1 (a–i).
 - [x] **L.12** Clean up the review's import parts once no imported data needs them: guessed tickets and their splits,
   the original spreadsheet line, weekend-hour day flags (storage on both backends, export format, the split and flag
   endpoints)
-- [ ] **L.13** Burger menu: move Settings and Admin from the navigation into a burger menu
+- [x] **L.13** Burger menu (SPEC 5.5): Team, Settings, Admin and "Log out" move into a menu (☰) where "Log out" was;
+  name and dark mode switch stay, the switch as a plain icon; on phones listed directly in the phone's menu
 - [x] **L.14** Imprint (SPEC 5.13): `/imprint` in German (§ 5 DDG), open to everyone at any time, linked as "Imprint"
   in every page's footer; name, postal address and e-mail from the SSM parameter `/work-tracker-<stage>/imprint`
   (locally `$WORK_TRACKER_IMPRINT`) through the open `GET /api/imprint`; "not configured" without them

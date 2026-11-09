@@ -288,14 +288,19 @@ corners, one accent color. Warnings are the only loud element.
 - **Negative** overtime and balance are shown as a warning (including −8:00 on a work day without
   times yet), **positive** ones in mint green, zero in normal text.
 - Warnings: a past work day without entries, a past open day and the review count.
-- Navigation: Dashboard, Week, Month, Year, Audit, Review, Team; Settings and Admin always come last, at the right. Each
-  shows only for those who have it.
+- Navigation: the tabs Dashboard, Week, Month, Year, Audit and Review, each only for those who have it; at the right
+  the search field, the user's first name, the dark mode switch and the menu (☰, "Menu" for screen readers) where
+  "Log out" was. The menu opens a panel below it with Team (team admins), Settings, Admin (admins and root) and
+  "Log out"; open team invitations show as a badge on ☰ and on Settings. Escape or a click outside closes it, focus
+  returns to ☰; its entries are plain links and a button. With the login off it holds only Settings. Pages that come
+  first (setup, new password, two-factor login) show name, dark mode switch and "Log out" instead, without a menu.
 - Font: **Inter**, stored in the project (woff2 files with their OFL license); no external font or CDN
   requests. Tabular digits for times and durations, so columns line up.
 - All colors, sizes and spacings are CSS variables in one stylesheet. **Dark mode** is a second set of color
   values; the theme (System, Light, Dark) is chosen on the settings page and stored in the database. System follows
-  the light or dark setting of the system. A switch between the name and "Log out" in the navigation (a moon in light
-  mode, a sun in dark mode) turns dark mode on or off and saves it as Light or Dark.
+  the light or dark setting of the system. A switch between the name and the menu in the navigation (a moon in light
+  mode, a sun in dark mode, a plain icon like ☰, not framed as a button) turns dark mode on or off and saves it as
+  Light or Dark.
 - Text contrast is at least 4.5:1 on its background, except the warning highlight color, which is
   only used for large or bold text, borders and icons. A test checks every text color on background, surface and
   its tint, in both themes.
@@ -310,10 +315,10 @@ The app stays desktop first; on phones it gets a layout of its own, not the desk
 below 40rem (640 px), where the narrow-screen rules start; the desktop does not change.
 
 - **Header**: one row with the app's name, the review count (while items are open) and a menu button ("Menu", with
-  `aria-expanded`). The menu opens below the header with all links of the navigation, the search field, the user's
-  name, the dark mode switch and "Log out"; Escape or a second tap closes it, and focus returns to the button. Pages
-  without navigation (login, setup, imprint, …) show only what they show on the desktop. TASKS.md L.13 later decides
-  what the desktop moves into a menu.
+  `aria-expanded`). The menu opens below the header with the tabs, the search field, the user's name, the dark mode
+  switch, then the entries of the desktop's ☰ menu (Team, Settings, Admin, "Log out") listed directly, without ☰;
+  Escape or a second tap closes it, and focus returns to the button. Pages without navigation (login, setup,
+  imprint, …) show only what they show on the desktop.
 - **Week**: one card per day instead of the table: the day (with holiday and warnings), its type and "Edit" on top,
   then times ("Start now" / "End now" on today) and break, then worked, target and overtime, then its note, its
   entries with their actions and "+ Add entry". The day and entry forms open in the card, one field per row. Turning

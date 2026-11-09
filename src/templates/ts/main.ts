@@ -46,14 +46,15 @@ async function showReviewCount(): Promise<void> {
 }
 
 /** The right end of the header: the search field (in the frame), the user's name (`showUser`), the dark mode switch,
- * then "Log out". Both load side by side, so the switch goes before "Log out" if that is there already. */
+ * then the menu (in the frame) or, on the pages that come first, "Log out". Both load side by side, so the switch goes
+ * before the shown menu or "Log out" if that is there already. */
 function headerEnd(header: Element): Element {
   const end = header.querySelector('.app-user')!;
   import('./theme.ts').then(({ themeToggle }) => {
     const toggle = themeToggle(document);
-    const logout = end.querySelector('button');
-    if (logout) {
-      logout.before(toggle);
+    const after = end.querySelector('.account-menu:not([hidden]), .logout');
+    if (after) {
+      after.before(toggle);
     } else {
       end.append(toggle);
     }
@@ -65,17 +66,45 @@ function navLink(href: string, textContent: string): HTMLAnchorElement {
   return Object.assign(document.createElement('a'), { href, textContent });
 }
 
-/** The logged-in user's first name and "Log out" in the header (nothing when the login is off). With `nav`, also the
- * Audit link (the team report) after Year for team admins and auditors, the Team link before Settings for team admins,
- * the Admin link last for admins, and a badge on Settings for open team invitations; without it (the setup page) only name and "Log out": a new user can leave
- * and finds the setup again after the next login. */
+function badge(count: number): HTMLElement {
+  return Object.assign(document.createElement('span'), { className: 'badge warning', textContent: String(count),
+    title: 'Open team invitations' });
+}
+
+/** The menu (☰) at the right end of the header (SPEC 5.5): a panel with Team, Settings, Admin and "Log out" below it,
+ * shown on the pages with navigation. Escape or a click outside closes it and, with Escape, gives the focus back to ☰.
+ * On phones its entries are listed directly in the phone's menu (CSS). */
+export function setUpAccountMenu(menu: HTMLElement): void {
+  const toggle = menu.querySelector<HTMLButtonElement>('.account-toggle')!;
+  const open = (opened: boolean): void => toggle.setAttribute('aria-expanded', String(opened));
+  menu.hidden = false;
+  toggle.addEventListener('click', () => open(toggle.getAttribute('aria-expanded') !== 'true'));
+  menu.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+      event.stopPropagation();  // not the phone's menu around it as well
+      open(false);
+      toggle.focus();
+    }
+  });
+  document.addEventListener('click', (event) => {
+    if (!menu.contains(event.target as Node)) {
+      open(false);
+    }
+  });
+}
+
+/** The logged-in user's first name in the header (nothing when the login is off). With `nav`, also the Audit tab (the
+ * team report) after Year for team admins and auditors, and in the menu the Team link before Settings for team admins,
+ * the Admin link after it for admins, "Log out" last, and badges on ☰ and Settings for open team invitations; without
+ * it (the pages that come first) name and "Log out": a new user can leave and finds the setup again after the next
+ * login. */
 async function showUser(user: Element, nav: Element | null): Promise<void> {
   const { api } = await import('./api.ts');
   const status = await api.authStatus();
   if (!status.enabled || !status.user) {
     return;
   }
-  const logout = Object.assign(document.createElement('button'), { type: 'button', className: 'button-small',
+  const logout = Object.assign(document.createElement('button'), { type: 'button', className: 'button-small logout',
     textContent: 'Log out' });
   logout.addEventListener('click', () => void api.logout().then(() => window.location.assign('/login')));
   const name = Object.assign(document.createElement('span'), { className: 'muted', textContent: status.user.first_name });
@@ -85,28 +114,33 @@ async function showUser(user: Element, nav: Element | null): Promise<void> {
   } else {
     user.prepend(name);
   }
-  user.append(logout);
-  if (!nav) {
+  const links = user.querySelector('.account-links');
+  if (!nav || !links) {
+    user.append(logout);
     return;
   }
+  links.append(logout);
   if (status.user.role === 'root') {  // root tracks no work
     nav.querySelectorAll(TRACKING_LINKS).forEach((link) => link.remove());
     user.querySelector('.nav-search')?.remove();
   }
+  const settings = links.querySelector('a[href="/settings"]')!;
   if (status.team?.team_role === 'team_admin') {
-    nav.querySelector('a[href="/settings"]')?.before(navLink('/team', 'Team'));
+    settings.before(navLink('/team', 'Team'));
   }
   if (status.team?.team_role === 'team_admin' || status.auditor) {
     nav.querySelector('a[href^="/year"]')?.after(navLink('/team/report', 'Audit'));  // the team view adds the member to it
   }
   if (status.user.role === 'admin' || status.user.role === 'root') {
-    nav.append(navLink('/admin', 'Admin'));
+    settings.after(navLink('/admin', 'Admin'));
   }
   markCurrentPage(nav, window.location.pathname);
+  markCurrentPage(links, window.location.pathname);
   if (status.invitations) {  // open team invitations wait in the settings
-    nav.querySelector('a[href="/settings"]')?.append(' ', Object.assign(document.createElement('span'), {
-      className: 'badge warning', textContent: String(status.invitations), title: 'Open team invitations',
-    }));
+    settings.append(' ', badge(status.invitations));
+    const toggle = user.querySelector('.account-toggle')!;
+    toggle.append(badge(status.invitations));
+    toggle.setAttribute('aria-label', `Menu, ${status.invitations} open team invitation${status.invitations > 1 ? 's' : ''}`);
   }
 }
 
@@ -132,6 +166,7 @@ const page = document.querySelector<HTMLElement>('#app')?.dataset.page;
 const nav = document.querySelector('.app-nav');
 if (nav && !['login', 'register', 'setup', 'password', 'two-factor', 'imprint'].includes(page ?? '')) {
   setUpMenu(document.querySelector('.app-header')!);
+  setUpAccountMenu(document.querySelector<HTMLElement>('.account-menu')!);
   markCurrentPage(nav, window.location.pathname);
   if (page === 'review') {
     nav.querySelector<HTMLElement>('a[href="/review"]')!.hidden = false;

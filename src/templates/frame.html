@@ -24,12 +24,19 @@
         <a href="/month">Month</a>
         <a href="/year">Year</a>
         <a href="/review" hidden>Review</a>
-        <a href="/settings">Settings</a>
       </nav>
       <div class="app-user">
         <form class="nav-search" role="search" action="/search">
           <input type="search" name="text" maxlength="200" aria-label="Search entries" placeholder="Search entries…">
         </form>
+        <div class="account-menu" hidden>
+          <button type="button" class="icon-button account-toggle" aria-expanded="false" aria-controls="account-links" aria-label="Menu" title="Menu">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+          <div class="account-links" id="account-links">
+            <a href="/settings">Settings</a>
+          </div>
+        </div>
       </div>
     </div>
   </header>

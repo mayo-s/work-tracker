@@ -21,7 +21,7 @@ def test_root_and_admins_log_in_with_their_code(browser, base):
     page.fill('#login-code', code())
     page.click('button:has-text("Log in")')
     expect(page).to_have_url(f'{base}/')
-    expect(page.locator('.app-nav a[href="/admin"]')).to_be_visible()
+    expect(page.locator('.account-links a[href="/admin"]')).to_have_count(1)  # in the menu
 
 
 def test_a_new_user_is_set_up(logged_in):
@@ -210,7 +210,7 @@ def test_a_team_admin_opens_the_team_report(logged_in):
     expect(page).to_have_url(re.compile(r'/year\?year=\d{4}&member='))
     expect(page.locator('.team-view-banner')).to_contain_text("Klara Himmel's data")
     expect(page.locator('.app-nav a:not([href="/review"])')).to_have_text(
-        ['Dashboard', 'Week', 'Month', 'Year', 'Audit', 'Team', 'Settings'])
+        ['Dashboard', 'Week', 'Month', 'Year', 'Audit'])
     page.click('.team-view-banner a:has-text("Back to the team report")')
     expect(page).to_have_url(re.compile(r'/team/report\?team=.+&year=\d{4}'))
     report.locator('a.report-member', has_text='Hans Dampf').click()  # the own card
@@ -218,15 +218,43 @@ def test_a_team_admin_opens_the_team_report(logged_in):
     expect(page.locator('.team-view-banner')).to_have_count(0)
 
 
-@pytest.mark.parametrize('persona, tabs', [
-    ('hans', ['Dashboard', 'Week', 'Month', 'Year', 'Audit', 'Team', 'Settings']),  # team admin
-    ('klara', ['Dashboard', 'Week', 'Month', 'Year', 'Settings', 'Admin']),  # admin and plain member: no Audit
-    ('pascal', ['Settings', 'Admin']),  # root
+@pytest.mark.parametrize('persona, tabs, menu', [
+    ('hans', ['Dashboard', 'Week', 'Month', 'Year', 'Audit'], ['Team', 'Settings', 'Log out']),  # team admin
+    ('klara', ['Dashboard', 'Week', 'Month', 'Year'], ['Settings', 'Admin', 'Log out']),  # admin, plain member
+    ('pascal', [], ['Settings', 'Admin', 'Log out']),  # root
 ])
-def test_the_tabs_in_their_order(logged_in, persona, tabs):
+def test_the_tabs_and_the_menu_in_their_order(logged_in, persona, tabs, menu):
     page = logged_in(persona)
     page.goto('/settings')
     expect(page.locator('.app-nav a:not([href="/review"])')).to_have_text(tabs)  # Review comes and goes with its items
+    expect(page.locator('.account-links > *')).to_have_text(menu)
+
+
+# The right end of the header: the search field, the name, the dark mode switch, the menu
+HEADER_END = [re.compile('nav-search'), 'muted', re.compile('theme-toggle'), 'account-menu']
+
+
+def test_the_menu_opens_below_its_button_and_closes(logged_in):
+    page = logged_in('hans')
+    page.goto('/week')
+    toggle = page.locator('.account-toggle')
+    links = page.locator('.account-links')
+    expect(page.locator('.app-user > *')).to_have_class(HEADER_END)
+    expect(links).to_be_hidden()
+    toggle.click()
+    expect(toggle).to_have_attribute('aria-expanded', 'true')
+    links.locator('a:has-text("Settings")').focus()
+    page.keyboard.press('Escape')
+    expect(links).to_be_hidden()
+    expect(toggle).to_be_focused()
+    toggle.click()
+    page.click('h1')  # outside
+    expect(links).to_be_hidden()
+    toggle.click()
+    links.locator('a:has-text("Team")').click()
+    expect(page).to_have_url(re.compile('/team$'))
+    page.click('.account-toggle')
+    expect(page.locator('.account-links a[aria-current="page"]')).to_have_text('Team')
 
 
 def test_on_phones_the_header_is_one_row_with_a_menu(logged_in):
@@ -240,8 +268,10 @@ def test_on_phones_the_header_is_one_row_with_a_menu(logged_in):
     menu.click()
     expect(menu).to_have_attribute('aria-expanded', 'true')
     expect(page.locator('.app-nav a:not([href="/review"])')).to_have_text(
-        ['Dashboard', 'Week', 'Month', 'Year', 'Audit', 'Team', 'Settings'])
-    expect(page.locator('.app-user button:has-text("Log out")')).to_be_visible()
+        ['Dashboard', 'Week', 'Month', 'Year', 'Audit'])
+    expect(page.locator('.account-toggle')).to_be_hidden()  # its entries are listed directly
+    expect(page.locator('.account-links > *')).to_have_text(['Team', 'Settings', 'Log out'])
+    expect(page.locator('.account-links button:has-text("Log out")')).to_be_visible()
     page.keyboard.press('Escape')
     expect(page.locator('.app-nav')).to_be_hidden()
     expect(menu).to_be_focused()
@@ -252,7 +282,7 @@ def test_the_dark_mode_switch_saves_the_theme(logged_in):
     page.emulate_media(color_scheme='light')
     page.goto('/week')
     switch = page.locator('.app-user button[aria-label="Dark mode"]')
-    expect(page.locator('.app-user > *')).to_have_text(['', 'Hans', '', 'Log out'])  # the search field first
+    expect(page.locator('.app-user > *')).to_have_class(HEADER_END)
     expect(switch).to_have_attribute('aria-pressed', 'false')
     switch.click()
     expect(page.locator('html')).to_have_attribute('data-theme', 'dark')

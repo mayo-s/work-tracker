@@ -33,7 +33,7 @@ export function shownTheme(root: HTMLElement, systemDark: boolean): 'light' | 'd
 export function themeToggle(doc: Document): HTMLButtonElement {
   const root = doc.documentElement;
   const system = doc.defaultView!.matchMedia('(prefers-color-scheme: dark)');
-  const toggle = el('button', { type: 'button', class: 'button-small theme-toggle', 'aria-label': 'Dark mode',
+  const toggle = el('button', { type: 'button', class: 'icon-button theme-toggle', 'aria-label': 'Dark mode',
     title: 'Dark mode' });
   const show = (): void => {
     const dark = shownTheme(root, system.matches) === 'dark';

@@ -1620,12 +1620,84 @@ button.button-danger {
   margin-left: auto;
 }
 
-.theme-toggle {
-  min-height: 24px;  /* WCAG 2.5.8 target size */
+/* Plain icons that act, not framed as buttons: the dark mode switch and the menu (☰, SPEC 5.5) */
+.icon-button {
+  justify-content: center;
+  min-width: 24px;  /* WCAG 2.5.8 target size */
+  min-height: 24px;
+  padding: var(--space-1);
+  border: 0;
+  background: none;
+  color: var(--color-muted);
 }
 
-.theme-toggle svg {
+.icon-button:hover {
+  background: none;
+  color: var(--color-text);
+}
+
+.icon-button svg {
   display: block;
+}
+
+/* The menu (☰): a panel below it with Team, Settings, Admin and "Log out" */
+.account-menu {
+  position: relative;
+}
+
+.account-toggle {
+  gap: var(--space-1);  /* before the badge of open invitations */
+}
+
+.account-links {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  padding: var(--space-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--color-background);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);  /* lifted above the page it covers */
+}
+
+.account-toggle[aria-expanded='false'] + .account-links {
+  display: none;
+}
+
+.account-links > a,
+.account-links > .logout {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  text-decoration: none;
+}
+
+.account-links > a:hover,
+.account-links > .logout:hover {
+  background: var(--color-surface);
+}
+
+.account-links > a[aria-current='page'] {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  font-weight: var(--font-weight-strong);
+}
+
+.account-links > .logout {
+  margin-top: var(--space-1);
+  border-top: var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
 }
 
 body:has(main[data-page='login']) :is(.app-nav, .nav-search),
@@ -1786,6 +1858,25 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
     margin-left: 0;
   }
 
+  /* The entries of ☰ listed directly in the phone's menu, below name and dark mode switch */
+  .account-menu {
+    width: 100%;
+  }
+
+  .account-toggle {
+    display: none;
+  }
+
+  .account-links,
+  .account-toggle[aria-expanded='false'] + .account-links {
+    position: static;
+    display: flex;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+
   /* Pages without navigation show what they show on the desktop, without a menu */
   body:has(main:is([data-page='login'], [data-page='register'], [data-page='setup'], [data-page='password'],
                    [data-page='two-factor'], [data-page='imprint'])) .app-header .menu-toggle {
@@ -1944,8 +2035,9 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
 @media (pointer: coarse) {
   button,
   .button,
-  .theme-toggle,
+  .icon-button,
   .app-nav a,
+  .account-links > a,
   .review-shortcut,
   .segmented label {
     min-width: 44px;
