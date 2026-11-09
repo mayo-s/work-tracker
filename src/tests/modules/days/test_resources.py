@@ -1,11 +1,6 @@
-import datetime as dt
-
 import falcon
 import pytest
 
-from src.models.review import FlagReason
-from src.modules.storage.days import DayRepository
-from src.tests.users import USER
 
 WORK_DAY = {'start': '07:15', 'end': '16:00', 'break_time': '0:30', 'note': 'OFFICE DAY'}
 
@@ -65,13 +60,10 @@ def test_invalid_date_in_path(client):
     assert client.simulate_get('/api/days/2026-02-30').status == falcon.HTTP_404
 
 
-def test_delete_day_and_its_flags(client, database):
+def test_delete_day(client):
     client.simulate_put('/api/days/2025-12-06', json={'start': '08:00', 'end': '11:30', 'break_time': '0:00'})
-    with database.transaction() as conn:
-        DayRepository(conn, USER).add_flag(dt.date(2025, 12, 6), FlagReason.WEEKEND_HOURS, '3,5 ABREISE Lübeck')
-    assert client.simulate_get('/api/days/2025-12-06').json['flags'][0]['reason'] == 'weekend_hours'
     assert client.simulate_delete('/api/days/2025-12-06').status == falcon.HTTP_204
-    assert client.simulate_get('/api/days/2025-12-06').json['flags'] == []
+    assert client.simulate_get('/api/days/2025-12-06').json['recorded'] is False
 
 
 def test_delete_unrecorded_day(client):

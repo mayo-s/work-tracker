@@ -10,7 +10,7 @@ from src.tests.users import USER
 
 TABLES = {
     'settings', 'user_settings', 'pto_years', 'work_schedules', 'services', 'activity_types', 'tickets', 'days', 'entries',
-    'entry_history', 'review_flags', 'users', 'sessions', 'login_attempts', 'teams', 'team_memberships', 'team_invitations',
+    'entry_history', 'users', 'sessions', 'login_attempts', 'teams', 'team_memberships', 'team_invitations',
     'report_views', 'audit_log', 'team_auditors', 'used_setup_tokens', 'remembered_browsers',
 }
 
@@ -138,7 +138,6 @@ def test_failed_migration_is_rolled_back(database, monkeypatch):
     "INSERT INTO entries (id, user_id, date, ticket_key, duration) VALUES ('e1', ?, '2026-10-26', 'TNG-404', 60)",
     "INSERT INTO entries (id, user_id, date, activity_type_id, duration) VALUES ('e1', ?, '2026-10-26', 'a404', 60)",
     "INSERT INTO activity_types (id, user_id, name, ticket_required) VALUES ('a1', ?, 'Support', 2)",
-    "INSERT INTO review_flags (user_id, reason) VALUES (?, 'weekend_hours')",
     "INSERT INTO services (user_id, short_name) VALUES (?, 'msb')",
     "INSERT INTO days (user_id) VALUES (?)",
 ])

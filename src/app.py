@@ -21,14 +21,14 @@ from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeIt
 from src.modules.dashboard.resources import DashboardResource
 from src.modules.days.resources import DayCollection, DayItem, DayRange
 from src.modules.entries.resources import (
-    EntryActivityTypeAssignment, EntryCollection, EntryHistory, EntryItem, EntrySplit,
+    EntryActivityTypeAssignment, EntryCollection, EntryHistory, EntryItem,
 )
 from src.modules.pages.resources import (
     STATIC_DIR, Page, PageSettings, Redirect, RegisterPage, RevalidateStaticFiles, StartPage,
 )
 from src.modules.pto.resources import PtoYearCollection, PtoYearItem
 from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
-from src.modules.review.resources import Review, ReviewCountsResource, ReviewFlagItem
+from src.modules.review.resources import Review, ReviewCountsResource
 from src.modules.schedules.resources import ScheduleCollection, ScheduleItem
 from src.modules.search.resources import SearchResource
 from src.modules.setup.resources import SetupImportResource, SetupResource
@@ -93,7 +93,6 @@ def create_app(
     app.add_route('/api/entries/assign-activity-type', EntryActivityTypeAssignment(storage))
     app.add_route('/api/entries/{entry_id}', EntryItem(storage))
     app.add_route('/api/entries/{entry_id}/history', EntryHistory(storage))
-    app.add_route('/api/entries/{entry_id}/split', EntrySplit(storage))
     app.add_route('/api/tickets', TicketCollection(storage))
     app.add_route('/api/tickets/assign-service', TicketServiceAssignment(storage))
     app.add_route('/api/tickets/{key}', TicketItem(storage))
@@ -149,7 +148,6 @@ def create_app(
     app.add_route('/api/pto-years/{year:int(4)}', PtoYearItem(storage))
     app.add_route('/api/review', Review(storage))
     app.add_route('/api/review/counts', ReviewCountsResource(storage))
-    app.add_route('/api/review/flags/{flag_id}', ReviewFlagItem(storage))
     app.add_route('/api/services', ServiceCollection(storage))
     app.add_route('/api/service-choices', ServiceChoices(storage))
     app.add_route('/api/services/{item_id}', ServiceItem(storage))

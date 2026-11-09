@@ -28,7 +28,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Every calendar day of a week or date range, recorded or not; `member` shows a member of the team admin's team (team view: no notes or review flags; days before they joined the team without data). */
+        /** Every calendar day of a week or date range, recorded or not; `member` shows a member of the team admin's team (team view: no notes; days before they joined the team without data). */
         get: operations["get__api_days"];
         put?: never;
         post?: never;
@@ -70,7 +70,7 @@ export interface paths {
         /** Record a day (insert or replace). */
         put: operations["put__api_days_{date}"];
         post?: never;
-        /** Delete a recorded day and its review flags. */
+        /** Delete a recorded day. */
         delete: operations["delete__api_days_{date}"];
         options?: never;
         head?: never;
@@ -124,7 +124,7 @@ export interface paths {
         /** Change an entry; only changed fields are written to its history. */
         put: operations["put__api_entries_{entry_id}"];
         post?: never;
-        /** Delete an entry and its review flags; its history is kept. */
+        /** Delete an entry; its history is kept. */
         delete: operations["delete__api_entries_{entry_id}"];
         options?: never;
         head?: never;
@@ -142,23 +142,6 @@ export interface paths {
         get: operations["get__api_entries_{entry_id}_history"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/entries/{entry_id}/split": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Divide an entry among several tickets (e.g. an alias like #4347 aka #1482), hours split evenly. */
-        post: operations["post__api_entries_{entry_id}_split"];
         delete?: never;
         options?: never;
         head?: never;
@@ -363,7 +346,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * All of your own records as a file to download, e.g. `work-tracker-klara-2026-10-30.json`: settings, work schedules, PTO years, services, activity types, tickets, days, entries with their history and review flags.
+         * All of your own records as a file to download, e.g. `work-tracker-klara-2026-10-30.json`: settings, work schedules, PTO years, services, activity types, tickets, days, entries with their history.
          * @description Not in it: password, sessions, users, teams and the log of the team view.
          */
         get: operations["get__api_export"];
@@ -1122,7 +1105,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Everything that needs attention; an item disappears once its reason is fixed or its flag is cleared. */
+        /** Everything that needs attention; an item disappears once its reason is fixed. */
         get: operations["get__api_review"];
         put?: never;
         post?: never;
@@ -1144,23 +1127,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/review/flags/{flag_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Clear a review flag of an entry or a day (e.g. after checking a guessed ticket key). */
-        delete: operations["delete__api_review_flags_{flag_id}"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2057,8 +2023,6 @@ export interface components {
             work_day: boolean;
             /** Note */
             note: string;
-            /** Flags */
-            flags: components["schemas"]["DayFlagView"][];
             /**
              * In Team
              * @description Team view: false for days before the member joined the team, shown without data
@@ -2241,20 +2205,6 @@ export interface components {
              * @description Changed after it was created or imported (see its history)
              */
             changed: boolean;
-            /** Flags */
-            flags: components["schemas"]["EntryFlagView"][];
-        };
-        /** EntrySplitInput */
-        EntrySplitInput: {
-            /**
-             * Ticket Keys
-             * @description The entry keeps the first ticket; the hours are split evenly
-             * @example [
-             *       "TNG-4347",
-             *       "KP-1482"
-             *     ]
-             */
-            ticket_keys: string[];
         };
         /** ActivityTypeAssignment */
         ActivityTypeAssignment: {
@@ -2475,14 +2425,9 @@ export interface components {
             tickets_without_service: components["schemas"]["TicketView"][];
             /**
              * Entries
-             * @description Entries with 0:00, without ticket or with an import flag, by date
+             * @description Entries with 0:00, without activity type or without the ticket it requires, by date
              */
             entries: components["schemas"]["ReviewEntry"][];
-            /**
-             * Days
-             * @description Days with import flags (e.g. weekend hours), by date
-             */
-            days: components["schemas"]["DayView"][];
         };
         /** ReviewCounts */
         ReviewCounts: {
@@ -2490,8 +2435,6 @@ export interface components {
             tickets_without_service: number;
             /** Entries */
             entries: number;
-            /** Days */
-            days: number;
         };
         /** ScheduleViewList */
         ScheduleViewList: components["schemas"]["ScheduleView"][];
@@ -2731,8 +2674,6 @@ export interface components {
             entries: number;
             /** History */
             history: number;
-            /** Review Flags */
-            review_flags: number;
         };
         /** SettingsView */
         SettingsView: {
@@ -2956,8 +2897,6 @@ export interface components {
              * @description All history lines, also of deleted entries, in written order
              */
             history: components["schemas"]["EntryChange"][];
-            /** Review Flags */
-            review_flags: components["schemas"]["ReviewFlag"][];
         };
         /**
          * ValidationErrorElement
@@ -3207,19 +3146,6 @@ export interface components {
              */
             top_services: components["schemas"]["ServiceHours"][];
         };
-        /** DayFlagView */
-        DayFlagView: {
-            /** Id */
-            id: string;
-            reason: components["schemas"]["FlagReason"];
-            /** Detail */
-            detail: string;
-        };
-        /**
-         * FlagReason
-         * @enum {string}
-         */
-        FlagReason: "uncertain_ticket" | "weekend_hours";
         /** LeftOutDay */
         LeftOutDay: {
             /**
@@ -3258,14 +3184,6 @@ export interface components {
             worked: string;
             /** Entries */
             entries: number;
-        };
-        /** EntryFlagView */
-        EntryFlagView: {
-            /** Id */
-            id: string;
-            reason: components["schemas"]["FlagReason"];
-            /** Detail */
-            detail: string;
         };
         /** ChangeView */
         ChangeView: {
@@ -3384,34 +3302,12 @@ export interface components {
             entry: components["schemas"]["EntryView"];
             /** Reasons */
             reasons: components["schemas"]["ReviewReason"][];
-            /**
-             * Original
-             * @description The spreadsheet line the entry was imported from; null if not imported
-             */
-            original: string | null;
-            /**
-             * Split On Import
-             * @description All entries the import made from the same spreadsheet line, if it named several tickets
-             */
-            split_on_import: components["schemas"]["SplitPart"][];
-            /**
-             * Split Suggestion
-             * @description Tickets to split the entry among, if its spreadsheet line named an alias or "ff"; empty otherwise
-             */
-            split_suggestion: string[];
         };
         /**
          * ReviewReason
          * @enum {string}
          */
-        ReviewReason: "zero_duration" | "no_ticket" | "no_activity_type" | "uncertain_ticket";
-        /** SplitPart */
-        SplitPart: {
-            /** Ticket Key */
-            ticket_key: string | null;
-            /** Duration */
-            duration: string;
-        };
+        ReviewReason: "zero_duration" | "no_ticket" | "no_activity_type";
         /** SearchGroup */
         SearchGroup: {
             /**
@@ -3577,32 +3473,6 @@ export interface components {
             /**
              * Detail
              * @description e.g. the original spreadsheet line
-             * @default
-             */
-            detail?: string;
-        };
-        /** ReviewFlag */
-        ReviewFlag: {
-            /**
-             * Id
-             * @default null
-             */
-            id?: string | null;
-            /**
-             * Entry Id
-             * @default null
-             */
-            entry_id?: string | null;
-            /**
-             * Date
-             * @description Set for flags on a day
-             * @default null
-             */
-            date?: string | null;
-            reason: components["schemas"]["FlagReason"];
-            /**
-             * Detail
-             * @description e.g. the original spreadsheet text
              * @default
              */
             detail?: string;
@@ -4348,56 +4218,6 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationError"];
-                };
-            };
-        };
-    };
-    "post__api_entries_{entry_id}_split": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Id of the entry */
-                entry_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EntrySplitInput"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EntryViewList"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Conflict */
-            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7561,43 +7381,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReviewCounts"];
                 };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationError"];
-                };
-            };
-        };
-    };
-    "delete__api_review_flags_{flag_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Id of the flag */
-                flag_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description Unprocessable Content */
             422: {

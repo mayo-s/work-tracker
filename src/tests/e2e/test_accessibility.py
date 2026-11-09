@@ -75,7 +75,7 @@ def test_the_entry_details_meet_wcag_aa_on_a_narrow_screen(logged_in, theme):
     page = logged_in('hans', theme)
     page.set_viewport_size({'width': 320, 'height': 640})
     page.goto('/review')
-    page.click('#guessed button:has-text("Details")')
+    page.click('#activity-types button:has-text("Details")')
     page.locator('dialog .history-list').wait_for()
     page.add_script_tag(path=AXE)
     found = page.evaluate(f"axe.run(document.querySelector('dialog'), {{ runOnly: {RULES} }})"

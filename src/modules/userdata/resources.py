@@ -23,7 +23,7 @@ class ExportResource:
     @spec.validate(resp=Response(HTTP_200=UserData), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         """All of your own records as a file to download, e.g. `work-tracker-klara-2026-10-30.json`: settings, work
-        schedules, PTO years, services, activity types, tickets, days, entries with their history and review flags.
+        schedules, PTO years, services, activity types, tickets, days, entries with their history.
 
         Not in it: password, sessions, users, teams and the log of the team view.
         """

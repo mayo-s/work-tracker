@@ -190,8 +190,6 @@ export const api = {
   updateEntry: (id: string, input: EntryInput) => request<EntryView>('PUT', `/api/entries/${segment(id)}`, input),
   deleteEntry: (id: string) => request<void>('DELETE', `/api/entries/${segment(id)}`),
   entryHistory: (id: string) => request<ChangeView[]>('GET', `/api/entries/${segment(id)}/history`),
-  splitEntry: (id: string, ticketKeys: string[]) =>
-    request<EntryView[]>('POST', `/api/entries/${segment(id)}/split`, { ticket_keys: ticketKeys }),
   assignActivityType: (entryIds: string[], activityTypeId: string) =>
     request<AssignedEntries>('POST', '/api/entries/assign-activity-type',
       { entry_ids: entryIds, activity_type_id: activityTypeId }),
@@ -220,7 +218,6 @@ export const api = {
 
   review: () => request<ReviewView>('GET', '/api/review'),
   reviewCounts: () => request<ReviewCounts>('GET', '/api/review/counts'),
-  clearFlag: (id: string) => request<void>('DELETE', `/api/review/flags/${segment(id)}`),
 
   weekReport: (week: string, member: string | null = null) =>
     request<WeekReport>('GET', `/api/reports/weeks/${segment(week)}${memberQuery(member)}`),

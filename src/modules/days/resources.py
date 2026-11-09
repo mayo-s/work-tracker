@@ -1,13 +1,11 @@
 """Days endpoints: /api/days, /api/days/{date} and /api/days/range."""
 
 import datetime as dt
-from collections import defaultdict
 
 import falcon
 from spectree import Response
 
 from src.lib.dates import each_day
-from src.models.review import ReviewFlag
 from src.modules.days.ranges import DayRangeInput, DayRangeResult, book_range
 from src.modules.days.schemas import DayInput, DayView, day_view, team_view_day
 from src.modules.auth.sessions import current_user
@@ -26,15 +24,14 @@ class DayCollection:
     @spec.validate(query=MemberPeriodQuery, resp=Response('HTTP_403', HTTP_200=list[DayView]), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response, query: MemberPeriodQuery) -> None:
         """Every calendar day of a week or date range, recorded or not; `member` shows a member of the team admin's team
-        (team view: no notes or review flags; days before they joined the team without data)."""
+        (team view: no notes; days before they joined the team without data)."""
         start, end = query.period()
         with self._storage.transaction() as store:
             view = viewing(req, store, query.member)
             days = store.days(view.user_id)
             recorded = {day.date: day for day in days.between(start, end)}
-            flags = _flags_by_date(days.day_flags(), start, end)
             schedules = store.schedules(view.user_id).schedules()
-        shown = [day_view(date, recorded.get(date), flags[date], schedules.on(date)) for date in each_day(start, end)]
+        shown = [day_view(date, recorded.get(date), schedules.on(date)) for date in each_day(start, end)]
         resp.media = [team_view_day(day, view.stays) for day in shown] if view.stays else shown
 
 
@@ -57,7 +54,7 @@ class DayItem:
 
     @spec.validate(resp=Response('HTTP_204', 'HTTP_404'), tags=TAGS, path_parameter_descriptions=DATE_PARAMETER)
     def on_delete(self, req: falcon.Request, resp: falcon.Response, date: dt.datetime) -> None:
-        """Delete a recorded day and its review flags."""
+        """Delete a recorded day."""
         with self._storage.transaction() as store:
             store.days(current_user(req)).delete(date.date())
         resp.status = falcon.HTTP_204
@@ -79,13 +76,4 @@ class DayRange:
 
 
 def _view(store: Store, user_id: str, date: dt.date) -> DayView:
-    days = store.days(user_id)
-    return day_view(date, days.get(date), days.flags_on(date), store.schedules(user_id).schedules().on(date))
-
-
-def _flags_by_date(flags: list[ReviewFlag], start: dt.date, end: dt.date) -> defaultdict[dt.date, list[ReviewFlag]]:
-    by_date = defaultdict(list)
-    for flag in flags:
-        if start <= flag.date <= end:
-            by_date[flag.date].append(flag)
-    return by_date
+    return day_view(date, store.days(user_id).get(date), store.schedules(user_id).schedules().on(date))

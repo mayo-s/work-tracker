@@ -1,25 +1,24 @@
-// Review page (/review): tickets without service, entries without activity type, and entries and days that need
-// attention after the import.
+// Review page (/review): entries without activity type, other entries with something missing, and tickets without
+// service.
 
 import {
-  api, errorText, type ActivityType, type DayView, type EntryView, type ReviewCounts, type ReviewEntry, type ReviewReason,
-  type ReviewView, type ServiceChoice, type TicketView,
+  api, errorText, type ActivityType, type ReviewCounts, type ReviewEntry, type ReviewReason, type ReviewView,
+  type ServiceChoice, type TicketView,
 } from './api.ts';
-import { formatDate, formatDay, weekLink } from './dates.ts';
+import { formatDate, weekLink } from './dates.ts';
 import { button, el, onEscape, scrolling } from './dom.ts';
 import { detailsButton } from './entry-details.ts';
 import { serviceOptions } from './lists.ts';
 import { entryContent } from './week.ts';
 
 export const REASON_LABELS: Record<ReviewReason, string> = {
-  uncertain_ticket: 'Ticket guessed',
   zero_duration: 'No duration',
   no_ticket: 'No ticket',
   no_activity_type: 'No activity type',
 };
 
 export function reviewTotal(counts: ReviewCounts): number {
-  return counts.tickets_without_service + counts.entries + counts.days;
+  return counts.tickets_without_service + counts.entries;
 }
 
 /** Shows the number of open review items next to the Review link of the navigation, as a warning badge (none at 0),
@@ -39,18 +38,6 @@ export function showReviewBadge(doc: Document, counts: ReviewCounts): void {
   }
 }
 
-/** The descriptions of the entries, each once (ignoring case), in order. */
-export function entryTexts(entries: EntryView[]): string[] {
-  const texts = new Map<string, string>();
-  for (const entry of entries) {
-    const text = entry.description.trim();
-    if (text && !texts.has(text.toLowerCase())) {
-      texts.set(text.toLowerCase(), text);
-    }
-  }
-  return [...texts.values()];
-}
-
 /** Tickets whose key contains the filter text (case-insensitive). */
 export function filterTickets(tickets: TicketView[], text: string): TicketView[] {
   const filter = text.trim().toUpperCase();
@@ -65,54 +52,10 @@ export function filterEntries(items: ReviewEntry[], text: string): ReviewEntry[]
     || entry.description.toLowerCase().includes(filter));
 }
 
-/** Flagged entries of one guessed ticket key, e.g. TNG-4057 from `#4057` in the spreadsheet. */
-export type GuessedTicket = {
-  key: string;
-  entries: ReviewEntry['entry'][];
-  originals: string[];
-  flagIds: string[];
-  /** Tickets to split into, from aliases or "ff" in the original lines (suggested by the API). */
-  suggested: string[];
-  /** Per original line: all entries the import made from it, if it named several tickets. */
-  splits: Record<string, ReviewEntry['split_on_import']>;
-};
-
-/** Guessed tickets grouped by key (in order of their first entry), the entries without activity type (to choose one
- * for several at once), and the other entries that need a fix of their own. */
-export function groupReview(entries: ReviewEntry[]): {
-  guessed: GuessedTicket[]; untyped: ReviewEntry[]; others: ReviewEntry[];
-} {
-  const guessed = new Map<string, GuessedTicket>();
-  const others: ReviewEntry[] = [];
-  for (const item of entries) {
-    const key = item.entry.ticket_key;
-    if (key && item.reasons.includes('uncertain_ticket')) {
-      const group = guessed.get(key) ?? { key, entries: [], originals: [], flagIds: [], suggested: [], splits: {} };
-      group.entries.push(item.entry);
-      group.suggested.push(...item.split_suggestion);
-      group.flagIds.push(...item.entry.flags.map((flag) => flag.id));
-      for (const detail of item.entry.flags.map((flag) => flag.detail)) {
-        if (!group.originals.includes(detail)) {
-          group.originals.push(detail);
-        }
-        if (item.split_on_import.length) {
-          group.splits[detail] = item.split_on_import;
-        }
-      }
-      guessed.set(key, group);
-    }
-    const reasons = item.reasons.filter((reason) => reason !== 'uncertain_ticket' || !key);
-    if (reasons.length) {
-      others.push({ ...item, reasons });
-    }
-  }
-  const untyped = others.filter((item) => item.reasons.includes('no_activity_type'));
-  return { guessed: [...guessed.values()], untyped, others: others.filter((item) => !untyped.includes(item)) };
-}
-
-/** Tickets to split a guessed ticket into, if its spreadsheet line had an alias or "ff"; null if there is nothing to split. */
-export function splitSuggestion(group: GuessedTicket): string[] | null {
-  return group.suggested.length ? [...new Set([group.key, ...group.suggested])] : null;
+/** The entries without activity type (to choose one for several at once), and the others that need a fix of their own. */
+export function groupReview(entries: ReviewEntry[]): { untyped: ReviewEntry[]; others: ReviewEntry[] } {
+  const untyped = entries.filter((item) => item.reasons.includes('no_activity_type'));
+  return { untyped, others: entries.filter((item) => !untyped.includes(item)) };
 }
 
 type Page = {
@@ -124,12 +67,8 @@ function act(page: Page, action: () => Promise<unknown>, message: string): void 
   action().then(() => page.reload(message), page.fail);
 }
 
-function clearFlags(flagIds: string[]): Promise<unknown> {
-  return Promise.all(flagIds.map((id) => api.clearFlag(id)));
-}
-
-/** An inline form to rename a ticket, or merge it into an existing one; `flagIds` are cleared afterwards. */
-function renameForm(key: string, page: Page, onCancel: () => void, flagIds: string[] = []): HTMLElement {
+/** An inline form to rename a ticket, or merge it into an existing one. */
+function renameForm(key: string, page: Page, onCancel: () => void): HTMLElement {
   const input = el('input', { value: key, 'aria-label': `New key for ${key}`, autocomplete: 'off', class: 'rename-input' });
   const form = el('form', { class: 'rename-form' }, input,
     el('button', { type: 'submit', class: 'button-small primary' }, 'Rename'), button('Cancel', onCancel));
@@ -137,10 +76,7 @@ function renameForm(key: string, page: Page, onCancel: () => void, flagIds: stri
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const newKey = input.value.trim().toUpperCase();
-    api.renameTicket(key, newKey).then(async (result) => {
-      await clearFlags(flagIds);
-      return result;
-    }).then(
+    api.renameTicket(key, newKey).then(
       (result) => page.reload(`${key} ${result.action === 'merged' ? 'merged into' : 'renamed to'} ${result.ticket.key} `
         + `(${result.moved} ${result.moved === 1 ? 'entry' : 'entries'})`),
       page.fail,
@@ -159,9 +95,9 @@ function openInCell(cell: HTMLElement, opener: HTMLElement, form: (cancel: () =>
   }));
 }
 
-function renameAction(key: string, page: Page, cell: HTMLElement, flagIds: string[] = []): HTMLButtonElement {
+function renameAction(key: string, page: Page, cell: HTMLElement): HTMLButtonElement {
   const rename: HTMLButtonElement = button('Rename',
-    () => openInCell(cell, rename, (cancel) => renameForm(key, page, cancel, flagIds)));
+    () => openInCell(cell, rename, (cancel) => renameForm(key, page, cancel)));
   return rename;
 }
 
@@ -258,87 +194,6 @@ function ticketsSection(page: Page): HTMLElement {
   );
 }
 
-function flagActions(flags: { id: string }[], page: Page): HTMLElement[] {
-  return flags.map((flag) => button('Done', () => act(page, () => api.clearFlag(flag.id), 'Flag cleared')));
-}
-
-/** An inline form to split all entries of a guessed ticket among several tickets; clears their flags afterwards. */
-function splitForm(group: GuessedTicket, suggestion: string[], page: Page, onCancel: () => void): HTMLElement {
-  const input = el('input', { value: suggestion.join(', '), 'aria-label': `Split ${group.key} into`, autocomplete: 'off',
-    class: 'split-input' });
-  const form = el('form', { class: 'rename-form' }, input,
-    el('button', { type: 'submit', class: 'button-small primary' }, 'Split'), button('Cancel', onCancel));
-  onEscape(form, onCancel);
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const keys = input.value.split(/[\s,;/]+/).map((key) => key.trim().toUpperCase()).filter(Boolean);
-    const run = async (): Promise<void> => {
-      for (const entry of group.entries) {
-        await api.splitEntry(entry.id, keys);
-      }
-      await clearFlags(group.flagIds);
-    };
-    run().then(() => page.reload(`${group.key} split into ${keys.join(', ')} (${group.entries.length} `
-      + `${group.entries.length === 1 ? 'entry' : 'entries'})`), page.fail);
-  });
-  queueMicrotask(() => input.focus());
-  return form;
-}
-
-/** `TNG-4138 3:00 · TNG-4139 3:00` */
-export function describeSplit(parts: ReviewEntry['split_on_import']): string {
-  return parts.map((part) => `${part.ticket_key ?? 'No ticket'} ${part.duration}`).join(' · ');
-}
-
-function originalLine(original: string, split: ReviewEntry['split_on_import'] | undefined): HTMLElement {
-  return el('div', {}, `Original: ${original}`,
-    split?.length ? el('div', { class: 'muted' }, 'Split on import: ', el('span', { class: 'num' }, describeSplit(split))) : null);
-}
-
-function guessedRow(group: GuessedTicket, page: Page): HTMLElement {
-  const first = group.entries[0]!;
-  const count = `${group.entries.length} ${group.entries.length === 1 ? 'entry' : 'entries'}`;
-  const actions = el('td', { class: 'row-actions' },
-    el('a', { class: 'button button-small', href: weekLink(first.date, `entry=${first.id}`) }, 'Open'),
-    button('Key is right', () => act(page, () => clearFlags(group.flagIds), `${group.key} confirmed (${count})`)));
-  actions.append(renameAction(group.key, page, actions, group.flagIds));
-  const suggestion = splitSuggestion(group);
-  if (suggestion) {
-    const split: HTMLButtonElement = button('Split',
-      () => openInCell(actions, split, (cancel) => splitForm(group, suggestion, page, cancel)));
-    actions.append(split);
-  }
-  actions.append(detailsButton(`${group.key}: ${count}`, group.entries, page.fail));
-  const shown = group.originals.slice(0, 3);
-  const texts = entryTexts(group.entries);
-  return el('tr', {},
-    el('td', {}, el('strong', {}, group.key), el('div', { class: 'muted' }, count),
-      texts.length ? el('div', { class: 'entry-text' }, texts.slice(0, 3).join(' · ') + (texts.length > 3 ? ' · …' : '')) : null),
-    el('td', {},
-      el('div', { class: 'muted' }, formatDate(first.date),
-        group.entries.length > 1 ? ` – ${formatDate(group.entries[group.entries.length - 1]!.date)}` : ''),
-      ...shown.map((original) => originalLine(original, group.splits[original])),
-      group.originals.length > shown.length ? el('div', { class: 'muted' }, `… and ${group.originals.length - shown.length} more`) : null),
-    actions);
-}
-
-function guessedSection(groups: GuessedTicket[], page: Page): HTMLElement {
-  const entries = groups.reduce((sum, group) => sum + group.entries.length, 0);
-  return el('section', { class: 'review-section', id: 'guessed' },
-    el('h2', {}, 'Guessed tickets ', el('span', { class: 'badge warning' }, String(groups.length))),
-    el('p', { class: 'muted' },
-      `${entries} entries got their ticket key from old numbers (#4057 → TNG-4057, lower numbers → KP), aliases or "ff". `
-      + 'Confirm the key, rename the ticket, or split it if the spreadsheet named several; each clears the flags of all '
-      + 'its entries.'),
-    groups.length
-      ? scrolling(el('table', { class: 'review-table' },
-        el('thead', {}, el('tr', {}, el('th', {}, 'Ticket'), el('th', {}, 'Spreadsheet'),
-          el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
-        el('tbody', {}, ...groups.map((group) => guessedRow(group, page)))))
-      : el('p', {}, 'Nothing to review.'),
-  );
-}
-
 function entryRow(item: ReviewEntry, page: Page): HTMLElement {
   const entry = item.entry;
   const link = weekLink(entry.date, `entry=${entry.id}`);
@@ -346,12 +201,10 @@ function entryRow(item: ReviewEntry, page: Page): HTMLElement {
   return el('tr', { 'data-key': entry.id, 'data-label': label },
     el('td', { class: 'num' }, el('a', { href: link }, formatDate(entry.date))),
     el('td', {},
-      el('div', { class: 'entry' }, ...entryContent(entry, false)),
-      item.original ? el('div', { class: 'muted' }, `Original: ${item.original}`) : null,
+      el('div', { class: 'entry' }, ...entryContent(entry)),
       el('div', {}, ...item.reasons.map((reason) => el('span', { class: 'badge warning' }, REASON_LABELS[reason])))),
     el('td', { class: 'row-actions' }, el('a', { class: 'button button-small', href: link }, 'Open'),
-      detailsButton(entry.ticket_key ?? entry.activity_type ?? 'Entry without ticket', [entry], page.fail),
-      ...flagActions(entry.flags.filter(() => item.reasons.includes('uncertain_ticket')), page)));
+      detailsButton(entry.ticket_key ?? entry.activity_type ?? 'Entry without ticket', [entry], page.fail)));
 }
 
 function activityTypeSelect(activityTypes: ActivityType[]): HTMLSelectElement {
@@ -399,31 +252,6 @@ function entriesSection(others: ReviewEntry[], page: Page): HTMLElement {
   );
 }
 
-function dayRow(day: DayView, page: Page): HTMLElement {
-  return el('tr', {},
-    el('td', {}, el('a', { href: weekLink(day.date, `edit=${day.date}`) }, formatDay(day.date, day.weekday)),
-      el('div', { class: 'muted' }, day.date.slice(0, 4))),
-    el('td', { class: 'num' }, day.worked),
-    el('td', {}, ...day.flags.map((flag) => el('div', { class: 'muted' }, flag.detail))),
-    el('td', { class: 'row-actions' },
-      el('a', { class: 'button button-small', href: weekLink(day.date, `edit=${day.date}`) }, 'Open day'),
-      ...flagActions(day.flags, page)));
-}
-
-function daysSection(page: Page): HTMLElement {
-  const days = page.data.days;
-  return el('section', { class: 'review-section', id: 'days' },
-    el('h2', {}, 'Days ', el('span', { class: 'badge warning' }, String(days.length))),
-    el('p', { class: 'muted' }, 'Weekend hours the spreadsheet counted differently. Check the times, then mark as done.'),
-    days.length
-      ? scrolling(el('table', { class: 'review-table' },
-        el('thead', {}, el('tr', {}, el('th', {}, 'Day'), el('th', { class: 'num' }, 'Worked'), el('th', {}, 'Spreadsheet'),
-          el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
-        el('tbody', {}, ...days.map((day) => dayRow(day, page)))))
-      : el('p', {}, 'Nothing to review.'),
-  );
-}
-
 export async function renderReviewPage(doc: Document): Promise<void> {
   const root = doc.querySelector<HTMLElement>('#review');
   const status = doc.querySelector<HTMLElement>('#review-status');
@@ -441,9 +269,8 @@ export async function renderReviewPage(doc: Document): Promise<void> {
       const page: Page = {
         data, services, activityTypes, reload: (text) => void load(text), fail: (error) => show(errorText(error), true),
       };
-      const { guessed, untyped, others } = groupReview(data.entries);
-      root.replaceChildren(guessedSection(guessed, page), untypedSection(untyped, page) ?? '', entriesSection(others, page),
-        daysSection(page), ticketsSection(page));
+      const { untyped, others } = groupReview(data.entries);
+      root.replaceChildren(untypedSection(untyped, page) ?? '', entriesSection(others, page), ticketsSection(page));
       showReviewBadge(doc, data.counts);
       show(message);
     } catch (error) {

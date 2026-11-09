@@ -91,7 +91,7 @@
     },
     "/api/days": {
       "get": {
-        "summary": "Every calendar day of a week or date range, recorded or not; `member` shows a member of the team admin's team (team view: no notes or review flags; days before they joined the team without data).",
+        "summary": "Every calendar day of a week or date range, recorded or not; `member` shows a member of the team admin's team (team view: no notes; days before they joined the team without data).",
         "operationId": "get__api_days",
         "description": "",
         "tags": [
@@ -253,7 +253,7 @@
     },
     "/api/days/{date}": {
       "delete": {
-        "summary": "Delete a recorded day and its review flags.",
+        "summary": "Delete a recorded day.",
         "operationId": "delete__api_days_{date}",
         "description": "",
         "tags": [
@@ -596,7 +596,7 @@
     },
     "/api/entries/{entry_id}": {
       "delete": {
-        "summary": "Delete an entry and its review flags; its history is kept.",
+        "summary": "Delete an entry; its history is kept.",
         "operationId": "delete__api_entries_{entry_id}",
         "description": "",
         "tags": [
@@ -777,65 +777,6 @@
               }
             }
           }
-        }
-      }
-    },
-    "/api/entries/{entry_id}/split": {
-      "post": {
-        "summary": "Divide an entry among several tickets (e.g. an alias like #4347 aka #1482), hours split evenly.",
-        "operationId": "post__api_entries_{entry_id}_split",
-        "description": "",
-        "tags": [
-          "Entries"
-        ],
-        "parameters": [
-          {
-            "name": "entry_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Id of the entry"
-          }
-        ],
-        "responses": {
-          "404": {
-            "description": "Not Found"
-          },
-          "409": {
-            "description": "Conflict"
-          },
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EntryViewList"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable Content",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationError"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EntrySplitInput"
-              }
-            }
-          },
-          "required": true
         }
       }
     },
@@ -1647,7 +1588,7 @@
     },
     "/api/export": {
       "get": {
-        "summary": "All of your own records as a file to download, e.g. `work-tracker-klara-2026-10-30.json`: settings, work schedules, PTO years, services, activity types, tickets, days, entries with their history and review flags.",
+        "summary": "All of your own records as a file to download, e.g. `work-tracker-klara-2026-10-30.json`: settings, work schedules, PTO years, services, activity types, tickets, days, entries with their history.",
         "operationId": "get__api_export",
         "description": "Not in it: password, sessions, users, teams and the log of the team view.",
         "tags": [
@@ -4293,7 +4234,7 @@
     },
     "/api/review": {
       "get": {
-        "summary": "Everything that needs attention; an item disappears once its reason is fixed or its flag is cleared.",
+        "summary": "Everything that needs attention; an item disappears once its reason is fixed.",
         "operationId": "get__api_review",
         "description": "",
         "tags": [
@@ -4343,45 +4284,6 @@
                 }
               }
             }
-          },
-          "422": {
-            "description": "Unprocessable Content",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/review/flags/{flag_id}": {
-      "delete": {
-        "summary": "Clear a review flag of an entry or a day (e.g. after checking a guessed ticket key).",
-        "operationId": "delete__api_review_flags_{flag_id}",
-        "description": "",
-        "tags": [
-          "Review"
-        ],
-        "parameters": [
-          {
-            "name": "flag_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Id of the flag"
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found"
           },
           "422": {
             "description": "Unprocessable Content",
@@ -6353,13 +6255,6 @@
             "title": "Note",
             "type": "string"
           },
-          "flags": {
-            "items": {
-              "$ref": "#/components/schemas/DayFlagView"
-            },
-            "title": "Flags",
-            "type": "array"
-          },
           "in_team": {
             "default": true,
             "description": "Team view: false for days before the member joined the team, shown without data",
@@ -6383,8 +6278,7 @@
           "overtime",
           "pto_days",
           "work_day",
-          "note",
-          "flags"
+          "note"
         ],
         "title": "DayView",
         "type": "object"
@@ -6721,13 +6615,6 @@
             "description": "Changed after it was created or imported (see its history)",
             "title": "Changed",
             "type": "boolean"
-          },
-          "flags": {
-            "items": {
-              "$ref": "#/components/schemas/EntryFlagView"
-            },
-            "title": "Flags",
-            "type": "array"
           }
         },
         "required": [
@@ -6741,37 +6628,9 @@
           "service_id",
           "service",
           "description",
-          "changed",
-          "flags"
+          "changed"
         ],
         "title": "EntryView",
-        "type": "object"
-      },
-      "EntrySplitInput": {
-        "additionalProperties": false,
-        "properties": {
-          "ticket_keys": {
-            "description": "The entry keeps the first ticket; the hours are split evenly",
-            "examples": [
-              [
-                "TNG-4347",
-                "KP-1482"
-              ]
-            ],
-            "items": {
-              "description": "Ticket key, e.g. ENGINE-461",
-              "maxLength": 30,
-              "type": "string"
-            },
-            "minItems": 2,
-            "title": "Ticket Keys",
-            "type": "array"
-          }
-        },
-        "required": [
-          "ticket_keys"
-        ],
-        "title": "EntrySplitInput",
         "type": "object"
       },
       "ActivityTypeAssignment": {
@@ -7218,27 +7077,18 @@
             "type": "array"
           },
           "entries": {
-            "description": "Entries with 0:00, without ticket or with an import flag, by date",
+            "description": "Entries with 0:00, without activity type or without the ticket it requires, by date",
             "items": {
               "$ref": "#/components/schemas/ReviewEntry"
             },
             "title": "Entries",
-            "type": "array"
-          },
-          "days": {
-            "description": "Days with import flags (e.g. weekend hours), by date",
-            "items": {
-              "$ref": "#/components/schemas/DayView"
-            },
-            "title": "Days",
             "type": "array"
           }
         },
         "required": [
           "counts",
           "tickets_without_service",
-          "entries",
-          "days"
+          "entries"
         ],
         "title": "ReviewView",
         "type": "object"
@@ -7252,16 +7102,11 @@
           "entries": {
             "title": "Entries",
             "type": "integer"
-          },
-          "days": {
-            "title": "Days",
-            "type": "integer"
           }
         },
         "required": [
           "tickets_without_service",
-          "entries",
-          "days"
+          "entries"
         ],
         "title": "ReviewCounts",
         "type": "object"
@@ -7726,10 +7571,6 @@
           "history": {
             "title": "History",
             "type": "integer"
-          },
-          "review_flags": {
-            "title": "Review Flags",
-            "type": "integer"
           }
         },
         "required": [
@@ -7740,8 +7581,7 @@
           "tickets",
           "days",
           "entries",
-          "history",
-          "review_flags"
+          "history"
         ],
         "title": "ImportSummary",
         "type": "object"
@@ -8138,7 +7978,7 @@
           },
           "version": {
             "description": "Format version; a newer one cannot be imported",
-            "maximum": 2,
+            "maximum": 3,
             "minimum": 1,
             "title": "Version",
             "type": "integer"
@@ -8217,13 +8057,6 @@
             },
             "title": "History",
             "type": "array"
-          },
-          "review_flags": {
-            "items": {
-              "$ref": "#/components/schemas/ReviewFlag"
-            },
-            "title": "Review Flags",
-            "type": "array"
           }
         },
         "required": [
@@ -8239,8 +8072,7 @@
           "tickets",
           "days",
           "entries",
-          "history",
-          "review_flags"
+          "history"
         ],
         "title": "UserData",
         "type": "object"
@@ -8737,36 +8569,6 @@
         "title": "YearFigures",
         "type": "object"
       },
-      "DayFlagView": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "reason": {
-            "$ref": "#/components/schemas/FlagReason"
-          },
-          "detail": {
-            "title": "Detail",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "reason",
-          "detail"
-        ],
-        "title": "DayFlagView",
-        "type": "object"
-      },
-      "FlagReason": {
-        "enum": [
-          "uncertain_ticket",
-          "weekend_hours"
-        ],
-        "title": "FlagReason",
-        "type": "string"
-      },
       "LeftOutDay": {
         "properties": {
           "date": {
@@ -8842,28 +8644,6 @@
           "entries"
         ],
         "title": "RecordedDay",
-        "type": "object"
-      },
-      "EntryFlagView": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "reason": {
-            "$ref": "#/components/schemas/FlagReason"
-          },
-          "detail": {
-            "title": "Detail",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "reason",
-          "detail"
-        ],
-        "title": "EntryFlagView",
         "type": "object"
       },
       "ChangeView": {
@@ -9164,42 +8944,11 @@
             },
             "title": "Reasons",
             "type": "array"
-          },
-          "original": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The spreadsheet line the entry was imported from; null if not imported",
-            "title": "Original"
-          },
-          "split_on_import": {
-            "description": "All entries the import made from the same spreadsheet line, if it named several tickets",
-            "items": {
-              "$ref": "#/components/schemas/SplitPart"
-            },
-            "title": "Split On Import",
-            "type": "array"
-          },
-          "split_suggestion": {
-            "description": "Tickets to split the entry among, if its spreadsheet line named an alias or \"ff\"; empty otherwise",
-            "items": {
-              "type": "string"
-            },
-            "title": "Split Suggestion",
-            "type": "array"
           }
         },
         "required": [
           "entry",
-          "reasons",
-          "original",
-          "split_on_import",
-          "split_suggestion"
+          "reasons"
         ],
         "title": "ReviewEntry",
         "type": "object"
@@ -9208,36 +8957,10 @@
         "enum": [
           "zero_duration",
           "no_ticket",
-          "no_activity_type",
-          "uncertain_ticket"
+          "no_activity_type"
         ],
         "title": "ReviewReason",
         "type": "string"
-      },
-      "SplitPart": {
-        "properties": {
-          "ticket_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ticket Key"
-          },
-          "duration": {
-            "title": "Duration",
-            "type": "string"
-          }
-        },
-        "required": [
-          "ticket_key",
-          "duration"
-        ],
-        "title": "SplitPart",
-        "type": "object"
       },
       "SearchGroup": {
         "properties": {
@@ -9590,66 +9313,6 @@
           "action"
         ],
         "title": "EntryChange",
-        "type": "object"
-      },
-      "ReviewFlag": {
-        "additionalProperties": false,
-        "properties": {
-          "id": {
-            "anyOf": [
-              {
-                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Id"
-          },
-          "entry_id": {
-            "anyOf": [
-              {
-                "description": "A UUIDv7, e.g. 0190a3c4-5d2e-7f1a-9b3c-…",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Entry Id"
-          },
-          "date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Set for flags on a day",
-            "title": "Date"
-          },
-          "reason": {
-            "$ref": "#/components/schemas/FlagReason"
-          },
-          "detail": {
-            "default": "",
-            "description": "e.g. the original spreadsheet text",
-            "maxLength": 500,
-            "title": "Detail",
-            "type": "string"
-          }
-        },
-        "required": [
-          "reason"
-        ],
-        "title": "ReviewFlag",
         "type": "object"
       },
       "Schedule": {

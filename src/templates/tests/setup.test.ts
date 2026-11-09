@@ -89,8 +89,8 @@ test('other files and newer versions are not imported', () => {
 });
 
 test('the import summary lists the counts per type', () => {
-  const counts = { days: 633, entries: 732, history: 746, review_flags: 3, tickets: 189, services: 7, activity_types: 4,
-    work_schedules: 1, pto_years: 4 };
+  const counts = { days: 633, entries: 732, history: 746, tickets: 189, services: 7, activity_types: 4, work_schedules: 1,
+    pto_years: 4 };
   assert.deepEqual(importSummary(counts).slice(0, 3), [['Days', '633'], ['Entries', '732'], ['History lines', '746']]);
-  assert.equal(importSummary(counts).length, 9);
+  assert.equal(importSummary(counts).length, 8);
 });

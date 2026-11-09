@@ -645,4 +645,8 @@ MIGRATIONS: tuple[Migration, ...] = (
     """,
     # 25: one kind of entry (TASKS.md 13.7): an activity, optionally on a ticket; activity types get "ticket required"
     to_one_kind,
+    # 26: the review flags of the former spreadsheet import go (TASKS.md L.12)
+    """
+    DROP TABLE review_flags;
+    """,
 )

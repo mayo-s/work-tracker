@@ -102,16 +102,3 @@ def format_duration(minutes: int) -> str:
 
 def is_quarter_hour(minutes: int) -> bool:
     return minutes % QUARTER_HOUR == 0
-
-
-def split_evenly(total: int, parts: int) -> list[int]:
-    """Split minutes into quarter-hour shares; leftovers go to the first shares (90 / 4 → 30, 30, 15, 15)."""
-    if parts < 1:
-        raise ValueError('parts must be at least 1')
-    if total < 0:
-        raise ValueError('total must not be negative')
-    quarters, leftover = divmod(total, QUARTER_HOUR)
-    base, extra = divmod(quarters, parts)
-    shares = [(base + 1 if index < extra else base) * QUARTER_HOUR for index in range(parts)]
-    shares[0] += leftover
-    return shares

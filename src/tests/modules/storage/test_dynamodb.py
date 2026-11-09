@@ -166,6 +166,13 @@ def test_version_2_converts_the_entries_to_one_kind(dynamo_table):
     assert {(kind.name, kind.ticket_required) for kind in kinds.values()} == {('Meeting', False), ('Coding', True)}
 
 
+def test_version_3_drops_the_review_flags_of_the_former_import(dynamo_table):
+    put_all(dynamo_table, {'PK': META, 'SK': SCHEMA, 'version': 2}, {'PK': 'USERS', 'SK': USER, 'order': 1},
+            {'PK': USER, 'SK': 'FLAG#f1', 'id': 'f1', 'date': '2025-12-06', 'reason': 'weekend_hours'}, day('2025-12-06'))
+    DynamoStorage(dynamo_table).migrate()
+    assert (dynamo_table.get(USER, 'FLAG#f1'), dynamo_table.get(USER, 'DAY#2025-12-06') is not None) == (None, True)
+
+
 def test_a_table_of_a_newer_app_is_refused(dynamo_table):
     put_all(dynamo_table, {'PK': META, 'SK': SCHEMA, 'version': LATEST + 1})
     with pytest.raises(SchemaVersionError, match=f'Table schema {LATEST + 1} is newer than this app'):

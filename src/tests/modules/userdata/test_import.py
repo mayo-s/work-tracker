@@ -11,7 +11,7 @@ from src.app import create_app
 from src.models.catalog import Service
 from src.models.days import Day
 from src.models.entries import Entry
-from src.models.review import FlagReason
+from src.models.history import HistoryAction
 from src.models.schedules import Schedule
 from src.models.teams import Team
 from src.modules.storage.dynamodb.storage import DynamoStorage
@@ -46,21 +46,20 @@ def kind_id(store, name, user_id):
 
 
 def record_klaras_work(store, klara):
-    """Something of every kind, also what an export renumbers: deleted entries and activity types, a split, flags."""
+    """Something of every kind, also what an export renumbers: deleted entries and activity types, a split."""
     store.save_theme(klara, 'dark')
     store.save_settings(klara, store.load_settings(klara).model_copy(update={'work_mode': 'tickets'}))
     store.schedules(klara).add(Schedule(valid_from=dt.date(2027, 1, 1), weekly_minutes=1920, work_days=[1, 2, 3, 4]))
     days, entries = store.days(klara), store.entries(klara, clock=lambda: NOW)
     days.save(Day(date=MONDAY, day_type='work', start=480, end=990, note='release'))
-    days.add_flag(MONDAY, FlagReason.WEEKEND_HOURS, 'Sa 2:00')
     entries.delete(entries.create(Entry(date=MONDAY, ticket_key='TNG-1', duration=15)).id)
     planning, meeting = kind_id(store, 'Planning', klara), kind_id(store, 'Meeting', klara)
     activity = entries.create(Entry(date=MONDAY, activity_type_id=planning, duration=60, description='retro'))
     entries.update(activity.model_copy(update={'activity_type_id': meeting}))
     store.activity_types(klara).delete(planning)
-    ticket = entries.create(Entry(date=MONDAY, ticket_key='TNG-5213', duration=120, description='bookings'))
-    entries.split(ticket.id, ['TNG-5213', 'TNG-5214'])
-    entries.add_flag(ticket.id, FlagReason.UNCERTAIN_TICKET, '#5213')
+    ticket = entries.create(Entry(date=MONDAY, ticket_key='TNG-5213', duration=60, description='bookings'))
+    split_off = entries.create(Entry(date=MONDAY, ticket_key='TNG-5214', duration=60, description='bookings'))
+    entries.add_history(split_off.id, HistoryAction.SPLIT, {}, f'Split from entry {ticket.id}')  # recorded before L.12
     msb = next(service for service in store.services(klara).all() if service.short_name == 'MSB')
     store.tickets(klara).set_service('TNG-5213', msb.id)
 
@@ -69,7 +68,7 @@ def test_export_import_and_export_again_gives_the_same_file(store, hans, klara_i
     record_klaras_work(store, klara_id)
     exported = export_data(store, klara_id, NOW)
     summary = import_data(store, hans, exported)
-    assert (summary.entries, summary.history, summary.review_flags, summary.services) == (3, 7, 2, 5)
+    assert (summary.entries, summary.history, summary.services) == (3, 7, 5)
     assert export_data(store, hans, LATER).model_dump(exclude={'exported_at'}) == exported.model_dump(exclude={'exported_at'})
 
 
@@ -79,7 +78,7 @@ def test_imported_records_belong_to_the_importing_user(store, hans, klara_id):
     entries = store.entries(hans).between(MONDAY, MONDAY)
     assert [entry.ticket_key for entry in entries if entry.ticket_key] == ['TNG-5213', 'TNG-5214']
     assert entries[0].activity_type_id == kind_id(store, 'Meeting', hans)
-    assert [line.action for line in store.entries(hans).history(entries[1].id)] == ['created', 'split']
+    assert [line.action for line in store.entries(hans).history(entries[2].id)] == ['created', 'split']
     assert store.days(hans).get(MONDAY).note == 'release'
     assert store.load_theme(hans) == 'dark'
     assert len(store.entries(klara_id).between(MONDAY, MONDAY)) == 3  # Klara's stay as they are
@@ -162,14 +161,14 @@ def test_a_large_import(storage, large_file, new_user):
             exclude={'exported_at'})
 
 
-def stop_at_the_flags(monkeypatch):
+def stop_at_the_history(monkeypatch):
     def stop(self):
         raise RuntimeError('the connection is gone')
-    monkeypatch.setattr(importing._Import, '_flags', stop)
+    monkeypatch.setattr(importing._Import, '_history', stop)
 
 
 def test_an_import_that_stopped_halfway_is_replaced_by_the_next(storage, large_file, new_user, monkeypatch):
-    stop_at_the_flags(monkeypatch)
+    stop_at_the_history(monkeypatch)
     with pytest.raises(RuntimeError, match='the connection is gone'):
         import_file(storage, new_user, large_file)
     with storage.transaction() as store:  # SQLite wrote nothing; DynamoDB wrote chunks and marked the account
@@ -252,7 +251,7 @@ def test_a_failed_import_leaves_nothing_behind(new_database, klaras_file):
 
 @pytest.mark.parametrize('change, message', [
     ({'format': 'spreadsheet'}, 'This is no Work Tracker export file'),
-    ({'version': 3}, 'The file has version 3; this Work Tracker reads up to version 2'),
+    ({'version': 4}, 'The file has version 4; this Work Tracker reads up to version 3'),
 ])
 def test_other_formats_and_newer_versions_are_refused(new_database, klaras_file, change, message):
     client, hans = new_database
@@ -275,6 +274,15 @@ def test_a_file_of_version_1_gets_entries_of_one_kind(new_database, klaras_file)
     week = client.simulate_get('/api/entries', cookies=hans, params={'week': '2026-W44'}).json
     assert [(entry['activity_type'], entry['ticket_required'], entry['description']) for entry in week] == [
         ('Coding', True, 'PR review'), ('Meeting', False, 'Standup')]
+
+
+def test_the_review_flags_of_a_file_of_version_2_are_left_out(new_database, klaras_file):
+    client, hans = new_database
+    flags = [{'id': '1', 'entry_id': klaras_file['entries'][0]['id'], 'date': None, 'reason': 'uncertain_ticket',
+              'detail': '#5213'}]
+    version_2 = klaras_file | {'version': 2, 'review_flags': flags}
+    result = client.simulate_post('/api/setup/import', cookies=hans, json={'data': version_2})
+    assert (result.status, result.json['entries']) == (falcon.HTTP_200, 3)
 
 
 def test_a_set_up_user_cannot_import(client, klaras_file):

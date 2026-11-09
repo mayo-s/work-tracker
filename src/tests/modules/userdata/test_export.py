@@ -9,7 +9,6 @@ from src.models.catalog import Service
 from src.models.days import Day
 from src.models.entries import Entry
 from src.models.history import HistoryAction
-from src.models.review import FlagReason
 from src.models.teams import Team
 from src.modules.storage.sqlite import SqliteStore
 from src.modules.userdata.export import export_data
@@ -35,7 +34,7 @@ def activity_type_id(store, name, user_id=USER):
 def test_file_header_and_settings(store):
     store.save_theme(USER, 'dark')
     data = export(store)
-    assert (data.format, data.version, data.exported_at) == ('work-tracker', 2, NOW.replace(microsecond=0))
+    assert (data.format, data.version, data.exported_at) == ('work-tracker', 3, NOW.replace(microsecond=0))
     assert (data.settings.balance_start, data.theme) == (dt.date(2024, 6, 1), 'dark')
     assert [year.year for year in data.pto_years] == [2024, 2025, 2026, 2027]
     assert [(schedule.id, schedule.weekly_minutes) for schedule in data.work_schedules] == [('1', 2400)]
@@ -77,26 +76,14 @@ def test_history_names_activity_types_and_split_entries_by_file_id(store):
     entries.update(activity.model_copy(update={'activity_type_id': travel}))
     store.activity_types(USER).delete(meeting)  # no longer in use
     ticket = entries.create(Entry(date=MONDAY, ticket_key='TNG-2', duration=60))
-    entries.split(ticket.id, ['TNG-2', 'TNG-3'])
+    split_off = entries.create(Entry(date=MONDAY, ticket_key='TNG-3', duration=60))
+    entries.add_history(split_off.id, HistoryAction.SPLIT, {}, f'Split from entry {ticket.id}')  # recorded before L.12
     data = export(store)
     assert [(entry.id, entry.ticket_key) for entry in data.entries] == [('1', None), ('2', 'TNG-2'), ('3', 'TNG-3')]
     updated = next(line for line in data.history if line.action == HistoryAction.UPDATED)
     assert updated.changes['activity_type_id'] == (None, '2')  # Meeting is gone, Travel comes after Coding
     split_off = next(line for line in data.history if line.detail.startswith('Split from'))
     assert (split_off.entry_id, split_off.detail) == ('3', 'Split from entry 2')
-
-
-def test_review_flags_on_days_and_entries(store):
-    store.days(USER).save(Day(date=MONDAY, day_type='work', start=480, end=990))
-    store.days(USER).add_flag(MONDAY, FlagReason.WEEKEND_HOURS, 'Sa 2:00')
-    entries = store.entries(USER)
-    entries.delete(entries.create(Entry(date=MONDAY, ticket_key='TNG-1', duration=15)).id)
-    entry = entries.create(Entry(date=MONDAY, ticket_key='TNG-2', duration=15))
-    entries.add_flag(entry.id, FlagReason.UNCERTAIN_TICKET, '#2')
-    data = export(store)
-    assert [day.date for day in data.days] == [MONDAY]
-    flags = [(flag.id, flag.date, flag.entry_id, flag.detail) for flag in data.review_flags]
-    assert flags == [('1', MONDAY, None, 'Sa 2:00'), ('2', None, '1', '#2')]
 
 
 def test_team_services_in_use_are_included_with_the_team(store):

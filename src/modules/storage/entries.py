@@ -1,25 +1,22 @@
-"""Task entries with their change history and review flags."""
+"""Task entries with their change history."""
 
 import datetime as dt
 import json
 import sqlite3
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable
 
 from pydantic import JsonValue
 
-from src.lib.durations import MINUTES_PER_DAY, format_clock, format_duration, split_evenly
+from src.lib.durations import MINUTES_PER_DAY, format_clock, format_duration
 from src.models.base import new_id
-from src.models.catalog import Ticket
 from src.models.entries import Entry
 from src.models.history import EntryChange, HistoryAction
-from src.models.review import FlagReason, ReviewFlag
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.store import Changes
 from src.modules.storage.tickets import TicketRepository
 
 _ENTRY_COLUMNS = 'id, date, activity_type_id, ticket_key, duration, description'
 _HISTORY_COLUMNS = 'id, entry_id, changed_at, action, changes, detail'
-_FLAG_COLUMNS = 'id, entry_id, reason, detail'
 
 
 def history_time() -> dt.datetime:
@@ -50,56 +47,30 @@ def _to_change(row: sqlite3.Row) -> EntryChange:
     return EntryChange(**{**dict(row), 'changes': json.loads(row['changes'])})
 
 
-def _to_flag(row: sqlite3.Row) -> ReviewFlag:
-    return ReviewFlag(id=row['id'], entry_id=row['entry_id'], reason=row['reason'], detail=row['detail'])
-
-
 class EntryRules:
-    """The rules of entries on every backend: creating, changing, splitting and deleting write the history. A backend's
+    """The rules of entries on every backend: creating, changing and deleting write the history. A backend's
     repository stores them: `get`, `restore`, `restore_history`, `_check_references`, `_replace` (an entry in place of
-    its old version) and `_remove` (an entry and its review flags)."""
+    its old version) and `_remove` (an entry)."""
 
     _clock: Callable[[], dt.datetime]
 
-    def create(self, entry: Entry, action: HistoryAction = HistoryAction.CREATED, detail: str = '') -> Entry:
-        """Store a new entry; its ticket is created if needed. `action` is `created` or `imported`."""
+    def create(self, entry: Entry) -> Entry:
+        """Store a new entry; its ticket is created if needed."""
         created = self.restore(entry)
-        self.add_history(created.id, action, field_changes({}, entry_fields(created)), detail)
+        self.add_history(created.id, HistoryAction.CREATED, field_changes({}, entry_fields(created)))
         return created
 
-    def update(self, entry: Entry, action: HistoryAction = HistoryAction.UPDATED, detail: str = '') -> Entry:
-        """Replace an entry; only changed fields are recorded."""
+    def update(self, entry: Entry, action: HistoryAction = HistoryAction.UPDATED) -> Entry:
+        """Replace an entry; only changed fields are recorded (`action`: e.g. `renamed` when its ticket was)."""
         old = self.get(entry.id)
         if changes := field_changes(entry_fields(old), entry_fields(entry)):
             self._check_references(entry)
             self._replace(old, entry)
-            self.add_history(entry.id, action, changes, detail)
+            self.add_history(entry.id, action, changes)
         return entry
 
-    def split(self, entry_id: str, ticket_keys: Sequence[str]) -> list[Entry]:
-        """Divide an entry among several tickets, the hours split evenly in quarter hours.
-
-        The entry itself gets the first ticket; the others become new entries with the same date, activity type and
-        description.
-        """
-        entry = self.get(entry_id)
-        keys = list(dict.fromkeys(Ticket(key=key).key for key in ticket_keys))
-        if len(keys) < 2:
-            raise ConflictError('An entry is split into at least two different tickets')
-        shares = split_evenly(entry.duration, len(keys))
-        first = self.update(
-            entry.model_copy(update={'ticket_key': keys[0], 'duration': shares[0]}), HistoryAction.SPLIT,
-            f'Split into {", ".join(keys)}',
-        )
-        others = [
-            self.create(entry.model_copy(update={'id': None, 'ticket_key': key, 'duration': share}), HistoryAction.SPLIT,
-                        f'Split from entry {entry_id}')
-            for key, share in zip(keys[1:], shares[1:])
-        ]
-        return [first, *others]
-
     def delete(self, entry_id: str) -> None:
-        """Delete an entry and its review flags; its history is kept."""
+        """Delete an entry; its history is kept."""
         old = self.get(entry_id)
         self._remove(old)
         self.add_history(entry_id, HistoryAction.DELETED, field_changes(entry_fields(old), {}))
@@ -141,13 +112,11 @@ class EntryRepository(EntryRules):
         return [_to_entry(row) for row in rows]
 
     def for_review(self) -> list[Entry]:
-        """Entries with 0:00, without activity type, without the ticket their activity type requires, and flagged
-        entries, by date."""
+        """Entries with 0:00, without activity type or without the ticket their activity type requires, by date."""
         rows = self._conn.execute(
             f'SELECT {_ENTRY_COLUMNS} FROM entries '
             'WHERE user_id = ? AND (duration = 0 OR activity_type_id IS NULL OR (ticket_key IS NULL AND activity_type_id IN '
-            '(SELECT id FROM activity_types WHERE ticket_required)) '
-            'OR id IN (SELECT entry_id FROM review_flags WHERE entry_id IS NOT NULL)) ORDER BY date, id',
+            '(SELECT id FROM activity_types WHERE ticket_required))) ORDER BY date, id',
             (self._user,),
         )
         return [_to_entry(row) for row in rows]
@@ -196,41 +165,6 @@ class EntryRepository(EntryRules):
         )
         return {row['entry_id'] for row in rows}
 
-    def imported_lines(self, entry_ids: Iterable[str]) -> dict[str, str]:
-        """The original spreadsheet line of each of the given entries that was imported."""
-        ids = list(entry_ids)
-        placeholders = ', '.join('?' for _ in ids)
-        rows = self._conn.execute(
-            f'SELECT entry_id, detail FROM entry_history WHERE user_id = ? AND entry_id IN ({placeholders}) AND action = ?',
-            (self._user, *ids, HistoryAction.IMPORTED),
-        )
-        return {row['entry_id']: row['detail'] for row in rows}
-
-    def add_flag(self, entry_id: str, reason: FlagReason, detail: str = '') -> ReviewFlag:
-        flag = ReviewFlag(entry_id=entry_id, reason=reason, detail=detail)
-        if not self._owned('entries', entry_id):
-            raise ConflictError(f'Cannot flag entry {entry_id}: no such entry')
-        added = flag.model_copy(update={'id': new_id()})
-        self._write('INSERT INTO review_flags (id, user_id, entry_id, reason, detail) VALUES (?, ?, ?, ?, ?)',
-                    (added.id, self._user, entry_id, flag.reason, flag.detail))
-        return added
-
-    def flags_of(self, entry_id: str) -> list[ReviewFlag]:
-        rows = self._conn.execute(f'SELECT {_FLAG_COLUMNS} FROM review_flags WHERE entry_id = ? AND user_id = ? ORDER BY id',
-                                  (entry_id, self._user))
-        return [_to_flag(row) for row in rows]
-
-    def entry_flags(self) -> list[ReviewFlag]:
-        """All flags on entries, in the order they were added."""
-        sql = f'SELECT {_FLAG_COLUMNS} FROM review_flags WHERE user_id = ? AND entry_id IS NOT NULL ORDER BY id'
-        rows = self._conn.execute(sql, (self._user,))
-        return [_to_flag(row) for row in rows]
-
-    def clear_flag(self, flag_id: str) -> None:
-        sql = 'DELETE FROM review_flags WHERE id = ? AND user_id = ? AND entry_id IS NOT NULL'
-        if not self._conn.execute(sql, (flag_id, self._user)).rowcount:
-            raise NotFoundError(f'No entry flag with id {flag_id}')
-
     def check_fits_day(self, entry: Entry) -> None:
         """An entry is at most as long as the rest of its day from the day's start (24:00 without a start time)."""
         row = self._conn.execute('SELECT start_time FROM days WHERE user_id = ? AND date = ?',
@@ -252,7 +186,7 @@ class EntryRepository(EntryRules):
         )
 
     def _remove(self, old: Entry) -> None:
-        self._conn.execute('DELETE FROM entries WHERE id = ? AND user_id = ?', (old.id, self._user))  # flags cascade
+        self._conn.execute('DELETE FROM entries WHERE id = ? AND user_id = ?', (old.id, self._user))
 
     def _owned(self, table: str, row_id: str) -> bool:
         row = self._conn.execute(f'SELECT 1 FROM {table} WHERE id = ? AND user_id = ?', (row_id, self._user)).fetchone()

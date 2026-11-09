@@ -1,11 +1,9 @@
-"""Days and their review flags on DynamoDB (`DAY#<date>` in the user's partition), as the SQLite repository (days.py)."""
+"""Days on DynamoDB (`DAY#<date>` in the user's partition), as the SQLite repository (days.py)."""
 
 import datetime as dt
 
 from src.lib.balances import DayRecord
 from src.models.days import Day
-from src.models.review import FlagReason, ReviewFlag
-from src.modules.storage.dynamodb.flags import add_flag, all_flags, delete_flags, flag_key
 from src.modules.storage.dynamodb.keys import user_partition
 from src.modules.storage.dynamodb.table import attributes
 from src.modules.storage.dynamodb.unit import Unit
@@ -42,25 +40,7 @@ class DynamoDays:
         self._unit.put({'PK': self._pk, 'SK': day_key(day.date), **day.model_dump(mode='json')})
 
     def delete(self, date: dt.date) -> None:
-        """Delete the day and its review flags."""
+        """Delete the day."""
         if self.get(date) is None:
             raise NotFoundError(f'No day recorded on {date}')
         self._unit.delete(self._pk, day_key(date))
-        delete_flags(self._unit, self._pk, lambda flag: flag.date == date)
-
-    def add_flag(self, date: dt.date, reason: FlagReason, detail: str = '') -> ReviewFlag:
-        return add_flag(self._unit, self._pk, ReviewFlag(date=date, reason=reason, detail=detail))
-
-    def flags_on(self, date: dt.date) -> list[ReviewFlag]:
-        return [flag for flag in all_flags(self._unit, self._pk) if flag.date == date]
-
-    def day_flags(self) -> list[ReviewFlag]:
-        """All flags on days, in date order."""
-        flags = [flag for flag in all_flags(self._unit, self._pk) if flag.date is not None]
-        return sorted(flags, key=lambda flag: (flag.date, flag.id))
-
-    def clear_flag(self, flag_id: str) -> None:
-        item = self._unit.get(self._pk, flag_key(flag_id))
-        if item is None or item['date'] is None:
-            raise NotFoundError(f'No day flag with id {flag_id}')
-        self._unit.delete(self._pk, flag_key(flag_id))

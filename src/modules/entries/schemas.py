@@ -1,17 +1,14 @@
 """API schemas for task entries and their history (formats: see src.utils.api)."""
 
 import datetime as dt
-from collections import defaultdict
 from collections.abc import Iterable
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from src.lib.durations import format_duration, parse_duration
-from src.models.catalog import TicketKey
 from src.models.entries import Entry
 from src.models.history import HistoryAction
-from src.models.review import FlagReason
 from src.modules.storage.store import Store
 from src.modules.tickets.schemas import TicketServices
 from src.utils.api import DurationText, check_domain
@@ -47,13 +44,6 @@ class EntryInput(BaseModel):
                      duration=parse_duration(self.duration), description=self.description)
 
 
-class EntrySplitInput(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-
-    ticket_keys: list[TicketKey] = Field(min_length=2, examples=[['TNG-4347', 'KP-1482']],
-                                         description='The entry keeps the first ticket; the hours are split evenly')
-
-
 class ActivityTypeAssignment(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
@@ -63,12 +53,6 @@ class ActivityTypeAssignment(BaseModel):
 
 class AssignedEntries(BaseModel):
     assigned: int = Field(description='Number of distinct entries changed')
-
-
-class EntryFlagView(BaseModel):
-    id: str
-    reason: FlagReason
-    detail: str
 
 
 class EntryView(BaseModel):
@@ -83,7 +67,6 @@ class EntryView(BaseModel):
     service: str | None = Field(description="Short name of the ticket's service")
     description: str
     changed: bool = Field(description='Changed after it was created or imported (see its history)')
-    flags: list[EntryFlagView]
 
 
 class ChangeView(BaseModel):
@@ -95,7 +78,7 @@ class ChangeView(BaseModel):
 
 
 class EntryViewer:
-    """Builds entry views with service, activity type, flags and the changed marker (one lookup per list)."""
+    """Builds entry views with service, activity type and the changed marker (one lookup per list)."""
 
     def __init__(self, store: Store, user_id: str) -> None:
         self._entries = store.entries(user_id)
@@ -105,15 +88,12 @@ class EntryViewer:
     def views(self, entries: Iterable[Entry]) -> list[EntryView]:
         entries = list(entries)
         changed = self._entries.changed(entry.id for entry in entries)
-        flags = defaultdict(list)
-        for flag in self._entries.entry_flags():
-            flags[flag.entry_id].append(EntryFlagView(id=flag.id, reason=flag.reason, detail=flag.detail))
-        return [self._view(entry, entry.id in changed, flags[entry.id]) for entry in entries]
+        return [self._view(entry, entry.id in changed) for entry in entries]
 
     def view(self, entry: Entry) -> EntryView:
         return self.views([entry])[0]
 
-    def _view(self, entry: Entry, changed: bool, flags: list[EntryFlagView]) -> EntryView:
+    def _view(self, entry: Entry, changed: bool) -> EntryView:
         activity_type = self._activity_types.get(entry.activity_type_id)
         service_id = self._services.of_ticket(entry.ticket_key)
         return EntryView(
@@ -121,5 +101,5 @@ class EntryViewer:
             activity_type=activity_type.name if activity_type else None,
             ticket_required=bool(activity_type and activity_type.ticket_required), ticket_key=entry.ticket_key,
             service_id=service_id, service=self._services.name(service_id), description=entry.description,
-            changed=changed, flags=flags,
+            changed=changed,
         )

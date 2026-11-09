@@ -6,7 +6,6 @@ import re
 from src.models.catalog import ActivityType, ServiceChoice, Ticket
 from src.models.entries import Entry
 from src.models.history import EntryChange, HistoryAction
-from src.models.review import ReviewFlag
 from src.models.schedules import Schedule
 from src.modules.storage.store import Changes, Store
 from src.modules.userdata.schemas import FORMAT, VERSION, UserData
@@ -50,7 +49,7 @@ class _Export:
             pto_years=self._store.pto_years(self._user).all(), services=services, activity_types=activity_types,
             tickets=[ticket.model_copy(update={'service_id': self._services.known(ticket.service_id)}) for ticket in tickets],
             days=self._store.days(self._user).between(dt.date.min, dt.date.max), entries=entries,
-            history=self._history(), review_flags=self._flags(),
+            history=self._history(),
         )
 
     def _services_of(self, tickets: list[Ticket]) -> list[ServiceChoice]:
@@ -92,9 +91,3 @@ class _Export:
     def _detail(self, change: EntryChange) -> str:
         match = SPLIT_FROM.fullmatch(change.detail) if change.action == HistoryAction.SPLIT else None
         return f'Split from entry {self._entries(match[1])}' if match else change.detail
-
-    def _flags(self) -> list[ReviewFlag]:
-        days, entries = self._store.days(self._user), self._store.entries(self._user)
-        flags = [*days.day_flags(), *(flag.model_copy(update={'entry_id': self._entries(flag.entry_id)})
-                                      for flag in entries.entry_flags())]
-        return [flag.model_copy(update={'id': str(number)}) for number, flag in enumerate(flags, 1)]

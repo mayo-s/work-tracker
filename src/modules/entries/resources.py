@@ -5,7 +5,7 @@ import falcon
 from spectree import Response
 
 from src.modules.entries.schemas import (
-    ActivityTypeAssignment, AssignedEntries, ChangeView, EntryInput, EntrySplitInput, EntryView, EntryViewer,
+    ActivityTypeAssignment, AssignedEntries, ChangeView, EntryInput, EntryView, EntryViewer,
 )
 from src.modules.auth.sessions import current_user
 from src.models.entries import Entry
@@ -66,23 +66,10 @@ class EntryItem:
 
     @spec.validate(resp=Response('HTTP_204', 'HTTP_404'), tags=TAGS, path_parameter_descriptions=ID_PARAMETER)
     def on_delete(self, req: falcon.Request, resp: falcon.Response, entry_id: str) -> None:
-        """Delete an entry and its review flags; its history is kept."""
+        """Delete an entry; its history is kept."""
         with self._storage.transaction() as store:
             store.entries(current_user(req)).delete(entry_id)
         resp.status = falcon.HTTP_204
-
-
-class EntrySplit:
-    def __init__(self, storage: Storage) -> None:
-        self._storage = storage
-
-    @spec.validate(json=EntrySplitInput, resp=Response('HTTP_404', 'HTTP_409', HTTP_200=list[EntryView]), tags=TAGS,
-                   path_parameter_descriptions=ID_PARAMETER)
-    def on_post(self, req: falcon.Request, resp: falcon.Response, entry_id: str, json: EntrySplitInput) -> None:
-        """Divide an entry among several tickets (e.g. an alias like #4347 aka #1482), hours split evenly."""
-        with self._storage.transaction() as store:
-            user_id = current_user(req)
-            resp.media = EntryViewer(store, user_id).views(store.entries(user_id).split(entry_id, json.ticket_keys))
 
 
 class EntryActivityTypeAssignment:

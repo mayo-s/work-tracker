@@ -247,18 +247,12 @@ Lists everything that needs attention, each with its reason:
 - Entries **without activity type** (former ticket entries, 4.6); an activity type can be chosen per entry, also for
   several selected entries at once.
 - Entries with duration **0:00**.
-- Entries **without a ticket** whose activity type requires one (imported PR reviews).
-- Entries and days **flagged during the former import** (uncertain ticket ids, weekend hours, …; see 6).
-- Guessed tickets are grouped by ticket: confirm the key, rename (or merge) the ticket, or **split** its
-  entries among several tickets when the spreadsheet line named an alias (`#4347 aka #1482`) or "ff";
-  the hours are split evenly in quarter hours. Each of these clears the flags of the ticket's entries.
-- A spreadsheet line the import already split among several tickets shows that split under the original
-  line ("Split on import: TNG-4138 3:00 · TNG-4139 3:00"), so it is not split a second time.
-- Each entry shows its description and the original spreadsheet line; "Details" (a button, for keyboard and touch)
-  opens a dialog with the whole entry: date and weekday with the day's times, duration, activity type, ticket,
-  service, description, flags, history and a link to its week. For a guessed ticket, all its entries.
+- Entries **without a ticket** whose activity type requires one.
+- Tickets can be renamed (or merged) there; an entry's "Details" (a button, for keyboard and touch) opens a dialog
+  with the whole entry: date and weekday with the day's times, duration, activity type, ticket, service,
+  description, history and a link to its week.
 
-An item leaves the list once the reason is fixed or the flag is cleared.
+An item leaves the list once the reason is fixed.
 
 The navigation shows "Review" with the count of open items only while there are any, and on the review page itself;
 it appears once the count is loaded, so it does not flash on pages without open items.
@@ -286,7 +280,7 @@ corners, one accent color. Warnings are the only loud element.
 
 - **Negative** overtime and balance are shown as a warning (including −8:00 on a work day without
   times yet), **positive** ones in mint green, zero in normal text.
-- Warnings: a past work day without entries, review flags and the review count.
+- Warnings: a past work day without entries and the review count.
 - Font: **Inter**, stored in the project (woff2 files with their OFL license); no external font or CDN
   requests. Tabular digits for times and durations, so columns line up.
 - All colors, sizes and spacings are CSS variables in one stylesheet. **Dark mode** is a second set of color
@@ -345,7 +339,7 @@ corners, one accent color. Warnings are the only loud element.
 
 ### 5.7 Data per user
 
-- Each user has their own days, entries with their history, review flags, tickets with their service, services,
+- Each user has their own days, entries with their history, tickets with their service, services,
   activity types, work schedules, PTO years and settings (balance start, opening balance, theme, way of working,
   setup done).
   Nobody sees or changes another user's records, root and admins neither; an unknown or foreign id answers 404, using
@@ -408,8 +402,8 @@ corners, one accent color. Warnings are the only loud element.
 ### 5.8 Export and import (own data)
 
 - Export: "Export my data" on the settings page downloads one JSON file of the user's own records: days, entries with
-  their history (also of deleted entries), review flags, tickets, services, activity types, work schedules, PTO years,
-  settings and theme. It starts with `{"format": "work-tracker", "version": 2, "exported_at": …}`; every record has a
+  their history (also of deleted entries), tickets, services, activity types, work schedules, PTO years, settings
+  and theme. It starts with `{"format": "work-tracker", "version": 3, "exported_at": …}`; every record has a
   file id (1, 2, …), and references inside the file use them, also in history lines. Team services the tickets use are
   included by short name, name and team.
 - Not in the file: password, sessions, users, teams, memberships, invitations and the report view log.
@@ -417,7 +411,8 @@ corners, one accent color. Warnings are the only loud element.
   Settings, work schedules and PTO years come from the file, its activity types replace the defaults, team
   services become personal services (as on leaving a team), and the setup is done. A summary shows the counts per
   type.
-- A file of version 1 is converted as in 4.6. A file of an unknown format or a newer version is refused, and so is a
+- A file of version 1 is converted as in 4.6; the review flags of versions 1 and 2 (the former import's) are left
+  out. A file of an unknown format or a newer version is refused, and so is a
   file referring to records it does not hold; both are checked before anything is written, so nothing is.
 - SQLite imports in one transaction: if it fails, nothing stays. DynamoDB writes atomic chunks; an import that stops
   halfway (e.g. a timeout on AWS) marks the account, the setup stays open, and importing the file again first removes
@@ -493,12 +488,9 @@ the settings at any time:
 ## 6. Import (spreadsheet CSV), removed
 
 The yearly spreadsheet exports (2024–2026) were imported once by a local command; it is gone since TASKS.md L.7, and
-data moves between databases by the export and import of 5.8. What it left stays:
-
-- Each imported entry's history starts with `imported` and the original comment line (4.5).
-- The review (5.4) keeps the import's flags until they are cleared: ticket keys it guessed from old numbers
-  (`#4138` → `TNG-4138`, below 4000 → `KP-…`), aliases (`#4347 aka #1482`) and "ff" (`TNG-2035ff`), for which it
-  suggests a split; and weekend days whose hours the sheet counted differently.
+data moves between databases by the export and import of 5.8. Each imported entry's history still starts with
+`imported` and the original comment line (4.5); the import's review flags (guessed ticket keys, weekend hours) and
+splitting an entry among several tickets went once they were all reviewed (TASKS.md L.12).
 
 ## 7. Technical
 
@@ -524,7 +516,7 @@ data moves between databases by the export and import of 5.8. What it left stays
 
 ### 7.2 Storage
 
-- Both backends implement the same repository interfaces (days, entries with history, review flags, tickets, services,
+- Both backends implement the same repository interfaces (days, entries with history, tickets, services,
   activity types, schedules, PTO years, settings, users, sessions, teams, invitations, report views). Resources and
   reports use only these interfaces and a backend-neutral transaction, never SQL; the command line tools work on
   SQLite only (7.1). The same contract tests run against both backends (DynamoDB through `moto` in the
@@ -543,7 +535,8 @@ data moves between databases by the export and import of 5.8. What it left stays
     `ticket_required`), so only changed attributes need a migration. The first one (version 2, TASKS.md 13.7) rewrites
     every entry item in place to the one kind of entry (4.6), in small atomic chunks (an entry, with the activity type
     its user gets if needed); keys and history lines stay. It skips items already converted and saves the new version
-    last, so a run that stops halfway (e.g. a Lambda timeout) is finished by the next start.
+    last, so a run that stops halfway (e.g. a Lambda timeout) is finished by the next start. Version 3 (TASKS.md
+    L.12) deletes the review flags of the former import (`FLAG#…` items) the same way.
   - The rules of a data change are written once in Python and shared by the SQLite migration, the DynamoDB migration
     and the import of an older export file (5.8), so they cannot drift apart.
   - A transaction collects its writes and sends them at its end, so its reads see them and a failure writes
@@ -558,7 +551,7 @@ data moves between databases by the export and import of 5.8. What it left stays
 
 ### 7.2a Ids
 
-- Records get a UUIDv7 as id: entries, history lines, review flags, services, activity types, work schedules, teams,
+- Records get a UUIDv7 as id: entries, history lines, services, activity types, work schedules, teams,
   memberships, invitations and report views. Its start is the time of creation, so ids sort in the order the records
   were created; the rest is random, so an id neither can be guessed nor tells how many records the app holds (integer
   ids counting up would show other users' activity to anyone who creates a record now and then).

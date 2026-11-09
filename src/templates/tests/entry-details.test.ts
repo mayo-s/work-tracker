@@ -10,7 +10,7 @@ function day(changes: Partial<DayView> = {}): DayView {
   return {
     date: '2026-03-02', weekday: 'Mon', day_type: 'work', automatic: true, holiday: null, recorded: true, start: '08:00',
     end: '16:30', break_time: '0:30', break_default: true, worked: '8:00', target: '8:00', overtime: '0:00', pto_days: 0,
-    work_day: true, note: '', flags: [], ...changes,
+    work_day: true, note: '', ...changes,
   };
 }
 

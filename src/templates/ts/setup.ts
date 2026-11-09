@@ -112,7 +112,7 @@ export function parseExportFile(text: string): { data: SetupImportInput['data'] 
 export function importSummary(summary: ImportSummary): [string, string][] {
   return [
     ['Days', summary.days], ['Entries', summary.entries], ['History lines', summary.history],
-    ['Review flags', summary.review_flags], ['Tickets', summary.tickets], ['Services', summary.services],
+    ['Tickets', summary.tickets], ['Services', summary.services],
     ['Activity types', summary.activity_types], ['Work schedules', summary.work_schedules], ['PTO years', summary.pto_years],
   ].map(([label, count]) => [String(label), String(count)]);
 }

@@ -1,4 +1,4 @@
-"""Days and their review flags: the same behaviour on SQLite and on DynamoDB (moto)."""
+"""Days: the same behaviour on SQLite and on DynamoDB (moto)."""
 
 import datetime as dt
 
@@ -8,8 +8,6 @@ from src.lib.balances import DayRecord
 from src.lib.daytypes import DayType
 from src.lib.durations import parse_clock, parse_duration
 from src.models.days import Day
-from src.models.entries import Entry
-from src.models.review import FlagReason
 from src.modules.storage.errors import NotFoundError
 
 MONDAY = dt.date(2026, 10, 26)
@@ -54,33 +52,9 @@ def test_records_for_balances(days):
     }
 
 
-def test_delete_day_and_its_flags(days):
+def test_delete_day(days):
     days.save(WORK_DAY)
-    days.add_flag(MONDAY, FlagReason.WEEKEND_HOURS)
     days.delete(MONDAY)
     assert days.get(MONDAY) is None
-    assert days.flags_on(MONDAY) == []
-
-
-def test_missing_day_and_flag(days):
     with pytest.raises(NotFoundError):
         days.delete(MONDAY)
-    with pytest.raises(NotFoundError):
-        days.clear_flag(404)
-
-
-def test_add_list_and_clear_flags(days):
-    saturday = dt.date(2024, 11, 9)
-    flag = days.add_flag(saturday, FlagReason.WEEKEND_HOURS, '5,0 Secretary - Holacracy Constitution')
-    days.add_flag(dt.date(2024, 1, 6), FlagReason.WEEKEND_HOURS)
-    assert days.flags_on(saturday) == [flag]
-    assert [found.date for found in days.day_flags()] == [dt.date(2024, 1, 6), saturday]
-    days.clear_flag(flag.id)
-    assert days.flags_on(saturday) == []
-
-
-def test_day_flags_ignore_entry_flags(days, per_call, klara_id, activity_type_ids):
-    entries = per_call(lambda store: store.entries(klara_id))
-    entry = entries.create(Entry(date=MONDAY, activity_type_id=activity_type_ids['Meeting'], duration=0))
-    entries.add_flag(entry.id, FlagReason.UNCERTAIN_TICKET)
-    assert days.day_flags() == []

@@ -4,7 +4,6 @@ import falcon
 import pytest
 
 from src.models.entries import Entry
-from src.models.review import FlagReason
 from src.modules.storage.catalog import ActivityTypeRepository, ServiceRepository
 from src.modules.storage.entries import EntryRepository
 from src.tests.users import USER
@@ -106,15 +105,7 @@ def test_delete_entry_keeps_history(client):
     assert history[1]['changes'] == {'duration': [30, 60]}
 
 
-def test_entry_shows_its_flags(client, database):
-    created = create(client, TICKET)
-    with database.transaction() as conn:
-        EntryRepository(conn, USER).add_flag(created['id'], FlagReason.UNCERTAIN_TICKET, '#4138')
-    [flag] = client.simulate_get(f'/api/entries/{created["id"]}').json['flags']
-    assert (flag['reason'], flag['detail']) == ('uncertain_ticket', '#4138')
-
-
-def test_imported_entry_without_ticket_must_get_one_when_changed(client, database):
+def test_an_entry_without_the_ticket_its_activity_type_requires_gets_one_when_changed(client, database):
     with database.transaction() as conn:
         created = EntryRepository(conn, USER).create(Entry(date=dt.date(2025, 11, 26), activity_type_id=CODING, duration=360))
     body = {'date': '2025-11-26', 'activity_type_id': CODING, 'duration': '6:00'}
@@ -122,28 +113,6 @@ def test_imported_entry_without_ticket_must_get_one_when_changed(client, databas
     assert (result.status_code, result.json['description']) == (409, 'Coding needs a ticket')
     result = client.simulate_put(f'/api/entries/{created.id}', json=body | {'ticket_key': 'TNG-5096'})
     assert result.json['ticket_key'] == 'TNG-5096'
-
-
-def test_split_entry(client):
-    body = TICKET | {'ticket_key': 'TNG-4347', 'duration': '6:00', 'description': 'adapt tests (aka KP-1482)'}
-    created = create(client, body)
-    result = client.simulate_post(f'/api/entries/{created["id"]}/split', json={'ticket_keys': ['TNG-4347', 'kp-1482']})
-    assert result.status == falcon.HTTP_200
-    assert [(entry['ticket_key'], entry['duration'], entry['changed']) for entry in result.json] == [
-        ('TNG-4347', '3:00', True), ('KP-1482', '3:00', True)]  # both point to the split in their history
-    history = client.simulate_get(f'/api/entries/{created["id"]}/history').json
-    assert (history[-1]['action'], history[-1]['detail']) == ('split', 'Split into TNG-4347, KP-1482')
-
-
-@pytest.mark.parametrize('entry_id, body, status', [
-    (UNKNOWN, {'ticket_keys': ['TNG-1', 'TNG-2']}, 404),
-    (None, {'ticket_keys': ['TNG-4347']}, 422),
-    (None, {'ticket_keys': ['TNG-4347', 'tng-4347']}, 409),
-])
-def test_split_errors(client, entry_id, body, status):
-    created = create(client, TICKET | {'ticket_key': 'TNG-4347'})
-    path = f'/api/entries/{entry_id or created["id"]}/split'
-    assert client.simulate_post(path, json=body).status_code == status
 
 
 def test_durations_in_other_formats(client):

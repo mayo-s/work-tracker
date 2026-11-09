@@ -1,8 +1,9 @@
-"""The export file of a user's own data (SPEC 5.8): one JSON document, version 2 (version 1 is read too).
+"""The export file of a user's own data (SPEC 5.8): one JSON document, version 3 (versions 1 and 2 are read too).
 
 It reuses the domain models. Every record has a file id (1, 2, …), and references (a ticket's service, an entry's
-activity type, a history line's or flag's entry) use these ids, not those of the database. Version 1 held ticket and
-activity entries; reading converts them to entries of one kind (SPEC 4.6).
+activity type, a history line's entry) use these ids, not those of the database. Version 1 held ticket and activity
+entries; reading converts them to entries of one kind (SPEC 4.6). Versions 1 and 2 held the review flags of the former
+spreadsheet import; reading leaves them out (TASKS.md L.12).
 """
 
 import datetime as dt
@@ -11,20 +12,18 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, model_validator
 
 from src.models.base import DomainModel
-from src.models.catalog import ActivityType, ServiceChoice, Ticket
+from src.models.catalog import ActivityType, ServiceChoice, Ticket, new_activity_type
 from src.models.days import Day
-from src.models.catalog import new_activity_type
 from src.models.entries import Entry
 from src.models.former_entries import convert
 from src.models.history import EntryChange
 from src.models.pto import PtoYear
-from src.models.review import ReviewFlag
 from src.models.schedules import Schedule
 from src.models.settings import Settings
 from src.modules.storage.store import Theme
 
 FORMAT = 'work-tracker'
-VERSION = 2
+VERSION = 3
 
 
 class UserData(DomainModel):
@@ -41,7 +40,6 @@ class UserData(DomainModel):
     days: list[Day]
     entries: list[Entry]
     history: list[EntryChange] = Field(description='All history lines, also of deleted entries, in written order')
-    review_flags: list[ReviewFlag]
 
     @model_validator(mode='before')
     @classmethod
@@ -50,7 +48,8 @@ class UserData(DomainModel):
         if isinstance(data, dict):
             _check_format(data.get('format'), data.get('version'))
             if data.get('version') == 1:
-                return _from_version_1(data)
+                data = _from_version_1(data)
+            return {key: value for key, value in data.items() if key != 'review_flags'}  # versions 1 and 2
         return data
 
 
@@ -99,4 +98,3 @@ class ImportSummary(BaseModel):
     days: int
     entries: int
     history: int
-    review_flags: int

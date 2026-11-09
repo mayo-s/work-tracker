@@ -168,15 +168,13 @@ function entryLabel(entry: EntryView): (HTMLElement | null)[] {
 }
 
 /** Duration, ticket and activity type, service, text and badges of an entry (also used by the review page). */
-export function entryContent(entry: EntryView, showFlags = true): (HTMLElement | null)[] {
+export function entryContent(entry: EntryView): (HTMLElement | null)[] {
   return [
     el('span', { class: entry.duration === '0:00' ? 'num value-negative' : 'num', title: entry.duration === '0:00'
       ? 'No duration yet' : null }, entry.duration),
     ...entryLabel(entry),
     entry.service ? el('span', { class: 'badge' }, entry.service) : null,
     entry.description ? el('span', { class: 'entry-text' }, entry.description) : null,
-    showFlags && entry.flags.length ? el('span', { class: 'badge warning', title: entry.flags.map((flag) => flag.detail).join('\n') },
-      `${entry.flags.length} to review`) : null,
     entry.changed ? el('span', { class: 'badge', title: 'Changed after it was created or imported' }, 'changed') : null,
   ];
 }
@@ -214,8 +212,6 @@ function dayCell(day: DayView, warning: boolean, today: IsoDate): HTMLElement {
     day.date === today ? el('strong', {}, formatDay(day.date, day.weekday)) : formatDay(day.date, day.weekday),
     day.holiday ? el('div', { class: 'muted' }, day.holiday) : null,
     warning ? el('div', {}, el('span', { class: 'badge warning' }, 'No entries')) : null,
-    day.flags.length ? el('div', {}, el('span', { class: 'badge warning', title: day.flags.map((flag) => flag.detail).join('\n') },
-      'to review')) : null,
   );
 }
 

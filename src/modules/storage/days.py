@@ -1,16 +1,13 @@
-"""Days and their review flags."""
+"""Days."""
 
 import datetime as dt
 import sqlite3
 
 from src.lib.balances import DayRecord
-from src.models.base import new_id
 from src.models.days import Day
-from src.models.review import FlagReason, ReviewFlag
 from src.modules.storage.errors import NotFoundError
 
 _DAY_COLUMNS = 'date, day_type, start_time, end_time, break_minutes, note'
-_FLAG_COLUMNS = 'id, date, reason, detail'
 
 
 def _to_day(row: sqlite3.Row) -> Day:
@@ -22,10 +19,6 @@ def _to_day(row: sqlite3.Row) -> Day:
         break_minutes=row['break_minutes'],
         note=row['note'],
     )
-
-
-def _to_flag(row: sqlite3.Row) -> ReviewFlag:
-    return ReviewFlag(id=row['id'], date=row['date'], reason=row['reason'], detail=row['detail'])
 
 
 class DayRepository:
@@ -62,31 +55,6 @@ class DayRepository:
         )
 
     def delete(self, date: dt.date) -> None:
-        """Delete the day and its review flags."""
+        """Delete the day."""
         if not self._conn.execute('DELETE FROM days WHERE user_id = ? AND date = ?', (self._user, date.isoformat())).rowcount:
             raise NotFoundError(f'No day recorded on {date}')
-        self._conn.execute('DELETE FROM review_flags WHERE user_id = ? AND date = ?', (self._user, date.isoformat()))
-
-    def add_flag(self, date: dt.date, reason: FlagReason, detail: str = '') -> ReviewFlag:
-        flag = ReviewFlag(id=new_id(), date=date, reason=reason, detail=detail)
-        self._conn.execute(
-            'INSERT INTO review_flags (id, user_id, date, reason, detail) VALUES (?, ?, ?, ?, ?)',
-            (flag.id, self._user, date.isoformat(), flag.reason, flag.detail),
-        )
-        return flag
-
-    def flags_on(self, date: dt.date) -> list[ReviewFlag]:
-        rows = self._conn.execute(f'SELECT {_FLAG_COLUMNS} FROM review_flags WHERE user_id = ? AND date = ? ORDER BY id',
-                                  (self._user, date.isoformat()))
-        return [_to_flag(row) for row in rows]
-
-    def day_flags(self) -> list[ReviewFlag]:
-        """All flags on days, in date order."""
-        sql = f'SELECT {_FLAG_COLUMNS} FROM review_flags WHERE user_id = ? AND date IS NOT NULL ORDER BY date, id'
-        rows = self._conn.execute(sql, (self._user,))
-        return [_to_flag(row) for row in rows]
-
-    def clear_flag(self, flag_id: str) -> None:
-        sql = 'DELETE FROM review_flags WHERE id = ? AND user_id = ? AND date IS NOT NULL'
-        if not self._conn.execute(sql, (flag_id, self._user)).rowcount:
-            raise NotFoundError(f'No day flag with id {flag_id}')

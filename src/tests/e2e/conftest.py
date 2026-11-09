@@ -15,8 +15,6 @@ from src.app import create_app
 from src.lib.totp import code_at, time_step
 from src.models.catalog import CODING, Service, new_activity_type
 from src.models.entries import Entry
-from src.models.history import HistoryAction
-from src.models.review import FlagReason
 from src.models.teams import Team
 from src.models.users import TwoFactor
 from src.modules.storage.database import Database
@@ -24,12 +22,11 @@ from src.modules.storage.sqlite import SqliteStorage
 from src.tests.users import HANS, KLARA, PASCAL, PASSWORD, RAINER
 
 SECRET = 'JBSWY3DPEHPK3PXP'  # the authenticator of root and the admin
-GUESSED = '6,0 #4347 aka #1482 check permission'  # a spreadsheet line whose ticket the import guessed
 
 
 def seed(storage: SqliteStorage) -> dict[str, str]:
-    """Klara: admin and member of Platform; Pascal: root; Hans: team admin of Platform, with an imported entry whose
-    ticket was guessed; Rainer: not set up yet, invited to Platform. Returns their ids."""
+    """Klara: admin and member of Platform; Pascal: root; Hans: team admin of Platform, with an entry still without
+    activity type; Rainer: not set up yet, invited to Platform. Returns their ids."""
     with storage.transaction() as store:
         users = store.users()
         ids = {'klara': users.add(KLARA, PASSWORD).id,
@@ -45,11 +42,9 @@ def seed(storage: SqliteStorage) -> dict[str, str]:
         store.teams().set_team_role(ids['hans'], 'team_admin')
         store.team_services(team.id).add(Service(short_name='AUTH', name='auth-service'))
         store.invitations().invite(team.id, 'rainer.zufall@example.com', ids['hans'])
-        coding = store.activity_types(ids['hans']).add(new_activity_type(CODING)).id  # a developer has Coding
-        entries = store.entries(ids['hans'])
-        entry = entries.create(Entry(date=dt.date(2026, 10, 26), activity_type_id=coding, ticket_key='TNG-4347', duration=360),
-                               HistoryAction.IMPORTED, GUESSED)
-        entries.add_flag(entry.id, FlagReason.UNCERTAIN_TICKET, GUESSED)
+        store.activity_types(ids['hans']).add(new_activity_type(CODING))  # with tickets, Coding
+        former = Entry(date=dt.date(2026, 10, 26), ticket_key='TNG-4347', duration=360, description='check permission')
+        store.entries(ids['hans']).create(former)  # still without activity type (SPEC 4.6): for the review
     return ids
 
 

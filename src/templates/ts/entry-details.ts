@@ -1,4 +1,4 @@
-// The whole of an entry in a dialog: its day with the times, every field, the flags, the history and a link to the week.
+// The whole of an entry in a dialog: its day with the times, every field, the history and a link to the week.
 
 import { api, type DayView, type EntryView } from './api.ts';
 import { formatDay, weekLink } from './dates.ts';
@@ -27,14 +27,12 @@ function entryBlock(entry: EntryView, day: DayView | undefined, activityNames: M
     el('h3', {}, day ? describeDay(day) : entry.date),
     el('dl', { class: 'details-list' }, ...entryFields(entry).flatMap(([label, value]) => [el('dt', {}, label),
       el('dd', {}, value)])),
-    entry.flags.length ? el('div', {}, el('strong', {}, 'To review'),
-      el('ul', { class: 'details-flags' }, ...entry.flags.map((flag) => el('li', {}, flag.detail || flag.reason)))) : null,
     el('strong', {}, 'History'),
     historyPanel(entry.id, activityNames),
     el('a', { href: weekLink(entry.date, `entry=${entry.id}`) }, 'Open in the week'));
 }
 
-/** Shows the whole of each entry (one, or e.g. all entries of a guessed ticket) in a dialog, once their days are
+/** Shows the whole of each entry in a dialog, once their days are
  * loaded; a button opens it, so it works with the keyboard and on touch screens. */
 export async function showEntryDetails(title: string, entries: EntryView[]): Promise<void> {
   const [days, activityTypes] = await Promise.all([

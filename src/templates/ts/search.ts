@@ -183,7 +183,7 @@ function entryRow(entry: EntryView, fail: (error: unknown) => void): HTMLElement
   const link = weekLink(entry.date, `entry=${entry.id}`);
   return el('tr', {},
     el('td', { class: 'num' }, el('a', { href: link }, formatDate(entry.date))),
-    el('td', {}, el('div', { class: 'entry' }, ...entryContent(entry, false))),
+    el('td', {}, el('div', { class: 'entry' }, ...entryContent(entry))),
     el('td', { class: 'row-actions' }, el('a', { class: 'button button-small', href: link }, 'Open'),
       detailsButton(entry.ticket_key ?? entry.activity_type ?? 'Entry without ticket', [entry], fail)));
 }

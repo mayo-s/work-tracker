@@ -11,7 +11,7 @@ const MEETING: ActivityType = { id: 'a2', name: 'Meeting', ticket_required: fals
 const TYPES = [MEETING, CODING];
 const REVIEW: EntryView = {
   id: 'e7', date: '2026-10-27', duration: '0:30', activity_type_id: 'a1', activity_type: 'Coding', ticket_required: true,
-  ticket_key: 'TNG-5882', service_id: 's2', service: 'MSB', description: 'PR Review', changed: false, flags: [],
+  ticket_key: 'TNG-5882', service_id: 's2', service: 'MSB', description: 'PR Review', changed: false,
 };
 
 function values(changes: Partial<EntryFormValues> = {}): EntryFormValues {

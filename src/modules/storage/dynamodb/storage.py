@@ -11,6 +11,7 @@ from src.modules.storage.dynamodb.catalog import DynamoActivityTypes, DynamoServ
 from src.modules.storage.dynamodb.days import DynamoDays
 from src.modules.storage.dynamodb.entries import DynamoEntries
 from src.modules.storage.dynamodb.entry_kinds import to_one_kind
+from src.modules.storage.dynamodb.flag_removal import drop_flags
 from src.modules.storage.dynamodb.keys import APP, META, SCHEMA, user_partition
 from src.modules.storage.dynamodb.purge import purge
 from src.modules.storage.dynamodb.renames import rename_ticket
@@ -26,10 +27,11 @@ from src.modules.storage.store import Clock, RenameResult, Theme
 # Changes of the item layout, applied once in order: MIGRATIONS[0] brings a table from version 1 to 2, and so on
 MIGRATIONS: list[Callable[[Table], None]] = [
     to_one_kind,  # 2: one kind of entry (TASKS.md 13.7)
+    drop_flags,  # 3: the review flags of the former spreadsheet import go (TASKS.md L.12)
 ]
 LATEST = 1 + len(MIGRATIONS)
 # The kinds of a user's own records in their partition (not their settings, sessions, memberships or report views)
-RECORDS = ('DAY#', 'ENTRY#', 'ENTRY_ID#', 'HISTORY#', 'FLAG#', 'TICKET#', 'SERVICE#', 'SERVICE_NAME#', 'ACTIVITY_TYPE#',
+RECORDS = ('DAY#', 'ENTRY#', 'ENTRY_ID#', 'HISTORY#', 'TICKET#', 'SERVICE#', 'SERVICE_NAME#', 'ACTIVITY_TYPE#',
            'ACTIVITY_TYPE_NAME#', 'SCHEDULE#', 'SCHEDULE_FROM#', 'PTO#')
 
 

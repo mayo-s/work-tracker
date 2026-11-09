@@ -406,6 +406,6 @@ L.16 (a–i) → 9.1 (a–i).
   activities" (they differed only in Coding at the setup, now a checkbox there)
 - [ ] **L.11** Team audit: team admin and auditor need a page to not just see entries of a person, but also see a team
   report. 
-- [ ] **L.12** Clean up the review's import parts once no imported data needs them: guessed tickets and their splits,
+- [x] **L.12** Clean up the review's import parts once no imported data needs them: guessed tickets and their splits,
   the original spreadsheet line, weekend-hour day flags (storage on both backends, export format, the split and flag
   endpoints)

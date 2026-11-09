@@ -13,12 +13,12 @@ function day(date: string, weekday: string, changes: Partial<DayView> = {}): Day
   return {
     date, weekday, day_type: 'work', automatic: true, holiday: null, recorded: false, start: null, end: null,
     break_time: null, break_default: false, worked: '0:00', target: '8:00', overtime: '-8:00', pto_days: 0, work_day: true, note: '',
-    flags: [], ...changes,
+    ...changes,
   };
 }
 
 function entry(date: string): EntryView {
-  return { id: 'e1', kind: 'ticket', date, duration: '1:00', ticket_key: 'TNG-5882', changed: false, flags: [] } as EntryView;
+  return { id: 'e1', date, duration: '1:00', ticket_key: 'TNG-5882', changed: false } as EntryView;
 }
 
 test('overtime with a sign', () => {

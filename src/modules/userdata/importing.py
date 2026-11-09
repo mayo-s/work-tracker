@@ -49,12 +49,11 @@ class _Import:
             days.save(day)
         self._entries_of_file()
         self._history()
-        self._flags()
         data = self._data
         return ImportSummary(
             work_schedules=len(data.work_schedules), pto_years=len(data.pto_years), services=len(data.services),
             activity_types=len(data.activity_types), tickets=len(data.tickets), days=len(data.days),
-            entries=len(data.entries), history=len(data.history), review_flags=len(data.review_flags),
+            entries=len(data.entries), history=len(data.history),
         )
 
     def _start(self) -> None:
@@ -152,22 +151,12 @@ class _Import:
         match = SPLIT_FROM.fullmatch(change.detail) if change.action == HistoryAction.SPLIT else None
         return f'Split from entry {self._entry_id(entries, match[1])}' if match else change.detail
 
-    def _flags(self) -> None:
-        days, entries = self._store.days(self._user), self._store.entries(self._user)
-        for flag in self._data.review_flags:
-            self._store.make_room(ROOM)
-            if flag.date is not None:
-                days.add_flag(flag.date, flag.reason, flag.detail)
-            else:
-                entries.add_flag(self._entries[flag.entry_id], flag.reason, flag.detail)
-
 
 def check_references(data: UserData) -> None:
-    """Every service, activity type and entry the file refers to is in it (before anything is written)."""
+    """Every service and activity type the file refers to is in it (before anything is written)."""
     for references, held, label in (
         (_ids(data.tickets, 'service_id'), _ids(data.services, 'id'), 'service'),
         (_ids(data.entries, 'activity_type_id'), _ids(data.activity_types, 'id'), 'activity type'),
-        (_ids(data.review_flags, 'entry_id'), _ids(data.entries, 'id'), 'entry'),
     ):
         _known(references, held, label)
 
@@ -177,7 +166,7 @@ def _ids(records: Iterable[object], field: str) -> list[str | None]:
 
 
 def _known(references: Iterable[str | None], held: Iterable[str], label: str) -> None:
-    """Empty references are fine (e.g. a ticket without service, a flag on a day)."""
+    """Empty references are fine (e.g. a ticket without service)."""
     ids = set(held)
     if missing := next((file_id for file_id in references if file_id is not None and file_id not in ids), None):
         raise ConflictError(f'The file refers to {label} {missing}, which it does not hold')

@@ -817,11 +817,6 @@ button.button-danger {
   overflow-wrap: anywhere;
 }
 
-.details-flags {
-  margin: var(--space-1) 0 var(--space-3);
-  padding-left: var(--space-4);
-}
-
 .entry-details .history {
   margin: var(--space-1) 0 var(--space-3);
 }

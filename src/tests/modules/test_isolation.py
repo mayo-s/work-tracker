@@ -12,7 +12,6 @@ from src.app import create_app
 from src.models.catalog import Service
 from src.models.entries import Entry
 from src.models.pto import PtoYear
-from src.models.review import FlagReason
 from src.models.schedules import Schedule
 from src.models.settings import Settings
 from src.tests.helpers import logged_in
@@ -82,9 +81,7 @@ def test_others_services_and_activity_types_cannot_be_used(app, klara, hans):
 
 def test_review_is_per_user(app, storage, klara_id, klara, hans):
     with storage.transaction() as store:
-        entries = store.entries(klara_id)
-        entries.add_flag(entries.create(Entry(date=dt.date(2026, 10, 28), ticket_key='TNG-4138', duration=60)).id,
-                         FlagReason.UNCERTAIN_TICKET, '#4138')
+        store.entries(klara_id).create(Entry(date=dt.date(2026, 10, 28), ticket_key='TNG-4138', duration=60))
     assert set(app.simulate_get('/api/review', cookies=hans).json['counts'].values()) == {0}
     assert set(app.simulate_get('/api/review/counts', cookies=hans).json.values()) == {0}
     assert app.simulate_get('/api/review/counts', cookies=klara).json['entries'] == 1
@@ -121,8 +118,6 @@ def klaras_records(app, storage, klara_id, klara):
     entry = app.simulate_post('/api/entries', cookies=klara, json={
         'activity_type_id': planning, 'date': '2026-10-28', 'duration': '1:00', 'ticket_key': 'TNG-4138',
         'description': 'secret'}).json
-    with storage.transaction() as store:
-        flag = store.entries(klara_id).add_flag(entry['id'], FlagReason.UNCERTAIN_TICKET, '#4138')
     team = app.simulate_post('/api/admin/teams', cookies=klara, json={'name': 'Platform'}).json
     app.simulate_put(f'/api/admin/users/{klara_id}', cookies=klara, json={'role': 'admin', 'active': True})
     with storage.transaction() as store:
@@ -132,7 +127,7 @@ def klaras_records(app, storage, klara_id, klara):
     with storage.transaction() as store:
         invitation = store.invitations().of_team(team['id'])[0]
     records = {
-        'entry': entry['id'], 'flag': flag.id, 'service': service_id(app, klara, 'MSB'), 'team': team['id'],
+        'entry': entry['id'], 'service': service_id(app, klara, 'MSB'), 'team': team['id'],
         'activity_type': app.simulate_get('/api/activity-types', cookies=klara).json[0]['id'],
         'schedule': app.simulate_get('/api/work-schedules', cookies=klara).json[0]['id'],
         'team_service': app.simulate_post(f'/api/teams/{team["id"]}/services', cookies=klara,
@@ -153,11 +148,9 @@ ATTEMPTS = [
     ('PUT', '/api/entries/{entry}', ENTRY, falcon.HTTP_404),
     ('DELETE', '/api/entries/{entry}', None, falcon.HTTP_404),
     ('GET', '/api/entries/{entry}/history', None, falcon.HTTP_404),
-    ('POST', '/api/entries/{entry}/split', {'ticket_keys': ['TNG-1', 'TNG-2']}, falcon.HTTP_404),
     ('GET', '/api/tickets/TNG-4138', None, falcon.HTTP_404),
     ('PUT', '/api/tickets/TNG-4138', {'service_id': None}, falcon.HTTP_404),
     ('POST', '/api/tickets/TNG-4138/rename', {'new_key': 'KP-4138'}, falcon.HTTP_404),
-    ('DELETE', '/api/review/flags/{flag}', None, falcon.HTTP_404),
     ('GET', '/api/services/{service}', None, falcon.HTTP_404),
     ('PUT', '/api/services/{service}', SERVICE, falcon.HTTP_404),
     ('DELETE', '/api/services/{service}', None, falcon.HTTP_404),
@@ -200,6 +193,5 @@ def test_records_of_others_are_unknown_or_not_to_manage_and_stay_as_they_were(ap
     assert app.simulate_get(f'/api/work-schedules/{records["schedule"]}', cookies=klara).status == falcon.HTTP_200
     assert app.simulate_get('/api/pto-years/2026', cookies=klara).json['allowance'] == 31.0
     assert app.simulate_get(f'/api/teams/{records["team"]}', cookies=klara).json['name'] == 'Platform'
-    assert len(app.simulate_get('/api/review', cookies=klara).json['entries']) == 1
     assert app.simulate_get('/api/auth/me', cookies=klara).json['role'] == 'admin'
     assert app.simulate_get('/api/auth/status', cookies=klara).json['team']['team_role'] == 'team_admin'

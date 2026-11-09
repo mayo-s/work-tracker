@@ -13,7 +13,6 @@ from src.lib.schedules import STANDARD, WorkSchedule
 from src.lib.stays import Stays
 from src.lib.worktime import legal_break
 from src.models.days import Day
-from src.models.review import FlagReason, ReviewFlag
 from src.utils.api import ClockText, DurationText, check_domain
 
 _WEEKDAYS = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
@@ -47,12 +46,6 @@ class DayInput(BaseModel):
         )
 
 
-class DayFlagView(BaseModel):
-    id: str
-    reason: FlagReason
-    detail: str
-
-
 class DayView(BaseModel):
     """A calendar day with its effective day type, times and balance, whether recorded or not."""
 
@@ -72,12 +65,11 @@ class DayView(BaseModel):
     pto_days: float
     work_day: bool = Field(description='A work day of the work schedule, e.g. Monday to Friday')
     note: str
-    flags: list[DayFlagView]
     in_team: bool = Field(default=True,
                           description='Team view: false for days before the member joined the team, shown without data')
 
 
-def day_view(date: dt.date, day: Day | None, flags: list[ReviewFlag], schedule: WorkSchedule = STANDARD) -> DayView:
+def day_view(date: dt.date, day: Day | None, schedule: WorkSchedule = STANDARD) -> DayView:
     record = day or Day(date=date)
     summary = summarize_day(date, record.worked, record.day_type, schedule)
     holiday = holiday_on(date, schedule.holidays)
@@ -98,7 +90,6 @@ def day_view(date: dt.date, day: Day | None, flags: list[ReviewFlag], schedule: 
         pto_days=float(summary.pto_days),
         work_day=summary.work_day,
         note=record.note,
-        flags=[DayFlagView(id=flag.id, reason=flag.reason, detail=flag.detail) for flag in flags],
     )
 
 
@@ -117,10 +108,10 @@ def _text(minutes: int | None, format_: Callable[[int], str]) -> str | None:
 
 
 def team_view_day(day: DayView, stays: Stays) -> DayView:
-    """A member's day in the team view: no note and no review flags; a day not in the team (before they joined, after
+    """A member's day in the team view: no note; a day not in the team (before they joined, after
     they left, between stays) without any data."""
     if stays.shows(day.date):
-        return day.model_copy(update={'note': '', 'flags': []})
+        return day.model_copy(update={'note': ''})
     empty = {'recorded': False, 'start': None, 'end': None, 'break_time': None, 'break_default': False, 'worked': '0:00',
-             'target': '0:00', 'overtime': '0:00', 'pto_days': 0.0, 'note': '', 'flags': [], 'in_team': False}
+             'target': '0:00', 'overtime': '0:00', 'pto_days': 0.0, 'note': '', 'in_team': False}
     return day.model_copy(update=empty)

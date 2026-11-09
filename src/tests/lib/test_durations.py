@@ -8,7 +8,6 @@ from src.lib.durations import (
     parse_clock,
     parse_duration,
     parse_signed_duration,
-    split_evenly,
 )
 
 
@@ -73,19 +72,3 @@ def test_format_duration():
 
 def test_is_quarter_hour():
     assert [is_quarter_hour(minutes) for minutes in (0, 90, -15, 20)] == [True, True, True, False]
-
-
-@pytest.mark.parametrize('total, parts, shares', [
-    (180, 2, [90, 90]),
-    (60, 3, [30, 15, 15]),  # quarter hours, the first ones get more
-    (30, 4, [15, 15, 0, 0]),
-    (50, 2, [35, 15]),  # a total that is no quarter hour: the rest goes to the first
-])
-def test_split_evenly(total, parts, shares):
-    assert split_evenly(total, parts) == shares
-
-
-@pytest.mark.parametrize('total, parts', [(60, 0), (-15, 2)])
-def test_split_evenly_rejects_invalid(total, parts):
-    with pytest.raises(ValueError):
-        split_evenly(total, parts)
