@@ -309,7 +309,8 @@ async function memberChooser(member: string | null): Promise<HTMLElement | null>
     el('select', { id: 'dashboard-member', name: 'member' }, el('option', { value: '' }, 'Your data'),
       ...shown.map(([label, choices]) => el('optgroup', { label },
         ...choices.map(([id, name]) => el('option', { value: id, selected: id === member }, name))))),
-    el('button', { type: 'submit', class: 'button-small' }, 'Show'));
+    el('button', { type: 'submit', class: 'button-small' }, 'Show'),
+    el('a', { class: 'button button-small', href: '/team/report' }, 'Team report'));
 }
 
 export async function renderDashboardPage(doc: Document): Promise<void> {

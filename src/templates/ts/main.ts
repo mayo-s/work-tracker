@@ -33,6 +33,7 @@ const PAGES: Record<string, () => Promise<void>> = {
   register: async () => (await import('./account.ts')).renderRegisterPage(document),
   admin: async () => (await import('./admin.ts')).renderAdminPage(document),
   team: async () => (await import('./team.ts')).renderTeamPage(document),
+  'team-report': async () => (await import('./team-report.ts')).renderTeamReportPage(document),
 };
 
 /** Shows the Review link with the number of open review items while there are any (SPEC 5.4); the review page shows

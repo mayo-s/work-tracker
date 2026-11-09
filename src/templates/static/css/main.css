@@ -922,16 +922,52 @@ button.button-danger {
 /* Year report (/year) */
 
 .year-cards,
-.search-cards {
+.search-cards,
+.report-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
 
+.report-cards {
+  grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
+}
+
 .year-cards .card + .card,
-.search-cards .card + .card {
+.search-cards .card + .card,
+.report-cards .card + .card {
   margin-top: 0;
+}
+
+.report-cards h3 {
+  margin: 0 0 var(--space-2);
+}
+
+.report-cards .tile-value {
+  margin: 0;
+}
+
+.report-hours {
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-hours li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+  border-top: var(--border);
+}
+
+.work-service-header + .report-hours {
+  margin-top: 0;
+}
+
+.work-service-header + .report-hours li:first-child {
+  border-top: 0;
 }
 
 .card-table td {
@@ -1569,6 +1605,7 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
 
 .member-chooser {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
 }

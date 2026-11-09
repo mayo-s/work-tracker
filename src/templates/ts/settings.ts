@@ -254,6 +254,10 @@ function teamViewInfo(mine: MyTeamView): HTMLElement[] {
   if (!notes.length && !mine.viewed_by.length) {
     return [];
   }
+  if (notes.length) {
+    notes.push(el('p', { class: 'muted' }, 'They also see your worked and target hours, overtime and hours per activity type in '
+      + 'the team report, without descriptions or notes. Looking at that is not in the log below.'));
+  }
   const views = mine.viewed_by.map((view) => el('tr', {},
     el('td', {}, formatTimestamp(view.viewed_at)), el('td', {}, view.viewer), el('td', {}, reportLabel(view))));
   return [

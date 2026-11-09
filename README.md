@@ -94,6 +94,9 @@ all at once.
   users, older export files and the former "Developer" are Tickets and activities), overtime balance, work schedules,
   PTO years, services and activity types, color theme, "Export my data", account. The moon or sun between the name and
   "Log out" in the navigation turns dark mode on or off.
+- `/team/report` (`?team=<id>&month=2026-10` or `&year=2026`): a summary of a team's activities in cards, for its team
+  admins and auditors: hours by activity type, service and ticket and per member, without descriptions, notes or days
+  off.
 - `/setup`, `/admin`, `/team`, `/register`, `/password`, `/2fa`: see "Start from zero" and "Login". `/components`: the
   UI components with their HTML. `/apidoc/swagger`, `/apidoc/redoc`, `/apidoc/scalar`: API documentation (spec:
   `/apidoc/openapi.json`).

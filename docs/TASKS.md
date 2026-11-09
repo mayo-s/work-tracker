@@ -415,7 +415,7 @@ L.16 (a–i) → 9.1 (a–i).
       type and by service and ticket, and each member's totals and hours per activity type. Access and days as in the
       team view (team admin: current members from the day they joined; active auditor: everyone, the days of each
       stay; others 403), no descriptions, notes or days off, not logged; on both backends
-    - [ ] **L.11b** Page `/team/report` in cards: the period header, the choice of team, the links from the team page
+    - [x] **L.11b** Page `/team/report` in cards: the period header, the choice of team, the links from the team page
       and the dashboard's member chooser; the note on who counts; the sentence in the members' settings
     - [ ] **L.11c** The switch between the team and its members: a member opens their month or year report of the team
       view for that period, with a link back in its banner

@@ -142,6 +142,20 @@ def test_a_team_admin_views_a_member_read_only(logged_in, people):
     expect(page.locator('#week-title')).to_have_text('Week 10 · 2026')
 
 
+def test_a_team_admin_opens_the_team_report(logged_in):
+    page = logged_in('hans')
+    page.goto('/team')
+    page.click('a:has-text("Team report")')
+    expect(page).to_have_url(re.compile(r'/team/report\?team=.+&month=\d{4}-\d{2}'))
+    report = page.locator('#team-report')
+    expect(report).to_contain_text('Platform')
+    expect(report.locator('.report-cards .card h3')).to_have_text(['Hans Dampf', 'Klara Himmel'])
+    expect(report).to_contain_text('Current members only')
+    page.click('#team-report-kind')
+    expect(page).to_have_url(re.compile(r'&year=\d{4}'))
+    expect(page.locator('#team-report-current')).to_have_text('Current year')
+
+
 def test_the_dark_mode_switch_saves_the_theme(logged_in):
     page = logged_in('hans')
     page.emulate_media(color_scheme='light')

@@ -83,6 +83,7 @@ def create_app(
     app.add_route('/register', RegisterPage(storage, enabled))
     app.add_route('/admin', Page('admin', 'Admin'))
     app.add_route('/team', Page('team', 'Team'))
+    app.add_route('/team/report', Page('team-report', 'Team report'))
     app.add_route('/components', Page('components', 'Component gallery'))
     app.add_static_route('/static', STATIC_DIR)
     app.add_route('/health', Default())

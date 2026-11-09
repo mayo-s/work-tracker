@@ -1,0 +1,18 @@
+    <div class="week-header">
+      <div>
+        <h1 id="team-report-title">Team report</h1>
+        <p class="muted">A summary of the team's activities in cards: what work was done. Hours only, without descriptions, notes or days off.</p>
+      </div>
+      <nav class="week-nav" aria-label="Periods">
+        <a class="button" id="team-report-previous" href="/team/report">‹ Previous</a>
+        <a class="button" id="team-report-current" href="/team/report">Current month</a>
+        <a class="button" id="team-report-next" href="/team/report">Next ›</a>
+        <a class="button" id="team-report-kind" href="/team/report">Year</a>
+        <form class="period-go" id="team-report-go">
+          <label class="visually-hidden" for="team-report-go-date">Go to the period of</label>
+          <input type="date" id="team-report-go-date" name="date" min="2000-01-01" max="2100-12-31" required>
+          <button type="submit" class="button">Go</button>
+        </form>
+      </nav>
+    </div>
+    <section id="team-report" aria-live="polite"></section>

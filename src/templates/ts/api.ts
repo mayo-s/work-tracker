@@ -48,6 +48,7 @@ export type AdminSettingsView = Schemas['AdminSettingsView'];
 export type RestoreSummary = Schemas['RestoreSummary'];
 export type AdminTeamView = Schemas['AdminTeamView'];
 export type TeamPageView = Schemas['TeamPageView'];
+export type TeamReport = Schemas['TeamReport'];
 export type MemberView = Schemas['MemberView'];
 export type AuditorView = Schemas['AuditorView'];
 export type AuditorNote = Schemas['AuditorNote'];
@@ -273,6 +274,8 @@ export const api = {
   deleteTeam: (id: string) => request<void>('DELETE', `/api/admin/teams/${segment(id)}`),
 
   team: (id: string) => request<TeamPageView>('GET', `/api/teams/${segment(id)}`),
+  teamReport: (id: string, period: { month: string } | { year: string }) =>
+    request<TeamReport>('GET', `/api/teams/${segment(id)}/report?${new URLSearchParams(period)}`),
   invite: (teamId: string, email: string) =>
     request<InvitationSent>('POST', `/api/teams/${segment(teamId)}/invitations`, { email }),
   withdrawInvitation: (teamId: string, id: string) =>

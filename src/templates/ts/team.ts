@@ -1,10 +1,11 @@
 // Team page (/team): a team's members, open invitations and services, for its team admins and the admin.
 
 import { api, type InvitationView, type MemberView, type Service, type TeamPageView } from './api.ts';
-import { formatDate, formatTimestamp } from './dates.ts';
+import { formatDate, formatTimestamp, isoDate, isoMonth } from './dates.ts';
 import { button, el, scrolling } from './dom.ts';
 import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
 import { field, submit } from './forms.ts';
+import { reportHref } from './team-report.ts';
 
 const ROLE_LABELS: Record<MemberView['team_role'], string> = { team_admin: 'Team admin', member: 'Member' };
 
@@ -107,6 +108,9 @@ export async function renderTeamPage(doc: Document): Promise<void> {
     const [team, services] = await Promise.all([api.team(id), api.teamServices(id)]);
     doc.querySelector('#team-title')!.textContent = `Team ${team.name}`;
     doc.title = `Team ${team.name} · Work Tracker`;
+    if (status.team?.id === id && status.team.team_role === 'team_admin') {
+      doc.querySelector('#team-report-link')?.replaceChildren(el('a', { href: reportHref(id, { kind: 'month', month: isoMonth(isoDate(new Date())) }) }, 'Team report'));
+    }
     return [membersSection(team, status.user?.id, page), invitationsSection(team, page),
       tableSection(servicesTable(id, services), page)];
   });

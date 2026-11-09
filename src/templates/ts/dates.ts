@@ -82,8 +82,13 @@ export function formatTimestamp(value: string): string {
 
 /** `2026-10-28`, `Wed` → `Wed 28.10.` */
 export function formatDay(value: IsoDate, weekday: string): string {
+  return `${weekday} ${formatShortDate(value)}`;
+}
+
+/** `04.11.` */
+export function formatShortDate(value: IsoDate): string {
   const [, month, day] = value.split('-');
-  return `${weekday} ${day}.${month}.`;
+  return `${day}.${month}.`;
 }
 
 export type IsoMonth = string;
