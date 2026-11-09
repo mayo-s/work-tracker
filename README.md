@@ -114,7 +114,9 @@ On phones (below 40rem, SPEC 5.5a) the header is one row with the name, the revi
 navigation, search, name, dark mode switch and "Log out" below it; the desktop does not change. The week shows a
 card per day there (times and break, worked, target and overtime, then the entries), with its forms in the card.
 Other list tables turn each row into a block: its first cell as the title, the others as "label value" with the
-column's header as label; the month report shows a ticket's hours on its line and its descriptions below.
+column's header as label; the month report shows a ticket's hours on its line and its descriptions below. Fields
+have 16 px text there (phones would zoom in otherwise), and on touch screens buttons and links that act are at least
+44 px.
 
 ## Deploy to AWS
 

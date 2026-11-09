@@ -35,18 +35,21 @@ def test_pages_meet_wcag_aa(browser, base, logged_in, theme):
 
 
 def wider_than_the_window(page) -> list[str]:
-    """The elements sticking out of the window, outside an area that scrolls by itself (none: the page reflows)."""
+    """The elements sticking out of the window, outside an area that scrolls by itself (none: the page reflows), and
+    the list tables that scroll sideways in their area, though on phones their rows are blocks (SPEC 5.5a)."""
     return page.evaluate('''() => {
         const width = document.documentElement.clientWidth;
         const out = [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > width + 1)
             .filter((e) => !e.closest('.table-scroll')).map((e) => e.tagName.toLowerCase() + (e.id ? '#' + e.id : ''));
-        return document.documentElement.scrollWidth > width ? ['page', ...new Set(out)].slice(0, 6) : [];
+        const tables = [...document.querySelectorAll('.table-scroll')].filter((area) => area.querySelector('table.stacks')
+            && area.scrollWidth > area.clientWidth + 1).map((area) => 'table in #' + area.closest('[id]').id);
+        return [...(document.documentElement.scrollWidth > width ? ['page', ...new Set(out)].slice(0, 6) : []), ...tables];
     }''')
 
 
 def test_pages_reflow_at_320_css_pixels(browser, base, logged_in):
-    """WCAG 1.4.10 (1280 px at 400 %): no page scrolls sideways, and the pages meet AA at this width too, e.g. a table
-    that scrolls by itself can be reached with the keyboard."""
+    """WCAG 1.4.10 (1280 px at 400 %) and the mobile view (SPEC 5.5a): no page scrolls sideways, nor a list table, and
+    the pages meet AA at this width too."""
     actual = {}
     for persona, paths in PAGES.items():
         page = logged_in(persona) if persona else browser.new_page(base_url=base)
@@ -56,7 +59,7 @@ def test_pages_reflow_at_320_css_pixels(browser, base, logged_in):
 
 
 def test_the_week_editors_fit_a_narrow_screen(logged_in):
-    """The forms in the week table stay within the screen, though the table itself scrolls sideways."""
+    """The forms in the week's day cards stay within the screen."""
     page = logged_in('hans')
     page.set_viewport_size({'width': 320, 'height': 640})
     page.goto('/week?week=2026-W44')

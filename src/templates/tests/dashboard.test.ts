@@ -3,12 +3,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { describeComingUp, hourTicks, labelIndexes, pointLabel } from '../ts/dashboard.ts';
+import { describeComingUp, hourTicks, labelCount, labelIndexes, pointLabel } from '../ts/dashboard.ts';
 
 test('hour ticks cover the values and zero at round steps', () => {
   assert.deepEqual(hourTicks(-174 * 60, 16 * 60), [-200, -150, -100, -50, 0, 50].map((hours) => hours * 60));
   assert.deepEqual(hourTicks(2 * 60, 18 * 60), [0, 5, 10, 15, 20].map((hours) => hours * 60));
   assert.deepEqual(hourTicks(0, 0), [0]);
+});
+
+test('as many x-axis labels as fit the width: fewer on phones, fewer months than days', () => {
+  assert.deepEqual([labelCount('year', 170), labelCount('month', 170), labelCount('year', 100), labelCount('year', 870),
+    labelCount('month', 870)], [3, 5, 2, 7, 6]);
 });
 
 test('x-axis labels spread evenly and include the last point', () => {

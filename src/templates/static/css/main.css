@@ -1085,6 +1085,11 @@ button.button-danger {
   border-bottom: 0;
 }
 
+.card-table td.card-table-list {  /* a list of figures, e.g. the top activity types: wraps on narrow screens */
+  padding-left: var(--space-4);
+  white-space: normal;
+}
+
 .card-table tr:hover {
   background: none;
 }
@@ -1822,6 +1827,13 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
     grid-column: 1 / -1;
   }
 
+  /* Fields with 16 px text: phones zoom in on a smaller one when it gets focus (SPEC 5.5a) */
+  input,
+  select,
+  textarea {
+    font-size: 1rem;
+  }
+
   /* List tables (`stacks`, SPEC 5.5a): each row a block, its first cell the title on a line of its own, the others as
      "label value" (the column's header, `data-label`) side by side, the actions at the right */
   table.stacks,
@@ -1923,6 +1935,32 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
     grid-row: 2;
     grid-column: 1 / -1;
     font-weight: var(--font-weight-normal);
+  }
+}
+
+/* Touch screens (SPEC 5.5a): buttons and links that act at least 44 px, an easy target for a finger; after the rules
+   above, so it also overrides the 24 px of the dark mode switch */
+
+@media (pointer: coarse) {
+  button,
+  .button,
+  .theme-toggle,
+  .app-nav a,
+  .review-shortcut,
+  .segmented label {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .app-nav a,
+  .segmented label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);  /* e.g. before the review count, as flex drops the space */
+  }
+
+  summary {  /* a list item, which keeps its disclosure triangle */
+    line-height: 44px;
   }
 }
 

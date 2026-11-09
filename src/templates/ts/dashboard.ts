@@ -38,6 +38,13 @@ export function pointLabel(point: Point, range: Range): string {
     ? `${formatDay(point.date, weekday)}${point.date.slice(0, 4)}` : formatMonth(point.date.slice(0, 7));
 }
 
+/** How many x-axis labels fit the plot's width without overlapping (SPEC 5.5a): one per 40 px for days, 72 px for
+ * months (`Oct 2026`), at least 2 (first and last), at most 6 days or 7 months. */
+export function labelCount(range: Range, plotWidth: number): number {
+  const [space, most] = range === 'month' ? [40, 6] : [72, 7];
+  return Math.min(most, Math.max(2, Math.floor(plotWidth / space) + 1));
+}
+
 /** The indexes of the x-axis labels: at most `count`, evenly spread, always including the last point. */
 export function labelIndexes(length: number, count: number): number[] {
   if (length <= count) {
@@ -118,7 +125,7 @@ function axes(points: Point[], range: Range, g: Geometry): SVGGElement {
     label.textContent = `${tick / 60} h`;
     group.append(label);
   }
-  for (const index of labelIndexes(points.length, range === 'month' ? 6 : 7)) {
+  for (const index of labelIndexes(points.length, labelCount(range, g.width - MARGIN.left - MARGIN.right))) {
     const label = svg('text', { x: g.x(index), y: HEIGHT - 8, 'text-anchor': 'middle', class: 'chart-text' });
     const date = points[index]!.date;
     label.textContent = range === 'month'
@@ -269,8 +276,9 @@ function comingUpSection(items: ComingUp[]): HTMLElement {
 
 /** This year's figures; "Top services" only with ticket and service. */
 function yearSection(figures: DashboardView['this_year'], mode: WorkMode): HTMLElement {
-  const row = (label: string, value: string): HTMLElement =>
-    el('tr', {}, el('td', {}, label), el('td', { class: 'num' }, value));
+  // the lists of top activity types and services wrap; a figure stays on one line
+  const row = (label: string, value: string, list = false): HTMLElement =>
+    el('tr', {}, el('td', {}, label), el('td', { class: list ? 'num card-table-list' : 'num' }, value));
   const types = figures.top_activity_types.map((type) => `${type.activity_type} ${type.duration}`).join(', ');
   const top = figures.top_services.map((service) => `${service.service ?? 'No service'} ${service.duration}`).join(', ');
   return el('section', { class: 'card' },
@@ -280,8 +288,8 @@ function yearSection(figures: DashboardView['this_year'], mode: WorkMode): HTMLE
       row('Average per day worked', figures.average_per_day_worked),
       row('Sick days', formatDays(figures.sick_days)),
       row('Overtime off', `${figures.overtime_off_days} days`),
-      row('Top activity types', types || '—'),
-      hasTickets(mode) ? row('Top services', top || '—') : null)));
+      row('Top activity types', types || '—', true),
+      hasTickets(mode) ? row('Top services', top || '—', true) : null)));
 }
 
 type Choice = [string, string];  // user id, name
