@@ -69,3 +69,45 @@ def _as_auditor(store: Store, user_id: str, member: str, today: dt.date) -> tupl
     """The member's stays in the teams the user audits today."""
     audited = {auditor.team_id for auditor in store.auditors().of_user(user_id) if auditor.active(today)}
     return tuple((stay.joined_on, stay.left_on) for stay in store.teams().history(member) if stay.team_id in audited)
+
+
+@dataclass(frozen=True)
+class TeamPerson:
+    user_id: str
+    stays: Stays
+
+
+@dataclass(frozen=True)
+class TeamScope:
+    """Whom the team report counts for the current user, and whether that is only the team's current members."""
+
+    people: tuple[TeamPerson, ...]
+    current_only: bool
+
+
+def team_scope(req: falcon.Request, store: Store, team_id: str, today: dt.date) -> TeamScope:
+    """By the rules of the team view: an active auditor of the team has everyone who was ever in it, for the days of
+    each stay; a team admin of the team its current members, from the day they joined. 403 otherwise, whether the team
+    exists or not."""
+    user_id = current_user(req)
+    audits = _audits(store, user_id, team_id, today)
+    if not audits and not _is_team_admin_of(store, user_id, team_id):
+        raise falcon.HTTPForbidden(description='Only the team admins and auditors of this team can view its report')
+    return TeamScope(_people(store, team_id, audits), not audits)
+
+
+def _audits(store: Store, user_id: str, team_id: str, today: dt.date) -> bool:
+    return any(auditor.team_id == team_id and auditor.active(today) for auditor in store.auditors().of_user(user_id))
+
+
+def _is_team_admin_of(store: Store, user_id: str, team_id: str) -> bool:
+    own = store.teams().membership(user_id)
+    return own is not None and own.team_id == team_id and own.team_role == 'team_admin'
+
+
+def _people(store: Store, team_id: str, former_too: bool) -> tuple[TeamPerson, ...]:
+    periods: dict[str, list[Period]] = {}
+    for stay in store.teams().stays(team_id):
+        if former_too or stay.left_on is None:
+            periods.setdefault(stay.user_id, []).append((stay.joined_on, stay.left_on))
+    return tuple(TeamPerson(user_id, Stays(tuple(person))) for user_id, person in periods.items())

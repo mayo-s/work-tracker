@@ -956,6 +956,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/teams/{team_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A summary of the team's activities in a month or a year, for its team admins and active auditors (SPEC 5.12): hours only, without descriptions, notes or days off. Not logged. */
+        get: operations["get__api_teams_{team_id}_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/team": {
         parameters: {
             query?: never;
@@ -2423,6 +2440,67 @@ export interface components {
              */
             visible_from?: string | null;
         };
+        /**
+         * TeamReportQuery
+         * @description Either a month or a year.
+         */
+        TeamReportQuery: {
+            /**
+             * Month
+             * @default null
+             * @example 2026-10
+             */
+            month?: string | null;
+            /**
+             * Year
+             * @default null
+             * @example 2026
+             */
+            year?: number | null;
+        };
+        /** TeamReport */
+        TeamReport: {
+            /** Team Id */
+            team_id: string;
+            /** Team */
+            team: string;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /**
+             * Until
+             * @description Last day counted (today at the latest); null if nothing counted yet
+             */
+            until: string | null;
+            /**
+             * Current Members Only
+             * @description A team admin's report: former members are left out, so a past period's total shrinks when one leaves
+             */
+            current_members_only: boolean;
+            totals: components["schemas"]["Hours"];
+            /**
+             * Activity Types
+             * @description Merged by name, most hours first
+             */
+            activity_types: components["schemas"]["ActivityHours"][];
+            /**
+             * Services
+             * @description Merged by name, most hours first; tickets without service last
+             */
+            services: components["schemas"]["TeamServiceHours"][];
+            /**
+             * Members
+             * @description Everyone counted in the period, by name
+             */
+            members: components["schemas"]["MemberSummary"][];
+        };
         /** ReviewView */
         ReviewView: {
             counts: components["schemas"]["ReviewCounts"];
@@ -3312,6 +3390,96 @@ export interface components {
             /** Duration */
             duration: string;
         };
+        /** ActivityHours */
+        ActivityHours: {
+            /** Activity Type */
+            activity_type: string;
+            /** Duration */
+            duration: string;
+        };
+        /**
+         * Hours
+         * @description On the days counted: up to today, and only the days in the team.
+         */
+        Hours: {
+            /** Worked */
+            worked: string;
+            /** Target */
+            target: string;
+            /** Overtime */
+            overtime: string;
+            /**
+             * Entries
+             * @description Hours in entries; null without any
+             */
+            entries: string | null;
+        };
+        /** MemberSummary */
+        MemberSummary: {
+            /** Worked */
+            worked: string;
+            /** Target */
+            target: string;
+            /** Overtime */
+            overtime: string;
+            /**
+             * Entries
+             * @description Hours in entries; null without any
+             */
+            entries: string | null;
+            /** User Id */
+            user_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Stays
+             * @description Their stays in the team during the period, oldest first
+             */
+            stays: components["schemas"]["StayView"][];
+            /**
+             * Activity Types
+             * @description Most hours first
+             */
+            activity_types: components["schemas"]["ActivityHours"][];
+        };
+        /** StayView */
+        StayView: {
+            /**
+             * Joined On
+             * Format: date
+             */
+            joined_on: string;
+            /**
+             * Left On
+             * @description The first day no longer in the team; null: still in it
+             */
+            left_on: string | null;
+        };
+        /** TeamServiceHours */
+        TeamServiceHours: {
+            /**
+             * Service
+             * @description Null for tickets without service
+             */
+            service: string | null;
+            /** Duration */
+            duration: string;
+            /**
+             * Tickets
+             * @description Most hours first
+             */
+            tickets: components["schemas"]["TicketHours"][];
+        };
+        /** TicketHours */
+        TicketHours: {
+            /**
+             * Ticket Key
+             * @description Null for entries still without the ticket their activity type requires
+             */
+            ticket_key: string | null;
+            /** Duration */
+            duration: string;
+        };
         /** ReviewEntry */
         ReviewEntry: {
             entry: components["schemas"]["EntryView"];
@@ -3711,19 +3879,6 @@ export interface components {
             until: string | null;
             /** Members */
             members: components["schemas"]["AuditedMember"][];
-        };
-        /** StayView */
-        StayView: {
-            /**
-             * Joined On
-             * Format: date
-             */
-            joined_on: string;
-            /**
-             * Left On
-             * @description The first day no longer in the team; null: still in it
-             */
-            left_on: string | null;
         };
     };
     responses: never;
@@ -6830,6 +6985,48 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "get__api_teams_{team_id}_report": {
+        parameters: {
+            query?: {
+                month?: string | null;
+                year?: number | null;
+            };
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamReport"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

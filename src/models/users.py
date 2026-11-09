@@ -32,6 +32,10 @@ class User(DomainModel):
     must_change_password: bool = False  # after a one-time password from an admin, until the user chose their own
     two_factor: bool = False  # the login also needs a code of their authenticator app
 
+    @property
+    def full_name(self) -> str:
+        return ' '.join(filter(None, (self.first_name, self.last_name)))
+
 
 class TwoFactor(DomainModel):
     """A user's authenticator app (TOTP): its secret, whether it is confirmed, and the last time step used (a code

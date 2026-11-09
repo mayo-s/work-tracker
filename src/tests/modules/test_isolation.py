@@ -178,6 +178,7 @@ ATTEMPTS = [
     ('GET', '/api/dashboard?member={klara}', None, falcon.HTTP_403),
     ('GET', '/api/reports/years/2026?member={klara}', None, falcon.HTTP_403),
     ('GET', '/api/days?week=2026-W44&member={klara}', None, falcon.HTTP_403),
+    ('GET', '/api/teams/{team}/report?month=2026-10', None, falcon.HTTP_403),
 ]
 
 

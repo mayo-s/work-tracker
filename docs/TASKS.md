@@ -410,8 +410,19 @@ L.16 (a–i) → 9.1 (a–i).
 - [x] **L.10** Ways of working: after 13.9, review whether the four are still needed, or two switches (ticket and
   service; entries expected) do the same. Result: three; "Developer" and "Tickets, no coding" became "Tickets and
   activities" (they differed only in Coding at the setup, now a checkbox there)
-- [ ] **L.11** Team audit: team admin and auditor need a page to not just see entries of a person, but also see a team
-  report. 
+- [ ] **L.11** Team report (SPEC 5.12), in steps:
+    - [x] **L.11a** API: `GET /api/teams/{team_id}/report` for a month or a year: the team's totals, hours by activity
+      type and by service and ticket, and each member's totals and hours per activity type. Access and days as in the
+      team view (team admin: current members from the day they joined; active auditor: everyone, the days of each
+      stay; others 403), no descriptions, notes or days off, not logged; on both backends
+    - [ ] **L.11b** Page `/team/report` in cards: the period header, the choice of team, the links from the team page
+      and the dashboard's member chooser; the note on who counts; the sentence in the members' settings
+    - [ ] **L.11c** The switch between the team and its members: a member opens their month or year report of the team
+      view for that period, with a link back in its banner
+    - [ ] **L.11d** CSV export (`GET /api/teams/{team_id}/report.csv`): one row per figure, semicolons, UTF-8 with a
+      byte order mark, formulas neutralized
+    - [ ] **L.11e** "Save as PDF": a print layout of the cards (light theme, no navigation or buttons) and the browser's
+      print dialog
 - [x] **L.12** Clean up the review's import parts once no imported data needs them: guessed tickets and their splits,
   the original spreadsheet line, weekend-hour day flags (storage on both backends, export format, the split and flag
   endpoints)

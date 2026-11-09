@@ -156,7 +156,7 @@ class Reports:
                           visible_from=self._visible_from)
 
     def month(self, year: int, month: int) -> MonthReport:
-        start, end = _month_bounds(year, month)
+        start, end = month_bounds(year, month)
         ledger = self._ledger_until(end)
         work = self._work(start, end)
         by_type = work.activity_types()
@@ -191,6 +191,10 @@ class Reports:
             services=_service_totals(services), services_total=_sum(services), work_mode=self._settings.work_mode,
             visible_from=self._visible_from,
         )
+
+    def summary(self, start: dt.date, end: dt.date) -> tuple[PeriodTotals, 'PeriodWork']:
+        """The totals of the period and its entries up to today (for the team report)."""
+        return self._totals(self._ledger_until(end), start, end), self._work(start, min(end, self._today))
 
     def _work(self, start: dt.date, end: dt.date) -> 'PeriodWork':
         """The entries of the period from the balance start on (in the team view only on the days shown)."""
@@ -241,7 +245,7 @@ class Reports:
         )
 
     def _month_totals(self, ledger: DayLedger, year: int, month: int) -> MonthTotals:
-        totals = self._totals(ledger, *_month_bounds(year, month))
+        totals = self._totals(ledger, *month_bounds(year, month))
         return MonthTotals(month=f'{year}-{month:02d}', worked=totals.worked, target=totals.target, overtime=totals.overtime)
 
     def _pto(self, year: int) -> PtoView | None:
@@ -264,7 +268,8 @@ class PeriodWork:
     type, each with its entries on a ticket by service and ticket, and the work on tickets by service."""
 
     def __init__(self, store: Store, user_id: str, start: dt.date, end: dt.date, shows: Shows = None) -> None:
-        self._entries = [entry for entry in store.entries(user_id).between(start, end) if shows is None or shows(entry.date)]
+        entries = store.entries(user_id).between(start, end) if start <= end else []  # DynamoDB refuses a reversed range
+        self._entries = [entry for entry in entries if shows is None or shows(entry.date)]
         self._services = TicketServices(store, user_id)
         self._activity_types = {kind.id: kind for kind in store.activity_types(user_id).all()}
 
@@ -351,5 +356,5 @@ def _ticket_order(key: str | None) -> tuple[bool, str, int]:
     return False, prefix, int(number)
 
 
-def _month_bounds(year: int, month: int) -> tuple[dt.date, dt.date]:
+def month_bounds(year: int, month: int) -> tuple[dt.date, dt.date]:
     return dt.date(year, month, 1), dt.date(year, month, calendar.monthrange(year, month)[1])

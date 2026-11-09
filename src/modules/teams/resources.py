@@ -10,7 +10,6 @@ from spectree import Response
 
 from src.models.catalog import Service, ServiceChoice
 from src.models.teams import Auditor, Member
-from src.models.users import User
 from src.modules.admin.audit import record
 from src.modules.auth.sessions import current_user
 from src.modules.catalog.resources import ServiceInput
@@ -224,14 +223,10 @@ def _audited_team(store: Store, auditor: Auditor, viewer_id: str) -> AuditedTeam
         if stay.user_id != viewer_id:
             stays.setdefault(stay.user_id, []).append(StayView(joined_on=stay.joined_on, left_on=stay.left_on))
     users = store.users()
-    members = [AuditedMember(user_id=member_id, name=_name(users.get(member_id)), stays=member_stays)
+    members = [AuditedMember(user_id=member_id, name=users.get(member_id).full_name, stays=member_stays)
                for member_id, member_stays in stays.items()]
     return AuditedTeam(team_id=auditor.team_id, team=auditor.team_name, until=auditor.until,
                        members=sorted(members, key=lambda member: member.name))
-
-
-def _name(user: User) -> str:
-    return ' '.join(filter(None, (user.first_name, user.last_name)))
 
 
 def _team_admin_names(members: list[Member], user_id: str) -> list[str]:

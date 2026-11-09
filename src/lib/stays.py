@@ -18,3 +18,8 @@ class Stays:
 
     def shows(self, day: dt.date) -> bool:
         return any(joined <= day and (left is None or day < left) for joined, left in self.periods)
+
+    def within(self, start: dt.date, end: dt.date) -> tuple[Period, ...]:
+        """The stays with a day from start to end."""
+        return tuple((joined, left) for joined, left in self.periods
+                     if joined != left and joined <= end and (left is None or start < left))

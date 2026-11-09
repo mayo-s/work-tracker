@@ -27,7 +27,7 @@ from src.modules.pages.resources import (
     STATIC_DIR, Page, PageSettings, Redirect, RegisterPage, RevalidateStaticFiles, StartPage,
 )
 from src.modules.pto.resources import PtoYearCollection, PtoYearItem
-from src.modules.reports.resources import MonthReportResource, WeekReportResource, YearReportResource
+from src.modules.reports.resources import MonthReportResource, TeamReportResource, WeekReportResource, YearReportResource
 from src.modules.review.resources import Review, ReviewCountsResource
 from src.modules.schedules.resources import ScheduleCollection, ScheduleItem
 from src.modules.search.resources import SearchResource
@@ -138,6 +138,7 @@ def create_app(
     app.add_route('/api/teams/{team_id}/members/{user_id}', TeamMemberItem(storage, clock))
     app.add_route('/api/teams/{team_id}/services', TeamServiceCollection(storage, clock))
     app.add_route('/api/teams/{team_id}/services/{service_id}', TeamServiceItem(storage, clock))
+    app.add_route('/api/teams/{team_id}/report', TeamReportResource(storage, today, clock))
     app.add_route('/api/team', MyTeam(storage, clock))
     app.add_route('/api/audits', MyAudits(storage, clock))
     app.add_route('/api/team/invitations/{invitation_id}', MyInvitationItem(storage, clock))

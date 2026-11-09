@@ -14,7 +14,7 @@ AWS Lambda (DynamoDB), see 7.
 - Take over the existing spreadsheet data (2024, 2025, 2026): done once by an import, removed since (6).
 - Serve non-developers too: each user chooses how they track their work (5.11).
 
-Out of scope for now: export.
+Out of scope for now: export of personal reports (the team report has its own, 5.12).
 
 ## 2. Conventions
 
@@ -404,7 +404,8 @@ corners, one accent color. Warnings are the only loud element.
   descriptions and notes are shown, day notes and the review are not; the overtime balance and PTO left are running
   figures over the whole time. Admins get no such view unless they are team admin or auditor of that team; former
   members drop out (auditors still see them, see above). Members see in their settings which team admins and
-  auditors can look, and a log of who looked at which report and when.
+  auditors can look, and a log of who looked at which report and when. They are also told there that these people see
+  the summary of the team report (5.12), which is not in the log.
 
 ### 5.8 Export and import (own data)
 
@@ -491,6 +492,39 @@ the settings at any time:
 - **Search**: the search field in the navigation for every way of working; without ticket and service the search
   page offers no service and its text field says "Words" instead of "Words or ticket key".
 - **Team view**: a member's pages follow the member's way of working, not the viewer's.
+
+### 5.12 Team report
+
+A summary of the activities of a team, what work was done: not a look at people's days.
+
+- At `/team/report`, linked from the team page and from the member chooser on the dashboard. For the team admins of
+  the team and its active auditors, by the rules of the team view (5.7); admins only if they are one of these, others
+  403. An auditor of several teams, or an auditor who is also a team admin, chooses the team.
+- A month or a year, with the header of the month and year reports (previous, next, current and the date field), in
+  the URL (`?team=<id>&month=2026-10` or `&year=2026`).
+- A switch between the whole team and its members. Choosing a member opens their month or year report of the team
+  view for the same period (5.7), logged as before, with a link back to the team report.
+- **Who counts**: a team admin sees the current members, from the day they joined; an auditor everyone who was in the
+  team, for the days of each stay. Worked, target and overtime count those days only, up to today, with a note for
+  anyone who was not there all period ("from 04.11."). The page says that a team admin's figures hold current members
+  only, so the total of a past period shrinks when someone leaves.
+- **Shown in cards**, not tables:
+  - The team: worked of target, overtime, and hours in entries next to the hours worked.
+  - Each activity type, most hours first: its hours in the team. Activity types and services belong to each user, so
+    those of the same name (ignoring case) count as one.
+  - Each service, with its tickets and hours, and tickets without a service; only if the period holds such entries.
+  - Each member: worked of target, overtime, hours in entries (`—` if they have none, e.g. "Times only") and their
+    hours per activity type.
+- **Not shown**: entry descriptions and day notes, sick days and other days off, the overtime balance and PTO left.
+  The service and ticket hours of one person are in their team view only.
+- The team report is not logged: only looking at a member's own reports is (5.7).
+- **Export** of the shown period, only of this report:
+  - CSV: one row per figure, with the columns Section, Name, Figure and Duration (`h:mm`), e.g.
+    `Member;Rainer Zufall;Coding;40:00`. Separated by semicolons, in UTF-8 with a byte order mark, so German Excel opens
+    it in columns with the umlauts intact. A value starting with `=`, `+`, `-` or `@` gets a leading `'`, so a
+    spreadsheet does not run it as a formula.
+  - PDF: "Save as PDF" opens the browser's print dialog, with a print layout of the cards in the light theme and
+    without the navigation and buttons. The app makes no PDF itself and needs no new package.
 
 ## 6. Import (spreadsheet CSV), removed
 
@@ -625,6 +659,6 @@ splitting an entry among several tickets went once they were all reviewed (TASKS
 
 ## 8. Future ideas
 
-- Export (CSV / spreadsheet format).
+- Export of personal reports (CSV / spreadsheet format); the team report has its own (5.12).
 - Settings page with overtime balance, PTO years, work schedules and holiday rules is done (TASKS.md, 6.1a–6.1c).
 - Initial setup of a new database on `/setup` is done (TASKS.md, 6.3).
