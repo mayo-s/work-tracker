@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { chosenTeam, csvHref, memberHref, otherKind, periodFromSearch, reportHref, reportTeams, stayNote } from '../ts/team-report.ts';
+import { chosenTeam, csvHref, memberHref, otherKind, periodFromSearch, reportHref, reportTeams } from '../ts/team-report.ts';
 
 const TODAY = '2026-11-09';
 const OWN = { team: { id: 't1', name: 'Platform', team_role: 'team_admin' } } as Parameters<typeof reportTeams>[0];
@@ -43,16 +43,6 @@ test('the team from the address, otherwise the first one', () => {
   assert.equal(chosenTeam('?team=t2', teams), 't2');
   assert.equal(chosenTeam('', teams), 't1');
   assert.equal(chosenTeam('', []), null);
-});
-
-test('a note only for someone who was not there all period', () => {
-  const [start, end] = ['2026-11-01', '2026-11-30'];
-  assert.equal(stayNote([{ joined_on: '2026-10-01', left_on: null }], start, end), null);
-  assert.equal(stayNote([{ joined_on: '2026-10-01', left_on: '2026-12-01' }], start, end), null, 'in it until the last day');
-  assert.equal(stayNote([{ joined_on: '2026-11-04', left_on: null }], start, end), 'from 04.11.');
-  assert.equal(stayNote([{ joined_on: '2026-10-01', left_on: '2026-11-04' }], start, end), 'until 03.11.');
-  assert.equal(stayNote([{ joined_on: '2026-11-02', left_on: '2026-11-04' }, { joined_on: '2026-11-05', left_on: null }], start, end),
-    '02.11.–03.11., from 05.11.');
 });
 
 test("a member's card opens their report for the same period, the own card the own report", () => {

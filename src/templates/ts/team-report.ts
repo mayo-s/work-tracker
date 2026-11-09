@@ -1,7 +1,7 @@
 // Team report (/team/report): a summary of a team's activities in a month or a year, in cards (SPEC 5.12).
 
 import { api, errorText, type AuditedTeam, type AuthStatus, type TeamReport } from './api.ts';
-import { addDays, formatMonth, formatShortDate, isoDate, isoMonth, shiftMonth, type IsoDate } from './dates.ts';
+import { formatMonth, formatShortDate, isoDate, isoMonth, shiftMonth, type IsoDate } from './dates.ts';
 import { el } from './dom.ts';
 import { monthFromSearch } from './month.ts';
 import { periodHeader, value, type Period } from './week.ts';
@@ -12,7 +12,6 @@ type TeamChoice = { id: string; name: string };
 type Hours = TeamReport['totals'];
 type Member = TeamReport['members'][number];
 type Service = TeamReport['services'][number];
-type Stay = Member['stays'][number];
 /** Who looks at which period. */
 type ReportView = { me: string | null; team: string; period: ReportPeriod };
 
@@ -76,20 +75,6 @@ export function chosenTeam(search: string, teams: TeamChoice[]): string | null {
   return new URLSearchParams(search).get('team') || teams[0]?.id || null;
 }
 
-/** When someone was in the team, if not for the whole period, e.g. `from 04.11.` or `02.11.–03.11.` (`left_on` is the
- * first day no longer in the team); null if they were there all period. */
-export function stayNote(stays: Stay[], start: IsoDate, end: IsoDate): string | null {
-  const notes = stays.map((stay) => {
-    const from = stay.joined_on > start ? formatShortDate(stay.joined_on) : null;
-    const until = stay.left_on && stay.left_on <= end ? formatShortDate(addDays(stay.left_on, -1)) : null;
-    if (from && until) {
-      return `${from}–${until}`;
-    }
-    return from ? `from ${from}` : until ? `until ${until}` : null;
-  }).filter((note) => note !== null);
-  return notes.length ? notes.join(', ') : null;
-}
-
 function figure(label: string, ...content: (HTMLElement | string)[]): HTMLElement {
   return el('div', {}, el('span', { class: 'muted' }, `${label} `), ...content);
 }
@@ -126,11 +111,10 @@ export function memberHref(member: string, me: string | null, period: ReportPeri
 }
 
 /** The whole card links to the member's report. */
-function memberCard(member: Member, report: TeamReport, view: ReportView): HTMLElement {
-  const note = stayNote(member.stays, report.start, report.end);
+function memberCard(member: Member, view: ReportView): HTMLElement {
   return el('a', { class: 'card report-member', href: memberHref(member.user_id, view.me, view.period) },
     el('h3', {}, member.name),
-    note ? el('p', { class: 'muted' }, note) : null,
+    member.note ? el('p', { class: 'muted' }, member.note) : null,
     ...figures(member),
     member.activity_types.length
       ? hoursList(member.activity_types.map((item) => [item.activity_type, item.duration])) : null,
@@ -155,7 +139,7 @@ function reportContent(report: TeamReport, view: ReportView): (HTMLElement | nul
     cards('Activity types', report.activity_types.map((item) => el('div', { class: 'card' }, el('h3', {}, item.activity_type),
       el('p', { class: 'tile-value num' }, item.duration))), 'No entries in this period.'),
     cards('Services', report.services.map(serviceCard), null),
-    cards('Members', report.members.map((member) => memberCard(member, report, view)), 'Nobody was in the team in this period.'),
+    cards('Members', report.members.map((member) => memberCard(member, view)), 'Nobody was in the team in this period.'),
   ];
 }
 

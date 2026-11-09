@@ -155,7 +155,7 @@ def test_a_team_admin_opens_the_team_report(logged_in):
     expect(report).to_contain_text('Current members only')
     with page.expect_download() as download:
         report.locator('a:has-text("Export CSV")').click()
-    assert re.fullmatch(r'team-report-Platform-\d{4}-\d{2}\.csv', download.value.suggested_filename)
+    assert re.fullmatch(r'\d{8}_\d{4}_team_report_Platform\.csv', download.value.suggested_filename)
     assert 'Member;Klara Himmel;Worked;' in Path(download.value.path()).read_text(encoding='utf-8-sig')
     page.click('#team-report-kind')
     expect(page).to_have_url(re.compile(r'&year=\d{4}'))

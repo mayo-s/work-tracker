@@ -3760,7 +3760,7 @@
     },
     "/api/teams/{team_id}/report\\.csv": {
       "get": {
-        "summary": "The team report as a CSV file to download, e.g. `team-report-Platform-2026-10.csv`: one row per figure, with the columns Section, Name, Figure and Duration, separated by semicolons, in UTF-8 with a byte order mark. Not logged.",
+        "summary": "The team report as a CSV file to download, e.g. `20261109_1430_team_report_Platform.csv`: one row per figure, with the columns Section, Name, Figure and Duration, separated by semicolons, in UTF-8 with a byte order mark. The rows Period, Counted up to and Note hold text instead of a duration. Not logged.",
         "operationId": "get__api_teams_{team_id}_report\\.csv",
         "description": "",
         "tags": [
@@ -9360,6 +9360,18 @@
             "title": "Stays",
             "type": "array"
           },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When they were in the team, e.g. `from 04.11.`; null if there all period",
+            "title": "Note"
+          },
           "activity_types": {
             "description": "Most hours first",
             "items": {
@@ -9377,6 +9389,7 @@
           "user_id",
           "name",
           "stays",
+          "note",
           "activity_types"
         ],
         "title": "MemberSummary",

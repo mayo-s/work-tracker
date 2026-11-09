@@ -17,6 +17,8 @@ from src.models.days import Day
 from src.models.entries import Entry
 from src.models.settings import Settings
 from src.models.teams import Auditor, Team
+from src.modules.reports.team import stay_note, team_report_file_name
+from src.modules.teams.schemas import StayView
 from src.tests.helpers import Clock, logged_in
 from src.tests.ids import FIRST
 from src.tests.users import HANS, KLARA, PASCAL, PASSWORD, RAINER
@@ -123,11 +125,11 @@ def test_a_team_admin_sees_the_current_members_from_the_day_they_joined(app, ids
         ],
         'members': [
             {'user_id': ids['hans'], 'name': 'Hans Dampf', 'stays': [{'joined_on': '2026-11-02', 'left_on': None}],
-             'worked': '16:00', 'target': '32:00', 'overtime': '-16:00', 'entries': '4:00',
+             'note': 'from 02.11.', 'worked': '16:00', 'target': '32:00', 'overtime': '-16:00', 'entries': '4:00',
              'activity_types': [{'activity_type': 'Coding', 'duration': '3:00'},
                                 {'activity_type': 'Meeting', 'duration': '1:00'}]},
             {'user_id': ids['rainer'], 'name': 'Rainer Zufall', 'stays': [{'joined_on': '2026-11-04', 'left_on': None}],
-             'worked': '8:00', 'target': '24:00', 'overtime': '-16:00', 'entries': '2:30',
+             'note': 'from 04.11.', 'worked': '8:00', 'target': '24:00', 'overtime': '-16:00', 'entries': '2:30',
              'activity_types': [{'activity_type': 'coding', 'duration': '2:30'}]},
         ],
     }
@@ -140,6 +142,18 @@ def test_an_auditor_also_sees_former_members_for_the_days_of_their_stay(app, ids
     klara = result['members'][1]
     assert (klara['name'], klara['stays']) == ('Klara Himmel', [{'joined_on': '2026-11-02', 'left_on': '2026-11-04'}])
     assert (klara['worked'], klara['target'], klara['entries'], klara['activity_types']) == ('8:00', '16:00', None, [])
+
+
+@pytest.mark.parametrize('stays, note', [
+    ([(dt.date(2026, 10, 1), None)], None),
+    ([(dt.date(2026, 10, 1), dt.date(2026, 12, 1))], None),  # in it until the last day
+    ([(nov(4), None)], 'from 04.11.'),
+    ([(dt.date(2026, 10, 1), nov(4))], 'until 03.11.'),
+    ([(nov(2), nov(4)), (nov(5), None)], '02.11.–03.11., from 05.11.'),
+])
+def test_a_note_only_for_someone_who_was_not_there_all_period(stays, note):
+    views = [StayView(joined_on=joined, left_on=left) for joined, left in stays]
+    assert stay_note(views, nov(1), nov(30)) == note
 
 
 def test_the_report_holds_only_hours_and_is_not_logged(app, storage, ids):
@@ -185,21 +199,34 @@ def test_the_csv_has_one_row_per_figure_for_german_excel(app, ids):
     result = csv_report(app, ids, 'hans')
     assert result.status == falcon.HTTP_200
     assert result.headers['content-type'] == 'text/csv; charset=utf-8'
-    assert result.headers['content-disposition'] == 'attachment; filename="team-report-Platform-2026-11.csv"'
+    assert result.headers['content-disposition'] == 'attachment; filename="20261106_0900_team_report_Platform.csv"'
     assert result.content.startswith('\N{BYTE ORDER MARK}Section;'.encode())
     assert result.content.decode('utf-8-sig').split('\r\n') == [
         'Section;Name;Figure;Duration',
+        'Team;Platform;Period;01.11.2026–30.11.2026', 'Team;Platform;Counted up to;06.11.2026',
+        'Team;Platform;Note;Current members only, each from the day they joined: the total of a past period shrinks when '
+        'someone leaves.',
         'Team;Platform;Worked;24:00', 'Team;Platform;Target;56:00', 'Team;Platform;Overtime;-32:00',
         'Team;Platform;Entries;6:30',
         'Activity type;Coding;Total;5:30', 'Activity type;Meeting;Total;1:00',
         'Service;MSB;Total;5:00', 'Service;MSB;MSB-1;3:00', 'Service;MSB;TNG-1;2:00',
         'Service;No service;Total;0:30', 'Service;No service;KP-2;0:30',
-        'Member;Hans Dampf;Worked;16:00', 'Member;Hans Dampf;Target;32:00', 'Member;Hans Dampf;Overtime;-16:00',
-        'Member;Hans Dampf;Entries;4:00', 'Member;Hans Dampf;Coding;3:00', 'Member;Hans Dampf;Meeting;1:00',
-        'Member;Rainer Zufall;Worked;8:00', 'Member;Rainer Zufall;Target;24:00', 'Member;Rainer Zufall;Overtime;-16:00',
-        'Member;Rainer Zufall;Entries;2:30', 'Member;Rainer Zufall;coding;2:30',
+        'Member;Hans Dampf;Note;from 02.11.', 'Member;Hans Dampf;Worked;16:00', 'Member;Hans Dampf;Target;32:00',
+        'Member;Hans Dampf;Overtime;-16:00', 'Member;Hans Dampf;Entries;4:00',
+        'Member;Hans Dampf;Coding;3:00', 'Member;Hans Dampf;Meeting;1:00',
+        'Member;Rainer Zufall;Note;from 04.11.', 'Member;Rainer Zufall;Worked;8:00', 'Member;Rainer Zufall;Target;24:00',
+        'Member;Rainer Zufall;Overtime;-16:00', 'Member;Rainer Zufall;Entries;2:30', 'Member;Rainer Zufall;coding;2:30',
         '',
     ]
+
+
+@pytest.mark.parametrize('team, name', [
+    ('Platform', '20261109_1407_team_report_Platform'),
+    ('Büro Süd', '20261109_1407_team_report_Büro_Süd'),
+    ('"a/b"\r\n', '20261109_1407_team_report_a_b'),
+])
+def test_the_file_name_holds_the_time_and_the_team(team, name):
+    assert team_report_file_name(team, dt.datetime(2026, 11, 9, 14, 7)) == name
 
 
 def test_the_csv_keeps_names_from_running_as_formulas(app, storage, ids):
@@ -213,8 +240,8 @@ def test_the_csv_keeps_names_from_running_as_formulas(app, storage, ids):
 def test_the_csv_is_for_the_same_people_and_periods(app, ids):
     assert csv_report(app, ids, 'rainer').status == falcon.HTTP_403
     assert csv_report(app, ids, 'hans', {}).status_code == 422
-    year = csv_report(app, ids, 'hans', {'year': 2026})
-    assert year.headers['content-disposition'] == 'attachment; filename="team-report-Platform-2026.csv"'
+    assert 'Team;Platform;Period;01.01.2026–31.12.2026\r\n' in csv_report(app, ids, 'hans', {'year': 2026}).content.decode()
     auditor = csv_report(app, ids, 'pascal').content.decode('utf-8-sig')
-    assert 'Member;Klara Himmel;Worked;8:00\r\nMember;Klara Himmel;Target;16:00' in auditor
+    assert 'Member;Klara Himmel;Note;02.11.–03.11.\r\nMember;Klara Himmel;Worked;8:00\r\n' in auditor
+    assert 'Current members only' not in auditor
     assert 'Member;Klara Himmel;Entries;\r\n' in auditor  # no hours in entries

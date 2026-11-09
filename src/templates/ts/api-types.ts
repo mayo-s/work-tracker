@@ -980,7 +980,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The team report as a CSV file to download, e.g. `team-report-Platform-2026-10.csv`: one row per figure, with the columns Section, Name, Figure and Duration, separated by semicolons, in UTF-8 with a byte order mark. Not logged. */
+        /** The team report as a CSV file to download, e.g. `20261109_1430_team_report_Platform.csv`: one row per figure, with the columns Section, Name, Figure and Duration, separated by semicolons, in UTF-8 with a byte order mark. The rows Period, Counted up to and Note hold text instead of a duration. Not logged. */
         get: operations["get__api_teams_{team_id}_report\\.csv"];
         put?: never;
         post?: never;
@@ -3459,6 +3459,11 @@ export interface components {
              * @description Their stays in the team during the period, oldest first
              */
             stays: components["schemas"]["StayView"][];
+            /**
+             * Note
+             * @description When they were in the team, e.g. `from 04.11.`; null if there all period
+             */
+            note: string | null;
             /**
              * Activity Types
              * @description Most hours first

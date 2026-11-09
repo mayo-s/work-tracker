@@ -7,6 +7,7 @@ so the team's figures merge them by name.
 import csv
 import datetime as dt
 import io
+import re
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator
 from typing import Self
@@ -39,9 +40,6 @@ class TeamReportQuery(BaseModel):
         year, month = self.month.split('-')
         return month_bounds(int(year), int(month))
 
-    def label(self) -> str:
-        return self.month or str(self.year)
-
 
 class ActivityHours(BaseModel):
     activity_type: str
@@ -72,14 +70,18 @@ class MemberSummary(Hours):
     user_id: str
     name: str
     stays: list[StayView] = Field(description='Their stays in the team during the period, oldest first')
+    note: str | None = Field(description='When they were in the team, e.g. `from 04.11.`; null if there all period')
     activity_types: list[ActivityHours] = Field(description='Most hours first')
 
 
 MemberWork = tuple[MemberSummary, PeriodWork]
 CsvRow = tuple[str, str, str, str]
 
+_NOT_IN_FILE_NAME = re.compile(r'[^\w.-]+')
 _CSV_HEADER = ('Section', 'Name', 'Figure', 'Duration')
 _FORMULA_START = ('=', '+', '-', '@', '\t', '\r')
+_CURRENT_ONLY_NOTE = ('Current members only, each from the day they joined: '
+                      'the total of a past period shrinks when someone leaves.')
 
 
 class TeamReport(BaseModel):
@@ -116,14 +118,36 @@ def _summaries(store: Store, scope: TeamScope, start: dt.date, end: dt.date, tod
 
 def _member(store: Store, person: TeamPerson, start: dt.date, end: dt.date, today: dt.date) -> MemberWork:
     totals, work = Reports(store, person.user_id, today, person.stays).summary(start, end)
+    stays = [StayView(joined_on=joined, left_on=left) for joined, left in person.stays.within(start, end)]
     return MemberSummary(
         user_id=person.user_id, name=store.users().get(person.user_id).full_name,
-        stays=[StayView(joined_on=joined, left_on=left) for joined, left in person.stays.within(start, end)],
+        stays=stays, note=stay_note(stays, start, end),
         worked=totals.worked, target=totals.target, overtime=totals.overtime,
         entries=_entries(parse_duration(work.total(min(end, today)))),
         activity_types=[ActivityHours(activity_type=item.activity_type, duration=item.duration)
                         for item in work.activity_types()],
     ), work
+
+
+def stay_note(stays: list[StayView], start: dt.date, end: dt.date) -> str | None:
+    """When someone was in the team, if not for the whole period, e.g. `from 04.11.` or `02.11.–03.11.`; None if they
+    were there all period."""
+    notes = (_stay_part(stay, start, end) for stay in stays)
+    return ', '.join(note for note in notes if note) or None
+
+
+def _stay_part(stay: StayView, start: dt.date, end: dt.date) -> str | None:
+    joined, until = stay.joined_on if stay.joined_on > start else None, _last_day(stay, end)
+    if joined and until:
+        return f'{joined:%d.%m.}–{until:%d.%m.}'
+    if joined:
+        return f'from {joined:%d.%m.}'
+    return f'until {until:%d.%m.}' if until else None
+
+
+def _last_day(stay: StayView, end: dt.date) -> dt.date | None:
+    """The last day in the team, if within the period: `left_on` is the first day no longer in it."""
+    return stay.left_on - dt.timedelta(days=1) if stay.left_on and stay.left_on <= end else None
 
 
 def _entries(minutes: int) -> str | None:
@@ -174,6 +198,13 @@ def _service_hours(service: str | None, tickets: Counter[str | None]) -> TeamSer
                                      for key, minutes in ordered])
 
 
+def team_report_file_name(team: str, now: dt.datetime) -> str:
+    """E.g. `20261109_1430_team_report_Platform`, without extension; other characters than letters, digits, `.` and `-`
+    in the team's name become `_`."""
+    name = _NOT_IN_FILE_NAME.sub('_', team).strip('_')
+    return f'{now:%Y%m%d_%H%M}_team_report_{name}'
+
+
 def team_report_csv(report: TeamReport) -> bytes:
     """The report as CSV, one row per figure: semicolons and a byte order mark, so German Excel opens it in columns with
     the umlauts intact."""
@@ -191,15 +222,30 @@ def _no_formula(text: str) -> str:
 
 
 def _csv_rows(report: TeamReport) -> Iterator[CsvRow]:
-    yield from _hours_rows('Team', report.team, report.totals)
+    yield from _team_rows(report)
     for item in report.activity_types:
         yield 'Activity type', item.activity_type, 'Total', item.duration
     for service in report.services:
         yield from _service_rows(service)
     for member in report.members:
-        yield from _hours_rows('Member', member.name, member)
-        for item in member.activity_types:
-            yield 'Member', member.name, item.activity_type, item.duration
+        yield from _member_rows(member)
+
+
+def _team_rows(report: TeamReport) -> Iterator[CsvRow]:
+    yield 'Team', report.team, 'Period', f'{report.start:%d.%m.%Y}–{report.end:%d.%m.%Y}'
+    if report.until and report.until < report.end:
+        yield 'Team', report.team, 'Counted up to', f'{report.until:%d.%m.%Y}'
+    if report.current_members_only:
+        yield 'Team', report.team, 'Note', _CURRENT_ONLY_NOTE
+    yield from _hours_rows('Team', report.team, report.totals)
+
+
+def _member_rows(member: MemberSummary) -> Iterator[CsvRow]:
+    if member.note:
+        yield 'Member', member.name, 'Note', member.note
+    yield from _hours_rows('Member', member.name, member)
+    for item in member.activity_types:
+        yield 'Member', member.name, item.activity_type, item.duration
 
 
 def _hours_rows(section: str, name: str, hours: Hours) -> Iterator[CsvRow]:

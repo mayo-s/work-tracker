@@ -7,11 +7,10 @@ import re
 from collections.abc import Callable
 
 import falcon
-from falcon.util import secure_filename
 from spectree import Response
 
 from src.modules.reports.schemas import MonthReport, Reports, WeekReport, YearReport
-from src.modules.reports.team import TeamReport, TeamReportQuery, team_report, team_report_csv
+from src.modules.reports.team import TeamReport, TeamReportQuery, team_report, team_report_csv, team_report_file_name
 from src.modules.storage.store import Storage, Store
 from src.modules.teams.view import MemberQuery, team_scope, viewing
 from src.utils.spec import spec
@@ -87,12 +86,13 @@ class TeamReportCsvResource(_TeamReport):
     @spec.validate(query=TeamReportQuery, resp=Response('HTTP_200', 'HTTP_403'), tags=TAGS,
                    path_parameter_descriptions={'team_id': 'Id of the team'})
     def on_get(self, req: falcon.Request, resp: falcon.Response, team_id: str, query: TeamReportQuery) -> None:
-        """The team report as a CSV file to download, e.g. `team-report-Platform-2026-10.csv`: one row per figure, with the
-        columns Section, Name, Figure and Duration, separated by semicolons, in UTF-8 with a byte order mark. Not logged."""
+        """The team report as a CSV file to download, e.g. `20261109_1430_team_report_Platform.csv`: one row per figure, with
+        the columns Section, Name, Figure and Duration, separated by semicolons, in UTF-8 with a byte order mark. The rows
+        Period, Counted up to and Note hold text instead of a duration. Not logged."""
         report = self._team_report(req, team_id, query)
         resp.data = team_report_csv(report)
         resp.content_type = 'text/csv; charset=utf-8'
-        resp.downloadable_as = secure_filename(f'team-report-{report.team}-{query.label()}.csv')
+        resp.downloadable_as = f'{team_report_file_name(report.team, self._clock())}.csv'
 
 
 def _monday_of(week: str) -> dt.date:
