@@ -13,6 +13,8 @@ type Hours = TeamReport['totals'];
 type Member = TeamReport['members'][number];
 type Service = TeamReport['services'][number];
 type Stay = Member['stays'][number];
+/** Who looks at which period. */
+type ReportView = { me: string | null; period: ReportPeriod };
 
 /** The period from `?year=2026` or `?month=2026-10`, otherwise the current month. */
 export function periodFromSearch(search: string, today: IsoDate): ReportPeriod {
@@ -111,14 +113,25 @@ function serviceCard(service: Service): HTMLElement {
     hoursList(service.tickets.map((ticket) => [ticket.ticket_key ?? 'No ticket', ticket.duration])));
 }
 
-function memberCard(member: Member, report: TeamReport): HTMLElement {
+/** A member's month or year report in the team view, for the same period; the own one is not a look at someone else's. */
+export function memberHref(member: string, me: string | null, period: ReportPeriod): string {
+  const params = new URLSearchParams(period.kind === 'month' ? { month: period.month } : { year: String(period.year) });
+  if (member !== me) {
+    params.set('member', member);
+  }
+  return `/${period.kind}?${params}`;
+}
+
+/** The whole card links to the member's report. */
+function memberCard(member: Member, report: TeamReport, view: ReportView): HTMLElement {
   const note = stayNote(member.stays, report.start, report.end);
-  return el('div', { class: 'card' },
+  return el('a', { class: 'card report-member', href: memberHref(member.user_id, view.me, view.period) },
     el('h3', {}, member.name),
     note ? el('p', { class: 'muted' }, note) : null,
     ...figures(member),
     member.activity_types.length
-      ? hoursList(member.activity_types.map((item) => [item.activity_type, item.duration])) : null);
+      ? hoursList(member.activity_types.map((item) => [item.activity_type, item.duration])) : null,
+    el('span', { class: 'report-open' }, 'Open report ›'));
 }
 
 function cards(title: string, items: HTMLElement[], empty: string | null): HTMLElement | null {
@@ -129,7 +142,7 @@ function cards(title: string, items: HTMLElement[], empty: string | null): HTMLE
     items.length ? el('div', { class: 'report-cards' }, ...items) : el('p', { class: 'muted' }, empty));
 }
 
-function reportContent(report: TeamReport): (HTMLElement | null)[] {
+function reportContent(report: TeamReport, view: ReportView): (HTMLElement | null)[] {
   return [
     el('div', { class: 'card card-surface week-summary' }, el('strong', {}, report.team), ...figures(report.totals),
       report.until && report.until < report.end ? el('div', { class: 'muted' }, `counted up to ${formatShortDate(report.until)}`) : null),
@@ -138,7 +151,7 @@ function reportContent(report: TeamReport): (HTMLElement | null)[] {
     cards('Activity types', report.activity_types.map((item) => el('div', { class: 'card' }, el('h3', {}, item.activity_type),
       el('p', { class: 'tile-value num' }, item.duration))), 'No entries in this period.'),
     cards('Services', report.services.map(serviceCard), null),
-    cards('Members', report.members.map((member) => memberCard(member, report)), 'Nobody was in the team in this period.'),
+    cards('Members', report.members.map((member) => memberCard(member, report, view)), 'Nobody was in the team in this period.'),
   ];
 }
 
@@ -191,7 +204,8 @@ export async function renderTeamReportPage(doc: Document): Promise<void> {
     if (chooser) {
       doc.querySelector('.week-header')?.append(chooser);
     }
-    root.replaceChildren(...reportContent(await loadReport(team, period)).filter((part) => part !== null));
+    const view = { me: status.user?.id ?? null, period };
+    root.replaceChildren(...reportContent(await loadReport(team, period), view).filter((part) => part !== null));
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' }, errorText(error, 'The team report could not be loaded.')));
   }

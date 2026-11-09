@@ -155,6 +155,16 @@ def test_a_team_admin_opens_the_team_report(logged_in):
     page.click('#team-report-kind')
     expect(page).to_have_url(re.compile(r'&year=\d{4}'))
     expect(page.locator('#team-report-current')).to_have_text('Current year')
+    report.locator('a.report-member', has_text='Klara Himmel').click()
+    expect(page).to_have_url(re.compile(r'/year\?year=\d{4}&member='))
+    expect(page.locator('.team-view-banner')).to_contain_text("Klara Himmel's data")
+    expect(page.locator('.app-nav a:not([href="/review"])')).to_have_text(
+        ['Dashboard', 'Week', 'Month', 'Year', 'Audit', 'Team', 'Settings'])
+    page.click('.team-view-banner a:has-text("Back to the team report")')
+    expect(page).to_have_url(re.compile(r'/team/report\?team=.+&year=\d{4}'))
+    report.locator('a.report-member', has_text='Hans Dampf').click()  # the own card
+    expect(page).to_have_url(re.compile(r'/year\?year=\d{4}$'))
+    expect(page.locator('.team-view-banner')).to_have_count(0)
 
 
 @pytest.mark.parametrize('persona, tabs', [

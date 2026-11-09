@@ -59,6 +59,28 @@ export function viewedText(member: string, team: { name: string; members: Member
   return [audited[0]!.name, ` on their days in ${audited.map((item) => `${item.team} (${staysText(item.stays)})`).join(' and ')}`];
 }
 
+/** The team whose report a member belongs to: the own team if they are in it, otherwise an audited one. */
+export function memberTeam(member: string, team: { id: string; members: MemberView[] } | null,
+  audits: AuditedTeam[]): string | null {
+  if (team?.members.some((item) => item.user_id === member)) {
+    return team.id;
+  }
+  return audits.find((item) => item.members.some((one) => one.user_id === member))?.team_id ?? null;
+}
+
+/** The team report of the team, for the month or year the page shows (otherwise the current month). */
+export function reportLink(team: string, search: string): string {
+  const shown = new URLSearchParams(search);
+  const params = new URLSearchParams({ team });
+  for (const name of ['month', 'year']) {
+    const value = shown.get(name);
+    if (value) {
+      params.set(name, value);
+    }
+  }
+  return `/team/report?${params}`;
+}
+
 /** Keeps the member in all links to the team view pages, also in those the page renders later. */
 function keepMember(root: Node & ParentNode, member: string): void {
   const update = (): void => {
@@ -81,8 +103,11 @@ export async function showTeamView(doc: Document, member: string): Promise<void>
   const [team, audits] = await Promise.all([
     status.team?.team_role === 'team_admin' ? api.team(status.team.id) : null, api.audits()]);
   const [name, days] = viewedText(member, team, audits) ?? ['A member', ''];
+  const report = memberTeam(member, team, audits);
   doc.querySelector('main')?.prepend(el('div', { class: 'card team-view-banner', role: 'status' },
     'Read-only: ', el('strong', {}, `${name}'s data`), `${days}. `,
     'The overtime balance and PTO left cover the whole time. ',
+    report ? el('a', { href: reportLink(report, doc.location.search), [OWN_VIEW]: true }, 'Back to the team report') : null,
+    report ? ' · ' : null,
     el('a', { href: ownView(doc.location.pathname, doc.location.search), [OWN_VIEW]: true }, 'Back to your data')));
 }

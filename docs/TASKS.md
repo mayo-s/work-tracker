@@ -418,8 +418,8 @@ L.16 (a–i) → 9.1 (a–i).
     - [x] **L.11b** Page `/team/report` in cards: the period header, the choice of team, the tab "Audit" in the
       navigation (only for team admins and active auditors, after Year; Settings and Admin stay last); the note on who
       counts; the sentence in the members' settings
-    - [ ] **L.11c** The switch between the team and its members: a member opens their month or year report of the team
-      view for that period, with a link back in its banner
+    - [x] **L.11c** From the team to its members: a member's card opens their month or year report of the team view for
+      that period, with a link back in its banner; the viewer's own card opens their own report
     - [ ] **L.11d** CSV export (`GET /api/teams/{team_id}/report.csv`): one row per figure, semicolons, UTF-8 with a
       byte order mark, formulas neutralized
     - [ ] **L.11e** "Save as PDF": a print layout of the cards (light theme, no navigation or buttons) and the browser's

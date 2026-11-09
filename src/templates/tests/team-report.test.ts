@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { chosenTeam, otherKind, periodFromSearch, reportHref, reportTeams, stayNote } from '../ts/team-report.ts';
+import { chosenTeam, memberHref, otherKind, periodFromSearch, reportHref, reportTeams, stayNote } from '../ts/team-report.ts';
 
 const TODAY = '2026-11-09';
 const OWN = { team: { id: 't1', name: 'Platform', team_role: 'team_admin' } } as Parameters<typeof reportTeams>[0];
@@ -48,4 +48,10 @@ test('a note only for someone who was not there all period', () => {
   assert.equal(stayNote([{ joined_on: '2026-10-01', left_on: '2026-11-04' }], start, end), 'until 03.11.');
   assert.equal(stayNote([{ joined_on: '2026-11-02', left_on: '2026-11-04' }, { joined_on: '2026-11-05', left_on: null }], start, end),
     '02.11.–03.11., from 05.11.');
+});
+
+test("a member's card opens their report for the same period, the own card the own report", () => {
+  assert.equal(memberHref('m1', 'me', { kind: 'month', month: '2026-10' }), '/month?month=2026-10&member=m1');
+  assert.equal(memberHref('m1', 'me', { kind: 'year', year: 2026 }), '/year?year=2026&member=m1');
+  assert.equal(memberHref('me', 'me', { kind: 'month', month: '2026-10' }), '/month?month=2026-10');
 });

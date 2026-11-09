@@ -96,7 +96,7 @@ async function showUser(user: Element, nav: Element | null): Promise<void> {
     nav.querySelector('a[href="/settings"]')?.before(navLink('/team', 'Team'));
   }
   if (status.team?.team_role === 'team_admin' || status.auditor) {
-    nav.querySelector('a[href="/year"]')?.after(navLink('/team/report', 'Audit'));
+    nav.querySelector('a[href^="/year"]')?.after(navLink('/team/report', 'Audit'));  // the team view adds the member to it
   }
   if (status.user.role === 'admin' || status.user.role === 'root') {
     nav.append(navLink('/admin', 'Admin'));

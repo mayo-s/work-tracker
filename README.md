@@ -96,7 +96,7 @@ all at once.
   "Log out" in the navigation turns dark mode on or off.
 - `/team/report` (`?team=<id>&month=2026-10` or `&year=2026`), the tab "Audit": a summary of a team's activities in
   cards, for its team admins and auditors: hours by activity type, service and ticket and per member, without descriptions, notes or days
-  off.
+  off. A member's card opens their report in the team view for that period, which links back.
 - `/setup`, `/admin`, `/team`, `/register`, `/password`, `/2fa`: see "Start from zero" and "Login". `/components`: the
   UI components with their HTML. `/apidoc/swagger`, `/apidoc/redoc`, `/apidoc/scalar`: API documentation (spec:
   `/apidoc/openapi.json`).

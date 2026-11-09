@@ -503,8 +503,8 @@ A summary of the activities of a team, what work was done: not a look at people'
   403. An auditor of several teams, or an auditor who is also a team admin, chooses the team.
 - A month or a year, with the header of the month and year reports (previous, next, current and the date field), in
   the URL (`?team=<id>&month=2026-10` or `&year=2026`).
-- A switch between the whole team and its members. Choosing a member opens their month or year report of the team
-  view for the same period (5.7), logged as before, with a link back to the team report.
+- Each member's card links to their month or year report of the team view for the same period (5.7), logged as before,
+  whose banner links back to the team report; the viewer's own card opens their own report.
 - **Who counts**: a team admin sees the current members, from the day they joined; an auditor everyone who was in the
   team, for the days of each stay. Worked, target and overtime count those days only, up to today, with a note for
   anyone who was not there all period ("from 04.11."). The page says that a team admin's figures hold current members

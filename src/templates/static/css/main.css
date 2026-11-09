@@ -948,6 +948,23 @@ button.button-danger {
   margin: 0;
 }
 
+.report-member {
+  display: block;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.report-member:hover {
+  background: var(--color-surface);
+}
+
+.report-open {
+  display: block;
+  margin-top: var(--space-3);
+  color: var(--color-accent);
+  font-size: var(--font-size-small);
+}
+
 .report-hours {
   margin: var(--space-3) 0 0;
   padding: 0;
