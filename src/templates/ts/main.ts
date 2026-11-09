@@ -60,9 +60,14 @@ function headerEnd(header: Element): Element {
   return end;
 }
 
+function navLink(href: string, textContent: string): HTMLAnchorElement {
+  return Object.assign(document.createElement('a'), { href, textContent });
+}
+
 /** The logged-in user's first name and "Log out" in the header (nothing when the login is off). With `nav`, also the
- * Team link for team admins, the Admin link for admins, and a badge on Settings for open team invitations; without it
- * (the setup page) only name and "Log out": a new user can leave and finds the setup again after the next login. */
+ * Audit link (the team report) after Year for team admins and auditors, the Team link before Settings for team admins,
+ * the Admin link last for admins, and a badge on Settings for open team invitations; without it (the setup page) only name and "Log out": a new user can leave
+ * and finds the setup again after the next login. */
 async function showUser(user: Element, nav: Element | null): Promise<void> {
   const { api } = await import('./api.ts');
   const status = await api.authStatus();
@@ -88,10 +93,13 @@ async function showUser(user: Element, nav: Element | null): Promise<void> {
     user.querySelector('.nav-search')?.remove();
   }
   if (status.team?.team_role === 'team_admin') {
-    nav.append(Object.assign(document.createElement('a'), { href: '/team', textContent: 'Team' }));
+    nav.querySelector('a[href="/settings"]')?.before(navLink('/team', 'Team'));
+  }
+  if (status.team?.team_role === 'team_admin' || status.auditor) {
+    nav.querySelector('a[href="/year"]')?.after(navLink('/team/report', 'Audit'));
   }
   if (status.user.role === 'admin' || status.user.role === 'root') {
-    nav.append(Object.assign(document.createElement('a'), { href: '/admin', textContent: 'Admin' }));
+    nav.append(navLink('/admin', 'Admin'));
   }
   markCurrentPage(nav, window.location.pathname);
   if (status.invitations) {  // open team invitations wait in the settings

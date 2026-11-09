@@ -406,7 +406,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Whether the login is on, whether users and root exist, who is logged in (with their team and number of open invitations), whether new users can register, and whether creating root needs the setup token. */
+        /** Whether the login is on, whether users and root exist, who is logged in (with their team, number of open invitations and whether they audit a team), whether new users can register, and whether creating root needs the setup token. */
         get: operations["get__api_auth_status"];
         put?: never;
         post?: never;
@@ -1565,6 +1565,12 @@ export interface components {
              * @default 0
              */
             invitations?: number;
+            /**
+             * Auditor
+             * @description True while the logged-in user audits a team
+             * @default false
+             */
+            auditor?: boolean;
             /**
              * Setup Token
              * @description True while creating root needs the setup token (AWS Lambda)

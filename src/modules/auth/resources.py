@@ -70,12 +70,13 @@ def _user_id(req: falcon.Request) -> str:
 class AuthStatusResource(_AuthResource):
     @spec.validate(resp=Response(HTTP_200=AuthStatus), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
-        """Whether the login is on, whether users and root exist, who is logged in (with their team and number of open
-        invitations), whether new users can register, and whether creating root needs the setup token."""
+        """Whether the login is on, whether users and root exist, who is logged in (with their team, number of open
+        invitations and whether they audit a team), whether new users can register, and whether creating root needs
+        the setup token."""
         user_id = req.context.get('user_id') if self._enabled else None  # with the login off, nobody is logged in
         with self._storage.transaction() as store:
             status = self._status(store)
-            resp.media = _with_user(status, store, user_id) if user_id is not None else status
+            resp.media = _with_user(status, store, user_id, self._clock().date()) if user_id is not None else status
 
     def _status(self, store: Store) -> AuthStatus:
         users, token = store.users(), self._setup_token is not None
@@ -85,12 +86,13 @@ class AuthStatusResource(_AuthResource):
                           root_reset=token and has_root)
 
 
-def _with_user(status: AuthStatus, store: Store, user_id: str) -> AuthStatus:
-    """The logged-in user, with their team and number of open invitations."""
+def _with_user(status: AuthStatus, store: Store, user_id: str, today: dt.date) -> AuthStatus:
+    """The logged-in user, with their team, number of open invitations and whether they audit a team today."""
     membership = store.teams().membership(user_id)
     return status.model_copy(update={'user': UserView.of(store.users().get(user_id)),
                                      'team': TeamRef.of(membership) if membership else None,
-                                     'invitations': len(store.invitations().of_user(user_id))})
+                                     'invitations': len(store.invitations().of_user(user_id)),
+                                     'auditor': any(auditor.active(today) for auditor in store.auditors().of_user(user_id))})
 
 
 class LoginResource(_AuthResource):

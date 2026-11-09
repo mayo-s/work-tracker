@@ -144,9 +144,10 @@ def test_a_team_admin_views_a_member_read_only(logged_in, people):
 
 def test_a_team_admin_opens_the_team_report(logged_in):
     page = logged_in('hans')
-    page.goto('/team')
-    page.click('a:has-text("Team report")')
-    expect(page).to_have_url(re.compile(r'/team/report\?team=.+&month=\d{4}-\d{2}'))
+    page.goto('/')
+    page.click('.app-nav a:has-text("Audit")')
+    expect(page).to_have_url(re.compile(r'/team/report$'))
+    expect(page.locator('.app-nav a:has-text("Audit")')).to_have_attribute('aria-current', 'page')
     report = page.locator('#team-report')
     expect(report).to_contain_text('Platform')
     expect(report.locator('.report-cards .card h3')).to_have_text(['Hans Dampf', 'Klara Himmel'])
@@ -154,6 +155,17 @@ def test_a_team_admin_opens_the_team_report(logged_in):
     page.click('#team-report-kind')
     expect(page).to_have_url(re.compile(r'&year=\d{4}'))
     expect(page.locator('#team-report-current')).to_have_text('Current year')
+
+
+@pytest.mark.parametrize('persona, tabs', [
+    ('hans', ['Dashboard', 'Week', 'Month', 'Year', 'Audit', 'Team', 'Settings']),  # team admin
+    ('klara', ['Dashboard', 'Week', 'Month', 'Year', 'Settings', 'Admin']),  # admin and plain member: no Audit
+    ('pascal', ['Settings', 'Admin']),  # root
+])
+def test_the_tabs_in_their_order(logged_in, persona, tabs):
+    page = logged_in(persona)
+    page.goto('/settings')
+    expect(page.locator('.app-nav a:not([href="/review"])')).to_have_text(tabs)  # Review comes and goes with its items
 
 
 def test_the_dark_mode_switch_saves_the_theme(logged_in):

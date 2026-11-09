@@ -126,6 +126,7 @@ class AuthStatus(BaseModel):
     registration: bool = Field(description='True while new users can register on /register')
     team: TeamRef | None = Field(default=None, description='The team of the logged-in user')
     invitations: int = Field(default=0, description='Open team invitations of the logged-in user')
+    auditor: bool = Field(default=False, description='True while the logged-in user audits a team')
     setup_token: bool = Field(default=False, description='True while creating root needs the setup token (AWS Lambda)')
     root_reset: bool = Field(default=False, description="True on AWS Lambda once root exists: root's login can be reset "
                                                         'with a new setup token')

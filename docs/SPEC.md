@@ -288,6 +288,8 @@ corners, one accent color. Warnings are the only loud element.
 - **Negative** overtime and balance are shown as a warning (including −8:00 on a work day without
   times yet), **positive** ones in mint green, zero in normal text.
 - Warnings: a past work day without entries, a past open day and the review count.
+- Navigation: Dashboard, Week, Month, Year, Audit, Review, Team; Settings and Admin always come last, at the right. Each
+  shows only for those who have it.
 - Font: **Inter**, stored in the project (woff2 files with their OFL license); no external font or CDN
   requests. Tabular digits for times and durations, so columns line up.
 - All colors, sizes and spacings are CSS variables in one stylesheet. **Dark mode** is a second set of color
@@ -497,8 +499,7 @@ the settings at any time:
 
 A summary of the activities of a team, what work was done: not a look at people's days.
 
-- At `/team/report`, linked from the team page and from the member chooser on the dashboard. For the team admins of
-  the team and its active auditors, by the rules of the team view (5.7); admins only if they are one of these, others
+- At `/team/report`, the tab "Audit" in the navigation for those who may see it. For the team admins of the team and its active auditors, by the rules of the team view (5.7); admins only if they are one of these, others
   403. An auditor of several teams, or an auditor who is also a team admin, chooses the team.
 - A month or a year, with the header of the month and year reports (previous, next, current and the date field), in
   the URL (`?team=<id>&month=2026-10` or `&year=2026`).

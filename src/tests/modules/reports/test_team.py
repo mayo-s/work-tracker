@@ -155,7 +155,12 @@ def test_periods(app, ids, params, worked, names):
     assert (result['totals']['worked'], [member['name'] for member in result['members']]) == (worked, names)
 
 
+def auditor_flag(app, name):
+    return app.simulate_get('/api/auth/status', cookies=logged_in(app, name)).json['auditor']
+
+
 def test_only_team_admins_and_active_auditors_of_the_team(app, storage, ids):
+    assert (auditor_flag(app, 'pascal'), auditor_flag(app, 'hans')) == (True, False)  # the status shows the tab
     assert report(app, ids, 'rainer').status == falcon.HTTP_403  # a member
     assert report(app, ids, 'klara').status == falcon.HTTP_403  # a former member
     unknown = app.simulate_get(f'/api/teams/{FIRST}/report', cookies=logged_in(app, 'hans'), params=NOVEMBER)
@@ -164,6 +169,7 @@ def test_only_team_admins_and_active_auditors_of_the_team(app, storage, ids):
         store.auditors().assign(Auditor(team_id=ids['platform'], user_id=ids['pascal'], until=nov(5),
                                         assigned_by=ids['hans'], assigned_at=at(nov(2))))
     assert report(app, ids, 'pascal').status == falcon.HTTP_403  # the assignment ended yesterday
+    assert auditor_flag(app, 'pascal') is False
 
 
 @pytest.mark.parametrize('params', [{}, {'month': '2026-11', 'year': 2026}, {'month': '2026-13'}, {'year': 26}])

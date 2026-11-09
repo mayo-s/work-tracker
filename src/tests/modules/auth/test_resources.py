@@ -55,7 +55,7 @@ def test_without_a_user_pages_forward_to_login_to_create_it(app):
     result = app.simulate_get('/year', query_string='year=2025')
     assert (result.status, result.headers['location']) == (falcon.HTTP_303, '/login?next=%2Fyear%3Fyear%3D2025')
     status = {'enabled': True, 'has_users': False, 'has_root': False, 'user': None, 'registration': False,
-              'team': None, 'invitations': 0, 'setup_token': False, 'root_reset': False}
+              'team': None, 'invitations': 0, 'auditor': False, 'setup_token': False, 'root_reset': False}
     assert app.simulate_get('/api/auth/status').json == status
 
 
@@ -173,7 +173,7 @@ def test_login_off_leaves_everything_open(unclaimed):
     app = testing.TestClient(create_app(unclaimed, auth=False))
     assert app.simulate_get('/api/dashboard').status == falcon.HTTP_200
     status = {'enabled': False, 'has_users': False, 'has_root': False, 'user': None, 'registration': False,
-              'team': None, 'invitations': 0, 'setup_token': False, 'root_reset': False}
+              'team': None, 'invitations': 0, 'auditor': False, 'setup_token': False, 'root_reset': False}
     assert app.simulate_get('/api/auth/status').json == status
 
 

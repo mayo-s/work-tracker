@@ -1744,7 +1744,7 @@
     },
     "/api/auth/status": {
       "get": {
-        "summary": "Whether the login is on, whether users and root exist, who is logged in (with their team and number of open invitations), whether new users can register, and whether creating root needs the setup token.",
+        "summary": "Whether the login is on, whether users and root exist, who is logged in (with their team, number of open invitations and whether they audit a team), whether new users can register, and whether creating root needs the setup token.",
         "operationId": "get__api_auth_status",
         "description": "",
         "tags": [
@@ -5443,6 +5443,12 @@
             "description": "Open team invitations of the logged-in user",
             "title": "Invitations",
             "type": "integer"
+          },
+          "auditor": {
+            "default": false,
+            "description": "True while the logged-in user audits a team",
+            "title": "Auditor",
+            "type": "boolean"
           },
           "setup_token": {
             "default": false,
