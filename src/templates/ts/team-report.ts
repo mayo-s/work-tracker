@@ -1,8 +1,8 @@
 // Team report (/team/report): a summary of a team's activities in a month or a year, in cards (SPEC 5.12).
 
 import { api, errorText, type AuditedTeam, type AuthStatus, type TeamReport } from './api.ts';
-import { formatMonth, formatShortDate, isoDate, isoMonth, shiftMonth, type IsoDate } from './dates.ts';
-import { el } from './dom.ts';
+import { clockTime, formatMonth, formatShortDate, isoDate, isoMonth, shiftMonth, type IsoDate } from './dates.ts';
+import { button, el } from './dom.ts';
 import { monthFromSearch } from './month.ts';
 import { periodHeader, value, type Period } from './week.ts';
 import { yearFromSearch } from './year.ts';
@@ -13,7 +13,7 @@ type Hours = TeamReport['totals'];
 type Member = TeamReport['members'][number];
 type Service = TeamReport['services'][number];
 /** Who looks at which period. */
-type ReportView = { me: string | null; team: string; period: ReportPeriod };
+type ReportView = { me: string | null; period: ReportPeriod };
 
 /** The period from `?year=2026` or `?month=2026-10`, otherwise the current month. */
 export function periodFromSearch(search: string, today: IsoDate): ReportPeriod {
@@ -41,6 +41,23 @@ export function otherKind(period: ReportPeriod, today: IsoDate): ReportPeriod {
     return { kind: 'year', year: Number(period.month.slice(0, 4)) };
   }
   return { kind: 'month', month: String(period.year) === today.slice(0, 4) ? isoMonth(today) : `${period.year}-01` };
+}
+
+/** The suggested name of an exported file, the same as the CSV's, e.g. `20261109_1430_team_report_Platform`: other
+ * characters than letters, digits, `.` and `-` in the team's name become `_`. */
+export function exportFileName(team: string, now: Date): string {
+  const name = team.replace(/[^\p{L}\p{N}_.-]+/gu, '_').replace(/^_+|_+$/g, '');
+  return `${isoDate(now).replaceAll('-', '')}_${clockTime(now).replace(':', '')}_team_report_${name}`;
+}
+
+/** The browser's print dialog, where "Save as PDF" suggests the page's title as the file name. */
+function saveAsPdf(team: string): void {
+  const title = document.title;
+  document.title = exportFileName(team, new Date());
+  window.addEventListener('afterprint', () => {
+    document.title = title;
+  }, { once: true });
+  window.print();
 }
 
 /** The current period of the same kind. */
@@ -131,7 +148,6 @@ function cards(title: string, items: HTMLElement[], empty: string | null): HTMLE
 
 function reportContent(report: TeamReport, view: ReportView): (HTMLElement | null)[] {
   return [
-    el('div', { class: 'report-exports' }, el('a', { class: 'button', href: csvHref(view.team, view.period) }, 'Export CSV')),
     el('div', { class: 'card card-surface week-summary' }, el('strong', {}, report.team), ...figures(report.totals),
       report.until && report.until < report.end ? el('div', { class: 'muted' }, `counted up to ${formatShortDate(report.until)}`) : null),
     report.current_members_only ? el('p', { class: 'muted' }, 'Current members only, each from the day they joined: the total of '
@@ -166,6 +182,13 @@ function periodLinks(doc: Document, period: ReportPeriod, team: string | null, t
   kind.textContent = period.kind === 'month' ? 'Year' : 'Month';
 }
 
+/** The exports of the shown report, next to the date field. */
+function showExports(doc: Document, team: string, report: TeamReport, period: ReportPeriod): void {
+  doc.querySelector('#team-report-exports')?.replaceChildren(
+    el('a', { class: 'button', href: csvHref(team, period) }, 'Export CSV'),
+    button('Save as PDF', () => saveAsPdf(report.team), { class: 'button' }));
+}
+
 function loadReport(team: string, period: ReportPeriod): Promise<TeamReport> {
   return api.teamReport(team, periodParams(period));
 }
@@ -192,8 +215,9 @@ export async function renderTeamReportPage(doc: Document): Promise<void> {
     if (chooser) {
       doc.querySelector('.week-header')?.append(chooser);
     }
-    const view = { me: status.user?.id ?? null, team, period };
-    root.replaceChildren(...reportContent(await loadReport(team, period), view).filter((part) => part !== null));
+    const report = await loadReport(team, period);
+    root.replaceChildren(...reportContent(report, { me: status.user?.id ?? null, period }).filter((part) => part !== null));
+    showExports(doc, team, report, period);
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' }, errorText(error, 'The team report could not be loaded.')));
   }

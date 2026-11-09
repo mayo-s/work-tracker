@@ -519,7 +519,7 @@ A summary of the activities of a team, what work was done: not a look at people'
 - **Not shown**: entry descriptions and day notes, sick days and other days off, the overtime balance and PTO left.
   The service and ticket hours of one person are in their team view only.
 - The team report is not logged: only looking at a member's own reports is (5.7).
-- **Export** of the shown period, only of this report. The suggested file name is the date and time of the export, then
+- **Export** of the shown period, only of this report, with the buttons right of the date field. The suggested file name is the date and time of the export, then
   the team's name, e.g. `20261109_1430_team_report_Platform.csv`; other characters than letters, digits, `.` and `-` in
   the name become `_`:
   - CSV: one row per figure, with the columns Section, Name, Figure and Duration (`h:mm`), e.g.
@@ -529,7 +529,9 @@ A summary of the activities of a team, what work was done: not a look at people'
     columns with the umlauts intact. A name starting with `=`, `+`, `-`, `@`, a tab or a line break gets a leading `'`,
     so a spreadsheet does not run it as a formula; a negative duration such as `-2:00` stays as it is.
   - PDF: "Save as PDF" opens the browser's print dialog, with a print layout of the cards in the light theme and
-    without the navigation and buttons. The app makes no PDF itself and needs no new package.
+    without the navigation and buttons, no card split across two pages. The app makes no PDF itself and needs no new
+    package; the file name comes from the page's title, which the browser may still change. Every page prints in the
+    light theme without navigation.
 
 ## 6. Import (spreadsheet CSV), removed
 

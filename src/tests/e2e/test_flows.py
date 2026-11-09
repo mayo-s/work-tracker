@@ -154,9 +154,19 @@ def test_a_team_admin_opens_the_team_report(logged_in):
     expect(report.locator('.report-cards .card h3')).to_have_text(['Hans Dampf', 'Klara Himmel'])
     expect(report).to_contain_text('Current members only')
     with page.expect_download() as download:
-        report.locator('a:has-text("Export CSV")').click()
+        page.locator('#team-report-exports a:has-text("Export CSV")').click()
     assert re.fullmatch(r'\d{8}_\d{4}_team_report_Platform\.csv', download.value.suggested_filename)
     assert 'Member;Klara Himmel;Worked;' in Path(download.value.path()).read_text(encoding='utf-8-sig')
+    page.evaluate('window.print = () => { window.printedAs = document.title; dispatchEvent(new Event("afterprint")); }')
+    page.locator('#team-report-exports button:has-text("Save as PDF")').click()
+    assert re.fullmatch(r'\d{8}_\d{4}_team_report_Platform', page.evaluate('window.printedAs'))
+    expect(page).to_have_title('Team report · Work Tracker')
+    page.emulate_media(media='print')  # light, without navigation and buttons, though the browser is dark
+    expect(page.locator('.app-header')).to_be_hidden()
+    expect(page.locator('.report-exports')).to_be_hidden()
+    expect(page.locator('.report-open').first).to_be_hidden()
+    assert page.evaluate('getComputedStyle(document.body).backgroundColor') == 'rgb(255, 255, 255)'
+    page.emulate_media(media='screen')
     page.click('#team-report-kind')
     expect(page).to_have_url(re.compile(r'&year=\d{4}'))
     expect(page.locator('#team-report-current')).to_have_text('Current year')

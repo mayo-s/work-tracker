@@ -60,9 +60,10 @@
   --header-height: 3.5rem;
 }
 
-/* Dark mode: the same roles in dark; both blocks hold the same values (kept equal by a test) */
+/* Dark mode: the same roles in dark; both blocks hold the same values (kept equal by a test). On screen only: printed
+   pages use the light colors. */
 
-@media (prefers-color-scheme: dark) {
+@media screen and (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --color-text: #e3e8ee;
     --color-muted: #9aa6b2;
@@ -82,22 +83,24 @@
   }
 }
 
-:root[data-theme='dark'] {
-  --color-text: #e3e8ee;
-  --color-muted: #9aa6b2;
-  --color-background: #16191d;
-  --color-surface: #1f242a;
-  --color-border: #333c46;
-  --color-accent: #6ea2f0;
-  --color-accent-light: #1e2f48;
-  --color-warning: #f06a93;
-  --color-warning-text: #ff8fb0;
-  --color-warning-light: #3a1f2b;
-  --color-positive: #4cc59a;
-  --color-positive-light: #173a2f;
-  --color-on-accent: #10233f;
+@media screen {
+  :root[data-theme='dark'] {
+    --color-text: #e3e8ee;
+    --color-muted: #9aa6b2;
+    --color-background: #16191d;
+    --color-surface: #1f242a;
+    --color-border: #333c46;
+    --color-accent: #6ea2f0;
+    --color-accent-light: #1e2f48;
+    --color-warning: #f06a93;
+    --color-warning-text: #ff8fb0;
+    --color-warning-light: #3a1f2b;
+    --color-positive: #4cc59a;
+    --color-positive-light: #173a2f;
+    --color-on-accent: #10233f;
 
-  color-scheme: dark;
+    color-scheme: dark;
+  }
 }
 
 /* Base */
@@ -940,12 +943,17 @@ button.button-danger {
   margin-top: 0;
 }
 
+/* The period buttons, then a little apart the exports of that period */
+.report-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+}
+
 .report-exports {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
 }
 
 .report-cards h3 {
@@ -1692,5 +1700,23 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
 
   .entry-editor-fields .field-note {
     grid-column: 1 / -1;
+  }
+}
+
+/* Printed (the team report's "Save as PDF"): the content only, without navigation and buttons, and no card split
+   across two pages; last, so it overrides the rules above */
+
+@media print {
+  .app-header,
+  .skip-link,
+  .week-nav,
+  .member-chooser,
+  .report-exports,
+  .report-open {
+    display: none;
+  }
+
+  .card {
+    break-inside: avoid;
   }
 }
