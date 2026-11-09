@@ -619,3 +619,9 @@ erDiagram
         TEXT detail
     }
 ```
+
+## License
+
+Dual licensed: free for personal and noncommercial use under the
+[PolyForm Noncommercial License 1.0.0](LICENSE); any commercial use needs a commercial license, see
+[LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md).

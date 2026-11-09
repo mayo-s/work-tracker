@@ -421,10 +421,16 @@ L.16 (a–i) → 9.1 (a–i).
     - [x] **L.11c** From the team to its members: a member's card opens their month or year report of the team view for
       that period, with a link back in its banner; the viewer's own card opens their own report
     - [x] **L.11d** CSV export (`GET /api/teams/{team_id}/report.csv`): one row per figure, semicolons, UTF-8 with a
-      byte order mark, formulas neutralized; the period and the page's notes as rows; the button "Export CSV" on the page
+      byte order mark, formulas neutralized; the period and the page's notes as rows; the button "Export CSV" on the
+      page
     - [x] **L.11e** "Save as PDF": a print layout of the cards (light theme, no navigation or buttons) and the browser's
       print dialog, with the same file name as the CSV (`20261109_1430_team_report_Platform`)
 - [x] **L.12** Clean up the review's import parts once no imported data needs them: guessed tickets and their splits,
   the original spreadsheet line, weekend-hour day flags (storage on both backends, export format, the split and flag
   endpoints)
 - [ ] **L.13** Burger menu: move Settings and Admin from the navigation into a burger menu
+- [ ] **L.14** Imprint: as required by German law. Personal info stored in Parameter Store.
+- [ ] **L.15** Mobile view: the app is probably desktop first and will not change, but i'd like to offer also a clean
+      mobile view.
+- [ ] **L.16** custom domain: dev.schu3tz.de (dev) and schu3tz.de (prod)
+
