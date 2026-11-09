@@ -56,6 +56,27 @@ def test_record_a_day_then_add_and_change_an_entry(logged_in):
     expect(page.locator('.entry', has_text='TNG-5882')).to_contain_text('2:00')
 
 
+def test_on_phones_the_week_is_a_card_per_day(logged_in):
+    page = logged_in('hans')
+    page.set_viewport_size({'width': 390, 'height': 844})
+    page.goto('/week?week=2026-W44')
+    card = page.locator('.day-card', has=page.locator('h2', has_text='Mon 26.10.'))
+    page.click('[aria-label="Edit Mon 26.10."]')
+    page.fill('#day-start', '08:00')
+    page.fill('#day-end', '16:30')
+    page.click('.day-editor button:has-text("Save")')
+    expect(card.locator('.day-card-line')).to_have_text(['Times 08:00–16:30 Break 0:30 legal',
+                                                         'Worked 8:00 Target 8:00 Overtime 0:00'])
+    card.locator('button:has-text("+ Add entry")').click()
+    page.fill('#entry-duration', '1.5')
+    page.fill('#entry-ticket_key', 'tng-5882')
+    page.click('.entry-editor button:has-text("Save")')
+    expect(card.locator('.entry', has_text='TNG-5882')).to_contain_text('1:30')
+    assert page.evaluate('document.documentElement.scrollWidth') == 390  # nothing scrolls sideways
+    page.set_viewport_size({'width': 1280, 'height': 900})
+    expect(page.locator('.week-table')).to_contain_text('08:00–16:30')  # the table again on a wider screen
+
+
 def test_start_and_end_now_on_today(logged_in):
     page = logged_in('hans')
     page.clock.set_fixed_time('2026-10-28T08:12:00')

@@ -436,7 +436,7 @@ L.16 (a–i) → 9.1 (a–i).
   the desktop does not change), in steps:
     - [x] **L.15a** Header: one row with name, review count and "Menu"; the menu holds the navigation, search, name,
       dark mode switch and "Log out"
-    - [ ] **L.15b** Week: one card per day (day, type, times and break; worked, target, overtime; entries), forms in
+    - [x] **L.15b** Week: one card per day (day, type, times and break; worked, target, overtime; entries), forms in
       the card
     - [ ] **L.15c** Tables of the other pages as blocks of label and value, the month report's hours on the ticket's
       line

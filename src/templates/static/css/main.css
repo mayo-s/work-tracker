@@ -651,6 +651,51 @@ pre {
   white-space: pre-line;
 }
 
+/* The week on phones: a card per day (SPEC 5.5a) */
+
+.day-cards {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card.day-card {
+  padding: var(--space-4);
+}
+
+.day-card > * + * {
+  margin-top: var(--space-3);
+}
+
+.day-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.day-card-head > .button-small {  /* Edit */
+  margin-left: auto;
+}
+
+.day-card-title h2 {
+  margin: 0;
+  font-size: var(--font-size-base);
+}
+
+.day-card > .day-card-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin-block: var(--space-2) 0;
+}
+
+.day-card > .entries {  /* a line between the day and its entries */
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: var(--border);
+}
+
 .entries {
   margin: 0;
   padding: 0;

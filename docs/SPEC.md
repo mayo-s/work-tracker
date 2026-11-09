@@ -314,9 +314,10 @@ below 40rem (640 px), where the narrow-screen rules start; the desktop does not 
   name, the dark mode switch and "Log out"; Escape or a second tap closes it, and focus returns to the button. Pages
   without navigation (login, setup, imprint, …) show only what they show on the desktop. TASKS.md L.13 later decides
   what the desktop moves into a menu.
-- **Week**: one card per day instead of the table: the day, its type and times with the break on the first line,
-  worked, target and overtime on the second, then its entries with their actions, "Start now" / "End now" on today
-  and "+ Add entry". The day and entry forms open in the card, one field per row.
+- **Week**: one card per day instead of the table: the day (with holiday and warnings), its type and "Edit" on top,
+  then times ("Start now" / "End now" on today) and break, then worked, target and overtime, then its note, its
+  entries with their actions and "+ Add entry". The day and entry forms open in the card, one field per row. Turning
+  the phone switches between cards and table, but not while a form is open.
 - **Tables** on all other pages (month, year, search, review, settings, team, team report, admin) do not scroll
   sideways: each row becomes a block with its cells as label and value. The month report puts a ticket's hours on its
   line and the descriptions below.

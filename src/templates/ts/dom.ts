@@ -31,6 +31,9 @@ export function button(label: string, onClick: () => void, attributes: Attribute
   return element;
 }
 
+/** Phones (SPEC 5.5a): the width below which pages show their mobile view, as in main.css. */
+export const PHONE = '(max-width: 40rem)';
+
 /** A table in an area of its own that scrolls sideways when the table is wider than the screen, instead of the page
  * (WCAG 1.4.10 Reflow); while it scrolls, the area takes the focus, so it scrolls with the keyboard too. */
 export function scrolling(table: HTMLTableElement): HTMLElement {

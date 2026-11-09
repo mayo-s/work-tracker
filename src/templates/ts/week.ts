@@ -1,4 +1,4 @@
-// Week view (/): the days of a week with times, balance and task entries (read-only).
+// Week view (/week): the days of a week with times, balance and task entries; a table, on phones a card per day.
 
 import {
   api, errorText, type ActivityType, type DayView, type EntryView, type PeriodTotals, type ServiceChoice, type WeekReport,
@@ -8,7 +8,7 @@ import { addDays, formatDate, formatDay, isoDate, isoWeek, isValidWeek, mondayOf
 import { clockedInput, dayEditor } from './day-editor.ts';
 import { daysOffForm } from './days-off.ts';
 import { ask } from './dialog.ts';
-import { button, el, scrolling } from './dom.ts';
+import { button, el, PHONE, scrolling } from './dom.ts';
 import { entryEditor, type EntryEditorOptions } from './entry-editor.ts';
 import { historyPanel } from './history.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
@@ -222,11 +222,16 @@ function entryItem(entry: EntryView, view: View): HTMLElement {
   );
 }
 
+/** The holiday and the warnings of a day, under its date. */
+function dayNotes(day: DayView, warnings: string[]): (HTMLElement | null)[] {
+  return [day.holiday ? el('div', { class: 'muted' }, day.holiday) : null,
+    ...warnings.map((warning) => el('div', {}, el('span', { class: 'badge warning' }, warning)))];
+}
+
 function dayCell(day: DayView, warnings: string[], today: IsoDate): HTMLElement {
   return el('td', {},
     day.date === today ? el('strong', {}, formatDay(day.date, day.weekday)) : formatDay(day.date, day.weekday),
-    day.holiday ? el('div', { class: 'muted' }, day.holiday) : null,
-    ...warnings.map((warning) => el('div', {}, el('span', { class: 'badge warning' }, warning))),
+    ...dayNotes(day, warnings),
   );
 }
 
@@ -237,16 +242,30 @@ function clockButton(day: DayView, view: View): HTMLElement | null {
     { class: 'button-small primary clock-button', 'data-opens': `clock-${day.date}` });
 }
 
-/** Start and end; an open day shows the end that meets its target instead. The button sits here, as this column stays on
- * screen on narrow screens, where the table scrolls sideways. */
-function timesCell(day: DayView, view: View): HTMLElement {
+/** Start and end; an open day shows the end that meets its target instead, and today "Start now" or "End now". */
+function times(day: DayView, view: View): (HTMLElement | null)[] {
   const clock = clockButton(day, view);
   if (!day.start) {
-    return el('td', {}, el('span', { class: 'muted' }, '—'), clock);
+    return [el('span', { class: 'muted' }, '—'), clock];
   }
-  return day.end ? el('td', {}, el('span', { class: 'num' }, `${day.start}–${day.end}`))
-    : el('td', {}, el('span', { class: 'num' }, `${day.start}–`), day.best_end ? el('span',
-      { class: 'num muted', title: 'The end that meets the target, without overtime or loss' }, ` best ${day.best_end}`) : null, clock);
+  return day.end ? [el('span', { class: 'num' }, `${day.start}–${day.end}`)]
+    : [el('span', { class: 'num' }, `${day.start}–`), day.best_end ? el('span',
+      { class: 'num muted', title: 'The end that meets the target, without overtime or loss' }, ` best ${day.best_end}`) : null, clock];
+}
+
+/** The break; `legal` when it is the legal minimum, as none was entered. */
+function breakTime(day: DayView): (HTMLElement | string)[] {
+  return [day.break_time ?? '', day.break_default ? el('span', { class: 'muted' }, ' legal') : ''];
+}
+
+function typeBadge(day: DayView): HTMLElement | null {
+  return day.day_type === 'work' ? null : el('span', { class: 'badge' }, dayTypeLabel(day));
+}
+
+function editDayButton(day: DayView, view: View): HTMLElement | null {
+  const editingDay = view.editing?.kind === 'day' && view.editing.date === day.date;
+  return editingDay || view.readOnly ? null : button('Edit', () => view.actions.edit({ kind: 'day', date: day.date }),
+    { 'aria-label': `Edit ${formatDay(day.date, day.weekday)}`, 'data-opens': `day-${day.date}` });
 }
 
 function rowClass(day: DayView, warning: boolean, today: IsoDate): string | null {
@@ -265,18 +284,15 @@ function dayRow(day: DayView, warnings: string[], view: View): HTMLElement {
   if (day.in_team === false) {
     return outsideTeamRow(day, view);
   }
-  const editingDay = view.editing?.kind === 'day' && view.editing.date === day.date;
-  const edit = editingDay || view.readOnly ? null : button('Edit', () => view.actions.edit({ kind: 'day', date: day.date }),
-    { 'aria-label': `Edit ${formatDay(day.date, day.weekday)}`, 'data-opens': `day-${day.date}` });
   return el('tr', { class: rowClass(day, warnings.length > 0, view.today) },
     dayCell(day, warnings, view.today),
-    el('td', {}, day.day_type === 'work' ? null : el('span', { class: 'badge' }, dayTypeLabel(day))),
-    timesCell(day, view),
-    el('td', { class: 'num' }, day.break_time ?? '', day.break_default ? el('span', { class: 'muted' }, ' legal') : null),
+    el('td', {}, typeBadge(day)),
+    el('td', {}, ...times(day, view)),
+    el('td', { class: 'num' }, ...breakTime(day)),
     el('td', { class: 'num' }, day.worked),
     el('td', { class: 'num muted' }, day.target),
     el('td', { class: 'num' }, value(day.overtime, true)),
-    el('td', { class: 'row-actions' }, edit),
+    el('td', { class: 'row-actions' }, editDayButton(day, view)),
   );
 }
 
@@ -290,27 +306,69 @@ function newEntry(day: DayView, view: View): HTMLElement {
     { 'data-opens': `add-${day.date}` });
 }
 
+/** The note, the entries and "+ Add entry" of a day. */
+function details(day: DayView, entries: EntryView[], view: View): (HTMLElement | null)[] {
+  return [day.note ? el('p', { class: 'day-note muted' }, day.note) : null,
+    entries.length ? el('ul', { class: 'entries' }, ...entries.map((entry) => entryItem(entry, view))) : null,
+    view.readOnly ? null : newEntry(day, view)];
+}
+
 function detailsRow(day: DayView, entries: EntryView[], className: string | null, view: View): HTMLElement {
   return el('tr', { class: ['day-details', className].filter(Boolean).join(' ') },
-    el('td', { colspan: COLUMNS },
-      day.note ? el('p', { class: 'day-note muted' }, day.note) : null,
-      entries.length ? el('ul', { class: 'entries' }, ...entries.map((entry) => entryItem(entry, view))) : null,
-      view.readOnly ? null : newEntry(day, view)));
+    el('td', { colspan: COLUMNS }, ...details(day, entries, view)));
+}
+
+/** A day's entries and warnings: "No entries" on a past work day without any, "No end" on a past open day. */
+function dayState(day: DayView, view: View): { entries: EntryView[]; warnings: string[] } {
+  const entries = view.data.entries.get(day.date) ?? [];
+  return { entries, warnings: [needsWarning(day, entries, view.today, view.data.workMode) ? 'No entries' : '',
+    leftOpen(day, view.today) ? 'No end' : ''].filter(Boolean) };
+}
+
+function openDayEditor(day: DayView, view: View): HTMLElement | null {
+  return view.editing?.kind === 'day' && view.editing.date === day.date
+    ? dayEditor(day, view.actions.changed, view.actions.cancel) : null;
 }
 
 function dayRows(day: DayView, view: View): HTMLElement[] {
-  const entries = view.data.entries.get(day.date) ?? [];
-  const warnings = [needsWarning(day, entries, view.today, view.data.workMode) ? 'No entries' : '',
-    leftOpen(day, view.today) ? 'No end' : ''].filter(Boolean);
+  const { entries, warnings } = dayState(day, view);
   const rows = [dayRow(day, warnings, view)];
-  if (view.editing?.kind === 'day' && view.editing.date === day.date) {
-    rows.push(el('tr', { class: 'day-editor-row' },
-      el('td', { colspan: COLUMNS }, dayEditor(day, view.actions.changed, view.actions.cancel))));
+  const editor = openDayEditor(day, view);
+  if (editor) {
+    rows.push(el('tr', { class: 'day-editor-row' }, el('td', { colspan: COLUMNS }, editor)));
   }
   if (!view.readOnly || entries.length) {
     rows.push(detailsRow(day, entries, rowClass(day, warnings.length > 0, view.today), view));
   }
   return rows;
+}
+
+/** On phones (SPEC 5.5a) a day is a card: its date, type and "Edit"; times and break; worked, target and overtime;
+ * then the open form, the note, the entries and "+ Add entry". */
+function dayCard(day: DayView, view: View): HTMLElement {
+  const { entries, warnings } = dayState(day, view);
+  const title = el('div', { class: 'day-card-title' }, el('h2', {}, formatDay(day.date, day.weekday)), ...dayNotes(day, warnings));
+  const className = ['card day-card', rowClass(day, warnings.length > 0, view.today)].filter(Boolean).join(' ');
+  if (day.in_team === false) {
+    return el('li', { class: className }, title, el('p', { class: 'muted' }, 'Not in this team'));
+  }
+  const label = (text: string): HTMLElement => el('span', { class: 'muted' }, text);
+  return el('li', { class: className },
+    el('div', { class: 'day-card-head' }, title, typeBadge(day), editDayButton(day, view)),
+    // the spaces between the parts are for screen readers and copied text; the layout spaces them itself
+    el('p', { class: 'day-card-line' }, el('span', {}, label('Times '), ...times(day, view)),
+      ...(day.break_time ? [' ', el('span', {}, label('Break '), el('span', { class: 'num' }, ...breakTime(day)))] : [])),
+    el('p', { class: 'day-card-line' }, el('span', {}, label('Worked '), el('span', { class: 'num' }, day.worked)), ' ',
+      el('span', {}, label('Target '), el('span', { class: 'num' }, day.target)), ' ',
+      el('span', {}, label('Overtime '), value(day.overtime, true))),
+    openDayEditor(day, view),
+    ...(view.readOnly && !entries.length ? [] : details(day, entries, view)),
+  );
+}
+
+function dayCards(view: View): HTMLElement {
+  return el('ol', { class: 'day-cards', 'aria-label': 'Days' },
+    ...shownDays(view.data.days, view.data.entries, view.editing).map((day) => dayCard(day, view)));
 }
 
 /** Days shown: work days, other days with data, and another day being edited. */
@@ -373,7 +431,8 @@ export async function renderWeekPage(doc: Document): Promise<void> {
       return;
     }
     const view: View = { data, today, editing, history, actions, readOnly: member !== null };
-    root.replaceChildren(periodSummary(data.report.totals), dayTable(view), weekendLinks(view) ?? '');
+    root.replaceChildren(periodSummary(data.report.totals), phone.matches ? dayCards(view) : dayTable(view),
+      weekendLinks(view) ?? '');
     const form = root.querySelector<HTMLElement>('form input:not([type="radio"]):not(:disabled), form select');
     const opener = returnFocus && (root.querySelector<HTMLElement>(`[data-opens="${returnFocus.key}"]`)
       ?? root.querySelector<HTMLElement>(`[data-opens="add-${returnFocus.date}"]`));  // e.g. after deleting an entry
@@ -425,6 +484,13 @@ export async function renderWeekPage(doc: Document): Promise<void> {
     },
   };
 
+  // Cards on phones, the table on wider screens; a turned phone keeps an open form as it is, until it closes
+  const phone = doc.defaultView!.matchMedia(PHONE);
+  phone.addEventListener('change', () => {
+    if (!editing) {
+      draw();
+    }
+  });
   if (member) {
     doc.querySelector('#week-book-days-off')?.remove();  // nothing is booked in the team view
   } else {

@@ -111,7 +111,8 @@ is asked about as minutes. Company half days (24.12., 31.12.) take 0.5 PTO by th
 (`/?week=…`, `/lists`). All pages meet WCAG 2.2 AA in both themes (axe-core) and on narrow screens or zoomed in down
 to 320 CSS px, where wide tables scroll sideways in their own area; Escape closes inline forms.
 On phones (below 40rem, SPEC 5.5a) the header is one row with the name, the review count and "Menu", which opens the
-navigation, search, name, dark mode switch and "Log out" below it; the desktop does not change.
+navigation, search, name, dark mode switch and "Log out" below it; the desktop does not change. The week shows a
+card per day there (times and break, worked, target and overtime, then the entries), with its forms in the card.
 
 ## Deploy to AWS
 
