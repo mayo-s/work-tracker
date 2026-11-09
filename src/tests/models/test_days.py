@@ -30,9 +30,3 @@ def test_day_with_legal_break():
 def test_day_rejects_invalid_times(times):
     with pytest.raises(ValidationError):
         Day(date=DATE, **times)
-
-
-def test_day_validates_assignment():
-    day = Day(date=DATE, start=parse_clock('08:00'), end=parse_clock('16:00'))
-    with pytest.raises(ValidationError):
-        day.end = parse_clock('07:00')

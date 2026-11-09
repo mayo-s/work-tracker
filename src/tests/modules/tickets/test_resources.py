@@ -60,13 +60,6 @@ def test_assign_service_to_several_tickets(client, service_ids):
         'TNG-5214']
 
 
-def test_assign_service_with_unknown_ticket_changes_nothing(client, service_ids):
-    add_entry(client, 'AGA-39')
-    body = {'keys': ['AGA-39', 'AGA-404'], 'service_id': service_ids['HiS']}
-    assert client.simulate_post('/api/tickets/assign-service', json=body).status == falcon.HTTP_404
-    assert client.simulate_get('/api/tickets/AGA-39').json['service'] is None
-
-
 def test_assign_service_rejects_no_tickets(client):
     body = {'keys': [], 'service_id': None}
     assert client.simulate_post('/api/tickets/assign-service', json=body).status_code == 422

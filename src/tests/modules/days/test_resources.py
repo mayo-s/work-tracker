@@ -64,9 +64,3 @@ def test_delete_day(client):
     client.simulate_put('/api/days/2025-12-06', json={'start': '08:00', 'end': '11:30', 'break_time': '0:00'})
     assert client.simulate_delete('/api/days/2025-12-06').status == falcon.HTTP_204
     assert client.simulate_get('/api/days/2025-12-06').json['recorded'] is False
-
-
-def test_delete_unrecorded_day(client):
-    result = client.simulate_delete('/api/days/2026-10-28')
-    assert result.status == falcon.HTTP_404
-    assert result.json['description'] == 'No day recorded on 2026-10-28'

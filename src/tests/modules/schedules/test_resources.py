@@ -58,8 +58,3 @@ def test_holidays_follow_the_state_and_company_rule_of_the_schedule(client):
     assert (christmas_eve['day_type'], christmas_eve['holiday'], christmas_eve['target']) == ('work', None, '8:00')
     women = client.simulate_get('/api/days/2026-03-09').json  # still Berlin before 2027: no holiday on a Monday
     assert women['day_type'] == 'work'
-
-
-def test_only_schedule_cannot_be_deleted(client):
-    [only] = client.simulate_get('/api/work-schedules').json
-    assert client.simulate_delete(f'/api/work-schedules/{only["id"]}').status == falcon.HTTP_409

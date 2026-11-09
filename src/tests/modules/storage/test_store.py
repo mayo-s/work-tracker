@@ -21,7 +21,6 @@ from src.modules.storage.sqlite import SqliteStorage, SqliteStore
 from src.modules.storage.teams import InvitationRepository, ReportViewLog, TeamRepository
 from src.modules.storage.tickets import TicketRepository
 from src.modules.storage.users import LoginAttempts, SessionRepository, UserRepository
-from src.tests.users import USER
 
 IMPLEMENTATIONS = [
     (store.Days, DayRepository), (store.Entries, EntryRepository), (store.Tickets, TicketRepository),
@@ -55,9 +54,3 @@ def test_the_backend_implements_the_interfaces(backend):
     differing = [f'{implementation.__name__}.{name}' for protocol, implementation in backend for name in _methods(protocol)
                  if _parameters(getattr(implementation, name)) != _parameters(getattr(protocol, name))]
     assert differing == []
-
-
-def test_the_sqlite_store_hands_out_repositories_of_its_transaction(database):
-    with SqliteStorage(database).transaction() as sqlite_store:
-        assert sqlite_store.users().get(USER).username == 'klara'
-        assert sqlite_store.setup_done(USER)

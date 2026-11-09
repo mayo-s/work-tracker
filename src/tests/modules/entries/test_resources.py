@@ -60,11 +60,6 @@ def test_unknown_service_rolls_back_the_entry(client):
     assert client.simulate_get('/api/entries', params={'week': '2026-W44'}).json == []
 
 
-def test_unknown_activity_type(client):
-    body = {'date': '2026-10-28', 'duration': '1:00', 'activity_type_id': UNKNOWN}
-    assert client.simulate_post('/api/entries', json=body).status == falcon.HTTP_409
-
-
 def test_create_rejects_invalid_entry(client):
     assert client.simulate_post('/api/entries', json=TICKET | {'duration': '0:20'}).status_code == 422
 

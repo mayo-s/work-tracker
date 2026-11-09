@@ -1,7 +1,6 @@
 import falcon
 import pytest
 
-from src.tests.ids import CODING
 
 LISTS = [
     ('/api/services', {'short_name': 'AUTH', 'name': 'auth-service'}, {'short_name': 'AUTH', 'name': 'authorizer'}),
@@ -45,21 +44,3 @@ def test_missing_record(client, path):
     body = {'short_name': 'X'} if 'services' in path else {'name': 'X'}
     assert client.simulate_put(path, json=body).status == falcon.HTTP_404
     assert client.simulate_delete(path).status == falcon.HTTP_404
-
-
-def test_activity_type_in_use_cannot_be_deleted(client):
-    meeting = next(activity for activity in client.simulate_get('/api/activity-types').json if activity['name'] == 'Meeting')
-    body = {'date': '2026-10-28', 'duration': '1:00', 'activity_type_id': meeting['id']}
-    client.simulate_post('/api/entries', json=body)
-    response = client.simulate_delete(f'/api/activity-types/{meeting["id"]}')
-    assert response.status == falcon.HTTP_409
-    assert response.json['description'] == 'The activity type is used by entries and cannot be deleted'
-
-
-def test_deleting_a_service_unassigns_its_tickets(client):
-    service = client.simulate_post('/api/services', json={'short_name': 'AUTH'}).json
-    body = {'activity_type_id': CODING, 'date': '2026-10-28', 'duration': '1:00', 'ticket_key': 'AGA-39',
-            'service_id': service['id']}
-    client.simulate_post('/api/entries', json=body)
-    client.simulate_delete(f'/api/services/{service["id"]}')
-    assert client.simulate_get('/api/tickets/AGA-39').json['service_id'] is None

@@ -1,4 +1,4 @@
-"""WCAG 2.2 AA (SPEC 6, TASKS.md 6.5): axe-core finds no violation on the pages, in the light and the dark theme."""
+"""WCAG 2.2 AA (SPEC 5.5, TASKS.md 6.5): axe-core finds no violation on the pages, in the light and the dark theme."""
 
 from pathlib import Path
 

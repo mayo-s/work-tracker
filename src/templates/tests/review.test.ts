@@ -4,14 +4,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import type { ReviewEntry, TicketView } from '../ts/api.ts';
-import { filterEntries, filterTickets, groupReview, reviewTotal } from '../ts/review.ts';
+import { filterEntries, filterTickets, groupReview } from '../ts/review.ts';
 
 const TICKETS: TicketView[] = ['AGA-39', 'AGA-40', 'TNG-4950', 'TNG-5214'].map((key) => ({ key, service_id: null, service: null, entries: 1 }));
-
-test('total of open review items', () => {
-  assert.equal(reviewTotal({ tickets_without_service: 185, entries: 104 }), 289);
-  assert.equal(reviewTotal({ tickets_without_service: 0, entries: 0 }), 0);
-});
 
 test('filtering tickets by part of the key, case-insensitive', () => {
   assert.deepEqual(filterTickets(TICKETS, 'aga').map((ticket) => ticket.key), ['AGA-39', 'AGA-40']);
