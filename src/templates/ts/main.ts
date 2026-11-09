@@ -34,6 +34,7 @@ const PAGES: Record<string, () => Promise<void>> = {
   admin: async () => (await import('./admin.ts')).renderAdminPage(document),
   team: async () => (await import('./team.ts')).renderTeamPage(document),
   'team-report': async () => (await import('./team-report.ts')).renderTeamReportPage(document),
+  imprint: async () => (await import('./imprint.ts')).renderImprintPage(document),
 };
 
 /** Shows the Review link with the number of open review items while there are any (SPEC 5.4); the review page shows
@@ -111,7 +112,7 @@ async function showUser(user: Element, nav: Element | null): Promise<void> {
 
 const page = document.querySelector<HTMLElement>('#app')?.dataset.page;
 const nav = document.querySelector('.app-nav');
-if (nav && !['login', 'register', 'setup', 'password', 'two-factor'].includes(page ?? '')) {
+if (nav && !['login', 'register', 'setup', 'password', 'two-factor', 'imprint'].includes(page ?? '')) {
   markCurrentPage(nav, window.location.pathname);
   if (page === 'review') {
     nav.querySelector<HTMLElement>('a[href="/review"]')!.hidden = false;

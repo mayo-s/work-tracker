@@ -429,8 +429,15 @@ L.16 (a–i) → 9.1 (a–i).
   the original spreadsheet line, weekend-hour day flags (storage on both backends, export format, the split and flag
   endpoints)
 - [ ] **L.13** Burger menu: move Settings and Admin from the navigation into a burger menu
-- [ ] **L.14** Imprint: as required by German law. Personal info stored in Parameter Store.
+- [x] **L.14** Imprint (SPEC 5.13): `/imprint` in German (§ 5 DDG), open to everyone at any time, linked as "Imprint"
+  in every page's footer; name, postal address and e-mail from the SSM parameter `/work-tracker-<stage>/imprint`
+  (locally `$WORK_TRACKER_IMPRINT`) through the open `GET /api/imprint`; "not configured" without them
 - [ ] **L.15** Mobile view: the app is probably desktop first and will not change, but i'd like to offer also a clean
-      mobile view.
-- [ ] **L.16** custom domain: dev.schu3tz.de (dev) and schu3tz.de (prod)
+  mobile view.
+- [ ] **L.16** new contact form and support role: a user can be assigned the support role by admins. When other users
+  submit issues via the new contact page, support role users can view these and act. The contact page is the imprint's
+  second fast way of contact (SPEC 5.13): it is open to visitors without login too, and the imprint links to it.
+- [ ] **L.17** custom domain: dev.schu3tz.de (dev) and schu3tz.de (prod)
+- [ ] **L.18** Privacy policy (Datenschutzerklärung, GDPR Art. 13): what personal data the app keeps, why and for how
+  long, linked next to the imprint in the footer
 

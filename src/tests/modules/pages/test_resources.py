@@ -10,6 +10,7 @@ def test_render_page_fills_the_frame():
     assert '<title>Week · Work Tracker</title>' in html
     assert '<main id="app" data-page="week" tabindex="-1">' in html
     assert '<section id="week"' in html
+    assert '<footer class="app-footer">\n    <a href="/imprint">Imprint</a>' in html  # on every page (SPEC 5.13)
     assert '{{' not in html
 
 
@@ -97,6 +98,7 @@ def test_main_navigation_links_all_pages(client):
     ('/review', 'review', 'Review', 'id="review-status"'),
     ('/settings', 'settings', 'Settings', 'id="settings-status"'),
     ('/components', 'components', 'Component gallery', 'class="story"'),
+    ('/imprint', 'imprint', 'Impressum', 'id="imprint"'),
 ])
 def test_pages(client, path, page, title, element):
     result = client.simulate_get(path)

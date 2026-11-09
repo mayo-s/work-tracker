@@ -125,6 +125,10 @@ body {
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height);
   -webkit-font-smoothing: antialiased;
+  display: flex;  /* the footer at the bottom of the window, also when the page is shorter */
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;  /* without the browser's toolbars on phones */
 }
 
 h1,
@@ -245,9 +249,24 @@ main:focus {
 }
 
 #app {
+  flex: 1 0 auto;  /* takes the height the content leaves */
+  width: 100%;  /* centered by its margins, which in the body's column would otherwise shrink it to its content */
   max-width: var(--content-width);
   margin: 0 auto;
   padding: var(--space-6) var(--space-5);
+}
+
+.app-footer {
+  width: 100%;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-5) var(--space-6);
+  border-top: var(--border);
+  font-size: var(--font-size-small);
+}
+
+.app-footer a {
+  color: var(--color-muted);
 }
 
 /* Cards */
@@ -1551,6 +1570,7 @@ body:has(main[data-page='register']) :is(.app-nav, .nav-search),
 body:has(main[data-page='setup']) :is(.app-nav, .nav-search),
 body:has(main[data-page='password']) :is(.app-nav, .nav-search),
 body:has(main[data-page='two-factor']) :is(.app-nav, .nav-search),
+body:has(main[data-page='imprint']) :is(.app-nav, .nav-search),
 body:has(main[data-page='search']) .nav-search {  /* the search page has its own form */
   display: none;
 }
@@ -1567,7 +1587,8 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
   user-select: all;  /* one click selects it for copying */
 }
 
-.login {
+.login,
+.imprint {
   max-width: 28rem;
   margin: var(--space-6) auto;
 }
@@ -1708,6 +1729,7 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
 
 @media print {
   .app-header,
+  .app-footer,
   .skip-link,
   .week-nav,
   .member-chooser,

@@ -68,7 +68,7 @@ def test_root_is_created_once_and_logs_in(app):
 
 
 # What root gets: its own pages and their API; the tracking pages forward to /admin, the tracking API is refused
-ROOT_ACCESS = {'/admin': 200, '/settings': 200, '/api/admin/users': 200, '/api/theme': 200,
+ROOT_ACCESS = {'/admin': 200, '/settings': 200, '/api/admin/users': 200, '/api/theme': 200, '/imprint': 200,
                '/': 303, '/setup': 303, '/api/days': 403, '/api/settings': 403}
 
 
@@ -81,7 +81,7 @@ def test_root_runs_the_app_and_tracks_no_work(app, root):
 
 # What a visitor gets who is not logged in: the open paths; pages forward to the login, the API answers 401
 VISITOR_ACCESS = {'/login': 200, '/health': 200, '/static/css/main.css': 200, '/api/auth/status': 200,
-                  '/settings': 303, '/api/dashboard': 401}
+                  '/imprint': 200, '/settings': 303, '/api/dashboard': 401}
 
 
 def test_pages_and_api_need_the_login(app, cookies):

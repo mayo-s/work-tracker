@@ -70,6 +70,7 @@ export type PtoYear = Schemas['PtoYear'];
 export type PtoYearInput = Schemas['PtoYearInput'];
 export type ScheduleView = Schemas['ScheduleView'];
 export type ScheduleInput = Schemas['ScheduleInput'];
+export type ImprintDetails = Schemas['ImprintDetails'];
 
 /** A week like `2026-W44`, or an inclusive date range in ISO format. */
 export type Period = { week: string } | { start: string; end: string };
@@ -228,6 +229,7 @@ export const api = {
     request<YearReport>('GET', `/api/reports/years/${segment(year)}${memberQuery(member)}`),
   dashboard: (member: string | null = null) => request<DashboardView>('GET', `/api/dashboard${memberQuery(member)}`),
   search: (query: string) => request<SearchResult>('GET', `/api/search?${query}`),
+  imprint: () => request<ImprintDetails>('GET', '/api/imprint'),
 
   authStatus: () => request<AuthStatus>('GET', '/api/auth/status'),
   login: (login: string, password: string, code: string | null = null, remember = false) =>

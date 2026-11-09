@@ -9,6 +9,7 @@ from src.modules.storage.store import Storage, Store
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / 'templates'
 STATIC_DIR = TEMPLATES_DIR / 'static'
+BEFORE_SETUP = ('password', 'two-factor', 'imprint')  # pages the setup does not wait for: the first two come first
 
 
 def render_page(name: str, title: str, theme: str = 'system') -> str:
@@ -61,7 +62,7 @@ class RegisterPage(Page):
 
 class PageSettings:
     """Middleware for pages: the color theme for the frame; until the database is set up, pages forward to /setup,
-    and /setup forwards to the week once it is."""
+    and /setup forwards to the week once it is. The imprint is always there (SPEC 5.13)."""
 
     def __init__(self, storage: Storage) -> None:
         self._storage = storage
@@ -73,7 +74,7 @@ class PageSettings:
         with self._storage.transaction() as store:
             done = _set_up(store, user_id)
             req.context.theme = store.load_theme(NO_OWNER if user_id is None else user_id)
-        if resource.name not in ('password', 'two-factor') and done == (resource.name == 'setup'):  # those come first
+        if resource.name not in BEFORE_SETUP and done == (resource.name == 'setup'):
             raise falcon.HTTPSeeOther('/' if done else '/setup')
 
 

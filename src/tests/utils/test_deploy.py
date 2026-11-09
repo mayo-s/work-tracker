@@ -44,11 +44,12 @@ def test_no_folder_name_that_packages_use_is_excluded_by_name():
     assert {'docs', 'tests', 'examples', 'data', 'deploy'} & set(BASE['exclude']) == set()
 
 
-def test_the_role_of_a_stage_reaches_only_its_table_its_token_and_its_logs():
+def test_the_role_of_a_stage_reaches_only_its_table_its_parameters_and_its_logs():
     policy = json.loads(POLICY.replace('STAGE', 'dev'))
     resources = [statement['Resource'] for statement in policy['Statement']]
     assert resources == ['arn:aws:dynamodb:eu-central-1:*:table/work-tracker-dev',
-                         'arn:aws:ssm:eu-central-1:*:parameter/work-tracker-dev/setup-token', '*',
+                         ['arn:aws:ssm:eu-central-1:*:parameter/work-tracker-dev/setup-token',
+                          'arn:aws:ssm:eu-central-1:*:parameter/work-tracker-dev/imprint'], '*',
                          'arn:aws:logs:eu-central-1:*:log-group:/aws/lambda/work-tracker-dev*']
     assert policy['Statement'][2]['Condition'] == {'StringEquals': {'kms:ViaService': 'ssm.eu-central-1.amazonaws.com'}}
 

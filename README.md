@@ -27,7 +27,8 @@ npm run build    # compile the frontend: src/templates/ts → src/templates/stat
 The stage chooses the storage on start: `STAGE=Local` the SQLite file, on AWS Lambda (detected by itself) DynamoDB.
 `pipenv run` and `pipenv shell` load `.env` (git-ignored); IDE run configurations need it as their env file. Without
 `STAGE` outside Lambda, with an unknown value, or with `WORK_TRACKER_AUTH=off` on Lambda, the app stops on start and
-says what to change. Tests choose their database themselves.
+says what to change. Tests choose their database themselves. Locally, the imprint's details come from
+`WORK_TRACKER_IMPRINT` in `.env` (see `.env.example`); without them `/imprint` says it is not configured.
 
 The compiled JavaScript is not committed; build it after checking out or changing TypeScript (`npm run watch` rebuilds
 on every change).
@@ -99,6 +100,8 @@ all at once.
   off. A member's card opens their report in the team view for that period, which links back. "Export CSV" downloads
   the shown period, one row per figure with the period and the page's notes, for German Excel; "Save as PDF" opens
   the print dialog with a print layout of the cards (light, without navigation and buttons).
+- `/imprint`: the imprint in German (§ 5 DDG), name, postal address and e-mail address, open to everyone; every page
+  links it as "Imprint" in its footer.
 - `/setup`, `/admin`, `/team`, `/register`, `/password`, `/2fa`: see "Start from zero" and "Login". `/components`: the
   UI components with their HTML. `/apidoc/swagger`, `/apidoc/redoc`, `/apidoc/scalar`: API documentation (spec:
   `/apidoc/openapi.json`).
@@ -112,7 +115,7 @@ to 320 CSS px, where wide tables scroll sideways in their own area; Escape close
 
 The app runs on AWS Lambda in `eu-central-1` with the data in DynamoDB (SPEC 7.4), in two stages, `dev` and `prod`;
 a few cents per month each. Everything of a stage is named after its function `work-tracker-<stage>`: the table, the
-setup token `/work-tracker-<stage>/setup-token` and the role `work-tracker-<stage>-ZappaLambdaExecutionRole`. With the
+setup token `/work-tracker-<stage>/setup-token`, the imprint `/work-tracker-<stage>/imprint` and the role `work-tracker-<stage>-ZappaLambdaExecutionRole`. With the
 deploying user's credentials (e.g. `awsume`), once per stage (here `dev`):
 
 ```shell
@@ -122,6 +125,8 @@ aws ssm put-parameter --region eu-central-1 --name /work-tracker-$stage/setup-to
   --value "$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"     # the token for creating root
 aws ssm get-parameter --region eu-central-1 --name /work-tracker-$stage/setup-token --with-decryption \
   --query Parameter.Value --output text | pbcopy                                 # into the password manager
+aws ssm put-parameter --region eu-central-1 --name /work-tracker-$stage/imprint --type String --value \
+  '{"name": "…", "street": "…", "city": "10115 Berlin", "country": "Deutschland", "email": "…"}'  # the imprint
 aws iam create-role --role-name work-tracker-$stage-ZappaLambdaExecutionRole \
   --assume-role-policy-document "$(sed "s/STAGE/$stage/g" deploy/lambda-trust-policy.json)" # Lambda, keep-warm rule
 aws iam put-role-policy --role-name work-tracker-$stage-ZappaLambdaExecutionRole --policy-name work-tracker \
@@ -132,6 +137,9 @@ aws iam put-role-policy --role-name work-tracker-$stage-ZappaLambdaExecutionRole
 Then open the Function URL: `/setup` creates root with the setup token. Root switches registration on for you, and in
 your own setup "Import" takes the file of "Export my data" from the local app. A token works only once; delete the
 parameter afterwards: `aws ssm delete-parameter --region eu-central-1 --name /work-tracker-$stage/setup-token`.
+
+The imprint parameter stays; change it with the same `put-parameter` and `--overwrite`, and it shows at once. A role
+created before the imprint needs the `put-role-policy` line again, so the function may read it.
 
 Root forgot its password: create the parameter again with a new token (the `put-parameter` and `get-parameter` lines
 above), use it in "Reset root login" on `/login`, then delete the parameter again.
@@ -273,7 +281,7 @@ runs through `npx` with its own TypeScript 5, as it does not support the project
 | `src/__main__.py`            | Development server (`python -m src`)                                                                                                                                                                                                                                                                                                                                                                                          |
 | `src/lib`                    | Calculation rules: durations, breaks, holidays, targets, overtime, PTO                                                                                                                                                                                                                                                                                                                                                        |
 | `src/models`                 | Pydantic models                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `src/modules`                | Features: auth (login, registration), admin, teams, dashboard, storage, import, days, entries, tickets, catalog, settings, export (userdata), full backup (backup), setup, work schedules, PTO years, reports, review, pages                                                                                                                                                                                                  |
+| `src/modules`                | Features: auth (login, registration), admin, teams, dashboard, storage, import, days, entries, tickets, catalog, settings, export (userdata), full backup (backup), setup, work schedules, PTO years, reports, review, pages, imprint                                                                                                                                                                                                |
 | `src/utils`                  | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types; `openapi`: spec file for the frontend types; `stages`: the stage (Local or AWS Lambda) and its storage                                                                                                                                                                                                                               |
 | `src/defaultresources`       | Default resource at `/health` (plain-text status)                                                                                                                                                                                                                                                                                                                                                                             |
 | `src/templates`              | Frontend: `frame.html` (shared page frame), `pages/` (page content), `static/` (served at `/static`: `css/main.css` with the UI style variables (light and dark), Inter font with its OFL license in `fonts/`), TypeScript in `ts/` (`main.ts` loads the page code, e.g. `week.ts`; `api.ts`: typed API client, `api-types.ts`: generated) compiled to `static/js/` (git-ignored), `openapi.json`, frontend tests in `tests/` |
@@ -320,6 +328,7 @@ Reports count worked time, target and overtime up to today (today included); pla
 | `/api/search`                                                                      | GET                    | Find entries (optional `start`, `end`; default: all time) whose ticket key starts with, or whose description, service or activity type contains, every word of `text`; optional `service_id` (`none`: without service) or `activity_type_id`. Hours and number, by ticket or activity type and by month, and the entries (`limit`)                        |
 | `…?member=<id>` on `/api/dashboard`, `/api/reports/…`, `/api/days`, `/api/entries` | GET                    | Team view: a member of the team admin's team, read-only and from the day they joined (403 for others); reports are logged for the member and bring the member's `work_mode`, which shapes the pages                                                                                                                                                       |
 | `/api/auth/status`                                                                 | GET                    | Whether the login is on, whether users and root exist, the logged-in user, whether registration is on, and whether creating root needs the setup token (open)                                                                                                                                                                                             |
+| `/api/imprint`                                                                     | GET                    | Who runs the app (SPEC 5.13): name, postal address and e-mail address; 404 while they are not configured (open)                                                                                                                                                                                                                                           |
 | `/api/auth/login`                                                                  | POST                   | Log in with `login` (username or e-mail address) and `password`; sets the session cookie; 401, 403 if deactivated, or 429 after 5 failed logins or registrations within a minute (open); with two-factor login also `code` (401 with `code: two_factor_required` without one), and `remember` for 30 days in this browser (cookie `wt_browser`; not root) |
 | `/api/auth/logout`                                                                 | POST                   | End the session and remove the cookie (open)                                                                                                                                                                                                                                                                                                              |
 | `/api/auth/root`                                                                   | POST                   | Create root (runs the app, tracks no work) once and log in; 409 once root exists; on AWS Lambda with `setup_token` (open)                                                                                                                                                                                                                                 |

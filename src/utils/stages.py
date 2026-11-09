@@ -11,6 +11,7 @@ import boto3
 
 from src.modules.auth.sessions import auth_enabled
 from src.modules.auth.setup_token import SetupToken
+from src.modules.imprint.sources import EnvironmentImprint, ImprintSource, ParameterImprint
 from src.modules.storage.database import Database, database_path
 from src.modules.storage.dynamodb.storage import DynamoStorage
 from src.modules.storage.dynamodb.table import REGION, Table
@@ -62,3 +63,13 @@ def stage_setup_token() -> SetupToken | None:
     function = os.environ['AWS_LAMBDA_FUNCTION_NAME']
     parameter = os.environ.get('WORK_TRACKER_SETUP_TOKEN_PARAMETER') or f'/{function}/setup-token'
     return SetupToken(boto3.client('ssm', region_name=REGION), parameter)
+
+
+def stage_imprint() -> ImprintSource:
+    """Where the imprint's details are (SPEC 5.13): on AWS Lambda the SSM parameter named like the function (e.g.
+    /work-tracker-prod/imprint), or $WORK_TRACKER_IMPRINT_PARAMETER; locally $WORK_TRACKER_IMPRINT."""
+    if current_stage() is Stage.LOCAL:
+        return EnvironmentImprint()
+    function = os.environ['AWS_LAMBDA_FUNCTION_NAME']
+    parameter = os.environ.get('WORK_TRACKER_IMPRINT_PARAMETER') or f'/{function}/imprint'
+    return ParameterImprint(boto3.client('ssm', region_name=REGION), parameter)

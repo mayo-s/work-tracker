@@ -1,13 +1,15 @@
 import importlib
 
+import boto3
 import falcon
 import pytest
 from falcon import testing
 
 from src.app import create_app
 from src.modules.storage.dynamodb.storage import DynamoStorage
+from src.modules.storage.dynamodb.table import REGION
 from src.modules.storage.sqlite import SqliteStorage
-from src.utils.stages import Stage, StageError, current_stage, stage_storage
+from src.utils.stages import Stage, StageError, current_stage, stage_imprint, stage_storage
 
 
 @pytest.fixture(autouse=True)
@@ -16,6 +18,7 @@ def no_stage(monkeypatch):
     monkeypatch.delenv('STAGE', raising=False)
     monkeypatch.delenv('AWS_LAMBDA_FUNCTION_NAME', raising=False)
     monkeypatch.delenv('WORK_TRACKER_TABLE', raising=False)
+    monkeypatch.delenv('WORK_TRACKER_IMPRINT_PARAMETER', raising=False)
 
 
 @pytest.fixture
@@ -73,6 +76,24 @@ def test_lambda_uses_the_table_named_like_the_function(monkeypatch, on_lambda, d
 def test_another_table_can_be_named(monkeypatch, on_lambda, dynamo_table):
     monkeypatch.setenv('WORK_TRACKER_TABLE', dynamo_table.name)
     assert stage_storage().table.name == dynamo_table.name
+
+
+@pytest.mark.parametrize('override, parameter', [
+    (None, '/work-tracker/imprint'), ('/work-tracker-shared/imprint', '/work-tracker-shared/imprint'),
+])
+def test_lambda_reads_the_imprint_from_its_parameter(monkeypatch, on_lambda, dynamo_table, override, parameter):
+    """SSM is simulated by moto like the table."""
+    if override:
+        monkeypatch.setenv('WORK_TRACKER_IMPRINT_PARAMETER', override)
+    imprint = stage_imprint()
+    assert (imprint.where, imprint.read()) == (f'the SSM parameter {parameter}', None)  # not created yet
+    boto3.client('ssm', region_name=REGION).put_parameter(Name=parameter, Value='{}', Type='SecureString')
+    assert imprint.read() == '{}'
+
+
+def test_the_local_imprint_is_in_the_environment(monkeypatch):
+    monkeypatch.setenv('STAGE', 'Local')
+    assert stage_imprint().where == '$WORK_TRACKER_IMPRINT'
 
 
 def test_the_lambda_app(monkeypatch, on_lambda, dynamo_table):

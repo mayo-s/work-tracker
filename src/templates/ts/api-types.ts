@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/imprint": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who runs the app, as German law requires (§ 5 DDG): name, postal address and e-mail address; 404 while they are not configured. */
+        get: operations["get__api_imprint"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/days": {
         parameters: {
             query?: never;
@@ -2277,6 +2294,37 @@ export interface components {
         };
         /** ChangeViewList */
         ChangeViewList: components["schemas"]["ChangeView"][];
+        /** ImprintDetails */
+        ImprintDetails: {
+            /**
+             * Name
+             * @description Who runs the app
+             * @example Klara Himmel
+             */
+            name: string;
+            /**
+             * Street
+             * @description Street and number
+             * @example Musterstraße 1
+             */
+            street: string;
+            /**
+             * City
+             * @description Postcode and city
+             * @example 10115 Berlin
+             */
+            city: string;
+            /**
+             * Country
+             * @example Deutschland
+             */
+            country: string;
+            /**
+             * Email
+             * @example klara.himmel@example.com
+             */
+            email: string;
+        };
         /** PtoYearList */
         PtoYearList: components["schemas"]["PtoYear"][];
         /** PtoYear */
@@ -3935,6 +3983,42 @@ export interface operations {
             };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    get__api_imprint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImprintDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

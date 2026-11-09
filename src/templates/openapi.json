@@ -10,6 +10,9 @@
       "name": "Maintenance"
     },
     {
+      "name": "Imprint"
+    },
+    {
       "name": "Days"
     },
     {
@@ -87,6 +90,42 @@
           }
         },
         "security": []
+      }
+    },
+    "/api/imprint": {
+      "get": {
+        "summary": "Who runs the app, as German law requires (§ 5 DDG): name, postal address and e-mail address; 404 while they are not configured.",
+        "operationId": "get__api_imprint",
+        "description": "",
+        "tags": [
+          "Imprint"
+        ],
+        "parameters": [],
+        "responses": {
+          "404": {
+            "description": "Not Found"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImprintDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/days": {
@@ -6873,6 +6912,62 @@
         },
         "title": "ChangeViewList",
         "type": "array"
+      },
+      "ImprintDetails": {
+        "properties": {
+          "name": {
+            "description": "Who runs the app",
+            "examples": [
+              "Klara Himmel"
+            ],
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "street": {
+            "description": "Street and number",
+            "examples": [
+              "Musterstraße 1"
+            ],
+            "minLength": 1,
+            "title": "Street",
+            "type": "string"
+          },
+          "city": {
+            "description": "Postcode and city",
+            "examples": [
+              "10115 Berlin"
+            ],
+            "minLength": 1,
+            "title": "City",
+            "type": "string"
+          },
+          "country": {
+            "examples": [
+              "Deutschland"
+            ],
+            "minLength": 1,
+            "title": "Country",
+            "type": "string"
+          },
+          "email": {
+            "examples": [
+              "klara.himmel@example.com"
+            ],
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "street",
+          "city",
+          "country",
+          "email"
+        ],
+        "title": "ImprintDetails",
+        "type": "object"
       },
       "PtoYearList": {
         "items": {

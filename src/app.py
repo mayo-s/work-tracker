@@ -23,6 +23,8 @@ from src.modules.days.resources import DayCollection, DayItem, DayRange
 from src.modules.entries.resources import (
     EntryActivityTypeAssignment, EntryCollection, EntryHistory, EntryItem,
 )
+from src.modules.imprint.resources import ImprintResource
+from src.modules.imprint.sources import EnvironmentImprint, ImprintSource
 from src.modules.pages.resources import (
     STATIC_DIR, Page, PageSettings, Redirect, RegisterPage, RevalidateStaticFiles, StartPage,
 )
@@ -46,23 +48,24 @@ from src.modules.teams.resources import (
 from src.modules.tickets.resources import TicketCollection, TicketItem, TicketRenaming, TicketServiceAssignment
 from src.modules.userdata.resources import ExportResource
 from src.utils.spec import spec
-from src.utils.stages import stage_setup_token, stage_storage
+from src.utils.stages import stage_imprint, stage_setup_token, stage_storage
 
 
 def create_app(
     database: Database | None = None, today: Callable[[], dt.date] = dt.date.today, auth: bool | None = None,
     clock: Callable[[], dt.datetime] = dt.datetime.now, storage: Storage | None = None,
-    setup_token: SetupToken | None = None,
+    setup_token: SetupToken | None = None, imprint: ImprintSource = EnvironmentImprint(),
 ) -> falcon.App:
     """The app on the given storage or SQLite database, or by default on the storage of the stage it runs in
     (stages.py), migrated on start; a wrong stage raises a StageError.
 
     `today` decides up to which day reports count, `clock` the time of sessions (both replaceable for tests).
     Creating root needs `setup_token` if one is given, and by default the stage's (only on AWS Lambda).
+    The imprint comes from `imprint`, by default from the stage's source, or $WORK_TRACKER_IMPRINT with a given storage.
     The login is on unless `auth` is False or, by default, WORK_TRACKER_AUTH=off.
     """
     if storage is None and database is None:
-        storage, setup_token = stage_storage(), stage_setup_token()
+        storage, setup_token, imprint = stage_storage(), stage_setup_token(), stage_imprint()
     storage = storage or SqliteStorage(database)
     storage.migrate()
     enabled = auth_enabled() if auth is None else auth
@@ -87,8 +90,10 @@ def create_app(
     app.add_route('/team', Page('team', 'Team'))
     app.add_route('/team/report', Page('team-report', 'Team report'))
     app.add_route('/components', Page('components', 'Component gallery'))
+    app.add_route('/imprint', Page('imprint', 'Impressum'))
     app.add_static_route('/static', STATIC_DIR)
     app.add_route('/health', Default())
+    app.add_route('/api/imprint', ImprintResource(imprint))
     app.add_route('/api/days', DayCollection(storage))
     app.add_route('/api/days/range', DayRange(storage))
     app.add_route('/api/days/{date:dt("%Y-%m-%d")}', DayItem(storage))

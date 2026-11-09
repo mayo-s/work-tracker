@@ -9,13 +9,14 @@
       "Resource": "arn:aws:dynamodb:eu-central-1:*:table/work-tracker-STAGE"
     },
     {
-      "Sid": "TheSetupTokenOfTheStage",
+      "Sid": "TheSetupTokenAndImprintOfTheStage",
       "Effect": "Allow",
       "Action": "ssm:GetParameter",
-      "Resource": "arn:aws:ssm:eu-central-1:*:parameter/work-tracker-STAGE/setup-token"
+      "Resource": ["arn:aws:ssm:eu-central-1:*:parameter/work-tracker-STAGE/setup-token",
+                   "arn:aws:ssm:eu-central-1:*:parameter/work-tracker-STAGE/imprint"]
     },
     {
-      "Sid": "DecryptTheSetupTokenThroughSsm",
+      "Sid": "DecryptTheParametersThroughSsm",
       "Effect": "Allow",
       "Action": "kms:Decrypt",
       "Resource": "*",
