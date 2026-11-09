@@ -13,6 +13,7 @@ from src.modules.storage.dynamodb.entries import DynamoEntries
 from src.modules.storage.dynamodb.entry_kinds import to_one_kind
 from src.modules.storage.dynamodb.flag_removal import drop_flags
 from src.modules.storage.dynamodb.keys import APP, META, SCHEMA, user_partition
+from src.modules.storage.dynamodb.messages import DynamoMessages
 from src.modules.storage.dynamodb.purge import purge
 from src.modules.storage.dynamodb.renames import rename_ticket
 from src.modules.storage.dynamodb.schedules import DynamoPtoYears, DynamoSchedules
@@ -91,6 +92,9 @@ class DynamoStore:
 
     def auditors(self) -> DynamoAuditors:
         return DynamoAuditors(self._unit)
+
+    def messages(self) -> DynamoMessages:
+        return DynamoMessages(self._unit)
 
     def rename_ticket(self, user_id: str, old_key: str, new_key: str, clock: Clock | None = None) -> RenameResult:
         return rename_ticket(self._unit, user_id, old_key, new_key, clock)

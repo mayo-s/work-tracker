@@ -673,8 +673,8 @@ export interface paths {
         };
         get?: never;
         /**
-         * Change a user's role or team role, or deactivate (their sessions end, their data is kept) or reactivate them.
-         * @description Only root appoints and removes admins and deactivates or reactivates them; only admins give team roles and deactivate or reactivate everyone else (403 otherwise). Nobody demotes or deactivates themselves (409), and root stays as it is (409). Only a member of a team has a team role (409); a team admin manages that team. Nobody changes their own team role (409), so no admin makes themselves the team admin who sees the members' reports.
+         * Change a user's role, team role or support role, or deactivate (their sessions end, their data is kept) or reactivate them.
+         * @description Only root appoints and removes admins and deactivates or reactivates them; only admins give team roles and the support role and deactivate or reactivate everyone else (403 otherwise). Nobody demotes or deactivates themselves (409), and root stays as it is (409). Only a member of a team has a team role (409); a team admin manages that team. Nobody changes their own team role or support role (409), so no admin makes themselves the team admin who sees the members' reports, or support who reads the messages of the contact page.
          */
         put: operations["put__api_admin_users_{user_id}"];
         post?: never;
@@ -1372,6 +1372,12 @@ export interface components {
              * @description False deactivates the user: they cannot log in, their sessions end
              */
             active: boolean;
+            /**
+             * Support
+             * @description The support role: answers the messages of the contact page; null keeps it
+             * @default null
+             */
+            support?: boolean | null;
         };
         /** AdminUserView */
         AdminUserView: {
@@ -1426,6 +1432,12 @@ export interface components {
              * @default false
              */
             two_factor?: boolean;
+            /**
+             * Support
+             * @description Answers the messages of the contact page
+             * @default false
+             */
+            support?: boolean;
         };
         /** OneTimePasswordView */
         OneTimePasswordView: {
@@ -3097,7 +3109,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed" | "root_login_reset" | "two_factor_reset" | "password_changed" | "two_factor_on" | "two_factor_off" | "two_factor_new_app" | "recovery_codes_renewed" | "backup_made" | "backup_restored";
+            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed" | "root_login_reset" | "two_factor_reset" | "password_changed" | "two_factor_on" | "two_factor_off" | "two_factor_new_app" | "recovery_codes_renewed" | "backup_made" | "backup_restored" | "support_switched";
             /**
              * User
              * @description Name of whose account it is about

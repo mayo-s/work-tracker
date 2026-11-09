@@ -11,7 +11,8 @@ from src.tests.users import USER
 TABLES = {
     'settings', 'user_settings', 'pto_years', 'work_schedules', 'services', 'activity_types', 'tickets', 'days', 'entries',
     'entry_history', 'users', 'sessions', 'login_attempts', 'teams', 'team_memberships', 'team_invitations',
-    'report_views', 'audit_log', 'team_auditors', 'used_setup_tokens', 'remembered_browsers',
+    'report_views', 'audit_log', 'team_auditors', 'used_setup_tokens', 'remembered_browsers', 'contact_messages',
+    'message_changes',
 }
 
 

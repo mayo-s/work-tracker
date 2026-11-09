@@ -28,8 +28,10 @@ def clear_records(conn: sqlite3.Connection, user_id: str) -> None:
 def purge(conn: sqlite3.Connection, root_id: str) -> None:
     """Everything but root goes (SPEC 5.9): every other user with their records, settings, sessions and browsers, the
     teams with their members, invitations, services and auditors, the report view log, the audit log and the failed
-    logins. Root (settings, sessions), the records without an owner, the app settings and the used setup tokens stay."""
-    for table in ('report_views', 'audit_log', 'team_auditors', 'team_invitations', 'team_memberships'):
+    logins and the messages of the contact page. Root (settings, sessions), the records without an owner, the app
+    settings and the used setup tokens stay."""
+    for table in ('message_changes', 'contact_messages', 'report_views', 'audit_log', 'team_auditors', 'team_invitations',
+                  'team_memberships'):
         conn.execute(f'DELETE FROM {table}')
     for table in ('entry_history', 'entries', 'days', 'tickets', 'services', 'activity_types', 'pto_years', 'work_schedules',
                   'user_settings'):  # team services have no user: they go too

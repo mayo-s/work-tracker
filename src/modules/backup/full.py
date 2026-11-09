@@ -22,7 +22,7 @@ def make_backup(store: Store, made_at: dt.datetime) -> Backup:
                for team in teams.with_deleted()],
         memberships=[membership for user in users for membership in teams.history(user.id)],
         invitations=store.invitations().all(), auditors=store.auditors().all(), report_views=store.report_views().all(),
-        audit_log=store.audit_log().all(),
+        audit_log=store.audit_log().all(), messages=store.messages().all(), message_changes=store.messages().all_changes(),
     )
 
 

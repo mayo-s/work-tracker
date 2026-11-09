@@ -406,6 +406,9 @@ below 40rem (640 px), where the narrow-screen rules start; the desktop does not 
   until an end date (the access ends by itself then), otherwise until removed; deleting a team ends its assignments.
   An auditor has the team view of those teams read-only, of everyone who was ever in the team, each for the days they
   belonged to it (several stays each count). Being auditor changes nothing else.
+- **Support**: a flag next to the app role, for admins and users (never root): an admin switches it on or off in the
+  user list (logged in the audit log, as any change to a user). Support answers the messages of the contact page
+  (5.14). Being support changes nothing else.
 - Registration: while root has switched it on (off by default), the login page links to `/register`. A new user
   enters the fields of the login, is logged in at once (no e-mail confirmation) and goes through the setup. Off, or
   with the login off, `/register` answers 404.
@@ -573,12 +576,41 @@ Who runs the app, as German law requires of a public website (§ 5 DDG).
   both in a new tab; the page itself has no navigation, only the app's name that leads to the start page.
 - In German (a translation may come with TASKS.md L.8): "Impressum", under "Angaben gemäß § 5 DDG" the name and the
   postal address (street and number, postcode and city, country), under "Kontakt" the e-mail address as a `mailto`
-  link. No phone number: the second fast way of contact will be the contact form (TASKS.md L.16), linked here then.
+  link, then the contact form (5.14) as the second fast way of contact ("Kontaktformular", a link to `/contact`). No
+  phone number.
 - The details are never in the repository. On AWS Lambda they are in the SSM parameter `/work-tracker-<stage>/imprint`
   (7.4), locally in `$WORK_TRACKER_IMPRINT` (from `.env`), both as JSON: `{"name": "…", "street": "…", "city": "10115
   Berlin", "country": "Deutschland", "email": "…"}`. They are read on each visit, so a change shows at once.
 - `GET /api/imprint` answers them, open like the page. Without them, or with one missing or empty, it answers 404 and
   the page says that the imprint is not configured yet; the log says what is wrong, without the details themselves.
+
+### 5.14 Contact and support
+
+Anyone can write to the people running the app; users with the support role answer by e-mail.
+
+- **Contact page** `/contact`, open to everyone at any time like the imprint (without login, before the setup, for
+  root), linked from the imprint (5.13). Fields: name, e-mail address (to answer to), subject (up to 200 characters)
+  and message (up to 5,000). A logged-in user finds name and e-mail address filled in, and the message is linked to
+  their account. After sending: "Thanks, we will answer by e-mail."
+- **Against spam**: a field hidden from people (a bot fills it in; such a message is dropped, though the sender
+  sees the usual thanks), and messages from visitors who are not logged in pause after 5 within 10 minutes (429, "Too
+  many messages; try again in a few minutes"). No captcha, which would load an outside service.
+- **Support page** `/support`, for support users only (others 403), linked as "Support" in the menu (☰, 5.5) with a
+  badge of the new messages (also on ☰):
+  - **Messages**: the open ones (New, In progress) and the done ones of the last 90 days, newest first, with date,
+    sender (and username if they were logged in), subject and status; **Archive**: the anonymized ones. A search
+    field finds messages in both by words of their subject, message or notes.
+  - A message opens with its whole text. Support sets its status (New, In progress, Done; Done can be reopened),
+    adds internal notes, which only support sees, and answers with "Answer by e-mail": a `mailto` link with the
+    address and "Re: <subject>" filled in, which opens their own mail program; the app sends no e-mails.
+  - Each change (status, note) is kept with who made it and when, shown under the message.
+  - Support can delete a message (asked first), also an archived one.
+- **Archive**: 90 days after a message was last marked Done, it is anonymized: name and e-mail address become a
+  random pair of a color and an animal (e.g. "Blue Elephant", no e-mail address), the link to the sender's account
+  goes, and the names in its history become "Support". Subject, message and notes stay, so earlier problems can be
+  found; the privacy policy (TASKS.md L.18) says so. The app has no timer: this happens whenever the support page
+  lists the messages and whenever a new message arrives.
+- Stored on both backends, part of root's full backup and restore (5.9); not part of a user's "Export my data".
 
 ## 6. Import (spreadsheet CSV), removed
 

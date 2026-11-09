@@ -10,6 +10,7 @@ import datetime as dt
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.audit import AuditEntry
+from src.models.messages import ContactMessage, MessageChange
 from src.models.base import DomainModel
 from src.models.catalog import Service
 from src.models.teams import Auditor, Invitation, Membership, ReportView, TeamRecord
@@ -43,6 +44,9 @@ class Backup(DomainModel):
     auditors: list[Auditor]
     report_views: list[ReportView]
     audit_log: list[AuditEntry] = Field(description='Oldest first')
+    messages: list[ContactMessage] = Field(default=[], description='The messages of the contact page, newest first '
+                                                                   '(none in a backup from before them)')
+    message_changes: list[MessageChange] = Field(default=[], description='What support did with them, oldest first')
 
 
 class BackupInput(BaseModel):

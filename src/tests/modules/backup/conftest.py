@@ -7,6 +7,7 @@ import pytest
 from src.models.audit import AuditEntry
 from src.models.catalog import Service
 from src.models.entries import Entry
+from src.models.messages import ContactMessage, MessageChange
 from src.models.teams import Auditor, ReportView, Team
 from src.models.users import TwoFactor
 from src.modules.backup.full import make_backup
@@ -19,8 +20,9 @@ MONDAY = dt.date(2026, 11, 2)
 
 
 def add_everything(storage, klara_id):
-    """Root Pascal; Klara, an admin and auditor of Platform; Hans in Platform with two-factor login and a ticket of
-    the team's service; a deleted team, an open invitation, a report view and an audit entry."""
+    """Root Pascal; Klara, an admin, auditor of Platform and support; Hans in Platform with two-factor login and a
+    ticket of the team's service; a deleted team, an open invitation, a report view, an audit entry, and messages of
+    the contact page from Hans and a visitor, with a status Klara set and a note."""
     with storage.transaction() as store:
         users, teams = store.users(), store.teams(lambda: NOW)
         root = users.add(PASCAL.model_copy(update={'role': 'root'}), PASSWORD).id
@@ -38,6 +40,14 @@ def add_everything(storage, klara_id):
                                             viewed_at=NOW))
         store.audit_log().add(AuditEntry(actor_id=root, action='registration_switched', detail='on', at=NOW))
         store.set_registration(True)
+        users.set_support(klara_id, True)
+        messages = store.messages()
+        asked = messages.add(ContactMessage(sent_at=NOW, name='Hans Dampf', email='hans.dampf@example.com',
+                                            subject='Export', text='The export stops.', user_id=hans))
+        messages.add(ContactMessage(sent_at=NOW, name='Rainer Zufall', email='rainer.zufall@example.com', subject='Access',
+                                    text='May I join?'))
+        for kind, detail in (('status', 'in_progress'), ('note', 'Asked for the file')):
+            messages.add_change(MessageChange(message_id=asked.id, at=NOW, actor_id=klara_id, kind=kind, detail=detail))
     return {'klara': klara_id, 'root': root, 'hans': hans, 'platform': platform.id, 'billing': billing.id}
 
 

@@ -24,12 +24,14 @@ const TEAM_ROLES: [TeamRole, string][] = [['member', 'Member'], ['team_admin', '
 
 /** What the viewer may change in a user's row: root the role of anyone and the status of admins; admins team roles and
  * the status of everyone else. Nobody changes their own row, and root's stays as it is. */
-export function editable(viewer: Viewer, user: AdminUserView, self: boolean): Record<'role' | 'teamRole' | 'status', boolean> {
+export function editable(viewer: Viewer, user: AdminUserView, self: boolean):
+  Record<'role' | 'teamRole' | 'status' | 'support', boolean> {
   const fixed = self || user.role === 'root';
   return {
     role: !fixed && viewer === 'root',
     teamRole: !fixed && viewer === 'admin' && Boolean(user.team),
     status: !fixed && viewer === (user.role === 'admin' ? 'root' : 'admin'),
+    support: !fixed && viewer === 'admin',
   };
 }
 
@@ -37,9 +39,11 @@ function timestampCell(value: string | null | undefined): HTMLTableCellElement {
   return el('td', {}, value ? formatTimestamp(value) : el('span', { class: 'muted' }, '—'));
 }
 
-/** The input that keeps the user's role, team role and status except for `changes` (never for root, which stays). */
+/** The input that keeps the user's role, team role, status and support role except for `changes` (never for root,
+ * which stays). */
 export function userInput(user: AdminUserView, changes: Partial<AdminUserInput>): AdminUserInput {
-  return { role: user.role as AdminUserInput['role'], team_role: user.team_role ?? null, active: user.active, ...changes };
+  return { role: user.role as AdminUserInput['role'], team_role: user.team_role ?? null, active: user.active,
+    support: user.support ?? false, ...changes };
 }
 
 /** `an admin`, `a user`, `a team admin`, `a member`. */
@@ -241,6 +245,20 @@ function statusCell(user: AdminUserView, canEdit: boolean, page: Page): HTMLTabl
   return el('td', {}, select, ...badge);
 }
 
+/** Whether the user answers the messages of the contact page (SPEC 5.14), switched in place if `canEdit`. */
+function supportCell(user: AdminUserView, canEdit: boolean, page: Page): HTMLTableCellElement {
+  if (!canEdit) {
+    return el('td', {}, user.support ? 'Yes' : el('span', { class: 'muted' }, '—'));
+  }
+  const box = el('input', { type: 'checkbox', checked: Boolean(user.support), 'aria-label': `Support: ${user.username}` });
+  box.addEventListener('change', () => {
+    api.updateAdminUser(user.id, userInput(user, { support: box.checked }))
+      .then(() => page.reload(`${user.username} ${box.checked ? 'now answers' : 'no longer answers'} the contact messages`),
+        page.fail);
+  });
+  return el('td', {}, box);
+}
+
 /** The user with this e-mail address, ignoring case and surrounding spaces. */
 export function userByEmail(users: AdminUserView[], email: string): AdminUserView | undefined {
   const wanted = email.trim().toLowerCase();
@@ -318,6 +336,7 @@ function userRow(user: AdminUserView, viewer: Viewer, me: string | undefined, pa
     teamRoleCell(user, can.teamRole, page),
     el('td', {}, can.role ? roleSelect(user, page) : ROLE_LABELS[user.role]),
     statusCell(user, can.status, page),
+    supportCell(user, can.support, page),
     timestampCell(user.registered_at),
     timestampCell(user.last_login_at));
 }
@@ -329,12 +348,13 @@ const USERS_HINT: Record<Viewer, string> = {
   admin: 'You give team roles and look after the users: their status, and a one-time password below; root appoints the '
     + 'admins and looks after them. A deactivated user is logged out and cannot log in; their data is kept. The team role '
     + 'belongs to the team: a team admin, admin or user, manages the team they are in (its members, invitations and '
-    + 'services) and sees its members\' reports; leaving the team ends it. Nobody changes their own row.',
+    + 'services) and sees its members\' reports; leaving the team ends it. Support answers the messages of the contact '
+    + 'page. Nobody changes their own row.',
 };
 
 function usersSection(users: AdminUserView[], viewer: Viewer, me: string | undefined, page: Page): HTMLElement {
-  const header = el('tr', {}, ...['Username', 'Name', 'E-mail address', 'Team', 'Team role', 'Role', 'Status', 'Registered',
-    'Last login'].map((label) => el('th', {}, label)));
+  const header = el('tr', {}, ...['Username', 'Name', 'E-mail address', 'Team', 'Team role', 'Role', 'Status', 'Support',
+    'Registered', 'Last login'].map((label) => el('th', {}, label)));
   return el('section', { class: 'review-section', id: 'users' },
     el('h2', {}, 'Users'),
     el('p', { class: 'muted' }, USERS_HINT[viewer]),

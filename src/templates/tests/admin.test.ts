@@ -13,10 +13,12 @@ const HANS: AdminUserView = {
 };
 
 test('a change keeps the rest of the user', () => {
-  assert.deepEqual(userInput(HANS, { active: false }), { role: 'user', team_role: null, active: false });
-  assert.deepEqual(userInput({ ...HANS, role: 'admin' }, { active: false }), { role: 'admin', team_role: null, active: false });
+  assert.deepEqual(userInput(HANS, { active: false }), { role: 'user', team_role: null, active: false, support: false });
+  assert.deepEqual(userInput({ ...HANS, role: 'admin', support: true }, { active: false }),
+    { role: 'admin', team_role: null, active: false, support: true });
   const member = { ...HANS, team: 'Platform', team_role: 'member' as const };
-  assert.deepEqual(userInput(member, { team_role: 'team_admin' }), { role: 'user', team_role: 'team_admin', active: true });
+  assert.deepEqual(userInput(member, { team_role: 'team_admin' }),
+    { role: 'user', team_role: 'team_admin', active: true, support: false });
 });
 
 test('roles read as a sentence', () => {
@@ -29,17 +31,18 @@ test('the user for a one-time password is found by e-mail address, ignoring case
   assert.equal(userByEmail([HANS], 'hans@example.com'), undefined);
 });
 
-test('root changes the role of anyone and the status of admins; admins team roles and the status of the others', () => {
-  const admin = { ...HANS, role: 'admin' as const };
-  const member = { ...HANS, team: 'Platform', team_role: 'member' as const };
-  assert.deepEqual(editable('root', HANS, false), { role: true, teamRole: false, status: false });
-  assert.deepEqual(editable('root', admin, false), { role: true, teamRole: false, status: true });
-  assert.deepEqual(editable('admin', member, false), { role: false, teamRole: true, status: true });
-  assert.deepEqual(editable('admin', admin, false), { role: false, teamRole: false, status: false });
-});
+test('root changes the role of anyone and the status of admins; admins team roles, support and the status of the others',
+  () => {
+    const admin = { ...HANS, role: 'admin' as const };
+    const member = { ...HANS, team: 'Platform', team_role: 'member' as const };
+    assert.deepEqual(editable('root', HANS, false), { role: true, teamRole: false, status: false, support: false });
+    assert.deepEqual(editable('root', admin, false), { role: true, teamRole: false, status: true, support: false });
+    assert.deepEqual(editable('admin', member, false), { role: false, teamRole: true, status: true, support: true });
+    assert.deepEqual(editable('admin', admin, false), { role: false, teamRole: false, status: false, support: true });
+  });
 
 test('nobody changes their own row, and root stays', () => {
-  const none = { role: false, teamRole: false, status: false };
+  const none = { role: false, teamRole: false, status: false, support: false };
   assert.deepEqual(editable('admin', { ...HANS, role: 'admin', team: 'Platform', team_role: 'member' }, true), none);
   assert.deepEqual(editable('admin', { ...HANS, role: 'root' }, false), none);
   assert.deepEqual(editable('root', { ...HANS, role: 'root' }, true), none);

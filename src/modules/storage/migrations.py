@@ -649,4 +649,30 @@ MIGRATIONS: tuple[Migration, ...] = (
     """
     DROP TABLE review_flags;
     """,
+    # 27: the support role and the messages of the contact page with what support did (TASKS.md L.16a, SPEC 5.14)
+    """
+    ALTER TABLE users ADD COLUMN support INTEGER NOT NULL DEFAULT 0 CHECK (support IN (0, 1));
+    CREATE TABLE contact_messages (
+        id         TEXT PRIMARY KEY,
+        sent_at    TEXT NOT NULL,
+        name       TEXT NOT NULL,
+        email      TEXT NOT NULL,  -- empty once anonymized
+        subject    TEXT NOT NULL,
+        text       TEXT NOT NULL,
+        user_id    TEXT REFERENCES users (id),  -- the sender's account; NULL for a visitor or once anonymized
+        status     TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'in_progress', 'done')),
+        done_at    TEXT,  -- when last marked Done
+        anonymized INTEGER NOT NULL DEFAULT 0 CHECK (anonymized IN (0, 1))
+    );
+    CREATE INDEX contact_messages_by_time ON contact_messages (sent_at);
+    CREATE TABLE message_changes (
+        id         TEXT PRIMARY KEY,
+        message_id TEXT NOT NULL REFERENCES contact_messages (id) ON DELETE CASCADE,
+        at         TEXT NOT NULL,
+        actor_id   TEXT REFERENCES users (id),  -- NULL once the message is anonymized
+        kind       TEXT NOT NULL CHECK (kind IN ('status', 'note')),
+        detail     TEXT NOT NULL  -- the new status, or the note
+    );
+    CREATE INDEX message_changes_by_message ON message_changes (message_id, at);
+    """,
 )

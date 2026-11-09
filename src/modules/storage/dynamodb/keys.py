@@ -16,6 +16,8 @@
 | `TEAM#<id>`      | `AUDITOR#<user id>`     | an auditor of the team (also as `AUDITS#<team id>` in theirs)     |
 | `INVITES#<mail>` | `TEAM#<id>`             | an invitation to an e-mail address (lower case), for that user    |
 | `AUDIT`          | `AT#<time>#<id>`        | an audit log entry (one about a user also as `AUDIT#…` in theirs) |
+| `MESSAGES`       | `MESSAGE#<id>`          | a message of the contact page (SPEC 5.14)                         |
+| `MESSAGE#<id>`   | `CHANGE#<id>`           | a change support made to it: its status, or a note                |
 | `USER#<user id>` | e.g. `DAY#2026-10-30`   | a user's records: one partition per user, so only their own data  |
 
 In a user's partition: `SETTINGS` (balance, way of working, setup, theme), `SESSION#<hash>` (to end all their sessions),

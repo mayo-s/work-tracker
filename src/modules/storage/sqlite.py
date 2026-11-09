@@ -12,6 +12,7 @@ from src.modules.storage.database import Database
 from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.errors import USED_TOKEN, ConflictError
+from src.modules.storage.messages import MessageRepository
 from src.modules.storage.owners import clear_records, purge
 from src.modules.storage.pto_years import PtoYearRepository
 from src.modules.storage.renames import rename_ticket
@@ -82,6 +83,9 @@ class SqliteStore:
 
     def auditors(self) -> AuditorRepository:
         return AuditorRepository(self._conn)
+
+    def messages(self) -> MessageRepository:
+        return MessageRepository(self._conn)
 
     def rename_ticket(self, user_id: str, old_key: str, new_key: str, clock: Clock | None = None) -> RenameResult:
         return rename_ticket(self._conn, user_id, old_key, new_key, clock)

@@ -31,6 +31,7 @@ class User(DomainModel):
     last_login_at: dt.datetime | None = None
     must_change_password: bool = False  # after a one-time password from an admin, until the user chose their own
     two_factor: bool = False  # the login also needs a code of their authenticator app
+    support: bool = False  # answers the messages of the contact page (SPEC 5.14); never root
 
     @property
     def full_name(self) -> str:

@@ -21,7 +21,7 @@ BROWSER_LIFETIME = dt.timedelta(days=30)  # a remembered browser skips the code 
 ATTEMPTS_ALLOWED = 5  # failed logins and registrations together
 ATTEMPT_PAUSE = dt.timedelta(minutes=1)
 _COLUMNS = ('id, username, email, first_name, last_name, role, active, registered_at, last_login_at, must_change_password,'
-            ' two_factor')
+            ' two_factor, support')
 
 
 def session_lifetime(role: str) -> dt.timedelta:
@@ -87,6 +87,11 @@ class UserRepository:
             self._conn.execute('DELETE FROM sessions WHERE user_id = ?', (user_id,))
         return self.get(user_id)
 
+    def set_support(self, user_id: str, support: bool) -> User:
+        """Whether the user answers the messages of the contact page (SPEC 5.14)."""
+        self._conn.execute('UPDATE users SET support = ? WHERE id = ?', (int(support), user_id))
+        return self.get(user_id)
+
     def first_id(self) -> str | None:
         """The first user who is not root, as whom the app acts when the login is off (the rowid keeps the order of
         creation)."""
@@ -121,9 +126,9 @@ class UserRepository:
     def restore(self, user: User, password_hash: str) -> None:
         """A user of the full backup as they were (id, role, status, times, password); no defaults, no take-over."""
         sql = 'INSERT INTO users (id, username, email, first_name, last_name, role, active, registered_at, last_login_at,' \
-              ' must_change_password, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+              ' must_change_password, support, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         self._write(sql, (user.id, *_profile(user), user.role, int(user.active), _iso(user.registered_at),
-                          _iso(user.last_login_at), int(user.must_change_password), password_hash))
+                          _iso(user.last_login_at), int(user.must_change_password), int(user.support), password_hash))
 
     def set_password(self, user_id: str, password: str) -> None:
         """A new password ends all sessions of the user."""

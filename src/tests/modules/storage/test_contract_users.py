@@ -163,6 +163,12 @@ def test_change_role(storage, klara):
     assert run(storage, lambda store: store.users().get(rainer.id)).role == 'admin'
 
 
+def test_switch_the_support_role(storage, klara):
+    rainer = add(storage, RAINER)
+    assert run(storage, lambda store: store.users().set_support(rainer.id, True)).support is True
+    assert [user.support for user in run(storage, lambda store: store.users().all())] == [False, True]
+
+
 def test_deactivating_ends_the_sessions_and_keeps_the_user(storage, klara):
     rainer = add(storage, RAINER)
     token = start_session(storage, rainer.id)

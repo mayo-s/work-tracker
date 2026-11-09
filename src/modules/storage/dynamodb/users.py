@@ -33,7 +33,8 @@ def _user(item: Item) -> User:
     return User(id=item['id'], **{field: item[field] for field in _PROFILE}, role=item['role'], active=item['active'],
                 registered_at=item.get('registered_at'), last_login_at=item.get('last_login_at'),
                 must_change_password=item.get('must_change_password', False),
-                two_factor=bool(item.get('two_factor_secret')) and item.get('two_factor_on', False))
+                two_factor=bool(item.get('two_factor_secret')) and item.get('two_factor_on', False),
+                support=item.get('support', False))
 
 
 def _epoch(moment: dt.datetime) -> int:
@@ -86,6 +87,11 @@ class DynamoUsers:
             end_sessions(self._unit, user_id)
         return self.get(user_id)
 
+    def set_support(self, user_id: str, support: bool) -> User:
+        """Whether the user answers the messages of the contact page (SPEC 5.14)."""
+        self._change(user_id, support=support)
+        return self.get(user_id)
+
     def first_id(self) -> str | None:
         """The first user who is not root, as whom the app acts when the login is off."""
         return next((item['id'] for item in self._profiles() if item['role'] != 'root'), None)
@@ -127,7 +133,7 @@ class DynamoUsers:
             self._claim(field, getattr(user, field), user.id)
         self._unit.put({'PK': USERS, 'SK': _profile_key(user.id), 'order': new_record_id(), 'password_hash': password_hash}
                        | _values(user) | {'last_login_at': user.last_login_at.isoformat() if user.last_login_at else None,
-                                          'must_change_password': user.must_change_password})
+                                          'must_change_password': user.must_change_password, 'support': user.support})
 
     def set_password(self, user_id: str, password: str) -> None:
         """A new password ends all sessions of the user."""

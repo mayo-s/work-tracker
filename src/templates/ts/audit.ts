@@ -35,6 +35,7 @@ export function auditText(entry: AuditView): string {
     member_removed: () => `${actor} removed ${user} from ${team}`,
     auditor_assigned: () => `${actor} made ${user} auditor of ${team}${detail ? ` until ${formatDate(detail)}` : ''}`,
     auditor_removed: () => `${actor} ended ${user}'s audit of ${team}`,
+    support_switched: () => `${actor} switched the support role of ${user} ${detail}`,
   };
   return texts[entry.action]();
 }

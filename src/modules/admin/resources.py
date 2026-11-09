@@ -81,12 +81,14 @@ class AdminUserItem(_AdminResource):
     @spec.validate(json=AdminUserInput, resp=Response('HTTP_403', 'HTTP_404', 'HTTP_409', HTTP_200=AdminUserView),
                    tags=TAGS, path_parameter_descriptions=ID_PARAMETER)
     def on_put(self, req: falcon.Request, resp: falcon.Response, user_id: str, json: AdminUserInput) -> None:
-        """Change a user's role or team role, or deactivate (their sessions end, their data is kept) or reactivate them.
+        """Change a user's role, team role or support role, or deactivate (their sessions end, their data is kept) or
+        reactivate them.
 
-        Only root appoints and removes admins and deactivates or reactivates them; only admins give team roles and
-        deactivate or reactivate everyone else (403 otherwise). Nobody demotes or deactivates themselves (409), and root
-        stays as it is (409). Only a member of a team has a team role (409); a team admin manages that team. Nobody
-        changes their own team role (409), so no admin makes themselves the team admin who sees the members' reports.
+        Only root appoints and removes admins and deactivates or reactivates them; only admins give team roles and the
+        support role and deactivate or reactivate everyone else (403 otherwise). Nobody demotes or deactivates themselves
+        (409), and root stays as it is (409). Only a member of a team has a team role (409); a team admin manages that
+        team. Nobody changes their own team role or support role (409), so no admin makes themselves the team admin who
+        sees the members' reports, or support who reads the messages of the contact page.
         """
         with self._storage.transaction() as store:
             users, teams = store.users(), store.teams()
@@ -95,7 +97,7 @@ class AdminUserItem(_AdminResource):
                 raise ConflictError('Root stays root and active')
             membership = teams.membership(user_id)
             if user_id == actor.id:
-                _check_own_change(json, membership)
+                _check_own_change(json, membership, target)
             _check_rights(actor, target, json, membership)
             now = self._clock()
             if _team_role_changes(json, membership):
@@ -104,7 +106,14 @@ class AdminUserItem(_AdminResource):
             users.set_role(user_id, json.role)
             users.set_active(user_id, json.active)
             _record_role_and_status(store, now, actor.id, target, json)
+            _switch_support(store, now, actor.id, target, json)
             resp.media = _view(store, user_id)
+
+
+def _switch_support(store: Store, now: dt.datetime, actor_id: str, target: User, json: AdminUserInput) -> None:
+    if _support_changes(json, target):
+        store.users().set_support(target.id, json.support)
+        record(store, now, actor_id, 'support_switched', target.id, detail='on' if json.support else 'off')
 
 
 def _record_role_and_status(store: Store, now: dt.datetime, actor_id: str, target: User, json: AdminUserInput) -> None:
@@ -117,21 +126,35 @@ def _record_role_and_status(store: Store, now: dt.datetime, actor_id: str, targe
 def _check_rights(actor: User, target: User, json: AdminUserInput, membership: Membership | None) -> None:
     if json.role != target.role and actor.role != 'root':
         raise falcon.HTTPForbidden(description='Only root appoints and removes admins')
-    if _team_role_changes(json, membership) and actor.role != 'admin':
-        raise falcon.HTTPForbidden(description='Only admins give team roles')
+    if actor.role != 'admin':
+        _check_admins_only(json, target, membership)
     if json.active != target.active:
         _check_help(actor, target, 'deactivate or reactivate them')
+
+
+def _check_admins_only(json: AdminUserInput, target: User, membership: Membership | None) -> None:
+    """What only admins give: team roles and the support role."""
+    if _team_role_changes(json, membership):
+        raise falcon.HTTPForbidden(description='Only admins give team roles')
+    if _support_changes(json, target):
+        raise falcon.HTTPForbidden(description='Only admins give the support role')
 
 
 def _team_role_changes(json: AdminUserInput, membership: Membership | None) -> bool:
     return json.team_role is not None and json.team_role != (membership.team_role if membership else None)
 
 
-def _check_own_change(json: AdminUserInput, membership: Membership | None) -> None:
+def _support_changes(json: AdminUserInput, target: User) -> bool:
+    return json.support is not None and json.support != target.support
+
+
+def _check_own_change(json: AdminUserInput, membership: Membership | None, target: User) -> None:
     if json.role != 'admin' or not json.active:
         raise ConflictError('You cannot demote or deactivate yourself; ask another admin')
     if _team_role_changes(json, membership):
         raise ConflictError('You cannot change your own team role; ask another admin')
+    if _support_changes(json, target):
+        raise ConflictError('You cannot change your own support role; ask another admin')
 
 
 class AdminOneTimePassword(_AdminResource):

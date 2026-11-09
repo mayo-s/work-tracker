@@ -62,7 +62,7 @@ def test_users_with_their_account_only(app, klara, hans):
     accounts = [(user['username'], user['role'], user['active']) for user in users]
     assert accounts == [('klara', 'admin', True), ('hans', 'user', True)]
     assert set(users[1]) == {'id', 'username', 'email', 'first_name', 'last_name', 'role', 'active', 'registered_at',
-                             'last_login_at', 'team', 'team_role', 'must_change_password', 'two_factor'}
+                             'last_login_at', 'team', 'team_role', 'must_change_password', 'two_factor', 'support'}
     assert users[1]['last_login_at'] == '2026-10-29T08:00:00'
 
 
@@ -75,6 +75,16 @@ def test_root_appoints_and_removes_admins(app, root, hans, hans_id):
 def test_admins_do_not_appoint_admins(app, klara, hans_id):
     result = change(app, klara, hans_id, role='admin')
     assert (result.status, result.json['description']) == (falcon.HTTP_403, 'Only root appoints and removes admins')
+
+
+def test_admins_give_the_support_role_but_not_root_nor_to_themselves(app, root, klara, hans_id):
+    assert change(app, klara, hans_id, support=True).json['support'] is True
+    assert change(app, klara, hans_id).json['support'] is True  # without it, it stays
+    by_root = change(app, root, hans_id, support=False)
+    assert (by_root.status, by_root.json['description']) == (falcon.HTTP_403, 'Only admins give the support role')
+    own = change(app, klara, USER, role='admin', support=True)
+    assert (own.status, own.json['description']) == (falcon.HTTP_409, 'You cannot change your own support role; ask '
+                                                                      'another admin')
 
 
 def test_root_helps_admins(app, root, hans_id):

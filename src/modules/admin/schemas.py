@@ -23,6 +23,7 @@ class AdminUserView(BaseModel):
     team_role: TeamRole | None = Field(description='Their role in that team; null without a team')
     must_change_password: bool = Field(description='A one-time password is set; the user has not chosen their own yet')
     two_factor: bool = Field(default=False, description='The login also needs a code of an authenticator app')
+    support: bool = Field(default=False, description='Answers the messages of the contact page')
 
     @classmethod
     def of(cls, user: User, membership: Membership | None) -> Self:
@@ -37,6 +38,8 @@ class AdminUserInput(BaseModel):
     team_role: TeamRole | None = Field(default=None, description='The role in their team (only for a member of a team); '
                                                                  'null keeps it. A team admin manages the team')
     active: bool = Field(description='False deactivates the user: they cannot log in, their sessions end')
+    support: bool | None = Field(default=None, description='The support role: answers the messages of the contact page; '
+                                                           'null keeps it')
 
 
 class AdminSettings(BaseModel):

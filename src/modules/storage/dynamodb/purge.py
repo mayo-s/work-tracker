@@ -1,11 +1,12 @@
 """Everything but root goes, before a full backup is restored (SPEC 5.9), in atomic chunks: every other user with their
-partition, login names and sessions, the teams with their members, invitations, services and auditors, the audit log
-and the failed logins. Root (profile, settings, sessions), the app settings, the used setup tokens and the schema
-version stay."""
+partition, login names and sessions, the teams with their members, invitations, services and auditors, the audit log,
+the failed logins and the messages of the contact page with their changes. Root (profile, settings, sessions), the app
+settings, the used setup tokens and the schema version stay."""
 
 from src.modules.storage.dynamodb.audit import AUDIT
 from src.modules.storage.dynamodb.keys import ATTEMPTS, LOGIN, USERS, user_partition
 from src.modules.storage.dynamodb.memberships import TEAMS, team_partition
+from src.modules.storage.dynamodb.messages import MESSAGES, message_partition
 from src.modules.storage.dynamodb.table import Item
 from src.modules.storage.dynamodb.unit import Unit
 
@@ -19,7 +20,9 @@ def purge(unit: Unit, root_id: str) -> None:
     _delete(unit, unit.query_prefix(user_partition(root_id), 'AUDIT#'))  # root's view of the audit log goes with it
     for team in unit.query_prefix(TEAMS, 'TEAM#'):
         _purge_team(unit, team['id'])
-    for pk in (TEAMS, AUDIT, ATTEMPTS):
+    for message in unit.query_prefix(MESSAGES, 'MESSAGE#'):
+        _delete(unit, _partition(unit, message_partition(message['id'])))
+    for pk in (TEAMS, AUDIT, ATTEMPTS, MESSAGES):
         _delete(unit, _partition(unit, pk))
 
 

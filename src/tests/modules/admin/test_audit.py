@@ -30,6 +30,7 @@ def test_changes_of_root_and_admins_are_recorded(app, people):
     app.simulate_put('/api/admin/settings', cookies=root, json={'registration': True})
     app.simulate_put(hans, cookies=root, json={'role': 'admin', 'active': True})
     app.simulate_put(hans, cookies=root, json={'role': 'user', 'active': True})
+    app.simulate_put(hans, cookies=klara, json={'role': 'user', 'active': True, 'support': True})
     app.simulate_put(hans, cookies=klara, json={'role': 'user', 'active': False})
     app.simulate_post(f'{hans}/one-time-password', cookies=klara)
     team = app.simulate_post('/api/admin/teams', cookies=klara, json={'name': 'Platform'}).json['id']
@@ -41,6 +42,7 @@ def test_changes_of_root_and_admins_are_recorded(app, people):
         ('Klara Himmel', 'team_created', None, 'Core', ''),
         ('Klara Himmel', 'one_time_password', 'Hans Dampf', None, ''),
         ('Klara Himmel', 'deactivated', 'Hans Dampf', None, ''),
+        ('Klara Himmel', 'support_switched', 'Hans Dampf', None, 'on'),
         ('Pascal Turbo', 'role_changed', 'Hans Dampf', None, 'user'),
         ('Pascal Turbo', 'role_changed', 'Hans Dampf', None, 'admin'),
         ('Pascal Turbo', 'registration_switched', None, None, 'on'),

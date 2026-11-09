@@ -289,7 +289,7 @@ runs through `npx` with its own TypeScript 5, as it does not support the project
 | `src/__main__.py`            | Development server (`python -m src`)                                                                                                                                                                                                                                                                                                                                                                                          |
 | `src/lib`                    | Calculation rules: durations, breaks, holidays, targets, overtime, PTO                                                                                                                                                                                                                                                                                                                                                        |
 | `src/models`                 | Pydantic models                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `src/modules`                | Features: auth (login, registration), admin, teams, dashboard, storage, import, days, entries, tickets, catalog, settings, export (userdata), full backup (backup), setup, work schedules, PTO years, reports, review, pages, imprint                                                                                                                                                                                                |
+| `src/modules`                | Features: auth (login, registration), admin, teams, dashboard, storage, import, days, entries, tickets, catalog, settings, export (userdata), full backup (backup), setup, work schedules, PTO years, reports, review, pages, imprint, support (archive of the contact messages)                                                                                                                                                                                                |
 | `src/utils`                  | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types; `openapi`: spec file for the frontend types; `stages`: the stage (Local or AWS Lambda) and its storage                                                                                                                                                                                                                               |
 | `src/defaultresources`       | Default resource at `/health` (plain-text status)                                                                                                                                                                                                                                                                                                                                                                             |
 | `src/templates`              | Frontend: `frame.html` (shared page frame), `pages/` (page content), `static/` (served at `/static`: `css/main.css` with the UI style variables (light and dark), Inter font with its OFL license in `fonts/`), TypeScript in `ts/` (`main.ts` loads the page code, e.g. `week.ts`; `api.ts`: typed API client, `api-types.ts`: generated) compiled to `static/js/` (git-ignored), `openapi.json`, frontend tests in `tests/` |
@@ -355,7 +355,7 @@ Reports count worked time, target and overtime up to today (today included); pla
 | `/api/setup`                                                                       | GET, POST              | Whether the user's data is set up; set it up at once (start day, opening balance, schedule, PTO of the first year and the next, services); 409 once set up                                                                                                                                                                                                |
 | `/api/setup/import`                                                                | POST                   | Set up the user's data from an export file (`data`), counts per type; 409 with days, entries or set up already                                                                                                                                                                                                                                            |
 | `/api/admin/users`                                                                 | GET                    | Root and admins: all users with role, team, team role, `active`, `registered_at`, `last_login_at` (403 for others)                                                                                                                                                                                                                                        |
-| `/api/admin/users/{user_id}`                                                       | PUT                    | Root sets `role` (admin or user) and `active` of admins; admins set `team_role` (member or team admin, for members of a team) and `active` of everyone else (403 otherwise); 409 for oneself and for root                                                                                                                                                 |
+| `/api/admin/users/{user_id}`                                                       | PUT                    | Root sets `role` (admin or user) and `active` of admins; admins set `team_role` (member or team admin, for members of a team), `support` (answers the contact messages) and `active` of everyone else (403 otherwise); 409 for oneself and for root                                                                                                       |
 | `/api/admin/users/{user_id}/one-time-password`                                     | POST                   | A one-time password, shown once: root for admins, admins for everyone else (403 otherwise); 409 for oneself and for root                                                                                                                                                                                                                                  |
 | `/api/admin/users/{user_id}/two-factor-reset`                                      | POST                   | Switch a user's two-factor login off (a lost phone): root for admins, admins for everyone else (403 otherwise); 409 for oneself, root, or when off                                                                                                                                                                                                        |
 | `/api/admin/settings`                                                              | GET, PUT               | Root: `registration` on or off (403 for others)                                                                                                                                                                                                                                                                                                           |
@@ -491,6 +491,9 @@ erDiagram
     teams |o--o{ audit_log: "about"
     teams ||--o{ team_auditors: "audited by"
     users ||--o{ team_auditors: "audits"
+    users |o--o{ contact_messages: "sent (logged in)"
+    contact_messages ||--o{ message_changes: "status and notes"
+    users |o--o{ message_changes: "made (support)"
     teams |o--o{ services: "team service"
     services |o--o{ tickets: "service of"
     tickets |o--o{ entries: "ticket of"
@@ -513,6 +516,7 @@ erDiagram
         INTEGER active "0 or 1"
         TEXT registered_at "nullable: before it was recorded"
         TEXT last_login_at "nullable"
+        INTEGER support "0 or 1: answers the contact messages"
     }
     sessions {
         TEXT token_hash PK "SHA-256 of the cookie's token"
@@ -581,6 +585,26 @@ erDiagram
         TEXT user_id FK "nullable: whose account"
         TEXT team_id FK "nullable"
         TEXT detail "e.g. the new role"
+    }
+    contact_messages {
+        TEXT id PK
+        TEXT sent_at
+        TEXT name "a color and an animal once anonymized"
+        TEXT email "empty once anonymized"
+        TEXT subject
+        TEXT text
+        TEXT user_id FK "nullable: a visitor, or anonymized"
+        TEXT status "new, in_progress, done"
+        TEXT done_at "nullable: when last marked done"
+        INTEGER anonymized "0 or 1: in the archive"
+    }
+    message_changes {
+        TEXT id PK
+        TEXT message_id FK
+        TEXT at
+        TEXT actor_id FK "nullable once anonymized: Support"
+        TEXT kind "status or note"
+        TEXT detail "the new status, or the note"
     }
     report_views {
         INTEGER id PK
