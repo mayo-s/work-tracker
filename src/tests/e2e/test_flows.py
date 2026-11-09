@@ -1,6 +1,7 @@
 """The main flows in the browser, one per page that changes data, as a user goes through them."""
 
 import re
+from pathlib import Path
 
 import pytest
 from playwright.sync_api import expect
@@ -152,6 +153,10 @@ def test_a_team_admin_opens_the_team_report(logged_in):
     expect(report).to_contain_text('Platform')
     expect(report.locator('.report-cards .card h3')).to_have_text(['Hans Dampf', 'Klara Himmel'])
     expect(report).to_contain_text('Current members only')
+    with page.expect_download() as download:
+        report.locator('a:has-text("Export CSV")').click()
+    assert re.fullmatch(r'team-report-Platform-\d{4}-\d{2}\.csv', download.value.suggested_filename)
+    assert 'Member;Klara Himmel;Worked;' in Path(download.value.path()).read_text(encoding='utf-8-sig')
     page.click('#team-report-kind')
     expect(page).to_have_url(re.compile(r'&year=\d{4}'))
     expect(page.locator('#team-report-current')).to_have_text('Current year')

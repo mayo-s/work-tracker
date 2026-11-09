@@ -14,7 +14,7 @@ type Member = TeamReport['members'][number];
 type Service = TeamReport['services'][number];
 type Stay = Member['stays'][number];
 /** Who looks at which period. */
-type ReportView = { me: string | null; period: ReportPeriod };
+type ReportView = { me: string | null; team: string; period: ReportPeriod };
 
 /** The period from `?year=2026` or `?month=2026-10`, otherwise the current month. */
 export function periodFromSearch(search: string, today: IsoDate): ReportPeriod {
@@ -22,15 +22,18 @@ export function periodFromSearch(search: string, today: IsoDate): ReportPeriod {
     : { kind: 'month', month: monthFromSearch(search, today) };
 }
 
+function periodParams(period: ReportPeriod): { month: string } | { year: string } {
+  return period.kind === 'month' ? { month: period.month } : { year: String(period.year) };
+}
+
 /** The address of a team's report for a period; without a team, the page chooses the first one. */
 export function reportHref(team: string | null, period: ReportPeriod): string {
-  const params = new URLSearchParams(team ? { team } : {});
-  if (period.kind === 'month') {
-    params.set('month', period.month);
-  } else {
-    params.set('year', String(period.year));
-  }
-  return `/team/report?${params}`;
+  return `/team/report?${new URLSearchParams({ ...(team ? { team } : {}), ...periodParams(period) })}`;
+}
+
+/** The address of the report's CSV file. */
+export function csvHref(team: string, period: ReportPeriod): string {
+  return `/api/teams/${encodeURIComponent(team)}/report.csv?${new URLSearchParams(periodParams(period))}`;
 }
 
 /** The same time as a year, or as a month: the current month in the current year, otherwise January. */
@@ -115,7 +118,7 @@ function serviceCard(service: Service): HTMLElement {
 
 /** A member's month or year report in the team view, for the same period; the own one is not a look at someone else's. */
 export function memberHref(member: string, me: string | null, period: ReportPeriod): string {
-  const params = new URLSearchParams(period.kind === 'month' ? { month: period.month } : { year: String(period.year) });
+  const params = new URLSearchParams(periodParams(period));
   if (member !== me) {
     params.set('member', member);
   }
@@ -144,6 +147,7 @@ function cards(title: string, items: HTMLElement[], empty: string | null): HTMLE
 
 function reportContent(report: TeamReport, view: ReportView): (HTMLElement | null)[] {
   return [
+    el('div', { class: 'report-exports' }, el('a', { class: 'button', href: csvHref(view.team, view.period) }, 'Export CSV')),
     el('div', { class: 'card card-surface week-summary' }, el('strong', {}, report.team), ...figures(report.totals),
       report.until && report.until < report.end ? el('div', { class: 'muted' }, `counted up to ${formatShortDate(report.until)}`) : null),
     report.current_members_only ? el('p', { class: 'muted' }, 'Current members only, each from the day they joined: the total of '
@@ -179,7 +183,7 @@ function periodLinks(doc: Document, period: ReportPeriod, team: string | null, t
 }
 
 function loadReport(team: string, period: ReportPeriod): Promise<TeamReport> {
-  return api.teamReport(team, period.kind === 'month' ? { month: period.month } : { year: String(period.year) });
+  return api.teamReport(team, periodParams(period));
 }
 
 export async function renderTeamReportPage(doc: Document): Promise<void> {
@@ -204,7 +208,7 @@ export async function renderTeamReportPage(doc: Document): Promise<void> {
     if (chooser) {
       doc.querySelector('.week-header')?.append(chooser);
     }
-    const view = { me: status.user?.id ?? null, period };
+    const view = { me: status.user?.id ?? null, team, period };
     root.replaceChildren(...reportContent(await loadReport(team, period), view).filter((part) => part !== null));
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' }, errorText(error, 'The team report could not be loaded.')));

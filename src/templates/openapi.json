@@ -3758,6 +3758,90 @@
         }
       }
     },
+    "/api/teams/{team_id}/report\\.csv": {
+      "get": {
+        "summary": "The team report as a CSV file to download, e.g. `team-report-Platform-2026-10.csv`: one row per figure, with the columns Section, Name, Figure and Duration, separated by semicolons, in UTF-8 with a byte order mark. Not logged.",
+        "operationId": "get__api_teams_{team_id}_report\\.csv",
+        "description": "",
+        "tags": [
+          "Reports"
+        ],
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id of the team"
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[1-9]\\d{3}-(0[1-9]|1[0-2])$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "examples": [
+                "2026-10"
+              ],
+              "title": "Month"
+            },
+            "required": false,
+            "description": ""
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 9999,
+                  "minimum": 1000,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "examples": [
+                2026
+              ],
+              "title": "Year"
+            },
+            "required": false,
+            "description": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/team": {
       "delete": {
         "summary": "Leave the team: the team services the user's tickets use become personal services.",

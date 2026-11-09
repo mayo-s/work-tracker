@@ -521,9 +521,10 @@ A summary of the activities of a team, what work was done: not a look at people'
 - The team report is not logged: only looking at a member's own reports is (5.7).
 - **Export** of the shown period, only of this report:
   - CSV: one row per figure, with the columns Section, Name, Figure and Duration (`h:mm`), e.g.
-    `Member;Rainer Zufall;Coding;40:00`. Separated by semicolons, in UTF-8 with a byte order mark, so German Excel opens
-    it in columns with the umlauts intact. A value starting with `=`, `+`, `-` or `@` gets a leading `'`, so a
-    spreadsheet does not run it as a formula.
+    `Member;Rainer Zufall;Coding;40:00`; a total is `Activity type;Coding;Total;40:00`, hours in entries of someone
+    without any an empty duration. Separated by semicolons, in UTF-8 with a byte order mark, so German Excel opens it in
+    columns with the umlauts intact. A name starting with `=`, `+`, `-`, `@`, a tab or a line break gets a leading `'`,
+    so a spreadsheet does not run it as a formula; a negative duration such as `-2:00` stays as it is.
   - PDF: "Save as PDF" opens the browser's print dialog, with a print layout of the cards in the light theme and
     without the navigation and buttons. The app makes no PDF itself and needs no new package.
 

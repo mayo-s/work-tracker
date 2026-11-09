@@ -420,8 +420,8 @@ L.16 (a–i) → 9.1 (a–i).
       counts; the sentence in the members' settings
     - [x] **L.11c** From the team to its members: a member's card opens their month or year report of the team view for
       that period, with a link back in its banner; the viewer's own card opens their own report
-    - [ ] **L.11d** CSV export (`GET /api/teams/{team_id}/report.csv`): one row per figure, semicolons, UTF-8 with a
-      byte order mark, formulas neutralized
+    - [x] **L.11d** CSV export (`GET /api/teams/{team_id}/report.csv`): one row per figure, semicolons, UTF-8 with a
+      byte order mark, formulas neutralized; the button "Export CSV" on the page
     - [ ] **L.11e** "Save as PDF": a print layout of the cards (light theme, no navigation or buttons) and the browser's
       print dialog
 - [x] **L.12** Clean up the review's import parts once no imported data needs them: guessed tickets and their splits,

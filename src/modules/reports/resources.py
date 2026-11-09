@@ -1,15 +1,17 @@
 """Report endpoints: /api/reports/weeks/{week}, /api/reports/months/{month}, /api/reports/years/{year}; `member` shows
-a member of the team admin's team (team view, logged for the member). /api/teams/{team_id}/report: the team report."""
+a member of the team admin's team (team view, logged for the member). /api/teams/{team_id}/report: the team report,
+report.csv: the same as a file."""
 
 import datetime as dt
 import re
 from collections.abc import Callable
 
 import falcon
+from falcon.util import secure_filename
 from spectree import Response
 
 from src.modules.reports.schemas import MonthReport, Reports, WeekReport, YearReport
-from src.modules.reports.team import TeamReport, TeamReportQuery, team_report
+from src.modules.reports.team import TeamReport, TeamReportQuery, team_report, team_report_csv
 from src.modules.storage.store import Storage, Store
 from src.modules.teams.view import MemberQuery, team_scope, viewing
 from src.utils.spec import spec
@@ -64,16 +66,33 @@ class YearReportResource(_Report):
             resp.media = self._reports(req, store, query, 'year', str(year)).year(year)
 
 
-class TeamReportResource(_Report):
+class _TeamReport(_Report):
+    def _team_report(self, req: falcon.Request, team_id: str, query: TeamReportQuery) -> TeamReport:
+        start, end = query.period()
+        with self._storage.transaction() as store:
+            scope = team_scope(req, store, team_id, self._today())
+            return team_report(store, store.teams().get(team_id), scope, start, end, self._today())
+
+
+class TeamReportResource(_TeamReport):
     @spec.validate(query=TeamReportQuery, resp=Response('HTTP_403', HTTP_200=TeamReport), tags=TAGS,
                    path_parameter_descriptions={'team_id': 'Id of the team'})
     def on_get(self, req: falcon.Request, resp: falcon.Response, team_id: str, query: TeamReportQuery) -> None:
         """A summary of the team's activities in a month or a year, for its team admins and active auditors (SPEC 5.12):
         hours only, without descriptions, notes or days off. Not logged."""
-        start, end = query.period()
-        with self._storage.transaction() as store:
-            scope = team_scope(req, store, team_id, self._today())
-            resp.media = team_report(store, store.teams().get(team_id), scope, start, end, self._today())
+        resp.media = self._team_report(req, team_id, query)
+
+
+class TeamReportCsvResource(_TeamReport):
+    @spec.validate(query=TeamReportQuery, resp=Response('HTTP_200', 'HTTP_403'), tags=TAGS,
+                   path_parameter_descriptions={'team_id': 'Id of the team'})
+    def on_get(self, req: falcon.Request, resp: falcon.Response, team_id: str, query: TeamReportQuery) -> None:
+        """The team report as a CSV file to download, e.g. `team-report-Platform-2026-10.csv`: one row per figure, with the
+        columns Section, Name, Figure and Duration, separated by semicolons, in UTF-8 with a byte order mark. Not logged."""
+        report = self._team_report(req, team_id, query)
+        resp.data = team_report_csv(report)
+        resp.content_type = 'text/csv; charset=utf-8'
+        resp.downloadable_as = secure_filename(f'team-report-{report.team}-{query.label()}.csv')
 
 
 def _monday_of(week: str) -> dt.date:

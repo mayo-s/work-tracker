@@ -103,6 +103,10 @@ def report(app, ids, name, params=NOVEMBER):
     return app.simulate_get(f'/api/teams/{ids["platform"]}/report', cookies=logged_in(app, name), params=params)
 
 
+def csv_report(app, ids, name, params=NOVEMBER):
+    return app.simulate_get(f'/api/teams/{ids["platform"]}/report.csv', cookies=logged_in(app, name), params=params)
+
+
 def test_a_team_admin_sees_the_current_members_from_the_day_they_joined(app, ids):
     result = report(app, ids, 'hans')
     assert result.status == falcon.HTTP_200
@@ -175,3 +179,42 @@ def test_only_team_admins_and_active_auditors_of_the_team(app, storage, ids):
 @pytest.mark.parametrize('params', [{}, {'month': '2026-11', 'year': 2026}, {'month': '2026-13'}, {'year': 26}])
 def test_the_period_is_a_month_or_a_year(app, ids, params):
     assert report(app, ids, 'hans', params).status_code == 422
+
+
+def test_the_csv_has_one_row_per_figure_for_german_excel(app, ids):
+    result = csv_report(app, ids, 'hans')
+    assert result.status == falcon.HTTP_200
+    assert result.headers['content-type'] == 'text/csv; charset=utf-8'
+    assert result.headers['content-disposition'] == 'attachment; filename="team-report-Platform-2026-11.csv"'
+    assert result.content.startswith('\N{BYTE ORDER MARK}Section;'.encode())
+    assert result.content.decode('utf-8-sig').split('\r\n') == [
+        'Section;Name;Figure;Duration',
+        'Team;Platform;Worked;24:00', 'Team;Platform;Target;56:00', 'Team;Platform;Overtime;-32:00',
+        'Team;Platform;Entries;6:30',
+        'Activity type;Coding;Total;5:30', 'Activity type;Meeting;Total;1:00',
+        'Service;MSB;Total;5:00', 'Service;MSB;MSB-1;3:00', 'Service;MSB;TNG-1;2:00',
+        'Service;No service;Total;0:30', 'Service;No service;KP-2;0:30',
+        'Member;Hans Dampf;Worked;16:00', 'Member;Hans Dampf;Target;32:00', 'Member;Hans Dampf;Overtime;-16:00',
+        'Member;Hans Dampf;Entries;4:00', 'Member;Hans Dampf;Coding;3:00', 'Member;Hans Dampf;Meeting;1:00',
+        'Member;Rainer Zufall;Worked;8:00', 'Member;Rainer Zufall;Target;24:00', 'Member;Rainer Zufall;Overtime;-16:00',
+        'Member;Rainer Zufall;Entries;2:30', 'Member;Rainer Zufall;coding;2:30',
+        '',
+    ]
+
+
+def test_the_csv_keeps_names_from_running_as_formulas(app, storage, ids):
+    with storage.transaction() as store:
+        add_entries(store, ids['hans'], '=SUM(A1;A2)', [(nov(2), None, 60)])
+    rows = csv_report(app, ids, 'hans').content.decode('utf-8-sig').split('\r\n')
+    assert 'Activity type;"\'=SUM(A1;A2)";Total;1:00' in rows
+    assert 'Member;Hans Dampf;"\'=SUM(A1;A2)";1:00' in rows
+
+
+def test_the_csv_is_for_the_same_people_and_periods(app, ids):
+    assert csv_report(app, ids, 'rainer').status == falcon.HTTP_403
+    assert csv_report(app, ids, 'hans', {}).status_code == 422
+    year = csv_report(app, ids, 'hans', {'year': 2026})
+    assert year.headers['content-disposition'] == 'attachment; filename="team-report-Platform-2026.csv"'
+    auditor = csv_report(app, ids, 'pascal').content.decode('utf-8-sig')
+    assert 'Member;Klara Himmel;Worked;8:00\r\nMember;Klara Himmel;Target;16:00' in auditor
+    assert 'Member;Klara Himmel;Entries;\r\n' in auditor  # no hours in entries

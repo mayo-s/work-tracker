@@ -4,9 +4,11 @@ Only hours: no descriptions or notes, no days off, no running figures. Activity 
 so the team's figures merge them by name.
 """
 
+import csv
 import datetime as dt
+import io
 from collections import Counter, defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
@@ -36,6 +38,9 @@ class TeamReportQuery(BaseModel):
             return dt.date(self.year, 1, 1), dt.date(self.year, 12, 31)
         year, month = self.month.split('-')
         return month_bounds(int(year), int(month))
+
+    def label(self) -> str:
+        return self.month or str(self.year)
 
 
 class ActivityHours(BaseModel):
@@ -71,6 +76,10 @@ class MemberSummary(Hours):
 
 
 MemberWork = tuple[MemberSummary, PeriodWork]
+CsvRow = tuple[str, str, str, str]
+
+_CSV_HEADER = ('Section', 'Name', 'Figure', 'Duration')
+_FORMULA_START = ('=', '+', '-', '@', '\t', '\r')
 
 
 class TeamReport(BaseModel):
@@ -163,3 +172,45 @@ def _service_hours(service: str | None, tickets: Counter[str | None]) -> TeamSer
     return TeamServiceHours(service=service, duration=format_duration(sum(tickets.values())),
                             tickets=[TicketHours(ticket_key=key, duration=format_duration(minutes))
                                      for key, minutes in ordered])
+
+
+def team_report_csv(report: TeamReport) -> bytes:
+    """The report as CSV, one row per figure: semicolons and a byte order mark, so German Excel opens it in columns with
+    the umlauts intact."""
+    text = io.StringIO(newline='')
+    writer = csv.writer(text, delimiter=';', lineterminator='\r\n')
+    writer.writerow(_CSV_HEADER)
+    writer.writerows((section, _no_formula(name), _no_formula(figure), duration)
+                     for section, name, figure, duration in _csv_rows(report))
+    return text.getvalue().encode('utf-8-sig')
+
+
+def _no_formula(text: str) -> str:
+    """Names come from users; a spreadsheet must not run them. Durations come from the app, so `-2:00` stays a duration."""
+    return f"'{text}" if text.startswith(_FORMULA_START) else text
+
+
+def _csv_rows(report: TeamReport) -> Iterator[CsvRow]:
+    yield from _hours_rows('Team', report.team, report.totals)
+    for item in report.activity_types:
+        yield 'Activity type', item.activity_type, 'Total', item.duration
+    for service in report.services:
+        yield from _service_rows(service)
+    for member in report.members:
+        yield from _hours_rows('Member', member.name, member)
+        for item in member.activity_types:
+            yield 'Member', member.name, item.activity_type, item.duration
+
+
+def _hours_rows(section: str, name: str, hours: Hours) -> Iterator[CsvRow]:
+    yield section, name, 'Worked', hours.worked
+    yield section, name, 'Target', hours.target
+    yield section, name, 'Overtime', hours.overtime
+    yield section, name, 'Entries', hours.entries or ''
+
+
+def _service_rows(service: TeamServiceHours) -> Iterator[CsvRow]:
+    name = service.service or 'No service'
+    yield 'Service', name, 'Total', service.duration
+    for ticket in service.tickets:
+        yield 'Service', name, ticket.ticket_key or 'No ticket', ticket.duration

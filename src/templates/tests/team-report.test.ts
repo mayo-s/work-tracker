@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { chosenTeam, memberHref, otherKind, periodFromSearch, reportHref, reportTeams, stayNote } from '../ts/team-report.ts';
+import { chosenTeam, csvHref, memberHref, otherKind, periodFromSearch, reportHref, reportTeams, stayNote } from '../ts/team-report.ts';
 
 const TODAY = '2026-11-09';
 const OWN = { team: { id: 't1', name: 'Platform', team_role: 'team_admin' } } as Parameters<typeof reportTeams>[0];
@@ -18,6 +18,11 @@ test('the period from the address, otherwise the current month', () => {
 test('the address keeps the team and the period', () => {
   assert.equal(reportHref('t1', { kind: 'month', month: '2026-10' }), '/team/report?team=t1&month=2026-10');
   assert.equal(reportHref(null, { kind: 'year', year: 2026 }), '/team/report?year=2026');
+});
+
+test('the CSV file of the same team and period', () => {
+  assert.equal(csvHref('t1', { kind: 'month', month: '2026-10' }), '/api/teams/t1/report.csv?month=2026-10');
+  assert.equal(csvHref('t1', { kind: 'year', year: 2026 }), '/api/teams/t1/report.csv?year=2026');
 });
 
 test('switching between month and year stays at the same time', () => {

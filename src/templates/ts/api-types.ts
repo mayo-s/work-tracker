@@ -973,6 +973,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/teams/{team_id}/report\\.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The team report as a CSV file to download, e.g. `team-report-Platform-2026-10.csv`: one row per figure, with the columns Section, Name, Figure and Duration, separated by semicolons, in UTF-8 with a byte order mark. Not logged. */
+        get: operations["get__api_teams_{team_id}_report\\.csv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/team": {
         parameters: {
             query?: never;
@@ -7030,6 +7047,46 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TeamReport"];
                 };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "get__api_teams_{team_id}_report\\.csv": {
+        parameters: {
+            query?: {
+                month?: string | null;
+                year?: number | null;
+            };
+            header?: never;
+            path: {
+                /** @description Id of the team */
+                team_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Forbidden */
             403: {
