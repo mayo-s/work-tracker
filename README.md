@@ -101,7 +101,7 @@ all at once.
   the shown period, one row per figure with the period and the page's notes, for German Excel; "Save as PDF" opens
   the print dialog with a print layout of the cards (light, without navigation and buttons).
 - `/imprint`: the imprint in German (§ 5 DDG), name, postal address and e-mail address, open to everyone; every page
-  links it as "Imprint" in its footer.
+  links it as "Imprint" in its footer, next to "License" and "Source code" (both on GitHub, in a new tab).
 - `/setup`, `/admin`, `/team`, `/register`, `/password`, `/2fa`: see "Start from zero" and "Login". `/components`: the
   UI components with their HTML. `/apidoc/swagger`, `/apidoc/redoc`, `/apidoc/scalar`: API documentation (spec:
   `/apidoc/openapi.json`).

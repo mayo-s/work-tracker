@@ -1,3 +1,5 @@
+import re
+
 import falcon
 import pytest
 
@@ -10,8 +12,16 @@ def test_render_page_fills_the_frame():
     assert '<title>Week · Work Tracker</title>' in html
     assert '<main id="app" data-page="week" tabindex="-1">' in html
     assert '<section id="week"' in html
-    assert '<footer class="app-footer">\n    <a href="/imprint">Imprint</a>' in html  # on every page (SPEC 5.13)
     assert '{{' not in html
+
+
+def test_every_page_links_imprint_license_and_source_code_in_its_footer():
+    footer = render_page('week', 'Week').split('<footer class="app-footer">')[1]
+    assert re.findall(r'<a href="([^"]+)"([^>]*)>([^<]+)', footer) == [  # GitHub in a new tab
+        ('/imprint', '', 'Imprint'),
+        ('https://github.com/mayo-s/work-tracker#license', ' target="_blank" rel="noopener"', 'License'),
+        ('https://github.com/mayo-s/work-tracker', ' target="_blank" rel="noopener"', 'Source code')]
+    assert footer.count('<span class="visually-hidden"> (opens in a new tab)</span>') == 2
 
 
 def test_pages_load_the_frontend(client):
@@ -60,9 +70,12 @@ def test_inter_license_is_included():
 
 
 def test_no_external_requests_in_frame_and_styles(client):
-    for url in ('/', '/static/css/main.css'):
-        assert 'http://' not in client.simulate_get(url).text.replace('http://www.w3.org', '')
-        assert 'https://' not in client.simulate_get(url).text
+    """Only links lead elsewhere (the footer's to GitHub); nothing a page loads comes from there."""
+    html = client.simulate_get('/').text
+    assert re.findall(r'<(\w+)[^>]*\b(?:src|href)="(?:https?:)?//', html) == ['a', 'a']
+    css = client.simulate_get('/static/css/main.css').text
+    assert 'http://' not in css.replace('http://www.w3.org', '')
+    assert 'https://' not in css
 
 
 def test_component_gallery_stories(client):

@@ -539,8 +539,8 @@ Who runs the app, as German law requires of a public website (§ 5 DDG).
 
 - At `/imprint`, open to everyone at any time: without login, before the setup, after a one-time password and for
   root. Every page links to it with "Imprint" in its footer (not in print), at the bottom of the window also when the
-  page is shorter; the page itself has no navigation, only
-  the app's name that leads to the start page.
+  page is shorter, followed by "License" (the README's section on GitHub) and "Source code" (the GitHub repository),
+  both in a new tab; the page itself has no navigation, only the app's name that leads to the start page.
 - In German (a translation may come with TASKS.md L.8): "Impressum", under "Angaben gemäß § 5 DDG" the name and the
   postal address (street and number, postcode and city, country), under "Kontakt" the e-mail address as a `mailto`
   link. No phone number: the second fast way of contact will be the contact form (TASKS.md L.16), linked here then.
