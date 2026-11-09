@@ -304,6 +304,28 @@ corners, one accent color. Warnings are the only loud element.
   forms, and focus returns to the button that opened them; "Skip to content" is the first link on each page.
   Narrow screens and zoom follow in TASKS.md 6.7.
 
+### 5.5a Mobile view
+
+The app stays desktop first; on phones it gets a layout of its own, not the desktop page squeezed down. It applies
+below 40rem (640 px), where the narrow-screen rules start; the desktop does not change.
+
+- **Header**: one row with the app's name, the review count (while items are open) and a menu button ("Menu", with
+  `aria-expanded`). The menu opens below the header with all links of the navigation, the search field, the user's
+  name, the dark mode switch and "Log out"; Escape or a second tap closes it, and focus returns to the button. Pages
+  without navigation (login, setup, imprint, …) show only what they show on the desktop. TASKS.md L.13 later decides
+  what the desktop moves into a menu.
+- **Week**: one card per day instead of the table: the day, its type and times with the break on the first line,
+  worked, target and overtime on the second, then its entries with their actions, "Start now" / "End now" on today
+  and "+ Add entry". The day and entry forms open in the card, one field per row.
+- **Tables** on all other pages (month, year, search, review, settings, team, team report, admin) do not scroll
+  sideways: each row becomes a block with its cells as label and value. The month report puts a ticket's hours on its
+  line and the descriptions below.
+- **The page never scrolls sideways** at 320 px and more; long values wrap.
+- **Touch**: buttons and links that act are at least 44 px high on touch screens (`pointer: coarse`); fields have
+  16 px text, so phones do not zoom in when one gets focus.
+- Charts show fewer axis labels, so they do not overlap.
+- Not installable on the home screen (no web app manifest) and no offline mode.
+
 ### 5.6 Login
 
 - A user has a username and an e-mail address (both unique, ignoring case), a first name, an optional last name and a

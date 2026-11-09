@@ -432,8 +432,16 @@ L.16 (a–i) → 9.1 (a–i).
 - [x] **L.14** Imprint (SPEC 5.13): `/imprint` in German (§ 5 DDG), open to everyone at any time, linked as "Imprint"
   in every page's footer; name, postal address and e-mail from the SSM parameter `/work-tracker-<stage>/imprint`
   (locally `$WORK_TRACKER_IMPRINT`) through the open `GET /api/imprint`; "not configured" without them
-- [ ] **L.15** Mobile view: the app is probably desktop first and will not change, but i'd like to offer also a clean
-  mobile view.
+- [ ] **L.15** Mobile view (SPEC 5.5a): the app stays desktop first, but offers a clean view on phones (below 40rem;
+  the desktop does not change), in steps:
+    - [x] **L.15a** Header: one row with name, review count and "Menu"; the menu holds the navigation, search, name,
+      dark mode switch and "Log out"
+    - [ ] **L.15b** Week: one card per day (day, type, times and break; worked, target, overtime; entries), forms in
+      the card
+    - [ ] **L.15c** Tables of the other pages as blocks of label and value, the month report's hours on the ticket's
+      line
+    - [ ] **L.15d** No sideways scrolling (the dashboard's "This year"), fewer chart labels, 44 px touch targets,
+      16 px fields; an end-to-end test of every page at 390 px (no sideways scrolling, axe-core)
 - [ ] **L.16** new contact form and support role: a user can be assigned the support role by admins. When other users
   submit issues via the new contact page, support role users can view these and act. The contact page is the imprint's
   second fast way of contact (SPEC 5.13): it is open to visitors without login too, and the imprint links to it.

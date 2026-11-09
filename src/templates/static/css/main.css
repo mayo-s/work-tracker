@@ -225,6 +225,15 @@ main:focus {
   font-size: var(--font-size-large);
 }
 
+.app-menu {
+  display: contents;  /* its navigation and user sit in the header itself; on phones they are a menu (SPEC 5.5a) */
+}
+
+.app-header .menu-toggle,
+.review-shortcut {
+  display: none;  /* phones only */
+}
+
 .app-nav {
   display: flex;
   gap: var(--space-2);
@@ -1687,14 +1696,55 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
     gap: var(--space-2) var(--space-4);
   }
 
+  /* One row with the name, the review count and "Menu"; the menu opens below it (SPEC 5.5a) */
+  .app-name {
+    margin-right: auto;
+  }
+
+  .app-header .menu-toggle,
+  .review-shortcut:not([hidden]) {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .review-shortcut {
+    color: var(--color-muted);
+    text-decoration: none;  /* like the links of the navigation */
+  }
+
+  .app-menu {
+    display: none;
+    flex-direction: column;
+    gap: var(--space-3);
+    width: 100%;
+    padding-bottom: var(--space-2);
+  }
+
+  .menu-toggle[aria-expanded='true'] + .app-menu {
+    display: flex;
+  }
+
   .app-nav {
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: var(--space-1);
   }
 
   .app-user {
     flex-wrap: wrap;
     width: 100%;
+    margin-left: 0;
+  }
+
+  /* Pages without navigation show what they show on the desktop, without a menu */
+  body:has(main:is([data-page='login'], [data-page='register'], [data-page='setup'], [data-page='password'],
+                   [data-page='two-factor'], [data-page='imprint'])) .app-header .menu-toggle {
+    display: none;
+  }
+
+  body:has(main:is([data-page='login'], [data-page='register'], [data-page='setup'], [data-page='password'],
+                   [data-page='two-factor'], [data-page='imprint'])) .app-menu {
+    display: contents;
   }
 
   .nav-search,

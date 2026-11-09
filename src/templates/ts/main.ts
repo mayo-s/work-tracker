@@ -110,9 +110,28 @@ async function showUser(user: Element, nav: Element | null): Promise<void> {
   }
 }
 
+/** The header's menu on phones (SPEC 5.5a): the button shows and hides the navigation, search and user below the
+ * header; Escape closes it and gives the focus back to the button. Wider screens show them in the header and no button
+ * (CSS). */
+export function setUpMenu(header: Element): void {
+  const toggle = header.querySelector<HTMLButtonElement>('.menu-toggle');
+  if (!toggle) {
+    return;
+  }
+  const open = (opened: boolean): void => toggle.setAttribute('aria-expanded', String(opened));
+  toggle.addEventListener('click', () => open(toggle.getAttribute('aria-expanded') !== 'true'));
+  header.addEventListener('keydown', (event) => {
+    if ((event as KeyboardEvent).key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+      open(false);
+      toggle.focus();
+    }
+  });
+}
+
 const page = document.querySelector<HTMLElement>('#app')?.dataset.page;
 const nav = document.querySelector('.app-nav');
 if (nav && !['login', 'register', 'setup', 'password', 'two-factor', 'imprint'].includes(page ?? '')) {
+  setUpMenu(document.querySelector('.app-header')!);
   markCurrentPage(nav, window.location.pathname);
   if (page === 'review') {
     nav.querySelector<HTMLElement>('a[href="/review"]')!.hidden = false;

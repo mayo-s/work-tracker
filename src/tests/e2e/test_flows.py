@@ -193,6 +193,24 @@ def test_the_tabs_in_their_order(logged_in, persona, tabs):
     expect(page.locator('.app-nav a:not([href="/review"])')).to_have_text(tabs)  # Review comes and goes with its items
 
 
+def test_on_phones_the_header_is_one_row_with_a_menu(logged_in):
+    page = logged_in('hans')
+    page.goto('/week')
+    menu = page.locator('.menu-toggle')
+    expect(menu).to_be_hidden()  # not on the desktop
+    page.set_viewport_size({'width': 390, 'height': 844})
+    expect(page.locator('.app-nav')).to_be_hidden()
+    expect(page.locator('.review-shortcut')).to_have_text('Review 2')
+    menu.click()
+    expect(menu).to_have_attribute('aria-expanded', 'true')
+    expect(page.locator('.app-nav a:not([href="/review"])')).to_have_text(
+        ['Dashboard', 'Week', 'Month', 'Year', 'Audit', 'Team', 'Settings'])
+    expect(page.locator('.app-user button:has-text("Log out")')).to_be_visible()
+    page.keyboard.press('Escape')
+    expect(page.locator('.app-nav')).to_be_hidden()
+    expect(menu).to_be_focused()
+
+
 def test_the_dark_mode_switch_saves_the_theme(logged_in):
     page = logged_in('hans')
     page.emulate_media(color_scheme='light')

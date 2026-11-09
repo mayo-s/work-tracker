@@ -22,19 +22,20 @@ export function reviewTotal(counts: ReviewCounts): number {
 }
 
 /** Shows the number of open review items next to the Review link of the navigation, as a warning badge (none at 0),
- * and the link itself while there are any; replaces the badge shown before, so the count follows every review action. */
+ * and the link itself while there are any; replaces the badge shown before, so the count follows every review action.
+ * The same on the header's shortcut for phones (SPEC 5.5a), which shows only while there are any. */
 export function showReviewBadge(doc: Document, counts: ReviewCounts): void {
-  const link = doc.querySelector<HTMLElement>('.app-nav a[href="/review"]');
-  if (!link) {
-    return;
-  }
-  const shown = link.querySelector('.badge');
-  shown?.previousSibling?.remove();  // the space before it
-  shown?.remove();
   const total = reviewTotal(counts);
-  if (total) {
-    link.hidden = false;
-    link.append(' ', el('span', { class: 'badge warning' }, String(total)));
+  for (const link of doc.querySelectorAll<HTMLElement>('.app-nav a[href="/review"], .review-shortcut')) {
+    const shown = link.querySelector('.badge');
+    shown?.previousSibling?.remove();  // the space before it
+    shown?.remove();
+    if (total) {
+      link.hidden = false;
+      link.append(' ', el('span', { class: 'badge warning' }, String(total)));
+    } else if (link.classList.contains('review-shortcut')) {
+      link.hidden = true;
+    }
   }
 }
 
