@@ -38,7 +38,7 @@ function serviceSection(work: ServiceWork, readOnly: boolean): HTMLElement {
       el('h3', {}, unassigned ? 'No service ' : `${work.service} `,
         unassigned && !readOnly ? el('a', { class: 'badge warning', href: '/review#tickets' }, 'assign in review') : null),
       el('span', { class: 'num' }, work.duration)),
-    scrolling(el('table', {},
+    scrolling(el('table', { class: 'work-tickets' },
       el('tbody', {}, ...work.tickets.map((ticket) => el('tr', {},
         el('td', { class: 'work-ticket' }, ticket.ticket_key ? el('strong', {}, ticket.ticket_key)
           : el('strong', { class: 'value-negative' }, 'No ticket')),

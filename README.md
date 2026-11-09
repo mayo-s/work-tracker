@@ -113,6 +113,8 @@ to 320 CSS px, where wide tables scroll sideways in their own area; Escape close
 On phones (below 40rem, SPEC 5.5a) the header is one row with the name, the review count and "Menu", which opens the
 navigation, search, name, dark mode switch and "Log out" below it; the desktop does not change. The week shows a
 card per day there (times and break, worked, target and overtime, then the entries), with its forms in the card.
+Other list tables turn each row into a block: its first cell as the title, the others as "label value" with the
+column's header as label; the month report shows a ticket's hours on its line and its descriptions below.
 
 ## Deploy to AWS
 

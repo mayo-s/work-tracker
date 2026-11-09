@@ -77,6 +77,21 @@ def test_on_phones_the_week_is_a_card_per_day(logged_in):
     expect(page.locator('.week-table')).to_contain_text('08:00–16:30')  # the table again on a wider screen
 
 
+def test_on_phones_list_tables_are_blocks_of_label_and_value(logged_in):
+    page = logged_in('hans')
+    page.set_viewport_size({'width': 390, 'height': 844})
+    page.goto('/team')
+    klara = page.locator('#members tbody tr', has_text='klara')
+    expect(klara.locator('td[data-label="Member since"]')).to_be_visible()
+    expect(page.locator('#members thead')).to_have_css('position', 'absolute')  # for screen readers only
+    page.goto('/review')
+    ticket = page.locator('#tickets tbody tr', has_text='TNG-4347')
+    expect(ticket.locator('td[data-label="Entries"]')).to_have_text('1')
+    page.fill('#tickets .review-toolbar input[type="search"]', 'other')
+    expect(ticket).to_be_hidden()  # filtered out, though rows are blocks
+    assert page.evaluate('document.documentElement.scrollWidth') == 390
+
+
 def test_start_and_end_now_on_today(logged_in):
     page = logged_in('hans')
     page.clock.set_fixed_time('2026-10-28T08:12:00')

@@ -1821,6 +1821,109 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
   .entry-editor-fields .field-note {
     grid-column: 1 / -1;
   }
+
+  /* List tables (`stacks`, SPEC 5.5a): each row a block, its first cell the title on a line of its own, the others as
+     "label value" (the column's header, `data-label`) side by side, the actions at the right */
+  table.stacks,
+  .stacks > tbody {
+    display: block;
+  }
+
+  .stacks > thead {
+    position: absolute;  /* for screen readers only, like .visually-hidden */
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .stacks > thead:has(input) {  /* except "select all": the checkbox stays, as "All" */
+    position: static;
+    display: block;
+    width: auto;
+    height: auto;
+    clip: auto;
+  }
+
+  .stacks > thead:has(input) th:not(.select-cell) {
+    display: none;
+  }
+
+  .stacks > thead .select-cell {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+    border: 0;
+    background: none;
+  }
+
+  .stacks > thead .select-cell::after {
+    content: 'All';
+  }
+
+  .stacks tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-4);
+    padding: var(--space-3) 0;
+    border-bottom: var(--border);
+  }
+
+  .stacks tr[hidden] {  /* e.g. filtered out in the review */
+    display: none;
+  }
+
+  .stacks > tbody .select-cell {
+    align-self: center;
+    width: auto;
+  }
+
+  .review-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .review-toolbar > :first-child {  /* the filter on a line of its own */
+    grid-column: 1 / -1;
+  }
+
+  .stacks > tbody :is(td, th) {
+    padding: 0;
+    border: 0;
+    text-align: left;
+  }
+
+  .stacks td[data-label]::before {
+    content: attr(data-label) ' ';
+    color: var(--color-muted);
+  }
+
+  .stacks :is(td, th):not(.select-cell):first-child,
+  .stacks .select-cell + :is(td, th) {
+    flex: 1 0 70%;  /* the title takes the line, beside a selection checkbox */
+    font-weight: var(--font-weight-strong);
+  }
+
+  .stacks :is(td, th):not(.select-cell):first-child::before,
+  .stacks .select-cell + :is(td, th)::before {
+    content: none;
+  }
+
+  .stacks .row-actions {
+    margin-left: auto;
+  }
+
+  /* The month report: a ticket and its hours on one line, its descriptions below */
+  .stacks.work-tickets tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .stacks.work-tickets td:nth-child(2) {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    font-weight: var(--font-weight-normal);
+  }
 }
 
 /* Printed (the team report's "Save as PDF"): the content only, without navigation and buttons, and no card split

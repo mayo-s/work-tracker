@@ -319,8 +319,10 @@ below 40rem (640 px), where the narrow-screen rules start; the desktop does not 
   entries with their actions and "+ Add entry". The day and entry forms open in the card, one field per row. Turning
   the phone switches between cards and table, but not while a form is open.
 - **Tables** on all other pages (month, year, search, review, settings, team, team report, admin) do not scroll
-  sideways: each row becomes a block with its cells as label and value. The month report puts a ticket's hours on its
-  line and the descriptions below.
+  sideways: each row becomes a block, its first cell the title, the others as label (the column's header) and value,
+  the actions at the right; the header row is for screen readers only, except "select all" (as "All"). The month
+  report puts a ticket's hours on its line and the descriptions below. Tables of label and value (e.g. the year's PTO
+  account) stay as they are.
 - **The page never scrolls sideways** at 320 px and more; long values wrap.
 - **Touch**: buttons and links that act are at least 44 px high on touch screens (`pointer: coarse`); fields have
   16 px text, so phones do not zoom in when one gets focus.

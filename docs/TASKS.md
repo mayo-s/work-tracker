@@ -438,7 +438,7 @@ L.16 (a–i) → 9.1 (a–i).
       dark mode switch and "Log out"
     - [x] **L.15b** Week: one card per day (day, type, times and break; worked, target, overtime; entries), forms in
       the card
-    - [ ] **L.15c** Tables of the other pages as blocks of label and value, the month report's hours on the ticket's
+    - [x] **L.15c** Tables of the other pages as blocks of label and value, the month report's hours on the ticket's
       line
     - [ ] **L.15d** No sideways scrolling (the dashboard's "This year"), fewer chart labels, 44 px touch targets,
       16 px fields; an end-to-end test of every page at 390 px (no sideways scrolling, axe-core)
