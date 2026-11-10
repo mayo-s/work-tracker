@@ -38,6 +38,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a message to support, who answer by e-mail; a logged-in user's is linked to their account.
+         * @description A message with the hidden field filled in (a bot) is dropped, though it answers 201 like any other. Messages from visitors who are not logged in pause after 5 within 10 minutes (429).
+         */
+        post: operations["post__api_contact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/days": {
         parameters: {
             query?: never;
@@ -2306,6 +2326,36 @@ export interface components {
         };
         /** ChangeViewList */
         ChangeViewList: components["schemas"]["ChangeView"][];
+        /** ContactInput */
+        ContactInput: {
+            /**
+             * Name
+             * @example Klara Himmel
+             */
+            name: string;
+            /**
+             * Email
+             * @description To answer to
+             * @example klara.himmel@example.com
+             */
+            email: string;
+            /**
+             * Subject
+             * @example The export stops
+             */
+            subject: string;
+            /**
+             * Text
+             * @description The message
+             */
+            text: string;
+            /**
+             * Website
+             * @description Leave empty: a field hidden from people, which bots fill in; such a message is dropped
+             * @default
+             */
+            website?: string;
+        };
         /** ImprintDetails */
         ImprintDetails: {
             /**
@@ -4044,6 +4094,44 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ValidationError"];
                 };
+            };
+        };
+    };
+    post__api_contact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContactInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

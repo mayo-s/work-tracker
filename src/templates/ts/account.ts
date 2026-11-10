@@ -10,7 +10,7 @@ export const PASSWORD_MIN_LENGTH = 12;
 const PASSWORD_HINT = `At least ${PASSWORD_MIN_LENGTH} characters with letters, digits and a special character, `
   + 'e.g. ! ? # or %.';
 const USERNAME = /^[A-Za-z0-9][A-Za-z0-9._-]{2,29}$/;
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+export const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export type AccountValues = {
   username: string; email: string; first_name: string; last_name: string; password: string; repeat: string;

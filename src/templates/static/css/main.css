@@ -1706,6 +1706,7 @@ body:has(main[data-page='setup']) :is(.app-nav, .nav-search),
 body:has(main[data-page='password']) :is(.app-nav, .nav-search),
 body:has(main[data-page='two-factor']) :is(.app-nav, .nav-search),
 body:has(main[data-page='imprint']) :is(.app-nav, .nav-search),
+body:has(main[data-page='contact']) :is(.app-nav, .nav-search),
 body:has(main[data-page='search']) .nav-search {  /* the search page has its own form */
   display: none;
 }
@@ -1726,6 +1727,16 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
 .imprint {
   max-width: 28rem;
   margin: var(--space-6) auto;
+}
+
+.contact {
+  max-width: 36rem;
+  margin: var(--space-6) auto;
+}
+
+.contact-trap {  /* the field for bots (SPEC 5.14): off screen, not merely hidden, which some bots skip */
+  position: absolute;
+  left: -10000px;
 }
 
 .login-form .field {
@@ -1879,12 +1890,12 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
 
   /* Pages without navigation show what they show on the desktop, without a menu */
   body:has(main:is([data-page='login'], [data-page='register'], [data-page='setup'], [data-page='password'],
-                   [data-page='two-factor'], [data-page='imprint'])) .app-header .menu-toggle {
+                   [data-page='two-factor'], [data-page='imprint'], [data-page='contact'])) .app-header .menu-toggle {
     display: none;
   }
 
   body:has(main:is([data-page='login'], [data-page='register'], [data-page='setup'], [data-page='password'],
-                   [data-page='two-factor'], [data-page='imprint'])) .app-menu {
+                   [data-page='two-factor'], [data-page='imprint'], [data-page='contact'])) .app-menu {
     display: contents;
   }
 

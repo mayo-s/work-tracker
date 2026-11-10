@@ -71,6 +71,7 @@ export type PtoYearInput = Schemas['PtoYearInput'];
 export type ScheduleView = Schemas['ScheduleView'];
 export type ScheduleInput = Schemas['ScheduleInput'];
 export type ImprintDetails = Schemas['ImprintDetails'];
+export type ContactInput = Schemas['ContactInput'];
 
 /** A week like `2026-W44`, or an inclusive date range in ISO format. */
 export type Period = { week: string } | { start: string; end: string };
@@ -230,6 +231,7 @@ export const api = {
   dashboard: (member: string | null = null) => request<DashboardView>('GET', `/api/dashboard${memberQuery(member)}`),
   search: (query: string) => request<SearchResult>('GET', `/api/search?${query}`),
   imprint: () => request<ImprintDetails>('GET', '/api/imprint'),
+  sendMessage: (input: ContactInput) => request<void>('POST', '/api/contact', input),
 
   authStatus: () => request<AuthStatus>('GET', '/api/auth/status'),
   login: (login: string, password: string, code: string | null = null, remember = false) =>

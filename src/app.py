@@ -23,6 +23,7 @@ from src.modules.days.resources import DayCollection, DayItem, DayRange
 from src.modules.entries.resources import (
     EntryActivityTypeAssignment, EntryCollection, EntryHistory, EntryItem,
 )
+from src.modules.contact.resources import ContactResource
 from src.modules.imprint.resources import ImprintResource
 from src.modules.imprint.sources import EnvironmentImprint, ImprintSource
 from src.modules.pages.resources import (
@@ -91,9 +92,11 @@ def create_app(
     app.add_route('/team/report', Page('team-report', 'Team report'))
     app.add_route('/components', Page('components', 'Component gallery'))
     app.add_route('/imprint', Page('imprint', 'Impressum'))
+    app.add_route('/contact', Page('contact', 'Contact'))
     app.add_static_route('/static', STATIC_DIR)
     app.add_route('/health', Default())
     app.add_route('/api/imprint', ImprintResource(imprint))
+    app.add_route('/api/contact', ContactResource(storage, clock))
     app.add_route('/api/days', DayCollection(storage))
     app.add_route('/api/days/range', DayRange(storage))
     app.add_route('/api/days/{date:dt("%Y-%m-%d")}', DayItem(storage))

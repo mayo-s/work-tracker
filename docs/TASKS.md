@@ -448,7 +448,7 @@ L.16 (a–i) → 9.1 (a–i).
   days into a searchable archive. In steps:
     - [x] **L.16a** Support flag (admins set it in the user list, audit-logged) and the messages' storage on both
       backends with their history, the anonymizing (color and animal) and the full backup
-    - [ ] **L.16b** Contact page and `POST /api/contact` (open; hidden field, pause for visitors), linked from the
+    - [x] **L.16b** Contact page and `POST /api/contact` (open; hidden field, pause for visitors), linked from the
       imprint
     - [ ] **L.16c** Support page: messages and archive with search, status, notes, "Answer by e-mail", delete;
       "Support" in the menu with the badge of new messages

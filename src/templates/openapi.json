@@ -13,6 +13,9 @@
       "name": "Imprint"
     },
     {
+      "name": "Contact"
+    },
+    {
       "name": "Days"
     },
     {
@@ -125,6 +128,45 @@
               }
             }
           }
+        }
+      }
+    },
+    "/api/contact": {
+      "post": {
+        "summary": "Send a message to support, who answer by e-mail; a logged-in user's is linked to their account.",
+        "operationId": "post__api_contact",
+        "description": "A message with the hidden field filled in (a bot) is dropped, though it answers 201 like any other. Messages from visitors who are not logged in pause after 5 within 10 minutes (429).",
+        "tags": [
+          "Contact"
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactInput"
+              }
+            }
+          },
+          "required": true
         }
       }
     },
@@ -6931,6 +6973,61 @@
         },
         "title": "ChangeViewList",
         "type": "array"
+      },
+      "ContactInput": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "examples": [
+              "Klara Himmel"
+            ],
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "email": {
+            "description": "To answer to",
+            "examples": [
+              "klara.himmel@example.com"
+            ],
+            "maxLength": 200,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "subject": {
+            "examples": [
+              "The export stops"
+            ],
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Subject",
+            "type": "string"
+          },
+          "text": {
+            "description": "The message",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "website": {
+            "default": "",
+            "description": "Leave empty: a field hidden from people, which bots fill in; such a message is dropped",
+            "maxLength": 200,
+            "title": "Website",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "subject",
+          "text"
+        ],
+        "title": "ContactInput",
+        "type": "object"
       },
       "ImprintDetails": {
         "properties": {

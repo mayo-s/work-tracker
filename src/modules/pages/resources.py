@@ -9,7 +9,7 @@ from src.modules.storage.store import Storage, Store
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / 'templates'
 STATIC_DIR = TEMPLATES_DIR / 'static'
-BEFORE_SETUP = ('password', 'two-factor', 'imprint')  # pages the setup does not wait for: the first two come first
+BEFORE_SETUP = ('password', 'two-factor', 'imprint', 'contact')  # the setup does not wait for them: the first two come first
 
 
 def render_page(name: str, title: str, theme: str = 'system') -> str:
@@ -62,7 +62,7 @@ class RegisterPage(Page):
 
 class PageSettings:
     """Middleware for pages: the color theme for the frame; until the database is set up, pages forward to /setup,
-    and /setup forwards to the week once it is. The imprint is always there (SPEC 5.13)."""
+    and /setup forwards to the week once it is. The imprint and the contact page are always there (SPEC 5.13, 5.14)."""
 
     def __init__(self, storage: Storage) -> None:
         self._storage = storage

@@ -19,7 +19,7 @@ BROWSER_COOKIE = 'wt_browser'  # a browser remembered for two-factor login
 PAUSED = 'Too many attempts; try again in a minute'
 OPEN_PATHS = {
     '/login', '/register', '/health', '/api/auth/status', '/api/auth/login', '/api/auth/logout', '/api/auth/root',
-    '/api/auth/root/reset', '/api/auth/register', '/imprint', '/api/imprint',
+    '/api/auth/root/reset', '/api/auth/register', '/imprint', '/api/imprint', '/contact', '/api/contact',
 }
 OPEN_PREFIXES = ('/static/', '/apidoc')
 # After a one-time password, until the user chose their own: only this page, its API and what every page needs

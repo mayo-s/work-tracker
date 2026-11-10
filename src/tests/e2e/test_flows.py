@@ -277,6 +277,22 @@ def test_on_phones_the_header_is_one_row_with_a_menu(logged_in):
     expect(menu).to_be_focused()
 
 
+def test_a_visitor_writes_to_support_and_a_user_finds_name_and_address_filled_in(browser, base, logged_in):
+    page = browser.new_page(base_url=base)
+    page.goto('/contact')
+    page.click('button:has-text("Send")')
+    expect(page.locator('#contact-name-error')).to_be_visible()  # nothing entered yet
+    for name, value in (('name', 'Rainer Zufall'), ('email', 'rainer.zufall@example.com'), ('subject', 'Access'),
+                        ('text', 'May I join the Platform team?')):
+        page.fill(f'#contact-{name}', value)
+    page.click('button:has-text("Send")')
+    expect(page.locator('#contact [role="status"]')).to_have_text('Thanks, we will answer by e-mail.')
+    hans = logged_in('hans')
+    hans.goto('/contact')
+    expect(hans.locator('#contact-name')).to_have_value('Hans Dampf')
+    expect(hans.locator('#contact-email')).to_have_value('hans.dampf@example.com')
+
+
 def test_the_dark_mode_switch_saves_the_theme(logged_in):
     page = logged_in('hans')
     page.emulate_media(color_scheme='light')
