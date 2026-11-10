@@ -407,7 +407,8 @@ below 40rem (640 px), where the narrow-screen rules start; the desktop does not 
   An auditor has the team view of those teams read-only, of everyone who was ever in the team, each for the days they
   belonged to it (several stays each count). Being auditor changes nothing else.
 - **Support**: a flag next to the app role, for admins and users (never root): an admin switches it on or off in the
-  user list (logged in the audit log, as any change to a user). Support answers the messages of the contact page
+  user list, also their own (the only thing an admin changes in their own row; logged in the audit log, as any change
+  to a user). Support answers the messages of the contact page
   (5.14). Being support changes nothing else.
 - Registration: while root has switched it on (off by default), the login page links to `/register`. A new user
   enters the fields of the login, is logged in at once (no e-mail confirmation) and goes through the setup. Off, or

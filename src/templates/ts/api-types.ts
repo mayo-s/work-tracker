@@ -694,7 +694,7 @@ export interface paths {
         get?: never;
         /**
          * Change a user's role, team role or support role, or deactivate (their sessions end, their data is kept) or reactivate them.
-         * @description Only root appoints and removes admins and deactivates or reactivates them; only admins give team roles and the support role and deactivate or reactivate everyone else (403 otherwise). Nobody demotes or deactivates themselves (409), and root stays as it is (409). Only a member of a team has a team role (409); a team admin manages that team. Nobody changes their own team role or support role (409), so no admin makes themselves the team admin who sees the members' reports, or support who reads the messages of the contact page.
+         * @description Only root appoints and removes admins and deactivates or reactivates them; only admins give team roles and the support role and deactivate or reactivate everyone else (403 otherwise). Nobody demotes or deactivates themselves (409), and root stays as it is (409). Only a member of a team has a team role (409); a team admin manages that team. Nobody changes their own team role (409), so no admin makes themselves the team admin who sees the members' reports; an admin may switch their own support role (audit-logged).
          */
         put: operations["put__api_admin_users_{user_id}"];
         post?: never;

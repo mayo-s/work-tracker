@@ -23,7 +23,8 @@ const ROLE_LABELS: Record<AdminUserView['role'], string> = { root: 'Root', admin
 const TEAM_ROLES: [TeamRole, string][] = [['member', 'Member'], ['team_admin', 'Team admin']];
 
 /** What the viewer may change in a user's row: root the role of anyone and the status of admins; admins team roles and
- * the status of everyone else. Nobody changes their own row, and root's stays as it is. */
+ * the status of everyone else, and the support role of anyone but root. Nobody changes their own row but an admin their
+ * support role, and root's stays as it is. */
 export function editable(viewer: Viewer, user: AdminUserView, self: boolean):
   Record<'role' | 'teamRole' | 'status' | 'support', boolean> {
   const fixed = self || user.role === 'root';
@@ -31,7 +32,7 @@ export function editable(viewer: Viewer, user: AdminUserView, self: boolean):
     role: !fixed && viewer === 'root',
     teamRole: !fixed && viewer === 'admin' && Boolean(user.team),
     status: !fixed && viewer === (user.role === 'admin' ? 'root' : 'admin'),
-    support: !fixed && viewer === 'admin',
+    support: user.role !== 'root' && viewer === 'admin',
   };
 }
 
@@ -349,7 +350,7 @@ const USERS_HINT: Record<Viewer, string> = {
     + 'admins and looks after them. A deactivated user is logged out and cannot log in; their data is kept. The team role '
     + 'belongs to the team: a team admin, admin or user, manages the team they are in (its members, invitations and '
     + 'services) and sees its members\' reports; leaving the team ends it. Support answers the messages of the contact '
-    + 'page. Nobody changes their own row.',
+    + 'page; you can also make yourself support. Otherwise nobody changes their own row.',
 };
 
 function usersSection(users: AdminUserView[], viewer: Viewer, me: string | undefined, page: Page): HTMLElement {

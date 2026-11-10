@@ -41,9 +41,10 @@ test('root changes the role of anyone and the status of admins; admins team role
     assert.deepEqual(editable('admin', admin, false), { role: false, teamRole: false, status: false, support: true });
   });
 
-test('nobody changes their own row, and root stays', () => {
+test('nobody changes their own row but an admin their support role, and root stays', () => {
   const none = { role: false, teamRole: false, status: false, support: false };
-  assert.deepEqual(editable('admin', { ...HANS, role: 'admin', team: 'Platform', team_role: 'member' }, true), none);
+  assert.deepEqual(editable('admin', { ...HANS, role: 'admin', team: 'Platform', team_role: 'member' }, true),
+    { ...none, support: true });
   assert.deepEqual(editable('admin', { ...HANS, role: 'root' }, false), none);
   assert.deepEqual(editable('root', { ...HANS, role: 'root' }, true), none);
 });
