@@ -19,7 +19,8 @@ def hans_id(storage, klara_id):
 
 def send(storage, subject, minutes=0, user_id=None):
     message = ContactMessage(sent_at=SENT + dt.timedelta(minutes=minutes), name='Klara Himmel',
-                             email='klara.himmel@example.com', subject=subject, text='The export stops.', user_id=user_id)
+                             email='klara.himmel@example.com', subject=subject, text='The export stops.', user_id=user_id,
+                             known=user_id is not None)
     return run(storage, lambda store: store.messages().add(message))
 
 
@@ -53,12 +54,12 @@ def test_save_and_delete_with_the_changes(storage, klara_id, hans_id):
         run(storage, lambda store: store.messages().get(message.id))
 
 
-def test_anonymizing_keeps_subject_text_and_notes(storage, klara_id, hans_id):
+def test_anonymizing_keeps_subject_text_notes_and_that_a_user_sent_it(storage, klara_id, hans_id):
     message = send(storage, 'Export', user_id=klara_id)
     change(storage, message.id, hans_id, 'note', 'Klara sent the file')
     anonymized = run(storage, lambda store: store.messages().anonymize(message.id, 'Blue Elephant'))
     assert anonymized == message.model_copy(update={'name': 'Blue Elephant', 'email': '', 'user_id': None,
-                                                    'anonymized': True})
+                                                    'anonymized': True})  # still known: sent by a user
     notes = run(storage, lambda store: store.messages().changes(message.id))
     assert [(item.actor_id, item.actor_name, item.detail) for item in notes] == [(None, 'Support', 'Klara sent the file')]
 

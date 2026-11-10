@@ -102,10 +102,11 @@ all at once.
   the shown period, one row per figure with the period and the page's notes, for German Excel; "Save as PDF" opens
   the print dialog with a print layout of the cards (light, without navigation and buttons).
 - `/imprint`: the imprint in German (§ 5 DDG), name, postal address and e-mail address, open to everyone; every page
-  links it as "Imprint" in its footer, next to "License" and "Source code" (both on GitHub, in a new tab).
+  links it as "Imprint" in its footer, next to "Contact", "License" and "Source code" (both on GitHub, in a new tab).
 - `/contact`: anyone writes to support (name, e-mail address, subject, message), also without login, linked from the
-  imprint; a logged-in user finds name and address filled in. A hidden field drops messages of bots, and messages of
-  visitors pause after 5 within 10 minutes.
+  footer and the imprint; a logged-in user's name and address come from their account (read-only), and their message
+  is marked as from a known user. A hidden field drops messages of bots, and messages of visitors pause after 5 within
+  10 minutes.
 - `/setup`, `/admin`, `/team`, `/register`, `/password`, `/2fa`: see "Start from zero" and "Login". `/components`: the
   UI components with their HTML. `/apidoc/swagger`, `/apidoc/redoc`, `/apidoc/scalar`: API documentation (spec:
   `/apidoc/openapi.json`).
@@ -340,7 +341,7 @@ Reports count worked time, target and overtime up to today (today included); pla
 | `…?member=<id>` on `/api/dashboard`, `/api/reports/…`, `/api/days`, `/api/entries` | GET                    | Team view: a member of the team admin's team, read-only and from the day they joined (403 for others); reports are logged for the member and bring the member's `work_mode`, which shapes the pages                                                                                                                                                       |
 | `/api/auth/status`                                                                 | GET                    | Whether the login is on, whether users and root exist, the logged-in user, whether registration is on, and whether creating root needs the setup token (open)                                                                                                                                                                                             |
 | `/api/imprint`                                                                     | GET                    | Who runs the app (SPEC 5.13): name, postal address and e-mail address; 404 while they are not configured (open)                                                                                                                                                                                                                                           |
-| `/api/contact`                                                                     | POST                   | Send a message to support: `name`, `email`, `subject`, `text` (open); a logged-in user's is linked to them; a filled-in `website` (bots) is dropped, still 201; visitors 429 after 5 within 10 minutes                                                                                                                                                    |
+| `/api/contact`                                                                     | POST                   | Send a message to support: `name`, `email`, `subject`, `text` (open); a logged-in user's is linked to them and has their account's name and address; a filled-in `website` (bots) is dropped, still 201; visitors 429 after 5 within 10 minutes                                                                                                           |
 | `/api/auth/login`                                                                  | POST                   | Log in with `login` (username or e-mail address) and `password`; sets the session cookie; 401, 403 if deactivated, or 429 after 5 failed logins or registrations within a minute (open); with two-factor login also `code` (401 with `code: two_factor_required` without one), and `remember` for 30 days in this browser (cookie `wt_browser`; not root) |
 | `/api/auth/logout`                                                                 | POST                   | End the session and remove the cookie (open)                                                                                                                                                                                                                                                                                                              |
 | `/api/auth/root`                                                                   | POST                   | Create root (runs the app, tracks no work) once and log in; 409 once root exists; on AWS Lambda with `setup_token` (open)                                                                                                                                                                                                                                 |
@@ -600,6 +601,7 @@ erDiagram
         TEXT user_id FK "nullable: a visitor, or anonymized"
         TEXT status "new, in_progress, done"
         TEXT done_at "nullable: when last marked done"
+        INTEGER known "0 or 1: sent while logged in, kept in the archive"
         INTEGER anonymized "0 or 1: in the archive"
     }
     message_changes {

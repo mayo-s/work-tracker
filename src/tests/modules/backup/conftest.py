@@ -43,7 +43,8 @@ def add_everything(storage, klara_id):
         users.set_support(klara_id, True)
         messages = store.messages()
         asked = messages.add(ContactMessage(sent_at=NOW, name='Hans Dampf', email='hans.dampf@example.com',
-                                            subject='Export', text='The export stops.', user_id=hans))
+                                            subject='Export', text='The export stops.', user_id=hans,
+                                            known=True))
         messages.add(ContactMessage(sent_at=NOW, name='Rainer Zufall', email='rainer.zufall@example.com', subject='Access',
                                     text='May I join?'))
         for kind, detail in (('status', 'in_progress'), ('note', 'Asked for the file')):

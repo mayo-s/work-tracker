@@ -15,10 +15,11 @@ def test_render_page_fills_the_frame():
     assert '{{' not in html
 
 
-def test_every_page_links_imprint_license_and_source_code_in_its_footer():
+def test_every_page_links_imprint_contact_license_and_source_code_in_its_footer():
     footer = render_page('week', 'Week').split('<footer class="app-footer">')[1]
     assert re.findall(r'<a href="([^"]+)"([^>]*)>([^<]+)', footer) == [  # GitHub in a new tab
         ('/imprint', '', 'Imprint'),
+        ('/contact', '', 'Contact'),
         ('https://github.com/mayo-s/work-tracker#license', ' target="_blank" rel="noopener"', 'License'),
         ('https://github.com/mayo-s/work-tracker', ' target="_blank" rel="noopener"', 'Source code')]
     assert footer.count('<span class="visually-hidden"> (opens in a new tab)</span>') == 2

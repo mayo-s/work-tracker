@@ -31,14 +31,24 @@ export async function renderContactPage(doc: Document): Promise<void> {
   if (!root) {
     return;
   }
-  const name = el('input', { id: 'contact-name', name: 'name', maxlength: 100, autocomplete: 'name' });
-  const email = el('input', { id: 'contact-email', name: 'email', type: 'email', maxlength: 200, autocomplete: 'email' });
+  // A logged-in user writes with their account's name and address (the API uses those, whatever is sent)
+  const user = (await api.authStatus().catch(() => null))?.user;
+  const account = { readonly: Boolean(user) };
+  const name = el('input', { id: 'contact-name', name: 'name', maxlength: 100, autocomplete: 'name', ...account });
+  const email = el('input', {
+    id: 'contact-email', name: 'email', type: 'email', maxlength: 200, autocomplete: 'email', ...account,
+  });
+  if (user) {
+    name.value = [user.first_name, user.last_name].filter(Boolean).join(' ');
+    email.value = user.email;
+  }
   const subject = el('input', { id: 'contact-subject', name: 'subject', maxlength: 200 });
   const text = el('textarea', { id: 'contact-text', name: 'text', maxlength: 5000, rows: 8 });
   const website = el('input', { name: 'website', tabindex: -1, autocomplete: 'off' });  // a trap for bots, hidden from people
   const form = el('form', { class: 'login-form', novalidate: true },
-    field('contact', 'name', 'Name', name),
-    field('contact', 'email', 'E-mail address', email, 'Where support answers.'),
+    field('contact', 'name', 'Name', name, user ? 'From your account.' : undefined),
+    field('contact', 'email', 'E-mail address', email,
+      user ? 'Where support answers, from your account.' : 'Where support answers.'),
     field('contact', 'subject', 'Subject', subject),
     field('contact', 'text', 'Message', text, 'Up to 5,000 characters.'),
     el('div', { class: 'contact-trap', 'aria-hidden': 'true' }, el('label', {}, 'Website ', website)),
@@ -51,9 +61,4 @@ export async function renderContactPage(doc: Document): Promise<void> {
     }), () => root.replaceChildren(el('p', { role: 'status' }, THANKS)));
   });
   root.replaceChildren(form);
-  const user = (await api.authStatus().catch(() => null))?.user;  // a logged-in user's name and address are filled in
-  if (user) {
-    name.value ||= [user.first_name, user.last_name].filter(Boolean).join(' ');
-    email.value ||= user.email;
-  }
 }

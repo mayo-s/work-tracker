@@ -675,4 +675,9 @@ MIGRATIONS: tuple[Migration, ...] = (
     );
     CREATE INDEX message_changes_by_message ON message_changes (message_id, at);
     """,
+    # 28: whether a message came from a logged-in user, kept in the archive (SPEC 5.14)
+    """
+    ALTER TABLE contact_messages ADD COLUMN known INTEGER NOT NULL DEFAULT 0 CHECK (known IN (0, 1));
+    UPDATE contact_messages SET known = 1 WHERE user_id IS NOT NULL;
+    """,
 )

@@ -27,19 +27,21 @@ def app(database, clock):
 
 def stored(database):
     with database.transaction() as conn:
-        return [(row['name'], row['user_id']) for row in conn.execute('SELECT name, user_id FROM contact_messages')]
+        return [tuple(row) for row in conn.execute('SELECT name, email, user_id, known FROM contact_messages')]
 
 
 def send(app, cookies=None, **changes):
     return app.simulate_post('/api/contact', cookies=cookies, json=MESSAGE | changes)
 
 
-def test_visitors_and_users_write_a_users_message_is_linked_to_them(app, database):
+def test_visitors_and_users_write_a_users_message_is_theirs_and_known(app, database):
     page = app.simulate_get('/contact')
     assert (page.status, 'data-page="contact"' in page.text) == (falcon.HTTP_200, True)
     assert send(app).status == falcon.HTTP_201
-    assert send(app, logged_in(app, 'klara'), name=KLARA.full_name, email=KLARA.email).status == falcon.HTTP_201
-    assert stored(database) == [('Rainer Zufall', None), ('Klara Himmel', USER)]
+    assert send(app, logged_in(app, 'klara'), name='Pascal Turbo', email='turbo.pascal@example.com').status == \
+        falcon.HTTP_201  # the account's name and address, not the ones sent
+    assert stored(database) == [('Rainer Zufall', 'rainer.zufall@example.com', None, 0),
+                                ('Klara Himmel', 'klara.himmel@example.com', USER, 1)]
 
 
 def test_the_contact_page_is_there_before_the_setup(fresh_database):
@@ -75,4 +77,4 @@ def test_a_new_message_archives_the_due_ones(app, database, clock):
     with database.transaction() as conn:
         MessageRepository(conn).add(done)
     send(app)
-    assert [name for name, _ in stored(database)][0] != 'Klara Himmel'  # a color and an animal now
+    assert stored(database)[0][0] != 'Klara Himmel'  # a color and an animal now

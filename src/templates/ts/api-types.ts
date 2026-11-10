@@ -48,7 +48,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Send a message to support, who answer by e-mail; a logged-in user's is linked to their account.
+         * Send a message to support, who answer by e-mail; a logged-in user's is linked to their account and has their account's name and e-mail address, whatever was sent.
          * @description A message with the hidden field filled in (a bot) is dropped, though it answers 201 like any other. Messages from visitors who are not logged in pause after 5 within 10 minutes (429).
          */
         post: operations["post__api_contact"];
@@ -2330,12 +2330,13 @@ export interface components {
         ContactInput: {
             /**
              * Name
+             * @description A logged-in user's account name is used instead
              * @example Klara Himmel
              */
             name: string;
             /**
              * Email
-             * @description To answer to
+             * @description To answer to; a logged-in user's account address is used instead
              * @example klara.himmel@example.com
              */
             email: string;

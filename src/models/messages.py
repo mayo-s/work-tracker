@@ -22,6 +22,7 @@ class ContactMessage(DomainModel):
     subject: str = Field(min_length=1, max_length=200)
     text: str = Field(min_length=1, max_length=5000)
     user_id: str | None = Field(default=None, description="The sender's account, if they were logged in")
+    known: bool = Field(default=False, description='Sent by a logged-in user; kept in the archive, unlike the account')
     status: MessageStatus = 'new'
     done_at: dt.datetime | None = Field(default=None, description='When it was last marked Done')
     anonymized: bool = False

@@ -277,7 +277,7 @@ def test_on_phones_the_header_is_one_row_with_a_menu(logged_in):
     expect(menu).to_be_focused()
 
 
-def test_a_visitor_writes_to_support_and_a_user_finds_name_and_address_filled_in(browser, base, logged_in):
+def test_a_visitor_writes_to_support_and_a_user_finds_name_and_address_from_their_account(browser, base, logged_in):
     page = browser.new_page(base_url=base)
     page.goto('/contact')
     page.click('button:has-text("Send")')
@@ -288,9 +288,11 @@ def test_a_visitor_writes_to_support_and_a_user_finds_name_and_address_filled_in
     page.click('button:has-text("Send")')
     expect(page.locator('#contact [role="status"]')).to_have_text('Thanks, we will answer by e-mail.')
     hans = logged_in('hans')
-    hans.goto('/contact')
-    expect(hans.locator('#contact-name')).to_have_value('Hans Dampf')
-    expect(hans.locator('#contact-email')).to_have_value('hans.dampf@example.com')
+    hans.goto('/week')
+    hans.click('footer a:has-text("Contact")')
+    for name, value in (('name', 'Hans Dampf'), ('email', 'hans.dampf@example.com')):
+        expect(hans.locator(f'#contact-{name}')).to_have_value(value)
+        expect(hans.locator(f'#contact-{name}')).not_to_be_editable()
 
 
 def test_the_dark_mode_switch_saves_the_theme(logged_in):

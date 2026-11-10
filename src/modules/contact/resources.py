@@ -25,7 +25,8 @@ class ContactResource:
 
     @spec.validate(json=ContactInput, resp=Response('HTTP_201', 'HTTP_429'), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: ContactInput) -> None:
-        """Send a message to support, who answer by e-mail; a logged-in user's is linked to their account.
+        """Send a message to support, who answer by e-mail; a logged-in user's is linked to their account and has their
+        account's name and e-mail address, whatever was sent.
 
         A message with the hidden field filled in (a bot) is dropped, though it answers 201 like any other. Messages from
         visitors who are not logged in pause after 5 within 10 minutes (429).
@@ -37,13 +38,15 @@ class ContactResource:
         with self._storage.transaction() as store:
             if user_id is None and _visitor_messages(store, now) >= VISITOR_MESSAGES:
                 raise falcon.HTTPTooManyRequests(description=TOO_MANY)
-            store.messages().add(ContactMessage(sent_at=now, user_id=user_id,
-                                                **json.model_dump(include={'name', 'email', 'subject', 'text'})))
+            message = json.model_dump(include={'name', 'email', 'subject', 'text'})
+            if user_id is not None:
+                user = store.users().get(user_id)
+                message |= {'name': user.full_name, 'email': user.email, 'user_id': user_id, 'known': True}
+            store.messages().add(ContactMessage(sent_at=now, **message))
             archive_due(store, now)  # the app has no timer: done messages are archived when the next one comes
 
 
 def _visitor_messages(store: Store, now: dt.datetime) -> int:
     """The messages of visitors who were not logged in, within the pause."""
     since = now - VISITOR_PAUSE
-    return sum(1 for message in store.messages().all() if message.user_id is None and message.sent_at > since
-               and not message.anonymized)
+    return sum(1 for message in store.messages().all() if not message.known and message.sent_at > since)

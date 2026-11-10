@@ -572,7 +572,7 @@ Who runs the app, as German law requires of a public website (§ 5 DDG).
 
 - At `/imprint`, open to everyone at any time: without login, before the setup, after a one-time password and for
   root. Every page links to it with "Imprint" in its footer (not in print), at the bottom of the window also when the
-  page is shorter, followed by "License" (the README's section on GitHub) and "Source code" (the GitHub repository),
+  page is shorter, followed by "Contact" (5.14), "License" (the README's section on GitHub) and "Source code" (the GitHub repository),
   both in a new tab; the page itself has no navigation, only the app's name that leads to the start page.
 - In German (a translation may come with TASKS.md L.8): "Impressum", under "Angaben gemäß § 5 DDG" the name and the
   postal address (street and number, postcode and city, country), under "Kontakt" the e-mail address as a `mailto`
@@ -589,16 +589,18 @@ Who runs the app, as German law requires of a public website (§ 5 DDG).
 Anyone can write to the people running the app; users with the support role answer by e-mail.
 
 - **Contact page** `/contact`, open to everyone at any time like the imprint (without login, before the setup, for
-  root), linked from the imprint (5.13). Fields: name, e-mail address (to answer to), subject (up to 200 characters)
-  and message (up to 5,000). A logged-in user finds name and e-mail address filled in, and the message is linked to
-  their account. After sending: "Thanks, we will answer by e-mail."
+  root), linked as "Contact" in every page's footer and from the imprint (5.13). Fields: name, e-mail address (to
+  answer to), subject (up to 200 characters) and message (up to 5,000). A logged-in user finds name and e-mail address
+  of their account filled in and read-only (the API uses the account's, whatever is sent), and the message is linked
+  to their account and marked as from a known user. After sending: "Thanks, we will answer by e-mail."
 - **Against spam**: a field hidden from people (a bot fills it in; such a message is dropped, though the sender
   sees the usual thanks), and messages from visitors who are not logged in pause after 5 within 10 minutes (429, "Too
   many messages; try again in a few minutes"). No captcha, which would load an outside service.
 - **Support page** `/support`, for support users only (others 403), linked as "Support" in the menu (☰, 5.5) with a
   badge of the new messages (also on ☰):
   - **Messages**: the open ones (New, In progress) and the done ones of the last 90 days, newest first, with date,
-    sender (and username if they were logged in), subject and status; **Archive**: the anonymized ones. A search
+    sender (and username if they were logged in), a label "Known user" (sent while logged in, kept in the archive) or
+    "Unknown user", subject and status; **Archive**: the anonymized ones. A search
     field finds messages in both by words of their subject, message or notes.
   - A message opens with its whole text. Support sets its status (New, In progress, Done; Done can be reopened),
     adds internal notes, which only support sees, and answers with "Answer by e-mail": a `mailto` link with the

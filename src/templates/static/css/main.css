@@ -404,6 +404,12 @@ input[aria-invalid='true'] {
   border-color: var(--color-warning);
 }
 
+/* Shown, not changed here (e.g. a logged-in user's name on the contact page) */
+input:read-only {
+  background: var(--color-surface);
+  color: var(--color-muted);
+}
+
 /* Badges, values and states */
 
 .badge {

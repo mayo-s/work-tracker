@@ -8,7 +8,7 @@ from src.models.base import new_id
 from src.models.messages import SUPPORT, ContactMessage, MessageChange
 from src.modules.storage.errors import NotFoundError
 
-_MESSAGE = 'id, sent_at, name, email, subject, text, user_id, status, done_at, anonymized'
+_MESSAGE = 'id, sent_at, name, email, subject, text, user_id, known, status, done_at, anonymized'
 _CHANGES = ("SELECT message_changes.id, message_id, at, actor_id, kind, detail,"
             f" COALESCE(trim(first_name || ' ' || last_name), '{SUPPORT}') AS actor_name"
             ' FROM message_changes LEFT JOIN users ON users.id = actor_id')
@@ -80,9 +80,10 @@ class MessageRepository:
 
     def restore(self, message: ContactMessage) -> None:
         """A message as it was, with its id (also for the full backup)."""
-        self._conn.execute(f'INSERT INTO contact_messages ({_MESSAGE}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        self._conn.execute(f'INSERT INTO contact_messages ({_MESSAGE}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                            (message.id, message.sent_at.isoformat(), message.name, message.email, message.subject,
-                            message.text, message.user_id, message.status, _iso(message.done_at), int(message.anonymized)))
+                            message.text, message.user_id, int(message.known), message.status, _iso(message.done_at),
+                            int(message.anonymized)))
 
     def restore_change(self, change: MessageChange) -> None:
         """A change as it was, with its id (also for the full backup)."""
