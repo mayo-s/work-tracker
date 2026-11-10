@@ -102,7 +102,11 @@ all at once.
   the shown period, one row per figure with the period and the page's notes, for German Excel; "Save as PDF" opens
   the print dialog with a print layout of the cards (light, without navigation and buttons).
 - `/imprint`: the imprint in German (§ 5 DDG), name, postal address and e-mail address, open to everyone; every page
-  links it as "Imprint" in its footer, next to "Contact", "License" and "Source code" (both on GitHub, in a new tab).
+  links it as "Imprint" in its footer, next to "Privacy", "Contact", "License" and "Source code" (both on GitHub, in a
+  new tab).
+- `/privacy`: the privacy policy in German (Datenschutzerklärung, GDPR Art. 13), open to everyone: what personal data
+  the app keeps, why and for how long, cookies, hosting and the user's rights; the controller comes from the imprint's
+  details. The text is in `src/templates/pages/privacy.html`: whoever runs the app elsewhere adapts it there.
 - `/contact`: anyone writes to support (name, e-mail address, subject, message), also without login, linked from the
   footer and the imprint; a logged-in user's name and address come from their account (read-only), and their message
   is marked as from a known user. A hidden field drops messages of bots, and messages of visitors pause after 5 within
@@ -153,7 +157,11 @@ aws iam create-role --role-name work-tracker-$stage-ZappaLambdaExecutionRole \
 aws iam put-role-policy --role-name work-tracker-$stage-ZappaLambdaExecutionRole --policy-name work-tracker \
   --policy-document "$(sed "s/STAGE/$stage/g" deploy/lambda-policy.json)"         # what the function may do
 ./deploy/zappa.sh $stage deploy                                                   # prints the Function URL
+aws logs put-retention-policy --region eu-central-1 --log-group-name /aws/lambda/work-tracker-$stage \
+  --retention-in-days 30                                                         # as the privacy policy says
 ```
+
+A stage deployed before the privacy policy needs the last line too: its logs are kept forever otherwise.
 
 The Function URL answers nothing by itself (403): the app takes only requests through the domain, which CloudFront
 passes on with the origin secret in the header `X-Origin-Verify` (SPEC 7.4). Both domains live in a Route 53 hosted

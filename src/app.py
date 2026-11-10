@@ -105,6 +105,7 @@ def create_app(
     app.add_route('/team/report', Page('team-report', 'Team report'))
     app.add_route('/components', Page('components', 'Component gallery'))
     app.add_route('/imprint', Page('imprint', 'Impressum'))
+    app.add_route('/privacy', Page('privacy', 'Datenschutzerklärung'))
     app.add_route('/contact', Page('contact', 'Contact'))
     app.add_route('/support', Page('support', 'Support'))
     app.add_static_route('/static', STATIC_DIR)

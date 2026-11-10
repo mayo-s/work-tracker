@@ -20,12 +20,14 @@ def no_imprint(monkeypatch):
     monkeypatch.delenv('WORK_TRACKER_IMPRINT', raising=False)
 
 
-def test_visitors_see_the_imprint_before_the_setup(fresh_database, monkeypatch):
+def test_visitors_see_the_imprint_and_the_privacy_policy_before_the_setup(fresh_database, monkeypatch):
     monkeypatch.setenv('WORK_TRACKER_IMPRINT', json.dumps(DETAILS))
     app = testing.TestClient(create_app(fresh_database, auth=True))
     page, details = app.simulate_get('/imprint'), app.simulate_get('/api/imprint')
     assert (page.status, 'data-page="imprint"' in page.text) == (falcon.HTTP_200, True)
     assert (details.status, details.json) == (falcon.HTTP_200, DETAILS)
+    privacy = app.simulate_get('/privacy')  # its controller comes from the imprint's details
+    assert (privacy.status, 'data-page="privacy"' in privacy.text) == (falcon.HTTP_200, True)
 
 
 @pytest.mark.parametrize('value, logged', [

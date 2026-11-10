@@ -35,6 +35,7 @@ const PAGES: Record<string, () => Promise<void>> = {
   team: async () => (await import('./team.ts')).renderTeamPage(document),
   'team-report': async () => (await import('./team-report.ts')).renderTeamReportPage(document),
   imprint: async () => (await import('./imprint.ts')).renderImprintPage(document),
+  privacy: async () => (await import('./privacy.ts')).renderPrivacyPage(document),
   contact: async () => (await import('./contact.ts')).renderContactPage(document),
   support: async () => (await import('./support.ts')).renderSupportPage(document),
 };
@@ -183,7 +184,8 @@ export function setUpMenu(header: Element): void {
 
 const page = document.querySelector<HTMLElement>('#app')?.dataset.page;
 const nav = document.querySelector('.app-nav');
-if (nav && !['login', 'register', 'setup', 'password', 'two-factor', 'imprint', 'contact'].includes(page ?? '')) {
+if (nav && !['login', 'register', 'setup', 'password', 'two-factor', 'imprint', 'privacy', 'contact']
+  .includes(page ?? '')) {
   setUpMenu(document.querySelector('.app-header')!);
   setUpAccountMenu(document.querySelector<HTMLElement>('.account-menu')!);
   markCurrentPage(nav, window.location.pathname);

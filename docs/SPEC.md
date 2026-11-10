@@ -574,7 +574,7 @@ Who runs the app, as German law requires of a public website (§ 5 DDG).
 
 - At `/imprint`, open to everyone at any time: without login, before the setup, after a one-time password and for
   root. Every page links to it with "Imprint" in its footer (not in print), at the bottom of the window also when the
-  page is shorter, followed by "Contact" (5.14), "License" (the README's section on GitHub) and "Source code" (the GitHub repository),
+  page is shorter, followed by "Privacy" (5.15), "Contact" (5.14), "License" (the README's section on GitHub) and "Source code" (the GitHub repository),
   both in a new tab; the page itself has no navigation, only the app's name that leads to the start page.
 - In German (a translation may come with TASKS.md L.8): "Impressum", under "Angaben gemäß § 5 DDG" the name and the
   postal address (street and number, postcode and city, country), under "Kontakt" the e-mail address as a `mailto`
@@ -615,9 +615,29 @@ Anyone can write to the people running the app; users with the support role answ
 - **Archive**: 90 days after a message was last marked Done, it is anonymized: name and e-mail address become a
   random pair of a color and an animal (e.g. "Blue Elephant", no e-mail address), the link to the sender's account
   goes, and the names in its history become "Support". Subject, message and notes stay, so earlier problems can be
-  found; the privacy policy (TASKS.md L.18) says so. The app has no timer: this happens whenever the support page
+  found; the privacy policy (5.15) says so. The app has no timer: this happens whenever the support page
   lists the messages and whenever a new message arrives.
 - Stored on both backends, part of root's full backup and restore (5.9); not part of a user's "Export my data".
+
+### 5.15 Privacy policy
+
+What personal data the app keeps, why and for how long, as GDPR Art. 13 requires.
+
+- At `/privacy`, open to everyone at any time like the imprint (without login, before the setup, for root), linked as
+  "Privacy" in every page's footer after "Imprint"; the page has no navigation. In German ("Datenschutzerklärung"; a
+  translation may come with TASKS.md L.8), with its date ("Stand").
+- The controller (name, postal address, e-mail address, links to the contact form and the imprint) comes from the
+  imprint's details (5.13); the rest is static text in the page, which whoever runs the app adapts.
+- Contents: overview (no tracking, analysis, advertising or outside resources, no profiling); hosting on AWS as
+  processor in `eu-central-1`, CloudFront with possible transfer to the US (EU-US Data Privacy Framework), no IP
+  addresses stored by the app, error logs in CloudWatch for 30 days, restore points of the table for 35 days; the two
+  cookies (`wt_session`, `wt_browser`), strictly necessary, no consent; the account; time tracking and teams (who
+  sees the reports, the log of their looks, the audit log); the contact form (anonymized 90 days after Done); the full
+  backup; the user's rights (Art. 15–18, 20, 21, 77), asked for by e-mail or the contact form.
+- Retention as stated there: account, time data, audit log and the log of looks at reports as long as the account
+  exists; failed logins one minute; contact messages until anonymized; CloudWatch logs 30 days (set per stage, see
+  README).
+- An account is deleted on request; until the app can do it (TASKS.md L.19), by hand.
 
 ## 6. Import (spreadsheet CSV), removed
 
