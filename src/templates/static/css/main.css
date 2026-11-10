@@ -58,6 +58,7 @@
   --focus-ring: 0 0 0 3px var(--color-accent-light);
   --content-width: 72rem;
   --header-height: 3.5rem;
+  --header-offset: var(--header-height);  /* the header's real height, measured by main.ts (it wraps on narrow screens) */
 }
 
 /* Dark mode: the same roles in dark; both blocks hold the same values (kept equal by a test). On screen only: printed
@@ -114,6 +115,7 @@
 html {
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
+  scroll-padding-top: calc(var(--header-offset) + var(--space-3));  /* anchors and focus land below the sticky header */
 }
 
 body {
@@ -184,7 +186,7 @@ a.button {
   position: absolute;
   top: var(--space-2);
   left: var(--space-2);
-  z-index: 10;
+  z-index: 40;  /* above the sticky header */
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius);
   background: var(--color-accent);
@@ -209,6 +211,9 @@ main:focus {
 /* Frame: header, navigation and content */
 
 .app-header {
+  position: sticky;  /* stays at the top while the page scrolls (SPEC 5.5) */
+  top: 0;
+  z-index: 30;
   display: flex;
   flex-wrap: wrap;  /* the search field and the user go to a second row when the links take the width */
   align-items: center;
@@ -507,7 +512,7 @@ pre {
 
 .gallery-nav {
   position: sticky;
-  top: var(--space-5);
+  top: calc(var(--header-offset) + var(--space-5));
 }
 
 .gallery-nav h2 {
@@ -1843,6 +1848,8 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
     flex-wrap: wrap;
     height: auto;
     min-height: var(--header-height);
+    max-height: 100dvh;  /* the opened menu scrolls within the screen */
+    overflow-y: auto;
     padding: var(--space-2) var(--space-4);
     gap: var(--space-2) var(--space-4);
   }

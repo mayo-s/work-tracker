@@ -321,6 +321,20 @@ def test_support_finds_a_new_message_by_the_badge_and_keeps_track_of_it(browser,
     expect(page.locator('.account-toggle .badge')).to_have_count(0)  # nothing new any more
 
 
+@pytest.mark.parametrize('width', [1280, 320])
+def test_the_header_stays_at_the_top_and_what_scrolls_into_view_stays_below_it(logged_in, width):
+    """SPEC 5.5: e.g. an anchor or the focus (WCAG 2.4.11), on wide screens and on phones."""
+    page = logged_in('hans')
+    page.set_viewport_size({'width': width, 'height': 500})
+    page.goto('/settings')
+    section = page.locator('#services')
+    section.wait_for()
+    section.evaluate('(element) => element.scrollIntoView()')
+    header = page.locator('.app-header').bounding_box()
+    assert (header['y'], page.evaluate('window.scrollY') > 0, section.bounding_box()['y'] >= header['height']) == (
+        0, True, True)
+
+
 def test_the_dark_mode_switch_saves_the_theme(logged_in):
     page = logged_in('hans')
     page.emulate_media(color_scheme='light')

@@ -182,6 +182,17 @@ export function setUpMenu(header: Element): void {
   });
 }
 
+/** Keeps `--header-offset` at the sticky header's height (one or two rows, the phone's menu open or not), so anchors,
+ * focus and the gallery's navigation stay below it (SPEC 5.5). */
+export function trackHeaderHeight(header: HTMLElement, root: HTMLElement): void {
+  new ResizeObserver(() => root.style.setProperty('--header-offset', `${header.offsetHeight}px`)).observe(header);
+}
+
+const header = document.querySelector<HTMLElement>('.app-header');
+if (header) {
+  trackHeaderHeight(header, document.documentElement);
+}
+
 const page = document.querySelector<HTMLElement>('#app')?.dataset.page;
 const nav = document.querySelector('.app-nav');
 if (nav && !['login', 'register', 'setup', 'password', 'two-factor', 'imprint', 'privacy', 'contact']

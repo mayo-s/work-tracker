@@ -95,7 +95,8 @@ all at once.
   users, older export files and the former "Developer" are Tickets and activities), overtime balance, work schedules,
   PTO years, services and activity types, color theme, "Export my data", account. The moon or sun between the name and
   the menu (☰) in the navigation turns dark mode on or off; ☰ opens Team (team admins), Settings, Admin (admins and
-  root) and "Log out", with a badge for open team invitations.
+  root) and "Log out", with a badge for open team invitations. The header stays at the top while the page scrolls;
+  anchors and the focus land below it.
 - `/team/report` (`?team=<id>&month=2026-10` or `&year=2026`), the tab "Audit": a summary of a team's activities in
   cards, for its team admins and auditors: hours by activity type, service and ticket and per member, without descriptions, notes or days
   off. A member's card opens their report in the team view for that period, which links back. "Export CSV" downloads
@@ -126,12 +127,12 @@ is asked about as minutes. Company half days (24.12., 31.12.) take 0.5 PTO by th
 (`/?week=…`, `/lists`). All pages meet WCAG 2.2 AA in both themes (axe-core) and on narrow screens or zoomed in down
 to 320 CSS px, where wide tables scroll sideways in their own area; Escape closes inline forms.
 On phones (below 40rem, SPEC 5.5a) the header is one row with the name, the review count and "Menu", which opens the
-navigation, search, name, dark mode switch and the entries of ☰ below it; the desktop does not change. The week shows a
-card per day there (times and break, worked, target and overtime, then the entries), with its forms in the card.
-Other list tables turn each row into a block: its first cell as the title, the others as "label value" with the
-column's header as label; the month report shows a ticket's hours on its line and its descriptions below. Fields
-have 16 px text there (phones would zoom in otherwise), and on touch screens buttons and links that act are at least
-44 px.
+navigation, search, name, dark mode switch and the entries of ☰ below it (scrolling within the screen when taller); the
+desktop does not change. The week shows a card per day there (times and break, worked, target and overtime, then the
+entries), with its forms in the card. Other list tables turn each row into a block: its first cell as the title, the
+others as "label value" with the column's header as label; the month report shows a ticket's hours on its line and its
+descriptions below. Fields have 16 px text there (phones would zoom in otherwise), and on touch screens buttons and
+links that act are at least 44 px.
 
 ## Deploy to AWS
 

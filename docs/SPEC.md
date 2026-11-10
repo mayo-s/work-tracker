@@ -295,6 +295,9 @@ corners, one accent color. Warnings are the only loud element.
   Support, both together on ☰. Escape or a click outside closes it, focus
   returns to ☰; its entries are plain links and a button. With the login off it holds only Settings. Pages that come
   first (setup, new password, two-factor login) show name, dark mode switch and "Log out" instead, without a menu.
+- The header stays at the top of the window while the page scrolls (sticky, also on phones and on the pages without
+  navigation). Whatever scrolls into view, an anchor (e.g. `/settings#services`) or the focus, lands below it, never
+  under it (WCAG 2.4.11), also when the header takes two rows.
 - Font: **Inter**, stored in the project (woff2 files with their OFL license); no external font or CDN
   requests. Tabular digits for times and durations, so columns line up.
 - All colors, sizes and spacings are CSS variables in one stylesheet. **Dark mode** is a second set of color
@@ -318,8 +321,8 @@ below 40rem (640 px), where the narrow-screen rules start; the desktop does not 
 - **Header**: one row with the app's name, the review count (while items are open) and a menu button ("Menu", with
   `aria-expanded`). The menu opens below the header with the tabs, the search field, the user's name, the dark mode
   switch, then the entries of the desktop's ☰ menu (Team, Support, Settings, Admin, "Log out") listed directly,
-  without ☰; Escape or a second tap closes it, and focus returns to the button. Pages without navigation (login, setup,
-  imprint, …) show only what they show on the desktop.
+  without ☰; Escape or a second tap closes it, and focus returns to the button. A menu taller than the screen scrolls
+  within it. Pages without navigation (login, setup, imprint, …) show only what they show on the desktop.
 - **Week**: one card per day instead of the table: the day (with holiday and warnings), its type and "Edit" on top,
   then times ("Start now" / "End now" on today) and break, then worked, target and overtime, then its note, its
   entries with their actions and "+ Add entry". The day and entry forms open in the card, one field per row. Turning
@@ -637,7 +640,7 @@ What personal data the app keeps, why and for how long, as GDPR Art. 13 requires
 - Retention as stated there: account, time data, audit log and the log of looks at reports as long as the account
   exists; failed logins one minute; contact messages until anonymized; CloudWatch logs 30 days (set per stage, see
   README).
-- An account is deleted on request; until the app can do it (TASKS.md L.19), by hand.
+- An account is deleted on request; until the app can do it (TASKS.md L.20), by hand.
 
 ## 6. Import (spreadsheet CSV), removed
 
