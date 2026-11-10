@@ -36,6 +36,7 @@ const PAGES: Record<string, () => Promise<void>> = {
   'team-report': async () => (await import('./team-report.ts')).renderTeamReportPage(document),
   imprint: async () => (await import('./imprint.ts')).renderImprintPage(document),
   contact: async () => (await import('./contact.ts')).renderContactPage(document),
+  support: async () => (await import('./support.ts')).renderSupportPage(document),
 };
 
 /** Shows the Review link with the number of open review items while there are any (SPEC 5.4); the review page shows
@@ -67,9 +68,15 @@ function navLink(href: string, textContent: string): HTMLAnchorElement {
   return Object.assign(document.createElement('a'), { href, textContent });
 }
 
-function badge(count: number): HTMLElement {
-  return Object.assign(document.createElement('span'), { className: 'badge warning', textContent: String(count),
-    title: 'Open team invitations' });
+function badge(count: number, title: string): HTMLElement {
+  return Object.assign(document.createElement('span'), { className: 'badge warning', textContent: String(count), title });
+}
+
+/** What waits behind ☰, for its label: e.g. `Menu, 1 open team invitation, 2 new contact messages`. */
+function menuLabel(invitations: number, newMessages: number): string {
+  const waiting: [number, string][] = [[invitations, 'open team invitation'], [newMessages, 'new contact message']];
+  return ['Menu', ...waiting.filter(([count]) => count).map(([count, what]) => `${count} ${what}${count > 1 ? 's' : ''}`)]
+    .join(', ');
 }
 
 /** The menu (☰) at the right end of the header (SPEC 5.5): a panel with Team, Settings, Admin and "Log out" below it,
@@ -95,8 +102,9 @@ export function setUpAccountMenu(menu: HTMLElement): void {
 }
 
 /** The logged-in user's first name in the header (nothing when the login is off). With `nav`, also the Audit tab (the
- * team report) after Year for team admins and auditors, and in the menu the Team link before Settings for team admins,
- * the Admin link after it for admins, "Log out" last, and badges on ☰ and Settings for open team invitations; without
+ * team report) after Year for team admins and auditors, and in the menu the Team link and the Support link before
+ * Settings for team admins and support, the Admin link after it for admins, "Log out" last, and badges on Settings for
+ * open team invitations, on Support for new contact messages and on ☰ for both together; without
  * it (the pages that come first) name and "Log out": a new user can leave and finds the setup again after the next
  * login. */
 async function showUser(user: Element, nav: Element | null): Promise<void> {
@@ -129,6 +137,13 @@ async function showUser(user: Element, nav: Element | null): Promise<void> {
   if (status.team?.team_role === 'team_admin') {
     settings.before(navLink('/team', 'Team'));
   }
+  if (status.user.support) {
+    const support = navLink('/support', 'Support');
+    settings.before(support);
+    if (status.new_messages) {
+      support.append(' ', badge(status.new_messages, 'New contact messages'));
+    }
+  }
   if (status.team?.team_role === 'team_admin' || status.auditor) {
     nav.querySelector('a[href^="/year"]')?.after(navLink('/team/report', 'Audit'));  // the team view adds the member to it
   }
@@ -138,10 +153,13 @@ async function showUser(user: Element, nav: Element | null): Promise<void> {
   markCurrentPage(nav, window.location.pathname);
   markCurrentPage(links, window.location.pathname);
   if (status.invitations) {  // open team invitations wait in the settings
-    settings.append(' ', badge(status.invitations));
+    settings.append(' ', badge(status.invitations, 'Open team invitations'));
+  }
+  const [invitations, newMessages] = [status.invitations ?? 0, status.new_messages ?? 0];
+  if (invitations + newMessages) {
     const toggle = user.querySelector('.account-toggle')!;
-    toggle.append(badge(status.invitations));
-    toggle.setAttribute('aria-label', `Menu, ${status.invitations} open team invitation${status.invitations > 1 ? 's' : ''}`);
+    toggle.append(badge(invitations + newMessages, 'Open team invitations and new contact messages'));
+    toggle.setAttribute('aria-label', menuLabel(invitations, newMessages));
   }
 }
 

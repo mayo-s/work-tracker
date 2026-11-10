@@ -28,6 +28,7 @@ class UserView(BaseModel):
     must_change_password: bool = Field(default=False, description='True after a one-time password, until the user chose '
                                                                   'their own')
     two_factor: bool = Field(default=False, description='Whether the login also needs a code of an authenticator app')
+    support: bool = Field(default=False, description='Whether the user answers the messages of the contact page')
 
     @classmethod
     def of(cls, user: User) -> Self:
@@ -127,6 +128,7 @@ class AuthStatus(BaseModel):
     team: TeamRef | None = Field(default=None, description='The team of the logged-in user')
     invitations: int = Field(default=0, description='Open team invitations of the logged-in user')
     auditor: bool = Field(default=False, description='True while the logged-in user audits a team')
+    new_messages: int = Field(default=0, description='New messages of the contact page, for support users (else 0)')
     setup_token: bool = Field(default=False, description='True while creating root needs the setup token (AWS Lambda)')
     root_reset: bool = Field(default=False, description="True on AWS Lambda once root exists: root's login can be reset "
                                                         'with a new setup token')

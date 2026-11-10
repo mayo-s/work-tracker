@@ -220,7 +220,7 @@ def test_a_team_admin_opens_the_team_report(logged_in):
 
 @pytest.mark.parametrize('persona, tabs, menu', [
     ('hans', ['Dashboard', 'Week', 'Month', 'Year', 'Audit'], ['Team', 'Settings', 'Log out']),  # team admin
-    ('klara', ['Dashboard', 'Week', 'Month', 'Year'], ['Settings', 'Admin', 'Log out']),  # admin, plain member
+    ('klara', ['Dashboard', 'Week', 'Month', 'Year'], ['Support', 'Settings', 'Admin', 'Log out']),  # admin, support
     ('pascal', [], ['Settings', 'Admin', 'Log out']),  # root
 ])
 def test_the_tabs_and_the_menu_in_their_order(logged_in, persona, tabs, menu):
@@ -293,6 +293,32 @@ def test_a_visitor_writes_to_support_and_a_user_finds_name_and_address_from_thei
     for name, value in (('name', 'Hans Dampf'), ('email', 'hans.dampf@example.com')):
         expect(hans.locator(f'#contact-{name}')).to_have_value(value)
         expect(hans.locator(f'#contact-{name}')).not_to_be_editable()
+
+
+def test_support_finds_a_new_message_by_the_badge_and_keeps_track_of_it(browser, base, logged_in):
+    visitor = browser.new_page(base_url=base)
+    visitor.goto('/contact')
+    for name, value in (('name', 'Rainer Zufall'), ('email', 'rainer.zufall@example.com'), ('subject', 'Access'),
+                        ('text', 'May I join the Platform team?')):
+        visitor.fill(f'#contact-{name}', value)
+    visitor.click('button:has-text("Send")')
+    expect(visitor.locator('#contact [role="status"]')).to_be_visible()
+    page = logged_in('klara')
+    page.goto('/week')
+    expect(page.locator('.account-toggle')).to_have_attribute('aria-label', 'Menu, 1 new contact message')
+    page.click('.account-toggle')
+    page.click('.account-links a:has-text("Support")')
+    page.click('#messages a:has-text("Access")')
+    expect(page.locator('a:has-text("Answer by e-mail")')).to_have_attribute(
+        'href', 'mailto:rainer.zufall@example.com?subject=Re%3A%20Access')
+    page.select_option('#message-status', 'in_progress')
+    expect(page.locator('#support-status')).to_have_text('Marked as In progress')
+    page.fill('#note-text', 'Asked Hans to invite him')
+    page.click('button:has-text("Add note")')
+    expect(page.locator('.history-list li')).to_have_text([
+        re.compile('Klara Himmel Status: In progress$'), re.compile('Klara Himmel Note: Asked Hans to invite him$')])
+    page.goto('/support')
+    expect(page.locator('.account-toggle .badge')).to_have_count(0)  # nothing new any more
 
 
 def test_the_dark_mode_switch_saves_the_theme(logged_in):

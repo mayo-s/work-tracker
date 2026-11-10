@@ -42,6 +42,7 @@ from src.modules.storage.database import Database
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.sqlite import SqliteStorage
 from src.modules.storage.store import Storage
+from src.modules.support.resources import SupportMessageCollection, SupportMessageItem, SupportMessageNotes
 from src.modules.teams.resources import (
     MyAudits, MyInvitationAcceptance, MyInvitationItem, MyTeam, ServiceChoices, TeamInvitationItem, TeamInvitations, TeamItem,
     TeamMemberItem, TeamServiceCollection, TeamServiceItem,
@@ -93,10 +94,14 @@ def create_app(
     app.add_route('/components', Page('components', 'Component gallery'))
     app.add_route('/imprint', Page('imprint', 'Impressum'))
     app.add_route('/contact', Page('contact', 'Contact'))
+    app.add_route('/support', Page('support', 'Support'))
     app.add_static_route('/static', STATIC_DIR)
     app.add_route('/health', Default())
     app.add_route('/api/imprint', ImprintResource(imprint))
     app.add_route('/api/contact', ContactResource(storage, clock))
+    app.add_route('/api/support/messages', SupportMessageCollection(storage, clock))
+    app.add_route('/api/support/messages/{message_id}', SupportMessageItem(storage, clock))
+    app.add_route('/api/support/messages/{message_id}/notes', SupportMessageNotes(storage, clock))
     app.add_route('/api/days', DayCollection(storage))
     app.add_route('/api/days/range', DayRange(storage))
     app.add_route('/api/days/{date:dt("%Y-%m-%d")}', DayItem(storage))

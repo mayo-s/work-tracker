@@ -2091,3 +2091,34 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
     break-inside: avoid;
   }
 }
+
+/* Support page (/support) */
+
+.support-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 36rem;
+  margin-bottom: var(--space-5);
+}
+
+.support-search input {
+  flex: 1 1 14rem;
+  width: auto;
+}
+
+.support-message {
+  max-width: 48rem;
+}
+
+.message-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.support-message .field,
+.support-note {
+  max-width: 36rem;
+  margin-top: var(--space-4);
+}

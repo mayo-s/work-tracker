@@ -25,7 +25,7 @@ SECRET = 'JBSWY3DPEHPK3PXP'  # the authenticator of root and the admin
 
 
 def seed(storage: SqliteStorage) -> dict[str, str]:
-    """Klara: admin and member of Platform; Pascal: root; Hans: team admin of Platform, with an entry still without
+    """Klara: admin, support and member of Platform; Pascal: root; Hans: team admin of Platform, with an entry still without
     activity type; Rainer: not set up yet, invited to Platform. Returns their ids."""
     with storage.transaction() as store:
         users = store.users()
@@ -34,6 +34,7 @@ def seed(storage: SqliteStorage) -> dict[str, str]:
                'hans': users.add(HANS, PASSWORD).id, 'rainer': users.add(RAINER, PASSWORD).id}
         for name in ('klara', 'pascal'):
             users.save_two_factor(ids[name], TwoFactor(secret=SECRET, enabled=True))
+        users.set_support(ids['klara'], True)
         for name in ('klara', 'hans'):
             store.finish_setup(ids[name])
         team = store.teams().add(Team(name='Platform'))

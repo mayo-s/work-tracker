@@ -290,8 +290,9 @@ corners, one accent color. Warnings are the only loud element.
 - Warnings: a past work day without entries, a past open day and the review count.
 - Navigation: the tabs Dashboard, Week, Month, Year, Audit and Review, each only for those who have it; at the right
   the search field, the user's first name, the dark mode switch and the menu (☰, "Menu" for screen readers) where
-  "Log out" was. The menu opens a panel below it with Team (team admins), Settings, Admin (admins and root) and
-  "Log out"; open team invitations show as a badge on ☰ and on Settings. Escape or a click outside closes it, focus
+  "Log out" was. The menu opens a panel below it with Team (team admins), Support (support users, 5.14), Settings,
+  Admin (admins and root) and "Log out"; open team invitations show as a badge on Settings, new contact messages on
+  Support, both together on ☰. Escape or a click outside closes it, focus
   returns to ☰; its entries are plain links and a button. With the login off it holds only Settings. Pages that come
   first (setup, new password, two-factor login) show name, dark mode switch and "Log out" instead, without a menu.
 - Font: **Inter**, stored in the project (woff2 files with their OFL license); no external font or CDN
@@ -316,8 +317,8 @@ below 40rem (640 px), where the narrow-screen rules start; the desktop does not 
 
 - **Header**: one row with the app's name, the review count (while items are open) and a menu button ("Menu", with
   `aria-expanded`). The menu opens below the header with the tabs, the search field, the user's name, the dark mode
-  switch, then the entries of the desktop's ☰ menu (Team, Settings, Admin, "Log out") listed directly, without ☰;
-  Escape or a second tap closes it, and focus returns to the button. Pages without navigation (login, setup,
+  switch, then the entries of the desktop's ☰ menu (Team, Support, Settings, Admin, "Log out") listed directly,
+  without ☰; Escape or a second tap closes it, and focus returns to the button. Pages without navigation (login, setup,
   imprint, …) show only what they show on the desktop.
 - **Week**: one card per day instead of the table: the day (with holiday and warnings), its type and "Edit" on top,
   then times ("Start now" / "End now" on today) and break, then worked, target and overtime, then its note, its
@@ -597,17 +598,20 @@ Anyone can write to the people running the app; users with the support role answ
 - **Against spam**: a field hidden from people (a bot fills it in; such a message is dropped, though the sender
   sees the usual thanks), and messages from visitors who are not logged in pause after 5 within 10 minutes (429, "Too
   many messages; try again in a few minutes"). No captcha, which would load an outside service.
-- **Support page** `/support`, for support users only (others 403), linked as "Support" in the menu (☰, 5.5) with a
-  badge of the new messages (also on ☰):
+- **Support page** `/support`, for support users only (others 403), linked as "Support" in the menu (☰, 5.5) before
+  Settings, with a badge of the new messages (also on ☰, together with open team invitations; both as of the page's
+  loading):
   - **Messages**: the open ones (New, In progress) and the done ones of the last 90 days, newest first, with date,
     sender (and username if they were logged in), a label "Known user" (sent while logged in, kept in the archive) or
-    "Unknown user", subject and status; **Archive**: the anonymized ones. A search
-    field finds messages in both by words of their subject, message or notes.
-  - A message opens with its whole text. Support sets its status (New, In progress, Done; Done can be reopened),
-    adds internal notes, which only support sees, and answers with "Answer by e-mail": a `mailto` link with the
-    address and "Re: <subject>" filled in, which opens their own mail program; the app sends no e-mails.
-  - Each change (status, note) is kept with who made it and when, shown under the message.
-  - Support can delete a message (asked first), also an archived one.
+    "Unknown user", subject and status; **Archive**: the anonymized ones. A search field finds messages in both by
+    words of their subject, message or notes (all words, ignoring case).
+  - A message opens on its own view (`/support?message=<id>`, "← All messages" back) with its whole text. Support sets
+    its status (New, In progress, Done; Done can be reopened), adds internal notes (up to 5,000 characters), which
+    only support sees, and answers with "Answer by e-mail": a `mailto` link with the address and "Re: <subject>"
+    filled in, which opens their own mail program; the app sends no e-mails.
+  - Each change (status, note) is kept with who made it and when, shown under the message as its history.
+  - Support can delete a message (asked first), also an archived one. An archived message otherwise stays as it is:
+    no status change and no new notes (409).
 - **Archive**: 90 days after a message was last marked Done, it is anonymized: name and e-mail address become a
   random pair of a color and an animal (e.g. "Blue Elephant", no e-mail address), the link to the sender's account
   goes, and the names in its history become "Support". Subject, message and notes stay, so earlier problems can be

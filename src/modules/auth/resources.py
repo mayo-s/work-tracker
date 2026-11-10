@@ -71,8 +71,8 @@ class AuthStatusResource(_AuthResource):
     @spec.validate(resp=Response(HTTP_200=AuthStatus), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         """Whether the login is on, whether users and root exist, who is logged in (with their team, number of open
-        invitations and whether they audit a team), whether new users can register, and whether creating root needs
-        the setup token."""
+        invitations, whether they audit a team and, for support, the number of new contact messages), whether new users
+        can register, and whether creating root needs the setup token."""
         user_id = req.context.get('user_id') if self._enabled else None  # with the login off, nobody is logged in
         with self._storage.transaction() as store:
             status = self._status(store)
@@ -87,9 +87,11 @@ class AuthStatusResource(_AuthResource):
 
 
 def _with_user(status: AuthStatus, store: Store, user_id: str, today: dt.date) -> AuthStatus:
-    """The logged-in user, with their team, number of open invitations and whether they audit a team today."""
-    membership = store.teams().membership(user_id)
-    return status.model_copy(update={'user': UserView.of(store.users().get(user_id)),
+    """The logged-in user, with their team, number of open invitations, whether they audit a team today and, for
+    support, the number of new contact messages."""
+    membership, user = store.teams().membership(user_id), store.users().get(user_id)
+    new = sum(message.status == 'new' for message in store.messages().all()) if user.support else 0
+    return status.model_copy(update={'user': UserView.of(user), 'new_messages': new,
                                      'team': TeamRef.of(membership) if membership else None,
                                      'invitations': len(store.invitations().of_user(user_id)),
                                      'auditor': any(auditor.active(today) for auditor in store.auditors().of_user(user_id))})

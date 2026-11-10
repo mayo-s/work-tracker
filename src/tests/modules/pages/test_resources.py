@@ -114,6 +114,7 @@ def test_main_navigation_links_all_pages(client):
     ('/components', 'components', 'Component gallery', 'class="story"'),
     ('/imprint', 'imprint', 'Impressum', 'id="imprint"'),
     ('/contact', 'contact', 'Contact', 'id="contact"'),
+    ('/support', 'support', 'Support', 'id="support"'),
 ])
 def test_pages(client, path, page, title, element):
     result = client.simulate_get(path)

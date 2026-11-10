@@ -14,7 +14,7 @@ PAGES = {
     'rainer': ['/setup'],
     'hans': ['/', '/week?week=2026-W44', '/month?month=2026-10', '/year?year=2026', '/review',
              '/search?text=TNG&start=2026-10-01&end=2026-10-31', '/settings', '/team', '/team/report', '/components'],
-    'klara': ['/admin'],
+    'klara': ['/admin', '/support'],
 }
 
 

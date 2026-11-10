@@ -58,6 +58,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/support/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The messages and the archive, newest first, each with its changes; with `text` only those that match. First archives the messages done for 90 days (the app has no timer). */
+        get: operations["get__api_support_messages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/messages/{message_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One message with its changes. */
+        get: operations["get__api_support_messages_{message_id}"];
+        /** Set the status (kept in its changes); Done also when it was marked so, which starts the 90 days until the archive. An archived message stays as it is (409). */
+        put: operations["put__api_support_messages_{message_id}"];
+        post?: never;
+        /** Delete a message with its changes, also an archived one. */
+        delete: operations["delete__api_support_messages_{message_id}"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/support/messages/{message_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add an internal note, which only support sees. An archived message stays as it is (409). */
+        post: operations["post__api_support_messages_{message_id}_notes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/days": {
         parameters: {
             query?: never;
@@ -443,7 +496,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Whether the login is on, whether users and root exist, who is logged in (with their team, number of open invitations and whether they audit a team), whether new users can register, and whether creating root needs the setup token. */
+        /** Whether the login is on, whether users and root exist, who is logged in (with their team, number of open invitations, whether they audit a team and, for support, the number of new contact messages), whether new users can register, and whether creating root needs the setup token. */
         get: operations["get__api_auth_status"];
         put?: never;
         post?: never;
@@ -1638,6 +1691,12 @@ export interface components {
              */
             auditor?: boolean;
             /**
+             * New Messages
+             * @description New messages of the contact page, for support users (else 0)
+             * @default 0
+             */
+            new_messages?: number;
+            /**
              * Setup Token
              * @description True while creating root needs the setup token (AWS Lambda)
              * @default false
@@ -1705,6 +1764,12 @@ export interface components {
              * @default false
              */
             two_factor?: boolean;
+            /**
+             * Support
+             * @description Whether the user answers the messages of the contact page
+             * @default false
+             */
+            support?: boolean;
         };
         /** RootInput */
         RootInput: {
@@ -2934,6 +2999,99 @@ export interface components {
              */
             theme: "system" | "light" | "dark";
         };
+        /** SupportQuery */
+        SupportQuery: {
+            /**
+             * Text
+             * @description Words that all must match, ignoring case: in the subject, the message or a note
+             * @default
+             */
+            text?: string;
+        };
+        /** SupportMessages */
+        SupportMessages: {
+            /**
+             * Messages
+             * @description The open ones and the done ones of the last 90 days, newest first
+             */
+            messages: components["schemas"]["MessageView"][];
+            /**
+             * Archive
+             * @description The anonymized ones, newest first
+             */
+            archive: components["schemas"]["MessageView"][];
+        };
+        /** MessageView */
+        MessageView: {
+            /** Id */
+            id: string;
+            /**
+             * Sent At
+             * Format: date-time
+             */
+            sent_at: string;
+            /**
+             * Name
+             * @description The sender, or a color and an animal once archived
+             */
+            name: string;
+            /**
+             * Email
+             * @description To answer to; empty once archived
+             */
+            email: string;
+            /**
+             * Username
+             * @description The sender's username, if they were logged in (not once archived)
+             */
+            username: string | null;
+            /**
+             * Known
+             * @description Sent by a logged-in user (also in the archive)
+             */
+            known: boolean;
+            /** Subject */
+            subject: string;
+            /** Text */
+            text: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "new" | "in_progress" | "done";
+            /**
+             * Done At
+             * @description When it was last marked Done
+             */
+            done_at: string | null;
+            /**
+             * Archived
+             * @description Anonymized 90 days after it was last marked Done; it stays as it is
+             */
+            archived: boolean;
+            /**
+             * Changes
+             * @description Status changes and notes, oldest first
+             */
+            changes: components["schemas"]["MessageChangeView"][];
+        };
+        /** StatusInput */
+        StatusInput: {
+            /**
+             * Status
+             * @description New, in progress or done; a done message can be reopened
+             * @enum {string}
+             */
+            status: "new" | "in_progress" | "done";
+        };
+        /** NoteInput */
+        NoteInput: {
+            /**
+             * Text
+             * @description An internal note, which only support sees
+             */
+            text: string;
+        };
         /**
          * TeamPageView
          * @description A team as its admins see it: members and open invitations.
@@ -3897,6 +4055,29 @@ export interface components {
              */
             service_id?: string | null;
         };
+        /** MessageChangeView */
+        MessageChangeView: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Actor
+             * @description Who made it, or "Support" once the message is archived
+             */
+            actor: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "status" | "note";
+            /**
+             * Detail
+             * @description The new status, or the note
+             */
+            detail: string;
+        };
         /** InvitationView */
         InvitationView: {
             /** Id */
@@ -4133,6 +4314,249 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get__api_support_messages: {
+        parameters: {
+            query?: {
+                /** @description Words that all must match, ignoring case: in the subject, the message or a note */
+                text?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportMessages"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "get__api_support_messages_{message_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the message */
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageView"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "put__api_support_messages_{message_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the message */
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatusInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageView"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "delete__api_support_messages_{message_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the message */
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "post__api_support_messages_{message_id}_notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the message */
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageView"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
             };
         };
     };

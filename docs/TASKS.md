@@ -443,14 +443,14 @@ L.16 (a–i) → 9.1 (a–i).
       line
     - [x] **L.15d** No sideways scrolling (the dashboard's "This year"), fewer chart labels, 44 px touch targets,
       16 px fields; the end-to-end test of every page at 320 px also fails on a list table scrolling sideways
-- [ ] **L.16** Contact form and support role (SPEC 5.14): anyone writes on `/contact` (also the imprint's second fast
+- [x] **L.16** Contact form and support role (SPEC 5.14): anyone writes on `/contact` (also the imprint's second fast
   way of contact), support users answer by e-mail and keep track on `/support`; done messages are anonymized after 90
   days into a searchable archive. In steps:
     - [x] **L.16a** Support flag (admins set it in the user list, audit-logged) and the messages' storage on both
       backends with their history, the anonymizing (color and animal) and the full backup
     - [x] **L.16b** Contact page and `POST /api/contact` (open; hidden field, pause for visitors), linked from the
       imprint
-    - [ ] **L.16c** Support page: messages and archive with search, status, notes, "Answer by e-mail", delete;
+    - [x] **L.16c** Support page: messages and archive with search, status, notes, "Answer by e-mail", delete;
       "Support" in the menu with the badge of new messages
 - [ ] **L.17** custom domain: dev.schu3tz.de (dev) and schu3tz.de (prod)
 - [ ] **L.18** Privacy policy (Datenschutzerklärung, GDPR Art. 13): what personal data the app keeps, why and for how

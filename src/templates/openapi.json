@@ -16,6 +16,9 @@
       "name": "Contact"
     },
     {
+      "name": "Support"
+    },
+    {
       "name": "Days"
     },
     {
@@ -163,6 +166,267 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ContactInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/support/messages": {
+      "get": {
+        "summary": "The messages and the archive, newest first, each with its changes; with `text` only those that match. First archives the messages done for 90 days (the app has no timer).",
+        "operationId": "get__api_support_messages",
+        "description": "",
+        "tags": [
+          "Support"
+        ],
+        "parameters": [
+          {
+            "name": "text",
+            "in": "query",
+            "schema": {
+              "default": "",
+              "description": "Words that all must match, ignoring case: in the subject, the message or a note",
+              "maxLength": 200,
+              "title": "Text",
+              "type": "string"
+            },
+            "required": false,
+            "description": "Words that all must match, ignoring case: in the subject, the message or a note"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportMessages"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/support/messages/{message_id}": {
+      "delete": {
+        "summary": "Delete a message with its changes, also an archived one.",
+        "operationId": "delete__api_support_messages_{message_id}",
+        "description": "",
+        "tags": [
+          "Support"
+        ],
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id of the message"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "One message with its changes.",
+        "operationId": "get__api_support_messages_{message_id}",
+        "description": "",
+        "tags": [
+          "Support"
+        ],
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id of the message"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Set the status (kept in its changes); Done also when it was marked so, which starts the 90 days until the archive. An archived message stays as it is (409).",
+        "operationId": "put__api_support_messages_{message_id}",
+        "description": "",
+        "tags": [
+          "Support"
+        ],
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id of the message"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusInput"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/support/messages/{message_id}/notes": {
+      "post": {
+        "summary": "Add an internal note, which only support sees. An archived message stays as it is (409).",
+        "operationId": "post__api_support_messages_{message_id}_notes",
+        "description": "",
+        "tags": [
+          "Support"
+        ],
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id of the message"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteInput"
               }
             }
           },
@@ -1825,7 +2089,7 @@
     },
     "/api/auth/status": {
       "get": {
-        "summary": "Whether the login is on, whether users and root exist, who is logged in (with their team, number of open invitations and whether they audit a team), whether new users can register, and whether creating root needs the setup token.",
+        "summary": "Whether the login is on, whether users and root exist, who is logged in (with their team, number of open invitations, whether they audit a team and, for support, the number of new contact messages), whether new users can register, and whether creating root needs the setup token.",
         "operationId": "get__api_auth_status",
         "description": "",
         "tags": [
@@ -5634,6 +5898,12 @@
             "title": "Auditor",
             "type": "boolean"
           },
+          "new_messages": {
+            "default": 0,
+            "description": "New messages of the contact page, for support users (else 0)",
+            "title": "New Messages",
+            "type": "integer"
+          },
           "setup_token": {
             "default": false,
             "description": "True while creating root needs the setup token (AWS Lambda)",
@@ -5743,6 +6013,12 @@
             "default": false,
             "description": "Whether the login also needs a code of an authenticator app",
             "title": "Two Factor",
+            "type": "boolean"
+          },
+          "support": {
+            "default": false,
+            "description": "Whether the user answers the messages of the contact page",
+            "title": "Support",
             "type": "boolean"
           }
         },
@@ -8188,6 +8464,181 @@
         "title": "ThemeView",
         "type": "object"
       },
+      "SupportQuery": {
+        "properties": {
+          "text": {
+            "default": "",
+            "description": "Words that all must match, ignoring case: in the subject, the message or a note",
+            "maxLength": 200,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "title": "SupportQuery",
+        "type": "object"
+      },
+      "SupportMessages": {
+        "properties": {
+          "messages": {
+            "description": "The open ones and the done ones of the last 90 days, newest first",
+            "items": {
+              "$ref": "#/components/schemas/MessageView"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "archive": {
+            "description": "The anonymized ones, newest first",
+            "items": {
+              "$ref": "#/components/schemas/MessageView"
+            },
+            "title": "Archive",
+            "type": "array"
+          }
+        },
+        "required": [
+          "messages",
+          "archive"
+        ],
+        "title": "SupportMessages",
+        "type": "object"
+      },
+      "MessageView": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          },
+          "name": {
+            "description": "The sender, or a color and an animal once archived",
+            "title": "Name",
+            "type": "string"
+          },
+          "email": {
+            "description": "To answer to; empty once archived",
+            "title": "Email",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The sender's username, if they were logged in (not once archived)",
+            "title": "Username"
+          },
+          "known": {
+            "description": "Sent by a logged-in user (also in the archive)",
+            "title": "Known",
+            "type": "boolean"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "new",
+              "in_progress",
+              "done"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "done_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was last marked Done",
+            "title": "Done At"
+          },
+          "archived": {
+            "description": "Anonymized 90 days after it was last marked Done; it stays as it is",
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "changes": {
+            "description": "Status changes and notes, oldest first",
+            "items": {
+              "$ref": "#/components/schemas/MessageChangeView"
+            },
+            "title": "Changes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "sent_at",
+          "name",
+          "email",
+          "username",
+          "known",
+          "subject",
+          "text",
+          "status",
+          "done_at",
+          "archived",
+          "changes"
+        ],
+        "title": "MessageView",
+        "type": "object"
+      },
+      "StatusInput": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "description": "New, in progress or done; a done message can be reopened",
+            "enum": [
+              "new",
+              "in_progress",
+              "done"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "StatusInput",
+        "type": "object"
+      },
+      "NoteInput": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "description": "An internal note, which only support sees",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "NoteInput",
+        "type": "object"
+      },
       "TeamPageView": {
         "description": "A team as its admins see it: members and open invitations.",
         "properties": {
@@ -10250,6 +10701,41 @@
           "key"
         ],
         "title": "Ticket",
+        "type": "object"
+      },
+      "MessageChangeView": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "actor": {
+            "description": "Who made it, or \"Support\" once the message is archived",
+            "title": "Actor",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "status",
+              "note"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "detail": {
+            "description": "The new status, or the note",
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "actor",
+          "kind",
+          "detail"
+        ],
+        "title": "MessageChangeView",
         "type": "object"
       },
       "InvitationView": {

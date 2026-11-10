@@ -72,6 +72,9 @@ export type ScheduleView = Schemas['ScheduleView'];
 export type ScheduleInput = Schemas['ScheduleInput'];
 export type ImprintDetails = Schemas['ImprintDetails'];
 export type ContactInput = Schemas['ContactInput'];
+export type MessageView = Schemas['MessageView'];
+export type MessageStatus = MessageView['status'];
+export type SupportMessages = Schemas['SupportMessages'];
 
 /** A week like `2026-W44`, or an inclusive date range in ISO format. */
 export type Period = { week: string } | { start: string; end: string };
@@ -232,6 +235,14 @@ export const api = {
   search: (query: string) => request<SearchResult>('GET', `/api/search?${query}`),
   imprint: () => request<ImprintDetails>('GET', '/api/imprint'),
   sendMessage: (input: ContactInput) => request<void>('POST', '/api/contact', input),
+  supportMessages: (text: string) =>
+    request<SupportMessages>('GET', `/api/support/messages${text ? `?${new URLSearchParams({ text })}` : ''}`),
+  supportMessage: (id: string) => request<MessageView>('GET', `/api/support/messages/${segment(id)}`),
+  setMessageStatus: (id: string, status: MessageStatus) =>
+    request<MessageView>('PUT', `/api/support/messages/${segment(id)}`, { status }),
+  addMessageNote: (id: string, text: string) =>
+    request<MessageView>('POST', `/api/support/messages/${segment(id)}/notes`, { text }),
+  deleteMessage: (id: string) => request<void>('DELETE', `/api/support/messages/${segment(id)}`),
 
   authStatus: () => request<AuthStatus>('GET', '/api/auth/status'),
   login: (login: string, password: string, code: string | null = null, remember = false) =>
