@@ -9,6 +9,7 @@ from enum import StrEnum
 
 import boto3
 
+from src.modules.auth.origin import OriginSecret
 from src.modules.auth.sessions import auth_enabled
 from src.modules.auth.setup_token import SetupToken
 from src.modules.imprint.sources import EnvironmentImprint, ImprintSource, ParameterImprint
@@ -73,3 +74,13 @@ def stage_imprint() -> ImprintSource:
     function = os.environ['AWS_LAMBDA_FUNCTION_NAME']
     parameter = os.environ.get('WORK_TRACKER_IMPRINT_PARAMETER') or f'/{function}/imprint'
     return ParameterImprint(boto3.client('ssm', region_name=REGION), parameter)
+
+
+def stage_origin_secret() -> OriginSecret | None:
+    """The secret CloudFront sends with every request (SPEC 7.4): on AWS Lambda from the SSM parameter named like the
+    function (e.g. /work-tracker-prod/origin-secret), or $WORK_TRACKER_ORIGIN_SECRET_PARAMETER; locally none."""
+    if current_stage() is Stage.LOCAL:
+        return None
+    function = os.environ['AWS_LAMBDA_FUNCTION_NAME']
+    parameter = os.environ.get('WORK_TRACKER_ORIGIN_SECRET_PARAMETER') or f'/{function}/origin-secret'
+    return OriginSecret(boto3.client('ssm', region_name=REGION), parameter)

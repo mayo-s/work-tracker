@@ -11,6 +11,7 @@ from src.modules.admin.resources import (
     AdminRestoreResource, AdminSettingsResource, AdminTeamCollection, AdminTeamItem, AdminTwoFactorReset,
     AdminUserCollection, AdminUserItem,
 )
+from src.modules.auth.origin import OriginCheck, OriginSecret
 from src.modules.auth.resources import (
     AuthStatusResource, LoginResource, LogoutResource, MeResource, MyAuditResource, NewAppResource, PasswordResource,
     RegisterResource, RecoveryCodesResource, RootResetResource, RootResource, TwoFactorOffResource, TwoFactorResource,
@@ -50,13 +51,23 @@ from src.modules.teams.resources import (
 from src.modules.tickets.resources import TicketCollection, TicketItem, TicketRenaming, TicketServiceAssignment
 from src.modules.userdata.resources import ExportResource
 from src.utils.spec import spec
-from src.utils.stages import stage_imprint, stage_setup_token, stage_storage
+from src.utils.stages import stage_imprint, stage_origin_secret, stage_setup_token, stage_storage
+
+
+def _middleware(
+    storage: Storage, clock: Callable[[], dt.datetime], enabled: bool, origin_secret: OriginSecret | None,
+) -> list[object]:
+    """First the origin check (only with a secret), then the login (or the first user with the login off)."""
+    origin = [OriginCheck(origin_secret)] if origin_secret else []
+    login = [Authentication(storage, clock)] if enabled else [LocalUser(storage)]
+    return [*origin, *login, RevalidateStaticFiles(), PageSettings(storage)]
 
 
 def create_app(
     database: Database | None = None, today: Callable[[], dt.date] = dt.date.today, auth: bool | None = None,
     clock: Callable[[], dt.datetime] = dt.datetime.now, storage: Storage | None = None,
     setup_token: SetupToken | None = None, imprint: ImprintSource = EnvironmentImprint(),
+    origin_secret: OriginSecret | None = None,
 ) -> falcon.App:
     """The app on the given storage or SQLite database, or by default on the storage of the stage it runs in
     (stages.py), migrated on start; a wrong stage raises a StageError.
@@ -64,15 +75,16 @@ def create_app(
     `today` decides up to which day reports count, `clock` the time of sessions (both replaceable for tests).
     Creating root needs `setup_token` if one is given, and by default the stage's (only on AWS Lambda).
     The imprint comes from `imprint`, by default from the stage's source, or $WORK_TRACKER_IMPRINT with a given storage.
-    The login is on unless `auth` is False or, by default, WORK_TRACKER_AUTH=off.
+    The login is on unless `auth` is False or, by default, WORK_TRACKER_AUTH=off. With `origin_secret` (by default the
+    stage's, only on AWS Lambda), requests without it are refused: they did not come through the domain.
     """
     if storage is None and database is None:
         storage, setup_token, imprint = stage_storage(), stage_setup_token(), stage_imprint()
+        origin_secret = stage_origin_secret()
     storage = storage or SqliteStorage(database)
     storage.migrate()
     enabled = auth_enabled() if auth is None else auth
-    login = [Authentication(storage, clock)] if enabled else [LocalUser(storage)]
-    app = falcon.App(middleware=[*login, RevalidateStaticFiles(), PageSettings(storage)])
+    app = falcon.App(middleware=_middleware(storage, clock, enabled, origin_secret))
     app.add_error_handler(NotFoundError, _not_found)
     app.add_error_handler(ConflictError, _conflict)
     app.add_route('/', StartPage())

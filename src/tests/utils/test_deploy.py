@@ -9,6 +9,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[3]
 ZAPPA = json.loads((ROOT / 'zappa_settings.json').read_text())
 POLICY = (ROOT / 'deploy' / 'lambda-policy.json').read_text()
 TRUST = (ROOT / 'deploy' / 'lambda-trust-policy.json').read_text()
+CLOUDFRONT = (ROOT / 'deploy' / 'cloudfront.json').read_text()
+DNS_ALIAS = (ROOT / 'deploy' / 'dns-alias.json').read_text()
 STAGES = ['dev', 'prod']
 BASE = ZAPPA['base']  # the stages differ only in their bucket
 
@@ -20,7 +22,7 @@ def test_dev_and_prod_share_one_base_and_differ_only_in_their_bucket():
 
 
 def test_no_account_id_in_the_settings_and_the_policy():
-    for text in (json.dumps(ZAPPA), POLICY, TRUST):
+    for text in (json.dumps(ZAPPA), POLICY, TRUST, CLOUDFRONT, DNS_ALIAS):
         assert not re.search(r'\d{12}', text)
 
 
@@ -49,7 +51,8 @@ def test_the_role_of_a_stage_reaches_only_its_table_its_parameters_and_its_logs(
     resources = [statement['Resource'] for statement in policy['Statement']]
     assert resources == ['arn:aws:dynamodb:eu-central-1:*:table/work-tracker-dev',
                          ['arn:aws:ssm:eu-central-1:*:parameter/work-tracker-dev/setup-token',
-                          'arn:aws:ssm:eu-central-1:*:parameter/work-tracker-dev/imprint'], '*',
+                          'arn:aws:ssm:eu-central-1:*:parameter/work-tracker-dev/imprint',
+                          'arn:aws:ssm:eu-central-1:*:parameter/work-tracker-dev/origin-secret'], '*',
                          'arn:aws:logs:eu-central-1:*:log-group:/aws/lambda/work-tracker-dev*']
     assert policy['Statement'][2]['Condition'] == {'StringEquals': {'kms:ViaService': 'ssm.eu-central-1.amazonaws.com'}}
 
@@ -60,3 +63,15 @@ def test_only_lambda_and_the_keep_warm_rule_of_the_stage_may_use_the_role():
         'lambda.amazonaws.com', 'events.amazonaws.com']
     assert trust['Statement'][1]['Condition'] == {
         'ArnLike': {'aws:SourceArn': 'arn:aws:events:eu-central-1:*:rule/work-tracker-dev*'}}
+
+
+def test_cloudfront_passes_every_request_on_uncached_over_https_with_the_origin_secret():
+    """The domain in front of the Function URL; the secret is filled in when the distribution is created."""
+    config = json.loads(CLOUDFRONT)
+    behavior, [origin] = config['DefaultCacheBehavior'], config['Origins']['Items']
+    assert (behavior['CachePolicyId'], behavior['OriginRequestPolicyId']) == (
+        '4135ea2d-6df8-44a3-9df3-4b5a84be39ad', 'b689b0a8-53d0-40ab-baf2-68738e2966ac')  # AWS's CachingDisabled and
+    # AllViewerExceptHostHeader: cookies, query and headers go on, the Function URL gets its own host
+    assert (behavior['ViewerProtocolPolicy'], behavior['AllowedMethods']['Quantity']) == ('redirect-to-https', 7)
+    assert origin['CustomOriginConfig']['OriginProtocolPolicy'] == 'https-only'
+    assert origin['CustomHeaders']['Items'] == [{'HeaderName': 'X-Origin-Verify', 'HeaderValue': 'SECRET'}]

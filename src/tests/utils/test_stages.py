@@ -1,4 +1,5 @@
 import importlib
+import secrets
 
 import boto3
 import falcon
@@ -9,7 +10,7 @@ from src.app import create_app
 from src.modules.storage.dynamodb.storage import DynamoStorage
 from src.modules.storage.dynamodb.table import REGION
 from src.modules.storage.sqlite import SqliteStorage
-from src.utils.stages import Stage, StageError, current_stage, stage_imprint, stage_storage
+from src.utils.stages import Stage, StageError, current_stage, stage_imprint, stage_origin_secret, stage_storage
 
 
 @pytest.fixture(autouse=True)
@@ -19,6 +20,7 @@ def no_stage(monkeypatch):
     monkeypatch.delenv('AWS_LAMBDA_FUNCTION_NAME', raising=False)
     monkeypatch.delenv('WORK_TRACKER_TABLE', raising=False)
     monkeypatch.delenv('WORK_TRACKER_IMPRINT_PARAMETER', raising=False)
+    monkeypatch.delenv('WORK_TRACKER_ORIGIN_SECRET_PARAMETER', raising=False)
 
 
 @pytest.fixture
@@ -91,17 +93,25 @@ def test_lambda_reads_the_imprint_from_its_parameter(monkeypatch, on_lambda, dyn
     assert imprint.read() == '{}'
 
 
-def test_the_local_imprint_is_in_the_environment(monkeypatch):
+def test_locally_the_imprint_is_in_the_environment_and_requests_need_no_origin_secret(monkeypatch):
     monkeypatch.setenv('STAGE', 'Local')
-    assert stage_imprint().where == '$WORK_TRACKER_IMPRINT'
+    assert (stage_imprint().where, stage_origin_secret()) == ('$WORK_TRACKER_IMPRINT', None)
 
 
-def test_the_lambda_app(monkeypatch, on_lambda, dynamo_table):
+def test_the_lambda_app_answers_only_requests_through_the_domain(monkeypatch, on_lambda, dynamo_table):
+    """CloudFront sends the secret of the SSM parameter named like the function (SPEC 7.4)."""
     monkeypatch.setenv('AWS_LAMBDA_FUNCTION_NAME', dynamo_table.name)
     lambda_app = importlib.reload(importlib.import_module('src.lambda_app'))
     client = testing.TestClient(lambda_app.app)
-    assert client.simulate_get('/health').status == falcon.HTTP_200
-    assert client.simulate_get('/api/auth/status').json['setup_token'] is True  # creating root needs it
+    assert client.simulate_get('/health').status == falcon.HTTP_403  # no secret yet: nothing gets through
+    secret = secrets.token_urlsafe(32)
+    boto3.client('ssm', region_name=REGION).put_parameter(Name=f'/{dynamo_table.name}/origin-secret', Value=secret,
+                                                          Type='SecureString')
+    through = {'X-Origin-Verify': secret}
+    assert client.simulate_get('/health', headers=through).status == falcon.HTTP_200
+    assert client.simulate_get('/api/auth/status', headers=through).json['setup_token'] is True  # creating root needs it
+    bypassing = client.simulate_get('/health', headers={'X-Origin-Verify': secret[:-1]})
+    assert (bypassing.status, bypassing.json['description']) == (falcon.HTTP_403, 'Open the app at its address')
 
 
 def test_app_without_database_stops_without_stage():

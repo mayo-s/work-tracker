@@ -452,7 +452,7 @@ L.16 (a–i) → 9.1 (a–i).
       imprint
     - [x] **L.16c** Support page: messages and archive with search, status, notes, "Answer by e-mail", delete;
       "Support" in the menu with the badge of new messages
-- [ ] **L.17** custom domain: dev.schu3tz.de (dev) and schu3tz.de (prod)
+- [x] **L.17** custom domain: `dev.<app-domain>` (dev) and `<app-domain>` (prod), through CloudFront
 - [ ] **L.18** Privacy policy (Datenschutzerklärung, GDPR Art. 13): what personal data the app keeps, why and for how
   long, linked next to the imprint in the footer
 

@@ -1,0 +1,9 @@
+{
+  "Comment": "DOMAIN to its CloudFront distribution (Z2FDTNDATAQYW2: the hosted zone of every distribution)",
+  "Changes": [
+    {"Action": "UPSERT", "ResourceRecordSet": {"Name": "DOMAIN", "Type": "A", "AliasTarget": {
+      "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "DISTRIBUTION", "EvaluateTargetHealth": false}}},
+    {"Action": "UPSERT", "ResourceRecordSet": {"Name": "DOMAIN", "Type": "AAAA", "AliasTarget": {
+      "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "DISTRIBUTION", "EvaluateTargetHealth": false}}}
+  ]
+}

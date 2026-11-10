@@ -133,8 +133,11 @@ have 16 px text there (phones would zoom in otherwise), and on touch screens but
 
 The app runs on AWS Lambda in `eu-central-1` with the data in DynamoDB (SPEC 7.4), in two stages, `dev` and `prod`;
 a few cents per month each. Everything of a stage is named after its function `work-tracker-<stage>`: the table, the
-setup token `/work-tracker-<stage>/setup-token`, the imprint `/work-tracker-<stage>/imprint` and the role `work-tracker-<stage>-ZappaLambdaExecutionRole`. With the
-deploying user's credentials (e.g. `awsume`), once per stage (here `dev`):
+setup token `/work-tracker-<stage>/setup-token`, the imprint `/work-tracker-<stage>/imprint`, the origin secret
+`/work-tracker-<stage>/origin-secret` and the role `work-tracker-<stage>-ZappaLambdaExecutionRole`. Each stage is
+reached through its domain, a subdomain of a domain you own: prod at `https://<app-domain>`, dev at
+`https://dev.<app-domain>` (e.g. `tracker.example.com` and `dev.tracker.example.com`). With the deploying user's
+credentials (e.g. `awsume`), once per stage (here `dev`):
 
 ```shell
 stage=dev
@@ -152,7 +155,50 @@ aws iam put-role-policy --role-name work-tracker-$stage-ZappaLambdaExecutionRole
 ./deploy/zappa.sh $stage deploy                                                   # prints the Function URL
 ```
 
-Then open the Function URL: `/setup` creates root with the setup token. Root switches registration on for you, and in
+The Function URL answers nothing by itself (403): the app takes only requests through the domain, which CloudFront
+passes on with the origin secret in the header `X-Origin-Verify` (SPEC 7.4). Both domains live in a Route 53 hosted
+zone for `<app-domain>`; the rest of your domain, mail included, stays with your DNS provider. Once for both stages:
+
+```shell
+app_domain=tracker.example.com                                                  # your <app-domain>
+aws route53 create-hosted-zone --name $app_domain --caller-reference work-tracker \
+  --query DelegationSet.NameServers --output text                                # its four name servers
+```
+
+At your DNS provider, add an `NS` record for the subdomain (e.g. the host `tracker` of `example.com`) for each of the
+four name servers. `dig +short NS $app_domain` shows them once they are there (minutes to hours). Then per stage (here
+`dev`; prod: `stage=prod domain=$app_domain`):
+
+```shell
+stage=dev domain=dev.$app_domain
+zone=$(aws route53 list-hosted-zones-by-name --dns-name $app_domain --query 'HostedZones[0].Id' --output text)
+cert=$(aws acm request-certificate --region us-east-1 --domain-name $domain --validation-method DNS \
+  --query CertificateArn --output text)                                          # CloudFront takes it from us-east-1
+sleep 10; read -r name value <<< "$(aws acm describe-certificate --region us-east-1 --certificate-arn $cert \
+  --query 'Certificate.DomainValidationOptions[0].ResourceRecord.[Name,Value]' --output text)"
+aws route53 change-resource-record-sets --hosted-zone-id $zone --change-batch "{\"Changes\": [{\"Action\": \"UPSERT\",
+  \"ResourceRecordSet\": {\"Name\": \"$name\", \"Type\": \"CNAME\", \"TTL\": 300, \"ResourceRecords\": [{\"Value\": \"$value\"}]}}]}"
+aws acm wait certificate-validated --region us-east-1 --certificate-arn $cert  # the record proves the domain
+aws ssm put-parameter --region eu-central-1 --name /work-tracker-$stage/origin-secret --type SecureString \
+  --value "$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"     # what CloudFront sends
+secret=$(aws ssm get-parameter --region eu-central-1 --name /work-tracker-$stage/origin-secret --with-decryption \
+  --query Parameter.Value --output text)
+origin=$(aws lambda get-function-url-config --region eu-central-1 --function-name work-tracker-$stage \
+  --query FunctionUrl --output text | sed 's|https://||; s|/$||')
+distribution=$(aws cloudfront create-distribution --query Distribution.DomainName --output text --distribution-config \
+  "$(sed "s/STAGE/$stage/g; s/DOMAIN/$domain/g; s/ORIGIN/$origin/g; s|CERTIFICATE|$cert|; s/SECRET/$secret/" \
+  deploy/cloudfront.json)")                                                      # no caching, everything passed on
+aws route53 change-resource-record-sets --hosted-zone-id $zone \
+  --change-batch "$(sed "s/DOMAIN/$domain/g; s/DISTRIBUTION/$distribution/g" deploy/dns-alias.json)"
+```
+
+A stage deployed before the origin secret needs the `put-role-policy` line above again, so the function may read it,
+and `./deploy/zappa.sh $stage update`. CloudFront takes a few minutes to deploy the distribution. A new secret: the
+same `put-parameter` with `--overwrite`, the new value as `X-Origin-Verify` of the distribution's origin (console:
+CloudFront → the distribution → Origins → Edit), then `./deploy/zappa.sh $stage update`, so the function reads it
+again.
+
+Then open the domain: `/setup` creates root with the setup token. Root switches registration on for you, and in
 your own setup "Import" takes the file of "Export my data" from the local app. A token works only once; delete the
 parameter afterwards: `aws ssm delete-parameter --region eu-central-1 --name /work-tracker-$stage/setup-token`.
 
@@ -162,7 +208,7 @@ created before the imprint needs the `put-role-policy` line again, so the functi
 Root forgot its password: create the parameter again with a new token (the `put-parameter` and `get-parameter` lines
 above), use it in "Reset root login" on `/login`, then delete the parameter again.
 
-Later changes: `./deploy/zappa.sh dev update`, then `./deploy/zappa.sh prod update`. Both stages share the settings of
+Later changes: `./deploy/zappa.sh dev update`, then `./deploy/zappa.sh prod update` (the domains stay). Both stages share the settings of
 `base` in `zappa_settings.json` and differ only in their S3 bucket for the packages (`work-tracker-deploy-<stage>`;
 bucket names are unique across all AWS accounts).
 
@@ -300,7 +346,7 @@ runs through `npx` with its own TypeScript 5, as it does not support the project
 | `src/__main__.py`            | Development server (`python -m src`)                                                                                                                                                                                                                                                                                                                                                                                          |
 | `src/lib`                    | Calculation rules: durations, breaks, holidays, targets, overtime, PTO                                                                                                                                                                                                                                                                                                                                                        |
 | `src/models`                 | Pydantic models                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `src/modules`                | Features: auth (login, registration), admin, teams, dashboard, storage, import, days, entries, tickets, catalog, settings, export (userdata), full backup (backup), setup, work schedules, PTO years, reports, review, pages, imprint, contact, support (the contact messages, their archive)                                                                                                                                 |
+| `src/modules`                | Features: auth (login, registration, origin check), admin, teams, dashboard, storage, import, days, entries, tickets, catalog, settings, export (userdata), full backup (backup), setup, work schedules, PTO years, reports, review, pages, imprint, contact, support (the contact messages, their archive)                                                                                                                   |
 | `src/utils`                  | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types; `openapi`: spec file for the frontend types; `stages`: the stage (Local or AWS Lambda) and its storage                                                                                                                                                                                                                               |
 | `src/defaultresources`       | Default resource at `/health` (plain-text status)                                                                                                                                                                                                                                                                                                                                                                             |
 | `src/templates`              | Frontend: `frame.html` (shared page frame), `pages/` (page content), `static/` (served at `/static`: `css/main.css` with the UI style variables (light and dark), Inter font with its OFL license in `fonts/`), TypeScript in `ts/` (`main.ts` loads the page code, e.g. `week.ts`; `api.ts`: typed API client, `api-types.ts`: generated) compiled to `static/js/` (git-ignored), `openapi.json`, frontend tests in `tests/` |

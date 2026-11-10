@@ -721,8 +721,17 @@ splitting an entry among several tickets went once they were all reviewed (TASKS
 - Each stage has its own table `work-tracker-<stage>`, setup token `/work-tracker-<stage>/setup-token` and imprint
   `/work-tracker-<stage>/imprint` (5.13): the app takes the names from the function's name (`WORK_TRACKER_TABLE`,
   `WORK_TRACKER_SETUP_TOKEN_PARAMETER` and `WORK_TRACKER_IMPRINT_PARAMETER` can name others).
-- A function is reached by its Function URL (HTTPS, no API Gateway: no path prefix the app's links would miss, no 29 s
-  limit; no CORS, the app only talks to itself).
+- A function has a Function URL (HTTPS, no API Gateway: no path prefix the app's links would miss, no 29 s limit; no
+  CORS, the app only talks to itself), and is reached through its domain, a subdomain of the operator's domain:
+  prod at `<app-domain>`, dev at `dev.<app-domain>`. A CloudFront distribution per stage (certificate from ACM in
+  `us-east-1`) passes every request on uncached, with cookies, query and headers except the host, over HTTPS only.
+  Route 53 holds the zone `<app-domain>` (ALIAS records to the distributions); the DNS provider of the operator's
+  domain, which keeps the rest of it (e.g. its mail), delegates it by four NS records. The settings are
+  `deploy/cloudfront.json` and `deploy/dns-alias.json`.
+- **Only through the domain**: CloudFront adds the stage's secret, a SecureString `/work-tracker-<stage>/origin-secret`
+  (or `WORK_TRACKER_ORIGIN_SECRET_PARAMETER`), as the header `X-Origin-Verify`; the app refuses every request without
+  it, before anything else (403, "Open the app at its address"), also while the parameter is missing. The function
+  reads it once per instance. Locally there is no check.
 - Environment: `TZ=CET-1CEST,M3.5.0,M10.5.0/3` (Berlin time as a rule, so "today" is right even without time zone
   files in the image; Lambda runs in UTC).
 - zappa logs at WARNING: its default, DEBUG, writes every request with its cookies and body to CloudWatch.
