@@ -600,10 +600,10 @@ Who runs the app, as German law requires of a public website (§ 5 DDG).
   root. Every page links to it with "Imprint" in its footer (not in print), at the bottom of the window also when the
   page is shorter, followed by "Privacy" (5.15), "Contact" (5.14), "License" (the README's section on GitHub) and "Source code" (the GitHub repository),
   both in a new tab; the page itself has no navigation, only the app's name that leads to the start page.
-- In German (a translation may come with TASKS.md L.8): "Impressum", under "Angaben gemäß § 5 DDG" the name and the
-  postal address (street and number, postcode and city, country), under "Kontakt" the e-mail address as a `mailto`
-  link, then the contact form (5.14) as the second fast way of contact ("Kontaktformular", a link to `/contact`). No
-  phone number.
+- In German, the binding text, and translated into English and Spanish (5.16): "Impressum", under "Angaben gemäß
+  § 5 DDG" the name and the postal address (street and number, postcode and city, country), under "Kontakt" the
+  e-mail address as a `mailto` link, then the contact form (5.14) as the second fast way of contact
+  ("Kontaktformular", a link to `/contact`). No phone number.
 - The details are never in the repository. On AWS Lambda they are in the SSM parameter `/work-tracker-<stage>/imprint`
   (7.4), locally in `$WORK_TRACKER_IMPRINT` (from `.env`), both as JSON: `{"name": "…", "street": "…", "city": "10115
   Berlin", "country": "Deutschland", "email": "…"}`. They are read on each visit, so a change shows at once.
@@ -648,8 +648,8 @@ Anyone can write to the people running the app; users with the support role answ
 What personal data the app keeps, why and for how long, as GDPR Art. 13 requires.
 
 - At `/privacy`, open to everyone at any time like the imprint (without login, before the setup, for root), linked as
-  "Privacy" in every page's footer after "Imprint"; the page has no navigation. In German ("Datenschutzerklärung"; a
-  translation may come with TASKS.md L.8), with its date ("Stand").
+  "Privacy" in every page's footer after "Imprint"; the page has no navigation. In German ("Datenschutzerklärung"), the
+  binding text, and translated into English and Spanish (5.16), with its date ("Stand").
 - The controller (name, postal address, e-mail address, links to the contact form and the imprint) comes from the
   imprint's details (5.13); the rest is static text in the page, which whoever runs the app adapts.
 - Contents: overview (no tracking, analysis, advertising or outside resources, no profiling); hosting on AWS as
@@ -680,8 +680,12 @@ The UI comes in English, German and Spanish (TASKS.md L.8, in steps L.8a–e).
 - **What is translated**: everything a user sees: the pages, the texts of the scripts (messages, sentences, the audit
   log, reports), the server's messages, the names of weekdays, months and holidays. In English stay the API (field
   names, codes such as `Mon`), the CSV export, the API docs, the logs and the component gallery (`/components`, a
-  reference for developers; examples to type, such as ticket keys, are marked `translate="no"`). Imprint and privacy policy are translated,
-  with a note that the German text is the binding one. Dates stay `DD.MM.YYYY` and durations `h:mm` in every
+  reference for developers; examples to type, such as ticket keys, are marked `translate="no"`), and data, also
+  what the app creates (the default activity types such as "Meeting" stay as created). Imprint and privacy policy are
+  translated as a whole: the German text is the original (`pages/privacy.html`), each translation a page beside it
+  (`privacy.en.html`, `privacy.es.html`) that starts with a note that only the German version is binding, with a link
+  to it (`/privacy?lang=de` shows the German text whatever the page's language); a test fails when a translation no
+  longer follows the German text (its sections, paragraphs and date). Dates stay `DD.MM.YYYY` and durations `h:mm` in every
   language; day counts get a decimal comma in German and Spanish ("2,5 Tage"); durations are entered as before.
 - **Catalogs**: one per language, `static/locales/de.json` and `es.json`, keyed by the English text, with placeholders
   such as `{username}`; English needs none, and a text without a translation shows in English. The server renders a

@@ -3,7 +3,7 @@ import re
 import falcon
 import pytest
 
-from src.modules.pages.resources import STATIC_DIR, render_page
+from src.modules.pages.resources import STATIC_DIR, TEMPLATES_DIR, render_page
 
 
 def test_render_page_fills_the_frame():
@@ -118,8 +118,8 @@ def test_main_navigation_links_all_pages(client):
     ('/review', 'review', 'Review', 'id="review-status"'),
     ('/settings', 'settings', 'Settings', 'id="settings-status"'),
     ('/components', 'components', 'Component gallery', 'class="story"'),
-    ('/imprint', 'imprint', 'Impressum', 'id="imprint"'),
-    ('/privacy', 'privacy', 'Datenschutzerklärung', 'id="privacy-controller"'),
+    ('/imprint', 'imprint', 'Imprint', 'id="imprint"'),
+    ('/privacy', 'privacy', 'Privacy policy', 'id="privacy-controller"'),
     ('/contact', 'contact', 'Contact', 'id="contact"'),
     ('/support', 'support', 'Support', 'id="support"'),
 ])
@@ -148,3 +148,27 @@ def test_skip_link_comes_first(client):
 def test_former_week_links_forward_to_the_week_page(client):
     result = client.simulate_get('/', query_string='week=2025-W49&edit=2025-12-06')
     assert (result.status, result.headers['location']) == (falcon.HTTP_301, '/week?week=2025-W49&edit=2025-12-06')
+
+
+def test_imprint_and_privacy_policy_come_translated_with_a_link_to_the_binding_german_text(client):
+    spanish = {'Accept-Language': 'es'}
+    privacy = client.simulate_get('/privacy', headers=spanish).text
+    german = client.simulate_get('/privacy', params={'lang': 'de'}, headers=spanish).text
+    imprint = client.simulate_get('/imprint').text
+    assert ('<div class="privacy" lang="es">' in privacy, 'href="/privacy?lang=de"' in privacy,
+            '<div class="privacy" lang="de">' in german, '<title>Política de privacidad · Work Tracker</title>' in german,
+            '<div class="imprint" lang="en">' in imprint) == (True, True, True, True, True)
+
+
+def legal_outline(name):
+    """The headings, paragraphs and list items of a legal text and the dates in it; of a translation without its note."""
+    html = (TEMPLATES_DIR / 'pages' / f'{name}.html').read_text(encoding='utf-8')
+    html = re.sub(r'<p class="muted">[^\n]*hreflang="de"[^\n]*</p>', '', html)
+    return re.findall(r'<(h1|h2|p|ul|li|div)\b', html), re.findall(r'\d\d\.\d\d\.\d{4}', html)
+
+
+@pytest.mark.parametrize('page', ['imprint', 'privacy'])
+@pytest.mark.parametrize('language', ['en', 'es'])
+def test_each_translation_of_a_legal_text_follows_the_german_one(page, language):
+    """A change of the German text (a section, a paragraph, its date) fails here until the translations follow."""
+    assert legal_outline(f'{page}.{language}') == legal_outline(page)

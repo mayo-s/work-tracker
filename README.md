@@ -102,12 +102,14 @@ all at once.
   off. A member's card opens their report in the team view for that period, which links back. "Export CSV" downloads
   the shown period, one row per figure with the period and the page's notes, for German Excel; "Save as PDF" opens
   the print dialog with a print layout of the cards (light, without navigation and buttons).
-- `/imprint`: the imprint in German (§ 5 DDG), name, postal address and e-mail address, open to everyone; every page
-  links it as "Imprint" in its footer, next to "Privacy", "Contact", "License" and "Source code" (both on GitHub, in a
-  new tab).
-- `/privacy`: the privacy policy in German (Datenschutzerklärung, GDPR Art. 13), open to everyone: what personal data
-  the app keeps, why and for how long, cookies, hosting and the user's rights; the controller comes from the imprint's
-  details. The text is in `src/templates/pages/privacy.html`: whoever runs the app elsewhere adapts it there.
+- `/imprint`: the imprint (§ 5 DDG; German, translated into English and Spanish), name, postal address and e-mail
+  address, open to everyone; every page links it as "Imprint" in its footer, next to "Privacy", "Contact", "License"
+  and "Source code" (both on GitHub, in a new tab).
+- `/privacy`: the privacy policy (Datenschutzerklärung, GDPR Art. 13; German, translated into English and Spanish),
+  open to everyone: what personal data the app keeps, why and for how long, cookies, hosting and the user's rights; the
+  controller comes from the imprint's details. The binding German text is in `src/templates/pages/privacy.html`, the
+  translations beside it (`privacy.en.html`, `privacy.es.html`): whoever runs the app elsewhere adapts all three (a
+  test fails while a translation no longer follows the German text).
 - `/contact`: anyone writes to support (name, e-mail address, subject, message), also without login, linked from the
   footer and the imprint; a logged-in user's name and address come from their account (read-only), and their message
   is marked as from a known user. A hidden field drops messages of bots, and messages of visitors pause after 5 within
@@ -139,8 +141,9 @@ are written in English; `src/templates/static/locales/de.json` and `es.json` tra
 missing or no longer used). All pages and what their scripts write are translated, with month and weekday names and
 day counts (a decimal comma in German and Spanish) in the language. The API answers its messages (e.g. a refusal's
 reason) and the holiday names in the page's language, which the scripts send as `Accept-Language`; the server marks
-such a message `text('Unknown ticket {key}', key=key)` (`src/lib/texts.py`). The CSV export stays English, and imprint
-and privacy policy stay German (TASKS.md L.8e).
+such a message `text('Unknown ticket {key}', key=key)` (`src/lib/texts.py`). The CSV export stays English, and so do
+data such as the default activity types. Imprint and privacy policy come translated as a whole, with a note and a link
+to the German text, which is the binding one (`?lang=de`).
 
 ## Deploy to AWS
 

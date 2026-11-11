@@ -4,7 +4,7 @@ from pathlib import Path
 
 import falcon
 
-from src.modules.pages.languages import chosen_language, translate, translate_html
+from src.modules.pages.languages import LANGUAGES, chosen_language, translate, translate_html
 from src.modules.storage.owners import NO_OWNER
 from src.modules.storage.store import Language, Storage, Store, Theme
 
@@ -13,20 +13,32 @@ STATIC_DIR = TEMPLATES_DIR / 'static'
 # the setup does not wait for them: the first two come first
 BEFORE_SETUP = ('password', 'two-factor', 'imprint', 'privacy', 'contact')
 # Pages whose content keeps its language (SPEC 5.16): the component gallery, a reference for developers, in English;
-# imprint and privacy policy, German legal texts translated as a whole (TASKS.md L.8e)
+# imprint and privacy policy, German legal texts translated as a whole (e.g. `privacy.en.html`), the German binding
 OWN_LANGUAGE = ('components', 'imprint', 'privacy')
 
 
-def render_page(name: str, title: str, theme: str = 'system', language: Language = 'en') -> str:
+def render_page(name: str, title: str, theme: str = 'system', language: Language = 'en',
+                content_language: Language | None = None) -> str:
     """The frame with the page's title, name, content and color theme filled in (`system` sets no theme), in the
-    language (the content of the pages that keep their own, OWN_LANGUAGE, as it is)."""
+    language. The pages that keep their own (OWN_LANGUAGE) come as they are, in their translation into the content
+    language (by default the page's) if there is one."""
     frame = translate_html((TEMPLATES_DIR / 'frame.html').read_text(encoding='utf-8'), language)
-    content = (TEMPLATES_DIR / 'pages' / f'{name}.html').read_text(encoding='utf-8').rstrip('\n')
-    if name not in OWN_LANGUAGE:
-        content = translate_html(content, language)
+    if name in OWN_LANGUAGE:
+        content = _own_content(name, content_language or language)
+    else:
+        content = translate_html(_content(name), language)
     theme_attribute = '' if theme == 'system' else f' data-theme="{theme}"'
     return (frame.replace('{{language}}', language).replace('{{title}}', translate(title, language))
             .replace('{{page}}', name).replace('{{theme}}', theme_attribute).replace('{{content}}', content))
+
+
+def _content(name: str) -> str:
+    return (TEMPLATES_DIR / 'pages' / f'{name}.html').read_text(encoding='utf-8').rstrip('\n')
+
+
+def _own_content(name: str, language: Language) -> str:
+    translated = f'{name}.{language}'
+    return _content(translated if (TEMPLATES_DIR / 'pages' / f'{translated}.html').exists() else name)
 
 
 class Page:
@@ -37,8 +49,12 @@ class Page:
         self._title = title
 
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
+        """`?lang=de` shows the content of imprint and privacy policy in German (the binding text) whatever the page's
+        language."""
         resp.content_type = falcon.MEDIA_HTML
-        resp.text = render_page(self.name, self._title, req.context.get('theme', 'system'), req.context.get('language', 'en'))
+        content_language = req.get_param('lang')
+        resp.text = render_page(self.name, self._title, req.context.get('theme', 'system'), req.context.get('language', 'en'),
+                                content_language if content_language in LANGUAGES else None)
 
 
 class StartPage(Page):

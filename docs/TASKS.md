@@ -397,7 +397,7 @@ L.16 (a–i) → 9.1 (a–i).
   On hold: kept as day notes for now, to see how hours off are used in practice
 - [x] **L.7** Clean up - remove spreadsheet import functionality (the command and its tests; its ticket clean-up moved
   into the review, which still suggests splits for guessed tickets of imported data)
-- [ ] **L.8** i18n: switch the UI language between German, English and Spanish (SPEC 5.16), in steps:
+- [x] **L.8** i18n: switch the UI language between German, English and Spanish (SPEC 5.16), in steps:
     - [x] **L.8a** The mechanism and the frame: the language setting (account, both backends, export and backup;
       cookie and `Accept-Language` before it), `PUT /api/language`, the switch in the header (also before the login),
       the catalogs `static/locales/de.json` and `es.json` with their completeness test, the server rendering the
@@ -420,7 +420,11 @@ L.16 (a–i) → 9.1 (a–i).
       description, a refused request's messages, the team report's notes), pieced messages became whole sentences; the
       scripts send the page's language as `Accept-Language`; holiday names, "Deleted user" and "Support" answered in it;
       the completeness test finds every `text(…)` and every holiday name of all federal states for the next ten years
-    - [ ] **L.8e** Imprint and privacy policy, with a note that the German text is the binding one
+    - [x] **L.8e** Imprint and privacy policy, with a note that the German text is the binding one: the German texts
+      stay the originals (`imprint.html`, `privacy.html`), the translations beside them (`privacy.en.html`, …) with a
+      link to the German one (`?lang=de`), the scripts' parts in the content's language (`legal.ts`); a test fails
+      when a translation's outline or date no longer follows the German text; the German text names the German UI
+      labels („Konto löschen“, „Gelöschter Benutzer“); default activity types stay as created, not translated
 - [x] **L.9** Exact times, in steps:
     - [x] **L.9a** No more quarter-hour rule: an entry's duration may be any whole minutes, in the form and the API;
       the popup offering the two nearest quarter hours is gone

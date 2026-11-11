@@ -116,8 +116,8 @@ def test_only_our_languages(client):
 
 
 def template_texts():
-    """The texts of the frame and the pages, but of those that keep their own language."""
-    pages = [page for page in (TEMPLATES_DIR / 'pages').glob('*.html') if page.stem not in OWN_LANGUAGE]
+    """The texts of the frame and the pages, but of those that keep their own language (and their translations)."""
+    pages = [page for page in (TEMPLATES_DIR / 'pages').glob('*.html') if page.name.split('.')[0] not in OWN_LANGUAGE]
     return {text for template in [TEMPLATES_DIR / 'frame.html', *pages]
             for text in html_texts(template.read_text(encoding='utf-8'))}
 
