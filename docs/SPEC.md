@@ -679,7 +679,8 @@ The UI comes in English, German and Spanish (TASKS.md L.8, in steps L.8a–e).
   `PUT /api/language` is open to everyone: it sets the cookie, and saves the choice in the account when logged in.
 - **What is translated**: everything a user sees: the pages, the texts of the scripts (messages, sentences, the audit
   log, reports), the server's messages, the names of weekdays, months and holidays. In English stay the API (field
-  names, codes such as `Mon`), the CSV export, the API docs and the logs. Imprint and privacy policy are translated,
+  names, codes such as `Mon`), the CSV export, the API docs, the logs and the component gallery (`/components`, a
+  reference for developers; examples to type, such as ticket keys, are marked `translate="no"`). Imprint and privacy policy are translated,
   with a note that the German text is the binding one. Dates stay `DD.MM.YYYY` and durations `h:mm` in every
   language; day counts get a decimal comma in German and Spanish ("2,5 Tage"); durations are entered as before.
 - **Catalogs**: one per language, `static/locales/de.json` and `es.json`, keyed by the English text, with placeholders

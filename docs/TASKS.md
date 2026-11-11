@@ -402,7 +402,8 @@ L.16 (a–i) → 9.1 (a–i).
       cookie and `Accept-Language` before it), `PUT /api/language`, the switch in the header (also before the login),
       the catalogs `static/locales/de.json` and `es.json` with their completeness test, the server rendering the
       frame (header, navigation, menu, footer) and the page titles in the language, `t`/`tn` in the scripts
-    - [ ] **L.8b** The pages' HTML texts
+    - [x] **L.8b** The pages' HTML texts (what the scripts write comes with L.8c); the component gallery stays English, a
+      reference for developers, imprint and privacy policy come as a whole with L.8e
     - [ ] **L.8c** The scripts' texts and formats: messages, sentences, the audit log, reports, month and weekday
       names, decimal comma for day counts
     - [ ] **L.8d** The server's messages (refusals, errors) and the holiday names

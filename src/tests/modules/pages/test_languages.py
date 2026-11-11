@@ -10,7 +10,7 @@ from falcon import testing
 
 from src.app import create_app
 from src.modules.pages.languages import LOCALES_DIR, accepted_language, html_texts, translate, translate_html
-from src.modules.pages.resources import TEMPLATES_DIR
+from src.modules.pages.resources import OWN_LANGUAGE, TEMPLATES_DIR
 
 SOURCES = Path(__file__).resolve().parents[3]
 PLACEHOLDER = re.compile(r'\{\w+\}')
@@ -59,6 +59,13 @@ def test_a_page_comes_in_the_accounts_language_else_the_browsers_choice_else_its
     assert page_language(client, **{'Accept-Language': 'de', 'Cookie': 'wt_language=de'}) == ('es', 'Semana · Work Tracker')
 
 
+def test_page_contents_come_in_the_language_but_not_those_of_pages_that_keep_their_own(client):
+    german = {'Accept-Language': 'de'}
+    week, search, gallery = (client.simulate_get(path, headers=german).text for path in ('/week', '/search', '/components'))
+    assert ('>Freie Tage buchen</button>' in week, '<code translate="no">MSB</code>' in search,
+            '<h1>Component gallery</h1>' in gallery, '>Einstellungen</a>' in gallery) == (True, True, True, True)
+
+
 def test_visitors_choose_too_kept_in_their_browser(database):
     app = testing.TestClient(create_app(database, auth=True))
     chosen = app.simulate_put('/api/language', json={'language': 'de'})
@@ -70,16 +77,31 @@ def test_only_our_languages(client):
     assert client.simulate_put('/api/language', json={'language': 'fr'}).status_code == 422
 
 
-def texts_to_translate():
-    """The frame's texts, the pages' titles and the scripts' texts (`t('…')`, `tn(count, '…', '…')`)."""
-    texts = set(html_texts((TEMPLATES_DIR / 'frame.html').read_text(encoding='utf-8')))
-    for source in (SOURCES / 'app.py', SOURCES / 'modules' / 'pages' / 'resources.py'):
-        texts |= set(re.findall(rf"(?:Page\(|super\(\).__init__\()'[\w-]+', {QUOTED}", source.read_text(encoding='utf-8')))
+def template_texts():
+    """The texts of the frame and the pages, but of those that keep their own language."""
+    pages = [page for page in (TEMPLATES_DIR / 'pages').glob('*.html') if page.stem not in OWN_LANGUAGE]
+    return {text for template in [TEMPLATES_DIR / 'frame.html', *pages]
+            for text in html_texts(template.read_text(encoding='utf-8'))}
+
+
+def page_titles():
+    sources = [SOURCES / 'app.py', SOURCES / 'modules' / 'pages' / 'resources.py']
+    return {title for source in sources
+            for title in re.findall(rf"(?:Page\(|super\(\).__init__\()'[\w-]+', {QUOTED}", source.read_text(encoding='utf-8'))}
+
+
+def script_texts():
+    """The texts of `t('…')` and `tn(count, '…', '…')` in the scripts, but in comments."""
+    texts = set()
     for script in (TEMPLATES_DIR / 'ts').glob('*.ts'):
         code = COMMENTS.sub('', script.read_text(encoding='utf-8'))
-        texts |= set(re.findall(rf'(?<![\w.])t\(\s*{QUOTED}', code))
-        texts |= {text for pair in re.findall(rf'(?<![\w.])tn\([^,]+,\s*{QUOTED},\s*{QUOTED}', code) for text in pair}
+        texts.update(re.findall(rf'(?<![\w.])t\(\s*{QUOTED}', code))
+        texts.update(*re.findall(rf'(?<![\w.])tn\([^,]+,\s*{QUOTED},\s*{QUOTED}', code))
     return {text.replace("\\'", "'") for text in texts}
+
+
+def texts_to_translate():
+    return template_texts() | page_titles() | script_texts()
 
 
 @pytest.mark.parametrize('language', ['de', 'es'])

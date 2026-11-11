@@ -136,8 +136,8 @@ and on touch screens buttons and links that act are at least 44 px.
 The header's language switch (`EN`, `DE`, `ES`, SPEC 5.16) shows the UI in English, German or Spanish: the account keeps
 the choice, the same on every device; before the login a cookie keeps it, else the browser's language applies. The texts
 are written in English; `src/templates/static/locales/de.json` and `es.json` translate them (a test fails when one is
-missing or no longer used). So far the frame (header, navigation, menu, footer) and the page titles; the pages follow
-(TASKS.md L.8b–e).
+missing or no longer used). So far the frame (header, navigation, menu, footer), the page titles and the pages' own
+texts; the texts the scripts write follow (TASKS.md L.8c–e).
 
 ## Deploy to AWS
 

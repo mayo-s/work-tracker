@@ -12,13 +12,18 @@ TEMPLATES_DIR = Path(__file__).resolve().parents[2] / 'templates'
 STATIC_DIR = TEMPLATES_DIR / 'static'
 # the setup does not wait for them: the first two come first
 BEFORE_SETUP = ('password', 'two-factor', 'imprint', 'privacy', 'contact')
+# Pages whose content keeps its language (SPEC 5.16): the component gallery, a reference for developers, in English;
+# imprint and privacy policy, German legal texts translated as a whole (TASKS.md L.8e)
+OWN_LANGUAGE = ('components', 'imprint', 'privacy')
 
 
 def render_page(name: str, title: str, theme: str = 'system', language: Language = 'en') -> str:
-    """The frame in the language with the page's title, name, content and color theme filled in (`system` sets no
-    theme)."""
+    """The frame with the page's title, name, content and color theme filled in (`system` sets no theme), in the
+    language (the content of the pages that keep their own, OWN_LANGUAGE, as it is)."""
     frame = translate_html((TEMPLATES_DIR / 'frame.html').read_text(encoding='utf-8'), language)
     content = (TEMPLATES_DIR / 'pages' / f'{name}.html').read_text(encoding='utf-8').rstrip('\n')
+    if name not in OWN_LANGUAGE:
+        content = translate_html(content, language)
     theme_attribute = '' if theme == 'system' else f' data-theme="{theme}"'
     return (frame.replace('{{language}}', language).replace('{{title}}', translate(title, language))
             .replace('{{page}}', name).replace('{{theme}}', theme_attribute).replace('{{content}}', content))
