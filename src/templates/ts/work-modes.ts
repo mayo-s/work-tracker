@@ -2,12 +2,14 @@
 
 import type { WorkMode } from './api.ts';
 import { el } from './dom.ts';
+import { t } from './i18n.ts';
 
 /** Name and meaning of each way of working. */
 export const WORK_MODES: [WorkMode, string, string][] = [
-  ['tickets', 'Tickets and activities', 'Work on tickets (e.g. Coding) with their service, and activities such as meetings.'],
-  ['activities', 'Activities only', 'Activities such as meetings or travel, no tickets.'],
-  ['times', 'Times only', 'Start, end and break of each day, no entries.'],
+  ['tickets', t('Tickets and activities'),
+    t('Work on tickets (e.g. Coding) with their service, and activities such as meetings.')],
+  ['activities', t('Activities only'), t('Activities such as meetings or travel, no tickets.')],
+  ['times', t('Times only'), t('Start, end and break of each day, no entries.')],
 ];
 
 export function workModeLabel(mode: WorkMode): string {
@@ -32,5 +34,5 @@ export function workModeChoice(selected: WorkMode, onChoose: (mode: WorkMode, la
     radio.addEventListener('change', () => onChoose(value, label));
     return el('label', {}, radio, el('span', {}, label, el('span', { class: 'muted' }, ` – ${meaning}`)));
   });
-  return el('fieldset', { class: 'work-modes' }, el('legend', {}, 'Way of working'), ...choices);
+  return el('fieldset', { class: 'work-modes' }, el('legend', {}, t('Way of working')), ...choices);
 }

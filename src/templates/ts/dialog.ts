@@ -1,13 +1,14 @@
 // A modal question with buttons: a native <dialog> keeps the focus inside, Escape cancels.
 
 import { button, el } from './dom.ts';
+import { t } from './i18n.ts';
 
 export type Choice<T> = { label: string; value: T; primary?: boolean };
 
 /** Asks in a modal dialog; resolves to the chosen value, or null for Cancel (`cancel`, e.g. Close for a dialog that
  * only shows something) and Escape. */
 export function ask<T>(
-  title: string, body: (string | HTMLElement)[], choices: Choice<T>[], cancel = 'Cancel',
+  title: string, body: (string | HTMLElement)[], choices: Choice<T>[], cancel = t('Cancel'),
 ): Promise<T | null> {
   return new Promise((resolve) => {
     const dialog = el('dialog', { class: 'dialog', 'aria-labelledby': 'dialog-title' });

@@ -15,6 +15,7 @@ from src.modules.pages.resources import OWN_LANGUAGE, TEMPLATES_DIR
 SOURCES = Path(__file__).resolve().parents[3]
 PLACEHOLDER = re.compile(r'\{\w+\}')
 QUOTED = r"'((?:[^'\\]|\\.)*)'"
+LITERAL = r"""(?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")"""  # a string in single or double quotes
 COMMENTS = re.compile(r'/\*.*?\*/|(?:^|\s)//[^\n]*', re.DOTALL | re.MULTILINE)
 
 
@@ -90,14 +91,24 @@ def page_titles():
             for title in re.findall(rf"(?:Page\(|super\(\).__init__\()'[\w-]+', {QUOTED}", source.read_text(encoding='utf-8'))}
 
 
+def scripts():
+    """The code of each script without its comments."""
+    return {script.name: COMMENTS.sub('', script.read_text(encoding='utf-8'))
+            for script in (TEMPLATES_DIR / 'ts').glob('*.ts')}
+
+
 def script_texts():
-    """The texts of `t('…')` and `tn(count, '…', '…')` in the scripts, but in comments."""
-    texts = set()
-    for script in (TEMPLATES_DIR / 'ts').glob('*.ts'):
-        code = COMMENTS.sub('', script.read_text(encoding='utf-8'))
-        texts.update(re.findall(rf'(?<![\w.])t\(\s*{QUOTED}', code))
-        texts.update(*re.findall(rf'(?<![\w.])tn\([^,]+,\s*{QUOTED},\s*{QUOTED}', code))
-    return {text.replace("\\'", "'") for text in texts}
+    """The texts of `t('…')` and `tn(count, '…', '…')` in the scripts."""
+    literals = set()
+    for code in scripts().values():
+        literals.update(re.findall(rf'(?<![\w.])t\(\s*({LITERAL})', code))
+        literals.update(*re.findall(rf'(?<![\w.])tn\([^,]+,\s*({LITERAL}),\s*({LITERAL})', code))
+    return {literal[1:-1].replace("\\'", "'").replace('\\"', '"') for literal in literals}
+
+
+def test_scripts_translate_quoted_texts_only():
+    """Texts in backticks (template literals) are missed by the catalogs' test: placeholders go into the parameters."""
+    assert [name for name, code in scripts().items() if re.search(r'(?<![\w.])tn?\(\s*`|tn\([^,]+,\s*`', code)] == []
 
 
 def texts_to_translate():

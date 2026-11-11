@@ -7,6 +7,7 @@ import {
   addDays, formatDate, formatDay, formatMonth, formatTimestamp, isoDate, isoMonth, isoWeek, isValidMonth, isValidWeek,
   mondayOf, shiftMonth, shiftWeek, weekLink,
 } from '../ts/dates.ts';
+import { loadCatalog } from '../ts/i18n.ts';
 
 test('iso date of a local date', () => {
   assert.equal(isoDate(new Date(2026, 9, 28)), '2026-10-28');
@@ -62,6 +63,15 @@ test('months', () => {
   assert.equal(shiftMonth('2026-12', 1), '2027-01');
   assert.equal(shiftMonth('2026-01', -1), '2025-12');
   assert.equal(formatMonth('2026-10'), 'October 2026');
+});
+
+test('month and weekday names in the page language', async () => {
+  await loadCatalog('de', async () => Response.json({ Wed: 'Mi' }));
+  assert.deepEqual([formatMonth('2026-10'), formatDay('2026-10-28', 'Wed'), formatMonth('2026-W45')],
+    ['Oktober 2026', 'Mi 28.10.', '2026-W45']);  // a week is no month
+  await loadCatalog('es', async () => Response.json({}));
+  assert.equal(formatMonth('2026-10'), 'Octubre de 2026');
+  await loadCatalog('en');
 });
 
 test('timestamps show date and minutes', () => {

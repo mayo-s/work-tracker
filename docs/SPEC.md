@@ -687,12 +687,16 @@ The UI comes in English, German and Spanish (TASKS.md L.8, in steps L.8a–e).
   such as `{username}`; English needs none, and a text without a translation shows in English. The server renders a
   page in its language (the texts and the attributes people read: `aria-label`, `title`, `placeholder`, `alt`; not
   what is marked `translate="no"`, e.g. the app's name), so it shows without a flash of English; the scripts load the
-  same catalog (cached by CloudFront) and translate with `t('…')` and `tn(count, one, other)` for plurals. A test
-  finds every text of the templates, every page title and every `t`/`tn` of the scripts, and fails when a catalog
-  misses one, holds one no longer used, or changes a placeholder.
+  same catalog (cached by CloudFront) and translate with `t('…')` and `tn(count, one, other)` for plurals, always
+  texts in quotes (a test refuses backticks there, which it could not read); month names come from `Intl` in the
+  page's language. Sentences are translated whole (e.g. each entry of the audit log), never put together from pieces,
+  as the word order differs between the languages. A test finds every text of the templates, every page title and
+  every `t`/`tn` of the scripts, and fails when a catalog misses one, holds one no longer used, or changes a
+  placeholder.
 - **Steps**: L.8a the mechanism, the setting, the switch and the frame (header, navigation, menu, footer, page
-  titles); L.8b the pages' HTML; L.8c the scripts' texts and formats; L.8d the server's messages and the holiday names;
-  L.8e imprint and privacy policy.
+  titles); L.8b the pages' HTML; L.8c the scripts' texts and formats (c1 the formats and shared parts, c2 the tracking
+  pages, c3 account and setup, c4 team and administration); L.8d the server's messages and the holiday names; L.8e
+  imprint and privacy policy.
 
 ## 6. Import (spreadsheet CSV), removed
 

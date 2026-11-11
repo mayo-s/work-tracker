@@ -3,40 +3,46 @@
 import type { AuditView } from './api.ts';
 import { formatDate, formatTimestamp } from './dates.ts';
 import { el, scrolling } from './dom.ts';
+import { t } from './i18n.ts';
 
-const ROLE_NAMES: Record<string, string> = {
-  admin: 'an admin', user: 'a user', team_admin: 'team admin', member: 'a member',
-};
-
-/** One entry as a sentence, e.g. `Pascal Turbo made Hans Dampf an admin`. */
+/** One entry as a sentence, e.g. `Pascal Turbo made Hans Dampf an admin`; whole sentences, as the word order differs
+ * between languages. */
 export function auditText(entry: AuditView): string {
-  const { actor, user, team, detail } = entry;
+  const { detail } = entry;
+  const names = { actor: entry.actor, user: entry.user ?? '', team: entry.team ?? '' };
   const texts: Record<AuditView['action'], () => string> = {
-    root_created: () => `${actor} became root`,
-    root_login_reset: () => `${actor} reset the root login with a new setup token`,
-    role_changed: () => `${actor} made ${user} ${ROLE_NAMES[detail] ?? detail}`,
-    team_role_changed: () => `${actor} made ${user} ${ROLE_NAMES[detail] ?? detail} of ${team}`,
-    deactivated: () => `${actor} deactivated ${user}`,
-    reactivated: () => `${actor} reactivated ${user}`,
-    one_time_password: () => `${actor} set a one-time password for ${user}`,
-    two_factor_reset: () => `${actor} reset the two-factor login of ${user}`,
-    password_changed: () => (detail === 'command' ? `The password of ${user} was set with the set-password command`
-      : `${actor} changed their password`),
-    two_factor_on: () => `${actor} switched two-factor login on`,
-    two_factor_off: () => `${actor} switched two-factor login off`,
-    two_factor_new_app: () => `${actor} moved two-factor login to a new authenticator app`,
-    recovery_codes_renewed: () => `${actor} made new recovery codes`,
-    backup_made: () => `${actor} downloaded a full backup`,
-    backup_restored: () => `${actor} restored a full backup${detail === 'root login' ? ' with its root login' : ''}`,
-    registration_switched: () => `${actor} switched registration ${detail}`,
-    team_created: () => `${actor} created the team ${team}`,
-    team_renamed: () => `${actor} renamed the team ${detail} to ${team}`,
-    team_deleted: () => `${actor} deleted the team ${team}`,
-    member_removed: () => `${actor} removed ${user} from ${team}`,
-    auditor_assigned: () => `${actor} made ${user} auditor of ${team}${detail ? ` until ${formatDate(detail)}` : ''}`,
-    auditor_removed: () => `${actor} ended ${user}'s audit of ${team}`,
-    support_switched: () => `${actor} switched the support role of ${user} ${detail}`,
-    account_deleted: () => (detail === 'own' ? `${actor} deleted their account` : `${actor} deleted an account`),
+    root_created: () => t('{actor} became root', names),
+    root_login_reset: () => t('{actor} reset the root login with a new setup token', names),
+    role_changed: () => (detail === 'admin' ? t('{actor} made {user} an admin', names)
+      : t('{actor} made {user} a user', names)),
+    team_role_changed: () => (detail === 'team_admin' ? t('{actor} made {user} team admin of {team}', names)
+      : t('{actor} made {user} a member of {team}', names)),
+    deactivated: () => t('{actor} deactivated {user}', names),
+    reactivated: () => t('{actor} reactivated {user}', names),
+    one_time_password: () => t('{actor} set a one-time password for {user}', names),
+    two_factor_reset: () => t('{actor} reset the two-factor login of {user}', names),
+    password_changed: () => (detail === 'command' ? t('The password of {user} was set with the set-password command', names)
+      : t('{actor} changed their password', names)),
+    two_factor_on: () => t('{actor} switched two-factor login on', names),
+    two_factor_off: () => t('{actor} switched two-factor login off', names),
+    two_factor_new_app: () => t('{actor} moved two-factor login to a new authenticator app', names),
+    recovery_codes_renewed: () => t('{actor} made new recovery codes', names),
+    backup_made: () => t('{actor} downloaded a full backup', names),
+    backup_restored: () => (detail === 'root login' ? t('{actor} restored a full backup with its root login', names)
+      : t('{actor} restored a full backup', names)),
+    registration_switched: () => (detail === 'on' ? t('{actor} switched registration on', names)
+      : t('{actor} switched registration off', names)),
+    team_created: () => t('{actor} created the team {team}', names),
+    team_renamed: () => t('{actor} renamed the team {former} to {team}', { ...names, former: detail }),
+    team_deleted: () => t('{actor} deleted the team {team}', names),
+    member_removed: () => t('{actor} removed {user} from {team}', names),
+    auditor_assigned: () => (detail ? t('{actor} made {user} auditor of {team} until {date}', { ...names, date: formatDate(detail) })
+      : t('{actor} made {user} auditor of {team}', names)),
+    auditor_removed: () => t("{actor} ended {user}'s audit of {team}", names),
+    support_switched: () => (detail === 'on' ? t('{actor} switched the support role of {user} on', names)
+      : t('{actor} switched the support role of {user} off', names)),
+    account_deleted: () => (detail === 'own' ? t('{actor} deleted their account', names)
+      : t('{actor} deleted an account', names)),
   };
   return texts[entry.action]();
 }
@@ -47,7 +53,7 @@ export function auditTable(entries: AuditView[], empty: string): HTMLElement {
     return el('p', {}, empty);
   }
   return scrolling(el('table', { class: 'review-table list-table' },
-    el('thead', {}, el('tr', {}, el('th', {}, 'When'), el('th', {}, 'What'))),
+    el('thead', {}, el('tr', {}, el('th', {}, t('When')), el('th', {}, t('What')))),
     el('tbody', {}, ...entries.map((entry) => el('tr', {},
       el('td', {}, formatTimestamp(entry.at)), el('td', {}, auditText(entry)))))));
 }

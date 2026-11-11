@@ -1,5 +1,8 @@
 // Calendar helpers on ISO dates (`2026-10-28`) and ISO weeks (`2026-W44`), in local time.
 
+import { language } from './i18n.ts';
+import { weekdayName } from './labels.ts';
+
 export type IsoDate = string;
 export type IsoWeek = string;
 
@@ -80,9 +83,9 @@ export function formatTimestamp(value: string): string {
   return `${formatDate(value.slice(0, 10))} ${value.slice(11, 16)}`;
 }
 
-/** `2026-10-28`, `Wed` → `Wed 28.10.` */
+/** `2026-10-28`, `Wed` (the API's weekday code) → `Wed 28.10.` (German `Mi 28.10.`) */
 export function formatDay(value: IsoDate, weekday: string): string {
-  return `${weekday} ${formatShortDate(value)}`;
+  return `${weekdayName(weekday)} ${formatShortDate(value)}`;
 }
 
 /** `04.11.` */
@@ -94,9 +97,6 @@ export function formatShortDate(value: IsoDate): string {
 export type IsoMonth = string;
 
 const MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
-];
 
 /** `2026-10-28` → `2026-10` */
 export function isoMonth(value: IsoDate): IsoMonth {
@@ -114,8 +114,13 @@ export function shiftMonth(month: IsoMonth, months: number): IsoMonth {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
 }
 
-/** `2026-10` → `October 2026` */
+/** `2026-10` → `October 2026` in the page's language (German `Oktober 2026`, Spanish `Octubre de 2026`); anything
+ * else as it is. */
 export function formatMonth(month: IsoMonth): string {
-  const [year, number] = month.split('-');
-  return `${MONTH_NAMES[Number(number) - 1]} ${year}`;
+  if (!isValidMonth(month)) {
+    return month;
+  }
+  const [year = 0, number = 1] = month.split('-').map(Number);
+  const name = new Intl.DateTimeFormat(language(), { month: 'long', year: 'numeric' }).format(new Date(year, number - 1, 1));
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }

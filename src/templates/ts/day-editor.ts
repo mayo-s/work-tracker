@@ -5,6 +5,7 @@ import { clockTime, formatDay, isoDate } from './dates.ts';
 import { el } from './dom.ts';
 import { clockMinutes, normalizeOnLeave, settleDuration, type DurationRules } from './duration-input.ts';
 import { field, formFooter, submit } from './forms.ts';
+import { t } from './i18n.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 
 export type DayFormValues = { day_type: string; start: string; end: string; break_time: string; note: string };
@@ -52,7 +53,7 @@ function textInput(name: string, value: string, placeholder: string, inputmode =
 
 function typeSelect(value: string): HTMLSelectElement {
   const select = el('select', { id: `${PREFIX}-day_type`, name: 'day_type' },
-    el('option', { value: '' }, 'Automatic (work day / holiday)'),
+    el('option', { value: '' }, t('Automatic (work day / holiday)')),
     ...Object.entries(DAY_TYPE_LABELS).map(([type, label]) => el('option', { value: type }, label)));
   select.value = value;
   return select;
@@ -73,18 +74,20 @@ export function breakRules(values: DayFormValues): DurationRules {
 /** The editor of one day; `onDone` after saving or deleting, `onCancel` on Cancel or Escape. */
 export function dayEditor(day: DayView, onDone: () => void, onCancel: () => void): HTMLFormElement {
   const initial = formValues(day);
-  const form = el('form', { class: 'day-editor', 'aria-label': `Edit ${formatDay(day.date, day.weekday)}`, novalidate: true },
+  const label = t('Edit {day}', { day: formatDay(day.date, day.weekday) });
+  const form = el('form', { class: 'day-editor', 'aria-label': label, novalidate: true },
     el('div', { class: 'day-editor-fields' },
-      field(PREFIX, 'day_type', 'Day type', typeSelect(initial.day_type)),
-      field(PREFIX, 'start', 'Start', textInput('start', initial.start, '08:00')),
-      field(PREFIX, 'end', 'End', textInput('end', initial.end, day.best_end ?? '16:30'),
-        day.best_end ? `Best end ${day.best_end}: the target, without overtime or loss; empty: the day stays open` : undefined),
-      field(PREFIX, 'break_time', 'Break', textInput('break_time', initial.break_time, 'legal', 'text'),
-        'e.g. 0:30 or 45m; empty: legal minimum'),
-      field(PREFIX, 'note', 'Note', el('textarea', { id: `${PREFIX}-note`, name: 'note', rows: 2,
+      field(PREFIX, 'day_type', t('Day type'), typeSelect(initial.day_type)),
+      field(PREFIX, 'start', t('Start'), textInput('start', initial.start, '08:00')),
+      field(PREFIX, 'end', t('End'), textInput('end', initial.end, day.best_end ?? '16:30'), day.best_end
+        ? t('Best end {time}: the target, without overtime or loss; empty: the day stays open', { time: day.best_end })
+        : undefined),
+      field(PREFIX, 'break_time', t('Break'), textInput('break_time', initial.break_time, t('legal'), 'text'),
+        t('e.g. 0:30 or 45m; empty: legal minimum')),
+      field(PREFIX, 'note', t('Note'), el('textarea', { id: `${PREFIX}-note`, name: 'note', rows: 2,
         'aria-describedby': `${PREFIX}-note-error` }, initial.note)),
     ),
-    ...formFooter(day.recorded ? 'Delete day' : null),
+    ...formFooter(day.recorded ? t('Delete day') : null),
   );
   const breakTime = form.querySelector<HTMLInputElement>(`#${PREFIX}-break_time`)!;
   normalizeOnLeave(breakTime, () => breakRules(values(form)));
@@ -97,7 +100,7 @@ export function dayEditor(day: DayView, onDone: () => void, onCancel: () => void
   form.querySelector('[data-action="cancel"]')!.addEventListener('click', onCancel);
   form.addEventListener('keydown', (event) => event.key === 'Escape' && onCancel());
   form.querySelector('[data-action="delete"]')?.addEventListener('click', () => {
-    if (window.confirm(`Delete type, times and note of ${formatDay(day.date, day.weekday)}? Its entries stay.`)) {
+    if (window.confirm(t('Delete type, times and note of {day}? Its entries stay.', { day: formatDay(day.date, day.weekday) }))) {
       void submit(form, PREFIX, FIELDS, () => api.deleteDay(day.date), onDone);
     }
   });

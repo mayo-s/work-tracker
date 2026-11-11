@@ -4,14 +4,15 @@ import { api, errorText, type ChangeView } from './api.ts';
 import { formatDate, formatTimestamp } from './dates.ts';
 import { el } from './dom.ts';
 import { fromMinutes } from './durations.ts';
+import { t } from './i18n.ts';
 
 const FIELD_LABELS: Record<string, string> = {
-  date: 'date', ticket_key: 'ticket', activity_type_id: 'activity', duration: 'duration', description: 'description',
-  note: 'note', coding: 'coding',
+  date: t('date'), ticket_key: t('ticket'), activity_type_id: t('activity'), duration: t('duration'),
+  description: t('description'), note: t('note'), coding: t('coding'),
 };
 const ACTION_LABELS: Record<string, string> = {
-  created: 'Created', imported: 'Imported', updated: 'Changed', renamed: 'Ticket renamed', merged: 'Ticket merged', split: 'Split',
-  deleted: 'Deleted',
+  created: t('Created'), imported: t('Imported'), updated: t('Changed'), renamed: t('Ticket renamed'),
+  merged: t('Ticket merged'), split: t('Split'), deleted: t('Deleted'),
 };
 
 /** A stored value as text: durations in h:mm, dates as DD.MM.YYYY, activity type names instead of ids. */
@@ -26,10 +27,10 @@ export function formatValue(field: string, value: unknown, activityNames: Map<st
     return formatDate(value);
   }
   if (field === 'activity_type_id' && typeof value === 'string') {
-    return activityNames.get(value) ?? 'deleted activity type';
+    return activityNames.get(value) ?? t('deleted activity type');
   }
   if (typeof value === 'boolean') {
-    return value ? 'yes' : 'no';
+    return value ? t('yes') : t('no');
   }
   return String(value);
 }
@@ -53,17 +54,17 @@ function historyItem(change: ChangeView, activityNames: Map<string, string>): HT
     el('span', { class: 'num muted' }, formatTimestamp(change.changed_at)), ' ',
     el('strong', {}, ACTION_LABELS[change.action] ?? change.action), ' ',
     el('span', {}, describeChanges(change, activityNames).join(' · ')),
-    change.detail ? el('div', { class: 'muted' }, change.action === 'imported' ? `Original: ${change.detail}` : change.detail) : null,
+    change.detail ? el('div', { class: 'muted' }, change.action === 'imported' ? t('Original: {line}', { line: change.detail }) : change.detail) : null,
   );
 }
 
 /** Loads and shows the history of an entry, oldest first. */
 export function historyPanel(entryId: string, activityNames: Map<string, string>): HTMLElement {
-  const panel = el('div', { class: 'history' }, el('p', { class: 'muted' }, 'Loading history…'));
+  const panel = el('div', { class: 'history' }, el('p', { class: 'muted' }, t('Loading history…')));
   api.entryHistory(entryId).then(
     (changes) => panel.replaceChildren(el('ol', { class: 'history-list' }, ...changes.map((item) => historyItem(item, activityNames)))),
     (error: unknown) => panel.replaceChildren(el('p', { class: 'field-error' },
-      errorText(error, 'The history could not be loaded.'))),
+      errorText(error, t('The history could not be loaded.')))),
   );
   return panel;
 }

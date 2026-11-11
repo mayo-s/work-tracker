@@ -2,6 +2,7 @@
 
 import { ask } from './dialog.ts';
 import { fromMinutes } from './durations.ts';
+import { t } from './i18n.ts';
 
 /** Minutes, and whether they were typed as a plain number (read as hours; the field may ask about minutes). */
 export type Duration = { minutes: number; bare: boolean };
@@ -78,9 +79,11 @@ export function normalizeOnLeave(input: HTMLInputElement, rules: () => DurationR
 export async function settleDuration(input: HTMLInputElement, rules: DurationRules): Promise<boolean> {
   const check = checkDuration(input.value, rules);
   if (check.kind === 'minutes') {
-    const meant = await ask(`Did you mean ${check.minutes} minutes (${fromMinutes(check.minutes)})?`,
-      [`${check.hours} hours is longer than this field allows (at most ${fromMinutes(rules.limit!)}).`],
-      [{ label: `Yes, ${fromMinutes(check.minutes)}`, value: true, primary: true }]);
+    const meant = await ask(t('Did you mean {minutes} minutes ({duration})?',
+      { minutes: check.minutes, duration: fromMinutes(check.minutes) }),
+    [t('{hours} hours is longer than this field allows (at most {limit}).',
+      { hours: check.hours, limit: fromMinutes(rules.limit!) })],
+    [{ label: t('Yes, {duration}', { duration: fromMinutes(check.minutes) }), value: true, primary: true }]);
     if (!meant) {
       return false;
     }

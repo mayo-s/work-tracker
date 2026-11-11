@@ -1,6 +1,7 @@
 // Typed client for the Work Tracker API. The types come from the OpenAPI spec (`npm run api-types`).
 
 import type { components } from './api-types.ts';
+import { t } from './i18n.ts';
 
 type Schemas = components['schemas'];
 
@@ -97,7 +98,7 @@ export class ApiError extends Error {
 }
 
 /** The API's message for a failed request; `fallback` for other failures, e.g. without network. */
-export function errorText(error: unknown, fallback = 'The action failed.'): string {
+export function errorText(error: unknown, fallback = t('The action failed.')): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
@@ -120,7 +121,7 @@ export function errorMessage(status: number, body: unknown): string {
       return String(description ?? title);
     }
   }
-  return `Request failed with status ${status}`;
+  return t('Request failed with status {status}', { status });
 }
 
 async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {

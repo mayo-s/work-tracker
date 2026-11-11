@@ -6,6 +6,7 @@ import {
 import { el } from './dom.ts';
 import { clockMinutes, normalizeOnLeave, settleDuration, type DurationRules } from './duration-input.ts';
 import { field, formFooter, showErrors, submit } from './forms.ts';
+import { t, tn } from './i18n.ts';
 import { serviceOptions } from './lists.ts';
 import { hasTickets } from './work-modes.ts';
 
@@ -61,9 +62,9 @@ export function entryFormValues(entry: EntryView | null, offered: ActivityType[]
 export function entryProblem(values: EntryFormValues, activityTypes: ActivityType[]): [string, string] | null {
   const type = activityTypes.find((item) => item.id === values.activity_type_id);
   if (!type) {
-    return ['activity_type_id', 'Choose an activity type.'];
+    return ['activity_type_id', t('Choose an activity type.')];
   }
-  return type.ticket_required && !values.ticket_key.trim() ? ['ticket_key', `${type.name} needs a ticket.`] : null;
+  return type.ticket_required && !values.ticket_key.trim() ? ['ticket_key', t('{type} needs a ticket.', { type: type.name })] : null;
 }
 
 /** The API input; `service_id` only with a ticket and if the service was changed (it applies to all the ticket's
@@ -113,9 +114,9 @@ async function prefillService(form: HTMLFormElement, serviceSelect: HTMLSelectEl
   try {
     const ticket = await api.ticket(key);
     serviceSelect.value = ticket.service_id != null ? String(ticket.service_id) : '';
-    hint.textContent = `${ticket.key}: ${ticket.entries} ${ticket.entries === 1 ? 'entry' : 'entries'}`;
+    hint.textContent = tn(ticket.entries, '{key}: {count} entry', '{key}: {count} entries', { key: ticket.key });
   } catch (error) {
-    hint.textContent = error instanceof ApiError && error.status === 404 ? 'New ticket' : '';
+    hint.textContent = error instanceof ApiError && error.status === 404 ? t('New ticket') : '';
   }
 }
 
@@ -124,12 +125,13 @@ function fields(initial: EntryFormValues, options: EntryEditorOptions): HTMLElem
   const activities = form.activityTypes.map((type): [string, string] => [type.id ?? '', type.name]);
   const services = serviceOptions(options.services, (service) => service.short_name);
   return el('div', { class: 'entry-editor-fields' },
-    field(PREFIX, 'activity_type_id', 'Activity', select('activity_type_id', initial.activity_type_id, '— choose —', activities)),
-    field(PREFIX, 'duration', 'Duration', input('duration', initial.duration, '1:30'), 'e.g. 1.5 or 90m'),
-    form.ticket ? field(PREFIX, 'ticket_key', 'Ticket', input('ticket_key', initial.ticket_key, 'ENGINE-461')) : null,
-    form.ticket ? field(PREFIX, 'service_id', 'Service', select('service_id', initial.service_id, '— no service —', services),
-      ' ') : null,
-    field(PREFIX, 'description', 'Description', input('description', initial.description, 'What was done')),
+    field(PREFIX, 'activity_type_id', t('Activity'),
+      select('activity_type_id', initial.activity_type_id, t('— choose —'), activities)),
+    field(PREFIX, 'duration', t('Duration'), input('duration', initial.duration, '1:30'), t('e.g. 1.5 or 90m')),
+    form.ticket ? field(PREFIX, 'ticket_key', t('Ticket'), input('ticket_key', initial.ticket_key, 'ENGINE-461')) : null,
+    form.ticket ? field(PREFIX, 'service_id', t('Service'),
+      select('service_id', initial.service_id, t('— no service —'), services), ' ') : null,
+    field(PREFIX, 'description', t('Description'), input('description', initial.description, t('What was done'))),
   );
 }
 
@@ -147,7 +149,7 @@ function wireService(form: HTMLFormElement, serviceChanged: { value: boolean }):
   serviceSelect.addEventListener('change', () => {
     serviceChanged.value = true;
     const key = values(form).ticket_key.trim().toUpperCase();
-    serviceHint.textContent = key ? `Applies to all entries of ${key}` : '';
+    serviceHint.textContent = key ? t('Applies to all entries of {key}', { key }) : '';
   });
 }
 
@@ -173,7 +175,7 @@ function wire(form: HTMLFormElement, options: EntryEditorOptions, serviceChanged
   form.querySelector('[data-action="cancel"]')!.addEventListener('click', options.onCancel);
   form.addEventListener('keydown', (event) => event.key === 'Escape' && options.onCancel());
   form.querySelector('[data-action="delete"]')?.addEventListener('click', () => {
-    if (options.entry && window.confirm('Delete this entry? Its history is kept.')) {
+    if (options.entry && window.confirm(t('Delete this entry? Its history is kept.'))) {
       void submit(form, PREFIX, FIELDS, () => api.deleteEntry(options.entry!.id), options.onDone);
     }
   });
@@ -183,9 +185,10 @@ function wire(form: HTMLFormElement, options: EntryEditorOptions, serviceChanged
 export function entryEditor(options: EntryEditorOptions): HTMLFormElement {
   const offered = entryForm(options.workMode, options.entry, options.activityTypes);
   const initial = entryFormValues(options.entry, offered.activityTypes, offered.ticket);
-  const form = el('form', { class: 'entry-editor', 'aria-label': options.entry ? 'Edit entry' : 'New entry', novalidate: true },
-    fields(initial, options),
-    ...formFooter(options.entry ? 'Delete entry' : null),
+  const form = el('form', { class: 'entry-editor', 'aria-label': options.entry ? t('Edit entry') : t('New entry'),
+    novalidate: true },
+  fields(initial, options),
+  ...formFooter(options.entry ? t('Delete entry') : null),
   );
   wire(form, options, { value: options.entry === null });
   return form;

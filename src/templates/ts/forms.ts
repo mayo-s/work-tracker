@@ -2,6 +2,7 @@
 
 import { ApiError, cleanMessage, errorText } from './api.ts';
 import { el } from './dom.ts';
+import { t } from './i18n.ts';
 
 export type FieldErrors = { fields: Record<string, string>; general: string[] };
 
@@ -60,7 +61,7 @@ export async function submit(
     await action();
     onDone();
   } catch (error) {
-    const fallback = errorText(error, 'Could not be saved.');
+    const fallback = errorText(error, t('Could not be saved.'));
     showErrors(form, prefix, fields, error instanceof ApiError ? error.details : null, fallback);
     form.querySelectorAll('button').forEach((button) => (button.disabled = false));
   }
@@ -71,8 +72,8 @@ export function formFooter(deleteLabel: string | null): HTMLElement[] {
   return [
     el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
     el('div', { class: 'form-actions' },
-      el('button', { type: 'submit', class: 'primary' }, 'Save'),
-      el('button', { type: 'button', 'data-action': 'cancel' }, 'Cancel'),
+      el('button', { type: 'submit', class: 'primary' }, t('Save')),
+      el('button', { type: 'button', 'data-action': 'cancel' }, t('Cancel')),
       deleteLabel ? el('button', { type: 'button', class: 'button-danger', 'data-action': 'delete' }, deleteLabel) : null),
   ];
 }
