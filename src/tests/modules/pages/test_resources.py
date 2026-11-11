@@ -85,6 +85,21 @@ def test_static_files_are_revalidated(client):
     assert 'cache-control' not in client.simulate_get('/api/review').headers
 
 
+SECURITY = {'strict-transport-security': 'max-age=31536000; includeSubDomains', 'x-content-type-options': 'nosniff',
+            'referrer-policy': 'same-origin', 'content-security-policy': "frame-ancestors 'none'",
+            'x-frame-options': 'DENY'}
+
+
+def test_every_answer_carries_the_security_headers(client):
+    """SPEC 7.4: HTTPS only after the first visit (HSTS), no sniffed content types, no address sent elsewhere, no
+    frames."""
+    answers = {path: client.simulate_get(path) for path in ('/week', '/api/review', '/static/css/main.css', '/missing')}
+    actual = {path: ({name: answer.headers.get(name) for name in SECURITY}, answer.status_code)
+              for path, answer in answers.items()}
+    assert actual == {'/week': (SECURITY, 200), '/api/review': (SECURITY, 200), '/static/css/main.css': (SECURITY, 200),
+                      '/missing': (SECURITY, 404)}
+
+
 def test_main_navigation_links_all_pages(client):
     html = client.simulate_get('/').text
     assert '<a href="/">Dashboard</a>' in html

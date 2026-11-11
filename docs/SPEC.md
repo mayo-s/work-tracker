@@ -783,6 +783,14 @@ splitting an entry among several tickets went once they were all reviewed (TASKS
   (or `WORK_TRACKER_ORIGIN_SECRET_PARAMETER`), as the header `X-Origin-Verify`; the app refuses every request without
   it, before anything else (403, "Open the app at its address"), also while the parameter is missing. The function
   reads it once per instance. Locally there is no check.
+- **Security headers** (TASKS.md L.23) on every answer, refusals and static files included:
+  `Strict-Transport-Security: max-age=31536000; includeSubDomains` (HSTS: after one visit over HTTPS the browser uses
+  HTTPS only for a year, so typing the address no longer tries plain HTTP, which Chrome had warned about: "doesn't
+  support a secure connection"; it covers subdomains of the app's domain only, never the operator's domain, and
+  browsers ignore it over plain HTTP, so locally nothing changes; no preload list, which would bind the whole
+  operator's domain), `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin` (links to other sites get no
+  address of the app) and `Content-Security-Policy: frame-ancestors 'none'` with `X-Frame-Options: DENY` (no page of the
+  app in a frame of another site). CloudFront keeps them with the cached static files.
 - Environment: `TZ=CET-1CEST,M3.5.0,M10.5.0/3` (Berlin time as a rule, so "today" is right even without time zone
   files in the image; Lambda runs in UTC).
 - zappa logs at WARNING: its default, DEBUG, writes every request with its cookies and body to CloudWatch.

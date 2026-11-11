@@ -464,4 +464,6 @@ L.16 (a–i) → 9.1 (a–i).
 - [x] **L.22** CloudFront caches the static files (`/static/*`: scripts, CSS, fonts) with a cache policy of its own,
   so a page runs the Lambda only for its API calls (a page's ~20 modules at once over HTTP/2 reached the Lambda's
   concurrency limit: 429); `deploy/zappa.sh` clears that cache after each update, so a new version shows at once
-- [ ] **L.23** Support secure connection: some browsers complain that the site does not support secure connection.
+- [x] **L.23** Support secure connection: some browsers complain that the site does not support secure connection.
+  HTTPS itself worked; the app now sends HSTS, so after the first visit the browser goes to HTTPS directly, plus
+  `nosniff`, `Referrer-Policy: same-origin` and no framing (SPEC 7.4)

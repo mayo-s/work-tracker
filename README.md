@@ -228,6 +228,10 @@ same `put-parameter` with `--overwrite`, the new value as `X-Origin-Verify` of t
 CloudFront → the distribution → Origins → Edit), then `./deploy/zappa.sh $stage update`, so the function reads it
 again.
 
+Every answer carries security headers (SPEC 7.4): HSTS, so after the first visit browsers go to the domain over HTTPS
+only, even when the address is typed without `https://`; no sniffed content types, no address sent to other sites and
+no framing. `curl -sI https://$domain/login` shows them.
+
 Then open the domain: `/setup` creates root with the setup token. Root switches registration on for you, and in
 your own setup "Import" takes the file of "Export my data" from the local app. A token works only once; delete the
 parameter afterwards: `aws ssm delete-parameter --region eu-central-1 --name /work-tracker-$stage/setup-token`.

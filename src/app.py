@@ -28,7 +28,7 @@ from src.modules.contact.resources import ContactResource
 from src.modules.imprint.resources import ImprintResource
 from src.modules.imprint.sources import EnvironmentImprint, ImprintSource
 from src.modules.pages.resources import (
-    STATIC_DIR, Page, PageSettings, Redirect, RegisterPage, RevalidateStaticFiles, StartPage,
+    STATIC_DIR, Page, PageSettings, Redirect, RegisterPage, RevalidateStaticFiles, SecurityHeaders, StartPage,
 )
 from src.modules.pto.resources import PtoYearCollection, PtoYearItem
 from src.modules.reports.resources import (
@@ -57,10 +57,11 @@ from src.utils.stages import stage_imprint, stage_origin_secret, stage_setup_tok
 def _middleware(
     storage: Storage, clock: Callable[[], dt.datetime], enabled: bool, origin_secret: OriginSecret | None,
 ) -> list[object]:
-    """First the origin check (only with a secret), then the login (or the first user with the login off)."""
+    """The security headers on every answer; first the origin check (only with a secret), then the login (or the first
+    user with the login off)."""
     origin = [OriginCheck(origin_secret)] if origin_secret else []
     login = [Authentication(storage, clock)] if enabled else [LocalUser(storage)]
-    return [*origin, *login, RevalidateStaticFiles(), PageSettings(storage)]
+    return [SecurityHeaders(), *origin, *login, RevalidateStaticFiles(), PageSettings(storage)]
 
 
 def create_app(

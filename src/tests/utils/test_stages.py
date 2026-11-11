@@ -107,6 +107,7 @@ def test_the_lambda_app_answers_only_requests_through_the_domain(monkeypatch, on
     assert client.simulate_get('/api/auth/status', headers=through).json['setup_token'] is True  # creating root needs it
     bypassing = client.simulate_get('/health', headers={'X-Origin-Verify': secret[:-1]})
     assert (bypassing.status, bypassing.json['description']) == (falcon.HTTP_403, 'Open the app at its address')
+    assert bypassing.headers['strict-transport-security'] == 'max-age=31536000; includeSubDomains'  # refusals too
 
 
 def test_app_without_database_runs_on_the_local_stage(monkeypatch, tmp_path):

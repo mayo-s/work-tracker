@@ -98,6 +98,23 @@ class Redirect:
         raise falcon.HTTPMovedPermanently(self._location)
 
 
+SECURITY_HEADERS = {
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',  # browsers ignore it over plain HTTP
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'same-origin',
+    'Content-Security-Policy': "frame-ancestors 'none'",
+    'X-Frame-Options': 'DENY',  # frame-ancestors for older browsers
+}
+
+
+class SecurityHeaders:
+    """Middleware: every answer, also a refusal, tells the browser to use HTTPS only (after the first visit), to trust
+    the content types, to send the address only within the app and never to show the app in a frame (SPEC 7.4)."""
+
+    def process_response(self, req: falcon.Request, resp: falcon.Response, resource: object, req_succeeded: bool) -> None:
+        resp.set_headers(SECURITY_HEADERS)
+
+
 class RevalidateStaticFiles:
     """Middleware: browsers re-check static files on each use (cheap thanks to their ETag), so changes show at once."""
 
