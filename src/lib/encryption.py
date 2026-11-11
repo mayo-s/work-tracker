@@ -13,6 +13,8 @@ from typing import Any
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from src.lib.texts import text
+
 _N, _R, _P = 2 ** 17, 8, 1  # 128 MiB of memory per key, as OWASP recommends for scrypt
 _MAX_MEMORY = 2 ** 28  # 256 MiB: a file asking scrypt for more is refused rather than tying up the memory
 _CIPHER = 'AES-256-GCM'
@@ -37,7 +39,7 @@ def read_header(sealed: bytes) -> dict[str, Any]:
     except ValueError:
         header = None
     if not isinstance(header, dict):
-        raise ValueError('The file has no header')
+        raise ValueError(text('The file has no header'))
     return header
 
 
@@ -49,7 +51,7 @@ def decrypt(sealed: bytes, passphrase: str) -> bytes:
     try:
         return AESGCM(_key(passphrase, salt, n, r, p)).decrypt(nonce, ciphertext, head)
     except InvalidTag as error:
-        raise DecryptionError('The passphrase is wrong, or the file is damaged') from error
+        raise DecryptionError(text('The passphrase is wrong, or the file is damaged')) from error
 
 
 def _parameters(header: dict[str, Any]) -> tuple[bytes, bytes, int, int, int]:
@@ -58,9 +60,9 @@ def _parameters(header: dict[str, Any]) -> tuple[bytes, bytes, int, int, int]:
     try:
         salt, nonce, n, r, p = _unb64(kdf['salt']), _unb64(header['nonce']), int(kdf['n']), int(kdf['r']), int(kdf['p'])
     except (KeyError, TypeError, ValueError) as error:
-        raise ValueError('The header is incomplete') from error
+        raise ValueError(text('The header is incomplete')) from error
     if header.get('cipher') != _CIPHER or kdf.get('name') != 'scrypt' or not _affordable(n, r, p):
-        raise ValueError('The file is encrypted in a way this Work Tracker does not read')
+        raise ValueError(text('The file is encrypted in a way this Work Tracker does not read'))
     return salt, nonce, n, r, p
 
 

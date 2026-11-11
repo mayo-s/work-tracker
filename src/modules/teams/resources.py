@@ -8,12 +8,14 @@ from collections.abc import Callable
 import falcon
 from spectree import Response
 
+from src.lib.texts import text
 from src.models.catalog import Service, ServiceChoice
 from src.models.teams import Auditor, Member
 from src.models.users import User
 from src.modules.admin.audit import record
 from src.modules.auth.sessions import current_user
 from src.modules.catalog.resources import ServiceInput
+from src.modules.pages.languages import in_request_language
 from src.modules.storage.errors import NotFoundError
 from src.modules.storage.store import Storage, Store, Users
 from src.modules.teams.schemas import (
@@ -24,7 +26,7 @@ from src.utils.spec import spec
 
 TAGS = ['Teams']
 TEAM_PARAMETER = {'team_id': 'Id of the team'}
-INVITED = 'If a user with this e-mail address exists, they find the invitation in their settings'
+INVITED = text('If a user with this e-mail address exists, they find the invitation in their settings')
 
 
 def team_admin_of(req: falcon.Request, store: Store, team_id: str) -> str:
@@ -37,7 +39,7 @@ def team_admin_of(req: falcon.Request, store: Store, team_id: str) -> str:
     membership = store.teams().membership(user_id)
     own_team = membership is not None and membership.team_id == team_id and membership.team_role == 'team_admin'
     if role != 'admin' and not own_team:
-        raise falcon.HTTPForbidden(description='Only admins and the team admins of this team may do this')
+        raise falcon.HTTPForbidden(description=text('Only admins and the team admins of this team may do this'))
     store.teams().get(team_id)
     return user_id
 
@@ -70,7 +72,7 @@ class TeamInvitations(_TeamResource):
         with self._storage.transaction() as store:
             store.invitations(self._clock).invite(team_id, json.email, team_admin_of(req, store, team_id))
         resp.status = falcon.HTTP_202
-        resp.media = InvitationSent(message=INVITED)
+        resp.media = InvitationSent(message=in_request_language(INVITED))
 
 
 class TeamInvitationItem(_TeamResource):

@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from src.lib.public_holidays import BERLIN, HolidayRules
+from src.lib.texts import text
 
 MINUTES_PER_WEEK = 7 * 24 * 60
 WEEKDAYS = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
@@ -20,9 +21,9 @@ class WorkSchedule:
 
     def __post_init__(self) -> None:
         if not 0 <= self.weekly_minutes <= MINUTES_PER_WEEK:
-            raise ValueError(f'{self.weekly_minutes} minutes per week is out of range')
+            raise ValueError(text('{minutes} minutes per week is out of range', minutes=self.weekly_minutes))
         if not self.work_days or not self.work_days <= set(range(1, 8)):
-            raise ValueError('work days must be one or more weekdays (1 = Monday … 7 = Sunday)')
+            raise ValueError(text('work days must be one or more weekdays (1 = Monday … 7 = Sunday)'))
 
     @property
     def daily_target(self) -> int:
@@ -42,7 +43,7 @@ class Schedules:
     def __init__(self, schedules: Iterable[WorkSchedule] = (STANDARD,)) -> None:
         self._schedules = sorted(schedules, key=lambda schedule: schedule.valid_from)
         if not self._schedules:
-            raise ValueError('At least one work schedule is needed')
+            raise ValueError(text('At least one work schedule is needed'))
         self._starts = [schedule.valid_from for schedule in self._schedules]
 
     def on(self, date: dt.date) -> WorkSchedule:

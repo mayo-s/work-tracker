@@ -4,6 +4,7 @@ import datetime as dt
 import sqlite3
 from collections.abc import Callable
 
+from src.lib.texts import text
 from src.models.catalog import Ticket
 from src.models.history import HistoryAction
 from src.modules.storage.entries import EntryRepository
@@ -37,10 +38,10 @@ def rename_ticket(
 def new_key_for(source: Ticket | None, old_key: str, new_key: str) -> str:
     """The normalized new key; the old ticket must exist and differ from it."""
     if source is None:
-        raise NotFoundError(f'Unknown ticket {old_key}')
+        raise NotFoundError(text('Unknown ticket {key}', key=old_key))
     new = Ticket(key=new_key).key
     if new == source.key:
-        raise ConflictError(f'{source.key} cannot be renamed to itself')
+        raise ConflictError(text('{key} cannot be renamed to itself', key=source.key))
     return new
 
 

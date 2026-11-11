@@ -9,7 +9,7 @@ from src.modules.storage.dynamodb.keys import user_partition
 from src.modules.storage.dynamodb.memberships import current_membership, team_item, team_partition
 from src.modules.storage.dynamodb.table import Item, attributes
 from src.modules.storage.dynamodb.unit import Unit
-from src.modules.storage.errors import ConflictError, NotFoundError
+from src.modules.storage.errors import ConflictError, NotFoundError, duplicate_name, used_by_entries
 from src.modules.storage.owners import DEFAULT_ACTIVITY_TYPES
 
 ACTIVITY_TYPE, SERVICE = 'ACTIVITY_TYPE#', 'SERVICE#'
@@ -73,7 +73,7 @@ class _DynamoCatalog[M: DomainModel]:
     def _claim(self, item: M) -> None:
         value = getattr(item, self.name)
         self._unit.put({'PK': self._pk, 'SK': self._name_key(value), 'id': item.id},
-                       unique=f'A {self.label} named "{value}" already exists')
+                       unique=duplicate_name(self.label, value))
 
     def _key(self, item_id: str) -> str:
         return f'{self.prefix}{item_id}'
@@ -142,7 +142,7 @@ class DynamoActivityTypes(_DynamoCatalog[ActivityType]):
 
     def _before_delete(self, item_id: str) -> None:
         if any(entry.get('activity_type_id') == item_id for entry in self._unit.query_prefix(self._pk, 'ENTRY#')):
-            raise ConflictError(f'The {self.label} is used by entries and cannot be deleted')
+            raise ConflictError(used_by_entries(self.label))
 
 
 def add_default_activity_types(unit: Unit, user_id: str) -> None:

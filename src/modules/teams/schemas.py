@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRole
 from src.models.users import DELETED_USER, EMAIL_PATTERN, User
+from src.modules.pages.languages import PersonName
 
 
 class TeamInput(BaseModel):
@@ -77,7 +78,7 @@ class MyInvitationView(BaseModel):
     id: str
     team_name: str
     invited_at: dt.datetime
-    invited_by: str = Field(description='Name of the inviting admin, "Deleted user" once their account is deleted')
+    invited_by: PersonName = Field(description='Name of the inviting admin, "Deleted user" once their account is deleted')
 
     @classmethod
     def of(cls, invitation: Invitation, inviter: User | None) -> Self:
@@ -116,7 +117,8 @@ class AuditedTeam(BaseModel):
 
 
 class ReportViewEntry(BaseModel):
-    viewer: str = Field(description='Name of the team admin or auditor who looked')
+    viewer: PersonName = Field(description='Name of the team admin or auditor who looked, "Deleted user" once their '
+                                           'account is deleted')
     report: str = Field(description='dashboard, week, month or year')
     period: str = Field(description='e.g. 2026-W44, 2026-10, 2026; empty for the dashboard')
     viewed_at: dt.datetime

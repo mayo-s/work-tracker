@@ -9,6 +9,7 @@ A member's report views are in their partition (`VIEW#<time>#<id>`).
 import datetime as dt
 from collections.abc import Callable
 
+from src.lib.texts import text
 from src.models.base import new_id
 from src.models.catalog import Service
 from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRecord, TeamRole
@@ -69,7 +70,7 @@ class DynamoTeams:
         """Only a team without members; its open invitations, services and auditors go with it, its history stays."""
         stored = self.get(team_id)
         if self.members(team_id):
-            raise ConflictError('The team still has members; remove them first')
+            raise ConflictError(text('The team still has members; remove them first'))
         for invitation in self._unit.query_prefix(team_partition(team_id), 'INVITE#'):
             _delete_invitation(self._unit, invitation)
         auditors = DynamoAuditors(self._unit)
@@ -160,7 +161,7 @@ class DynamoTeams:
         """The role in the team the user is in now (409 if they are in none), on both items of the membership."""
         current = current_membership(self._unit, user_id)
         if current is None:
-            raise ConflictError('Only a member of a team has a team role; invite them first')
+            raise ConflictError(text('Only a member of a team has a team role; invite them first'))
         member = self._unit.get(team_partition(current['team_id']), f'MEMBER#{user_id}')
         self._unit.put(current | {'team_role': team_role})
         self._unit.put(member | {'team_role': team_role})
@@ -178,7 +179,8 @@ class DynamoTeams:
                 self._unit.put(ticket | {'service_id': copies[service.id]})
 
     def _claim(self, name: str, team_id: str) -> None:
-        self._unit.put({'PK': TEAMS, 'SK': _name_key(name), 'id': team_id}, unique=f'A team named "{name}" already exists')
+        self._unit.put({'PK': TEAMS, 'SK': _name_key(name), 'id': team_id},
+                       unique=text('A team named "{name}" already exists', name=name))
 
 
 def _name_key(name: str) -> str:

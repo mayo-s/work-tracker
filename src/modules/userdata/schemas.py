@@ -11,6 +11,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from src.lib.texts import text
 from src.models.base import DomainModel
 from src.models.catalog import ActivityType, ServiceChoice, Ticket, new_activity_type
 from src.models.days import Day
@@ -83,9 +84,10 @@ def _next_id(records: list[dict[str, Any]]) -> str:
 
 def _check_format(name: Any, version: Any) -> None:
     if name != FORMAT:
-        raise ValueError('This is no Work Tracker export file')
+        raise ValueError(text('This is no Work Tracker export file'))
     if isinstance(version, int) and version > VERSION:
-        raise ValueError(f'The file has version {version}; this Work Tracker reads up to version {VERSION}')
+        raise ValueError(text('The file has version {version}; this Work Tracker reads up to version {latest}',
+                              version=version, latest=VERSION))
 
 
 class ImportSummary(BaseModel):

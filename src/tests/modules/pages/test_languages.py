@@ -1,5 +1,7 @@
 """The UI languages (SPEC 5.16): which one a page gets, the catalogs, and translating the templates."""
 
+import ast
+import datetime as dt
 import json
 import re
 from pathlib import Path
@@ -7,9 +9,16 @@ from pathlib import Path
 import falcon
 import pytest
 from falcon import testing
+from pydantic import BaseModel
 
 from src.app import create_app
-from src.modules.pages.languages import LOCALES_DIR, accepted_language, html_texts, translate, translate_html
+from src.lib.public_holidays import STATES, HolidayRules, holidays_between
+from src.lib.texts import joined, text
+from src.models.messages import SUPPORT
+from src.models.users import DELETED_USER
+from src.modules.pages.languages import (
+    LOCALES_DIR, PersonName, accepted_language, answering_in, html_texts, translate, translate_html, translate_text,
+)
 from src.modules.pages.resources import OWN_LANGUAGE, TEMPLATES_DIR
 
 SOURCES = Path(__file__).resolve().parents[3]
@@ -34,6 +43,34 @@ def test_translations_fill_in_their_placeholders_and_fall_back_to_english():
     assert [translate('{count} open team invitations', 'de', count=3), translate('Week', 'es'),
             translate('Week', 'en'), translate('Not in the catalog', 'de')] == [
         '3 offene Team-Einladungen', 'Semana', 'Week', 'Not in the catalog']
+
+
+def test_marked_texts_translate_with_their_values_and_joined_ones_each_on_its_own():
+    end = text('End {end} is before start {start}', end='08:00', start='09:00')
+    both = joined([end, text('a break needs a start'), 'Field required'])
+    assert (both, translate_text(both, 'de'), translate_text('Week', 'de')) == (
+        'End 08:00 is before start 09:00; a break needs a start; Field required',
+        'Ende 08:00 liegt vor Beginn 09:00; eine Pause braucht einen Beginn; Field required', 'Week')
+
+
+def test_the_api_answers_refusals_validation_messages_and_holidays_in_the_requests_language(client):
+    german = {'Accept-Language': 'de'}
+    refused = client.simulate_get('/api/tickets/TNG-1', headers=german)
+    invalid = client.simulate_put('/api/days/2026-11-02', json={'start': '09:00', 'end': '08:00'}, headers=german)
+    christmas = client.simulate_get('/api/days', params={'week': '2026-W52'}, headers=german)
+    assert (refused.json['description'], [error['msg'] for error in invalid.json],
+            [day['holiday'] for day in christmas.json][3:6]) == (
+        'Unbekanntes Ticket TNG-1', ['Value error, Ende 08:00 liegt vor Beginn 09:00'],
+        ['Heiligabend', 'Erster Weihnachtstag', 'Zweiter Weihnachtstag'])
+
+
+def test_names_the_app_gives_come_in_the_answers_language_but_peoples_names_stay():
+    class Names(BaseModel):
+        people: list[PersonName]
+
+    with answering_in('es'):
+        assert Names(people=[DELETED_USER, SUPPORT, 'Hans Dampf']).model_dump(mode='json') == {
+            'people': ['Usuario eliminado', 'Soporte', 'Hans Dampf']}
 
 
 def test_templates_translate_texts_and_readable_attributes_but_not_names_and_placeholders():
@@ -114,8 +151,42 @@ def test_scripts_translate_whole_quoted_texts_only():
     assert [name for name, code in scripts().items() if re.search(unread, code)] == []
 
 
+def text_calls():
+    """The calls of `text(…)` in the server's code."""
+    for source in SOURCES.rglob('*.py'):
+        if 'tests' not in source.relative_to(SOURCES).parts:
+            for node in ast.walk(ast.parse(source.read_text(encoding='utf-8'))):
+                if isinstance(node, ast.Call) and _called(node.func) == 'text':
+                    yield source.name, node
+
+
+def _called(func):
+    return func.id if isinstance(func, ast.Name) else func.attr if isinstance(func, ast.Attribute) else None
+
+
+def server_texts():
+    return {call.args[0].value for _, call in text_calls() if call.args and _quoted(call.args[0])}
+
+
+def test_the_server_marks_whole_texts_only():
+    """The catalogs' test reads the texts of `text(…)`: a whole sentence in quotes, its values as parameters."""
+    assert [name for name, call in text_calls() if len(call.args) != 1 or not _quoted(call.args[0])] == []
+
+
+def _quoted(node):
+    return isinstance(node, ast.Constant) and isinstance(node.value, str)
+
+
+def holiday_names():
+    """The names of the public holidays of all federal states and of the company half days, this year and the next ten."""
+    year = dt.date.today().year
+    return {holiday.name for state in STATES
+            for holiday in holidays_between(dt.date(year, 1, 1), dt.date(year + 10, 12, 31), HolidayRules(state))}
+
+
 def texts_to_translate():
-    return template_texts() | page_titles() | script_texts()
+    return (template_texts() | page_titles() | script_texts() | server_texts() | holiday_names()
+            | {DELETED_USER, SUPPORT})
 
 
 @pytest.mark.parametrize('language', ['de', 'es'])

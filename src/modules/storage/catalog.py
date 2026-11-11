@@ -4,7 +4,7 @@ import sqlite3
 
 from src.models.base import DomainModel, new_id
 from src.models.catalog import ActivityType, Service, ServiceChoice
-from src.modules.storage.errors import ConflictError, NotFoundError
+from src.modules.storage.errors import ConflictError, NotFoundError, duplicate_name, used_by_entries
 
 
 class _CatalogRepository[M: DomainModel]:
@@ -54,16 +54,15 @@ class _CatalogRepository[M: DomainModel]:
         return item
 
     def delete(self, item_id: str) -> None:
-        in_use = f'The {self.label} is used by entries and cannot be deleted'
         sql = f'DELETE FROM {self.table} WHERE id = ? AND {self.owner} = ?'
-        if not self._write(sql, (item_id, self._owner), in_use).rowcount:
+        if not self._write(sql, (item_id, self._owner), used_by_entries(self.label)).rowcount:
             raise NotFoundError(f'No {self.label} with id {item_id}')
 
     def _values(self, item: M) -> tuple:
         return tuple(getattr(item, field) for field in self.fields)
 
     def _duplicate(self, item: M) -> str:
-        return f'A {self.label} named "{self._values(item)[0]}" already exists'
+        return duplicate_name(self.label, self._values(item)[0])
 
     def _write(self, sql: str, params: tuple, conflict: str) -> sqlite3.Cursor:
         """Runs a change; a unique or foreign key violation raises a ConflictError with the given message."""

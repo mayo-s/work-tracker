@@ -27,6 +27,7 @@ from src.modules.entries.resources import (
 from src.modules.contact.resources import ContactResource
 from src.modules.imprint.resources import ImprintResource
 from src.modules.imprint.sources import EnvironmentImprint, ImprintSource
+from src.modules.pages.languages import RequestLanguage, serialize_error
 from src.modules.pages.resources import (
     STATIC_DIR, Page, PageSettings, Redirect, RegisterPage, RevalidateStaticFiles, SecurityHeaders, StartPage,
 )
@@ -57,11 +58,11 @@ from src.utils.stages import stage_imprint, stage_origin_secret, stage_setup_tok
 def _middleware(
     storage: Storage, clock: Callable[[], dt.datetime], enabled: bool, origin_secret: OriginSecret | None,
 ) -> list[object]:
-    """The security headers on every answer; first the origin check (only with a secret), then the login (or the first
-    user with the login off)."""
+    """The security headers on every answer and its language; first the origin check (only with a secret), then the
+    login (or the first user with the login off)."""
     origin = [OriginCheck(origin_secret)] if origin_secret else []
     login = [Authentication(storage, clock)] if enabled else [LocalUser(storage)]
-    return [SecurityHeaders(), *origin, *login, RevalidateStaticFiles(), PageSettings(storage)]
+    return [SecurityHeaders(), RequestLanguage(), *origin, *login, RevalidateStaticFiles(), PageSettings(storage)]
 
 
 def create_app(
@@ -88,6 +89,7 @@ def create_app(
     app = falcon.App(middleware=_middleware(storage, clock, enabled, origin_secret))
     app.add_error_handler(NotFoundError, _not_found)
     app.add_error_handler(ConflictError, _conflict)
+    app.set_error_serializer(serialize_error)
     app.add_route('/', StartPage())
     app.add_route('/week', Page('week', 'Week'))
     app.add_route('/month', Page('month', 'Month'))
@@ -191,8 +193,8 @@ def create_app(
 
 
 def _not_found(req: falcon.Request, resp: falcon.Response, error: NotFoundError, params: dict) -> None:
-    raise falcon.HTTPNotFound(description=str(error))
+    raise falcon.HTTPNotFound(description=error.args[0])
 
 
 def _conflict(req: falcon.Request, resp: falcon.Response, error: ConflictError, params: dict) -> None:
-    raise falcon.HTTPConflict(description=str(error))
+    raise falcon.HTTPConflict(description=error.args[0])

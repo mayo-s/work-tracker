@@ -13,6 +13,7 @@ from src.lib.schedules import STANDARD, WorkSchedule
 from src.lib.stays import Stays
 from src.lib.worktime import best_end, legal_break
 from src.models.days import Day
+from src.modules.pages.languages import HolidayName
 from src.utils.api import ClockText, DurationText, check_domain
 
 _WEEKDAYS = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
@@ -53,7 +54,7 @@ class DayView(BaseModel):
     weekday: str = Field(examples=['Mon'])
     day_type: DayType = Field(description='Effective day type: the chosen one, or automatic')
     automatic: bool = Field(description='True if no day type was chosen')
-    holiday: str | None = Field(description='Name of the public holiday or company half day')
+    holiday: HolidayName | None = Field(description='Name of the public holiday or company half day')
     recorded: bool
     start: str | None
     end: str | None = Field(description='Empty with a start: the day is open and counts as nothing worked yet')

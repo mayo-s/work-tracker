@@ -8,6 +8,7 @@ from typing import Literal, Self
 from pydantic import BaseModel, Field, model_validator
 
 from src.lib.durations import format_duration, parse_duration
+from src.lib.texts import text
 from src.modules.entries.schemas import EntryView, EntryViewer
 from src.modules.storage.store import Store
 
@@ -28,7 +29,7 @@ class SearchQuery(BaseModel):
     @model_validator(mode='after')
     def check_period(self) -> Self:
         if self.start and self.end and self.end < self.start:
-            raise ValueError('end must be on or after start')
+            raise ValueError(text('end must be on or after start'))
         return self
 
 

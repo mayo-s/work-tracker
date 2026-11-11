@@ -5,6 +5,8 @@ from typing import Any
 
 from spectree import SpecTree
 
+from src.modules.pages.languages import translate_validation_errors
+
 MAINTENANCE = 'Maintenance'
 logger = logging.getLogger(__name__)
 _PAGE_TITLES = {'swagger': 'Swagger UI', 'redoc': 'ReDoc', 'scalar': 'Scalar'}
@@ -42,9 +44,10 @@ def _operation(path: str, summary: str, media_type: str) -> dict[str, Any]:
 
 def log_request_errors(req: Any, resp: Any, error: Exception | None, instance: Any, model_adapter: Any) -> None:
     """A request that fails validation (422) is logged with where it failed, not with its values: they may be personal
-    data, e.g. a whole export file being imported."""
+    data, e.g. a whole export file being imported. Its messages are answered in the request's language."""
     if error:
         logger.error('422 Request Validation Error: %s', error_locations(model_adapter.validation_errors(error)))
+        translate_validation_errors(resp, error)
 
 
 def log_response_errors(req: Any, resp: Any, error: Exception | None, instance: Any, model_adapter: Any) -> None:

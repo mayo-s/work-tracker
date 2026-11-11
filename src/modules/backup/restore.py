@@ -10,6 +10,7 @@ database until the restore finishes (a restore that stops halfway is completed b
 
 from collections.abc import Callable, Iterable
 
+from src.lib.texts import text
 from src.models.audit import AuditEntry
 from src.models.catalog import Service, ServiceChoice
 from src.models.users import User
@@ -51,15 +52,17 @@ def _check_names(people: list[BackupUser], root: User) -> None:
 
 def _check_records(item: BackupUser, team: BackupTeam | None) -> None:
     if item.records is None:
-        raise BackupError(f'The backup holds no records of {item.user.username}')
+        raise BackupError(text('The backup holds no records of {username}', username=item.user.username))
     try:
         check_references(item.records)
     except ConflictError as error:
-        raise BackupError(f'The records of {item.user.username}: {error}') from error
+        raise BackupError(text('The records of {username}: {error}', username=item.user.username,
+                               error=error.args[0])) from error
     for service in item.records.services:
         if service.team is not None and not _offered(service, team):
-            raise BackupError(f'{item.user.username} uses the service {service.short_name} of {service.team}, which the '
-                              'backup does not hold for their team')
+            raise BackupError(text(
+                '{username} uses the service {service} of {team}, which the backup does not hold for their team',
+                username=item.user.username, service=service.short_name, team=service.team))
 
 
 def _offered(service: ServiceChoice, team: BackupTeam | None) -> bool:
@@ -100,7 +103,7 @@ def _as_current_root(backup: Backup, root_id: str) -> Callable[[str | None], str
 def _root_of(backup: Backup) -> BackupUser:
     root = next((item for item in backup.users if item.user.role == 'root'), None)
     if root is None:
-        raise BackupError('The backup holds no root whose login could be taken over')
+        raise BackupError(text('The backup holds no root whose login could be taken over'))
     return root
 
 

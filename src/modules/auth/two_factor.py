@@ -8,12 +8,13 @@ import secrets
 import falcon
 import segno
 
+from src.lib.texts import text
 from src.lib.totp import matching_step
 from src.models.users import Role, User
 from src.modules.storage.store import Store
 
 CODE_NEEDED = 'two_factor_required'  # the `code` of the 401 answer that asks for the authenticator code
-WRONG_CODE = 'The code is wrong; enter the current one of your authenticator app, or a recovery code'
+WRONG_CODE = text('The code is wrong; enter the current one of your authenticator app, or a recovery code')
 REQUIRED: tuple[Role, ...] = ('root', 'admin')
 RECOVERY_CODES = 10
 _RECOVERY_LETTERS = 'abcdefghjkmnpqrstuvwxyz23456789'  # no 0/o, 1/l/i: easy to read off paper
@@ -68,7 +69,7 @@ def second_factor(store: Store, user: User, code: str | None, now: dt.datetime, 
         return True
     if not code:
         raise falcon.HTTPUnauthorized(title='401 Unauthorized', code=CODE_NEEDED,
-                                      description='Enter the code of your authenticator app')
+                                      description=text('Enter the code of your authenticator app'))
     return code_or_recovery_accepted(store, user.id, code, now)
 
 

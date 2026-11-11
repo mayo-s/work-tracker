@@ -1092,7 +1092,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The team report as a CSV file to download, e.g. `20261109_1430_team_report_Platform.csv`: one row per figure, with the columns Section, Name, Figure and Duration, separated by semicolons, in UTF-8 with a byte order mark. The rows Period, Counted up to and Note hold text instead of a duration. Not logged. */
+        /** The team report as a CSV file to download, e.g. `20261109_1430_team_report_Platform.csv`: one row per figure, with the columns Section, Name, Figure and Duration, separated by semicolons, in UTF-8 with a byte order mark. The rows Period, Counted up to and Note hold text instead of a duration; all in English. Not logged. */
         get: operations["get__api_teams_{team_id}_report\\.csv"];
         put?: never;
         post?: never;
@@ -3362,7 +3362,7 @@ export interface components {
             at: string;
             /**
              * Actor
-             * @description Name of who made the change
+             * @description Name of who made the change, "Deleted user" once their account is deleted
              */
             actor: string;
             /**
@@ -4203,7 +4203,7 @@ export interface components {
         ReportViewEntry: {
             /**
              * Viewer
-             * @description Name of the team admin or auditor who looked
+             * @description Name of the team admin or auditor who looked, "Deleted user" once their account is deleted
              */
             viewer: string;
             /**

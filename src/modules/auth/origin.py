@@ -12,9 +12,11 @@ from typing import Any
 import falcon
 from botocore.exceptions import ClientError
 
+from src.lib.texts import text
+
 HEADER = 'X-Origin-Verify'
 DEFAULT_PARAMETER = '/work-tracker/origin-secret'
-REFUSED = 'Open the app at its address'
+REFUSED = text('Open the app at its address')
 
 logger = logging.getLogger(__name__)
 

@@ -37,7 +37,8 @@ describe('requests', () => {
   test('days of a week', async () => {
     await api.days({ week: '2026-W44' });
     assert.deepEqual(calls[0], {
-      url: '/api/days?week=2026-W44', method: 'GET', body: undefined, headers: { Accept: 'application/json' },
+      url: '/api/days?week=2026-W44', method: 'GET', body: undefined,
+      headers: { Accept: 'application/json', 'Accept-Language': 'en' },
     });
   });
 

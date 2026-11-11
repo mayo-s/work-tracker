@@ -13,6 +13,7 @@ from typing import Any
 import falcon
 from botocore.exceptions import ClientError
 
+from src.lib.texts import text
 from src.modules.auth.sessions import PAUSED
 from src.modules.storage.errors import ConflictError
 from src.modules.storage.store import Storage
@@ -39,9 +40,11 @@ class SetupToken:
         except ClientError as error:
             if error.response['Error']['Code'] != 'ParameterNotFound':
                 raise
-            raise ConflictError(f'No setup token is configured: create the parameter {self._parameter} first') from error
+            raise ConflictError(text('No setup token is configured: create the parameter {parameter} first',
+                                     parameter=self._parameter)) from error
         if len(value) < MIN_LENGTH:
-            raise ConflictError(f'The setup token in {self._parameter} needs at least {MIN_LENGTH} characters')
+            raise ConflictError(text('The setup token in {parameter} needs at least {count} characters',
+                                     parameter=self._parameter, count=MIN_LENGTH))
         return value
 
 
@@ -70,5 +73,5 @@ def check_setup_token(
         if wrong:
             attempts.add(now)
     if wrong:
-        raise falcon.HTTPForbidden(description='The setup token is wrong')
+        raise falcon.HTTPForbidden(description=text('The setup token is wrong'))
     return token_hash(given or '')

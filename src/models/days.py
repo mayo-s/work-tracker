@@ -8,6 +8,7 @@ from pydantic import Field, model_validator
 from src.lib.balances import DayRecord
 from src.lib.daytypes import DayType
 from src.lib.durations import MINUTES_PER_DAY
+from src.lib.texts import text
 from src.lib.worktime import worked_time
 from src.models.base import DomainModel
 
@@ -25,9 +26,9 @@ class Day(DomainModel):
     @model_validator(mode='after')
     def check_times(self) -> Self:
         if self.start is None and self.end is not None:
-            raise ValueError('an end needs a start')
+            raise ValueError(text('an end needs a start'))
         if self.start is None and self.break_minutes is not None:
-            raise ValueError('a break needs a start')
+            raise ValueError(text('a break needs a start'))
         if self.end is not None:
             worked_time(self.start, self.end, self.break_minutes)  # rejects end before start and too long breaks
         return self

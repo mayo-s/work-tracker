@@ -10,6 +10,7 @@ from typing import Any
 
 from botocore.exceptions import ClientError
 
+from src.lib.texts import text
 from src.modules.storage.dynamodb.table import Item, Table, key, to_dynamo
 from src.modules.storage.errors import ConflictError, TooManyChangesError
 
@@ -86,7 +87,8 @@ class Unit:
         if not writes:
             return
         if len(writes) > MAX_ITEMS:
-            raise TooManyChangesError(f'This change touches {len(writes)} records; at most {MAX_ITEMS} are saved together')
+            raise TooManyChangesError(text('This change touches {count} records; at most {most} are saved together',
+                                           count=len(writes), most=MAX_ITEMS))
         self._transact(writes)
         self._read |= {key: write.item for key, write in writes}
         self._pending.clear()
@@ -118,4 +120,4 @@ def _conflict(error: ClientError, writes: list[_Write]) -> ConflictError | None:
     for write, reason in zip(writes, reasons):
         if reason == 'ConditionalCheckFailed':
             return ConflictError(write.unique)
-    return ConflictError('Changed at the same time by another request; please try again')
+    return ConflictError(text('Changed at the same time by another request; please try again'))

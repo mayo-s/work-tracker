@@ -6,6 +6,7 @@ from collections.abc import Callable
 import falcon
 from spectree import Response
 
+from src.lib.texts import text
 from src.models.messages import ContactMessage
 from src.modules.contact.schemas import ContactInput
 from src.modules.storage.store import Storage, Store
@@ -15,7 +16,7 @@ from src.utils.spec import spec
 TAGS = ['Contact']
 VISITOR_MESSAGES = 5  # within the pause, from visitors who are not logged in
 VISITOR_PAUSE = dt.timedelta(minutes=10)
-TOO_MANY = 'Too many messages; try again in a few minutes'
+TOO_MANY = text('Too many messages; try again in a few minutes')
 
 
 class ContactResource:

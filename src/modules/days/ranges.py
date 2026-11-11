@@ -16,7 +16,9 @@ from src.lib.daytypes import DayType, summarize_day
 from src.lib.durations import format_duration
 from src.lib.public_holidays import HolidayKind, holiday_on
 from src.lib.schedules import WEEKDAYS, Schedules
+from src.lib.texts import text
 from src.models.days import Day
+from src.modules.pages.languages import HolidayName
 from src.modules.storage.errors import ConflictError
 from src.modules.storage.store import Days, Store
 from src.utils.api import MAX_DAYS
@@ -40,7 +42,7 @@ class DayRangeInput(BaseModel):
     @model_validator(mode='after')
     def check_range(self) -> Self:
         if not 0 <= (self.end - self.start).days < MAX_DAYS:
-            raise ValueError(f'end must be on or after start, at most {MAX_DAYS} days')
+            raise ValueError(text('end must be on or after start, at most {count} days', count=MAX_DAYS))
         return self
 
 
@@ -55,7 +57,7 @@ class LeftOutDay(BaseModel):
     date: dt.date
     weekday: str
     reason: Literal['day_off', 'public_holiday', 'company_half_day']
-    holiday: str | None = Field(description='Name of the public holiday or company half day')
+    holiday: HolidayName | None = Field(description='Name of the public holiday or company half day')
     pto_days: float = Field(description='PTO the day uses by itself: 0.5 for a company half day on a work day')
 
 
@@ -111,7 +113,9 @@ class _Plan:
         """Refused conflicts stop the booking (a preview only lists them)."""
         if self.conflicts and data.conflicts == 'refuse' and not data.preview:
             dates = ', '.join(f'{day.date:%d.%m.%Y}' for day in self.conflicts)
-            raise ConflictError(f'{len(self.conflicts)} days hold times or entries: {dates}')
+            if len(self.conflicts) == 1:
+                raise ConflictError(text('{date} holds times or entries', date=dates))
+            raise ConflictError(text('{count} days hold times or entries: {dates}', count=len(self.conflicts), dates=dates))
 
     def pto_days(self, booked: list[dt.date], day_type: DayType) -> float:
         return float(sum(summarize_day(date, 0, day_type, self.schedules.on(date)).pto_days for date in booked))

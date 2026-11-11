@@ -8,6 +8,7 @@ from urllib.parse import quote
 
 import falcon
 
+from src.lib.texts import text
 from src.models.users import User
 from src.modules.auth.two_factor import may_restore_instead, required
 from src.modules.storage.owners import NO_OWNER
@@ -16,7 +17,7 @@ from src.modules.storage.users import BROWSER_LIFETIME, SESSION_LIFETIME, sessio
 
 COOKIE = 'wt_session'
 BROWSER_COOKIE = 'wt_browser'  # a browser remembered for two-factor login
-PAUSED = 'Too many attempts; try again in a minute'
+PAUSED = text('Too many attempts; try again in a minute')
 OPEN_PATHS = {
     '/login', '/register', '/health', '/api/auth/status', '/api/auth/login', '/api/auth/logout', '/api/auth/root',
     '/api/auth/root/reset', '/api/auth/register', '/imprint', '/api/imprint', '/privacy', '/contact', '/api/contact',
@@ -43,7 +44,7 @@ def current_user(req: falcon.Request) -> str:
     root)."""
     user_id = req.context.get('user_id')
     if user_id is None:
-        raise falcon.HTTPUnauthorized(title='401 Unauthorized', description='Log in first')
+        raise falcon.HTTPUnauthorized(title='401 Unauthorized', description=text('Log in first'))
     return user_id
 
 
@@ -139,7 +140,7 @@ def _open_to_root(path: str) -> bool:
 
 def _send_root_to_admin(req: falcon.Request) -> None:
     if req.path.startswith('/api/'):
-        raise falcon.HTTPForbidden(description='Root runs the app and tracks no work')
+        raise falcon.HTTPForbidden(description=text('Root runs the app and tracks no work'))
     raise falcon.HTTPSeeOther('/admin')
 
 
@@ -149,17 +150,17 @@ def _open_until(path: str, paths: set[str]) -> bool:
 
 def _ask_for_two_factor(req: falcon.Request) -> None:
     if req.path.startswith('/api/'):
-        raise falcon.HTTPForbidden(description='Set up two-factor login first, on /2fa')
+        raise falcon.HTTPForbidden(description=text('Set up two-factor login first, on /2fa'))
     raise falcon.HTTPSeeOther('/2fa')
 
 
 def _ask_for_new_password(req: falcon.Request) -> None:
     if req.path.startswith('/api/'):
-        raise falcon.HTTPForbidden(description='Choose your own password first, on /password')
+        raise falcon.HTTPForbidden(description=text('Choose your own password first, on /password'))
     raise falcon.HTTPSeeOther('/password')
 
 
-RESTORING = 'A restore of the full backup is not finished yet; until then, only root can use the app'
+RESTORING = text('A restore of the full backup is not finished yet; until then, only root can use the app')
 
 
 def _wait_for_restore(req: falcon.Request) -> None:
@@ -168,7 +169,7 @@ def _wait_for_restore(req: falcon.Request) -> None:
 
 def _refuse(req: falcon.Request) -> None:
     if req.path.startswith('/api/'):
-        raise falcon.HTTPUnauthorized(title='401 Unauthorized', description='Log in first')
+        raise falcon.HTTPUnauthorized(title='401 Unauthorized', description=text('Log in first'))
     raise falcon.HTTPSeeOther(f'/login?next={quote(req.relative_uri, safe="")}')
 
 

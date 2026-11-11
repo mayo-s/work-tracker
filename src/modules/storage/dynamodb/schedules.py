@@ -1,6 +1,7 @@
 """Work schedules (`SCHEDULE#<id>`, at most one per day by `SCHEDULE_FROM#<date>`) and PTO years (`PTO#<year>`) in the
 user's partition, as the SQLite repositories (schedules.py, pto_years.py)."""
 
+from src.lib.texts import text
 from src.models.base import new_id
 from src.lib.balances import PtoTerms
 from src.lib.schedules import STANDARD, Schedules
@@ -48,7 +49,7 @@ class DynamoSchedules:
     def delete(self, schedule_id: str) -> None:
         stored = self.get(schedule_id)
         if len(self.all()) == 1:
-            raise ConflictError('The only work schedule cannot be deleted')
+            raise ConflictError(text('The only work schedule cannot be deleted'))
         self._unit.delete(self._pk, _key(schedule_id))
         self._unit.delete(self._pk, _from_key(stored))
 
@@ -66,7 +67,7 @@ class DynamoSchedules:
 
     def _claim(self, schedule: Schedule) -> None:
         self._unit.put({'PK': self._pk, 'SK': _from_key(schedule), 'id': schedule.id},
-                       unique=f'A work schedule from {schedule.valid_from:%d.%m.%Y} already exists')
+                       unique=text('A work schedule from {date} already exists', date=f'{schedule.valid_from:%d.%m.%Y}'))
 
     def _save(self, schedule: Schedule) -> None:
         self._unit.put({'PK': self._pk, 'SK': _key(schedule.id), **schedule.model_dump(mode='json')})

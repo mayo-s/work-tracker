@@ -137,8 +137,10 @@ The header's language switch (`EN`, `DE`, `ES`, SPEC 5.16) shows the UI in Engli
 the choice, the same on every device; before the login a cookie keeps it, else the browser's language applies. The texts
 are written in English; `src/templates/static/locales/de.json` and `es.json` translate them (a test fails when one is
 missing or no longer used). All pages and what their scripts write are translated, with month and weekday names and
-day counts (a decimal comma in German and Spanish) in the language; still English are the server's messages (e.g. a
-refusal's reason), and imprint and privacy policy stay German (TASKS.md L.8d–e).
+day counts (a decimal comma in German and Spanish) in the language. The API answers its messages (e.g. a refusal's
+reason) and the holiday names in the page's language, which the scripts send as `Accept-Language`; the server marks
+such a message `text('Unknown ticket {key}', key=key)` (`src/lib/texts.py`). The CSV export stays English, and imprint
+and privacy policy stay German (TASKS.md L.8e).
 
 ## Deploy to AWS
 

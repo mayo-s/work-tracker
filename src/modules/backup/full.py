@@ -5,6 +5,7 @@ import datetime as dt
 import gzip
 
 from src.lib.encryption import decrypt, encrypt, read_header
+from src.lib.texts import text
 from src.models.users import User
 from src.modules.backup.schemas import FORMAT, VERSION, Backup, BackupTeam, BackupUser
 from src.modules.storage.store import Store
@@ -45,7 +46,8 @@ def read_backup_file(content: bytes, passphrase: str) -> Backup:
     wrong passphrase or a changed file, and ValueError or ValidationError for damaged contents."""
     header = read_header(content)
     if header.get('format') != FORMAT:
-        raise ValueError('This is no Work Tracker backup')
+        raise ValueError(text('This is no Work Tracker backup'))
     if not isinstance(header.get('version'), int) or header['version'] > VERSION:
-        raise ValueError(f'The backup has version {header.get("version")}; this Work Tracker reads up to version {VERSION}')
+        raise ValueError(text('The backup has version {version}; this Work Tracker reads up to version {latest}',
+                              version=header.get('version'), latest=VERSION))
     return Backup.model_validate_json(gzip.decompress(decrypt(content, passphrase)))

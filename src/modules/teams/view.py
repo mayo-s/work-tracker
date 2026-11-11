@@ -9,6 +9,7 @@ import falcon
 from pydantic import BaseModel, Field
 
 from src.lib.stays import Period, Stays
+from src.lib.texts import text
 from src.models.teams import ReportView
 from src.modules.auth.sessions import current_user
 from src.modules.storage.store import Store
@@ -53,7 +54,8 @@ def viewing(req: falcon.Request, store: Store, member: str | None, today: dt.dat
         return Viewing(user_id)
     periods = _as_team_admin(store, user_id, member) + _as_auditor(store, user_id, member, today or dt.date.today())
     if not periods:
-        raise falcon.HTTPForbidden(description="Only the team admins and auditors of the member's team can view their data")
+        raise falcon.HTTPForbidden(
+            description=text("Only the team admins and auditors of the member's team can view their data"))
     return Viewing(member, user_id, Stays(periods))
 
 
@@ -92,7 +94,7 @@ def team_scope(req: falcon.Request, store: Store, team_id: str, today: dt.date) 
     user_id = current_user(req)
     audits = _audits(store, user_id, team_id, today)
     if not audits and not _is_team_admin_of(store, user_id, team_id):
-        raise falcon.HTTPForbidden(description='Only the team admins and auditors of this team can view its report')
+        raise falcon.HTTPForbidden(description=text('Only the team admins and auditors of this team can view its report'))
     return TeamScope(_people(store, team_id, audits), not audits)
 
 

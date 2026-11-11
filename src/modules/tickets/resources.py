@@ -5,6 +5,7 @@ import falcon
 from pydantic import ValidationError
 from spectree import Response
 
+from src.lib.texts import text
 from src.models.catalog import Ticket
 from src.modules.storage.store import Storage, Store
 from src.modules.tickets.schemas import (
@@ -92,5 +93,5 @@ def _existing(store: Store, user_id: str, key: str) -> Ticket:
     except ValidationError:
         ticket = None
     if ticket is None:
-        raise falcon.HTTPNotFound(description=f'Unknown ticket {key}')
+        raise falcon.HTTPNotFound(description=text('Unknown ticket {key}', key=key))
     return ticket

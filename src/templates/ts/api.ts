@@ -1,7 +1,7 @@
 // Typed client for the Work Tracker API. The types come from the OpenAPI spec (`npm run api-types`).
 
 import type { components } from './api-types.ts';
-import { t } from './i18n.ts';
+import { language, t } from './i18n.ts';
 
 type Schemas = components['schemas'];
 
@@ -124,8 +124,9 @@ export function errorMessage(status: number, body: unknown): string {
   return t('Request failed with status {status}', { status });
 }
 
+/** The API answers its messages and names in the page's language. */
 async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = { Accept: 'application/json', 'Accept-Language': language() };
   const init: RequestInit = { method, headers };
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
@@ -150,7 +151,8 @@ export type DownloadedFile = { blob: Blob; name: string };
 
 async function requestFile(path: string, body: unknown): Promise<DownloadedFile> {
   const response = await fetch(path, {
-    method: 'POST', headers: { Accept: 'application/octet-stream', 'Content-Type': 'application/json' },
+    method: 'POST',
+    headers: { Accept: 'application/octet-stream', 'Accept-Language': language(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   if (!response.ok) {

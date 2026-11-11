@@ -8,6 +8,7 @@ from collections.abc import Callable
 import falcon
 from spectree import Response
 
+from src.lib.texts import text
 from src.models.messages import ContactMessage, MessageChange
 from src.models.users import User
 from src.modules.auth.sessions import current_user
@@ -19,7 +20,7 @@ from src.utils.spec import spec
 
 TAGS = ['Support']
 ID_PARAMETER = {'message_id': 'Id of the message'}
-ARCHIVED = 'An archived message stays as it is; it can only be deleted'
+ARCHIVED = text('An archived message stays as it is; it can only be deleted')
 
 
 def _support(req: falcon.Request, store: Store) -> User:
@@ -29,7 +30,7 @@ def _support(req: falcon.Request, store: Store) -> User:
     except NotFoundError:  # e.g. no user yet with the login off
         user = None
     if user is None or not user.support:
-        raise falcon.HTTPForbidden(description='Only support reads the contact messages')
+        raise falcon.HTTPForbidden(description=text('Only support reads the contact messages'))
     return user
 
 

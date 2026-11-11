@@ -4,6 +4,7 @@ export file)."""
 import falcon
 from spectree import Response
 
+from src.lib.texts import text
 from src.models.catalog import CODING, new_activity_type
 from src.modules.auth.sessions import current_user
 from src.modules.setup.schemas import SetupImportInput, SetupInput, SetupStatus
@@ -72,5 +73,5 @@ def _user_to_set_up(req: falcon.Request, store: Store) -> str:
     """The current user; refused once set up."""
     user_id = current_user(req)
     if store.setup_done(user_id):
-        raise ConflictError('Already set up; change the settings on /settings')
+        raise ConflictError(text('Already set up; change the settings on /settings'))
     return user_id

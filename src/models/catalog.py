@@ -5,6 +5,7 @@ from typing import Annotated
 
 from pydantic import AfterValidator, BeforeValidator, Field
 
+from src.lib.texts import text
 from src.models.base import DomainModel, RecordId
 
 TICKET_KEY_PATTERN = r'^[A-Z][A-Z0-9]*-[1-9]\d*$'
@@ -13,7 +14,7 @@ TICKET_KEY_PATTERN = r'^[A-Z][A-Z0-9]*-[1-9]\d*$'
 def _check_ticket_key(key: str) -> str:
     """The pattern with a message to show, e.g. on renaming a ticket (pydantic's would quote the pattern)."""
     if not re.fullmatch(TICKET_KEY_PATTERN, key):
-        raise ValueError(f"Invalid ticket key '{key}': a project code, a dash and a number, e.g. TNG-4138")
+        raise ValueError(text("Invalid ticket key '{key}': a project code, a dash and a number, e.g. TNG-4138", key=key))
     return key
 
 

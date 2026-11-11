@@ -14,6 +14,7 @@ from src.lib.daytypes import DaySummary, DayType
 from src.lib.durations import format_duration, parse_duration
 from src.lib.public_holidays import holiday_on
 from src.lib.stays import Stays
+from src.modules.pages.languages import HolidayName
 from src.modules.reports.schemas import OwnerWorkMode, PeriodTotals, PeriodWork, PtoView, Reports, VisibleFrom
 from src.modules.review.schemas import review_counts
 from src.modules.storage.store import Store
@@ -42,7 +43,7 @@ class ComingUp(BaseModel):
     start: dt.date
     end: dt.date
     day_type: DayType
-    holiday: str | None = Field(description='Name of the public holiday or company half day')
+    holiday: HolidayName | None = Field(description='Name of the public holiday or company half day')
     days: int = Field(description='Work days from start to end')
     pto_days: float = Field(description='PTO the days use, also by themselves (0.5 for a company half day)')
 

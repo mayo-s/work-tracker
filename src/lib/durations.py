@@ -3,6 +3,8 @@
 import re
 from decimal import Decimal
 
+from src.lib import texts
+
 MINUTES_PER_HOUR = 60
 MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR
 
@@ -18,10 +20,10 @@ def parse_clock(text: str) -> int:
     """Parse a 24 h clock time (`08:15`, `7:15`) into minutes since midnight."""
     match = _CLOCK.fullmatch(text.strip())
     if not match:
-        raise TimeFormatError(f'Invalid time {text!r}, expected HH:MM')
+        raise TimeFormatError(texts.text("Invalid time '{text}', expected HH:MM", text=text))
     hours, minutes = int(match[1]), int(match[2])
     if hours > 23 or minutes >= MINUTES_PER_HOUR:
-        raise TimeFormatError(f'Invalid time {text!r}, out of range')
+        raise TimeFormatError(texts.text("Invalid time '{text}', out of range", text=text))
     return hours * MINUTES_PER_HOUR + minutes
 
 
@@ -40,7 +42,7 @@ def parse_duration(text: str) -> int:
     for pattern, to_minutes in _DURATION_FORMATS:
         if match := pattern.fullmatch(cleaned):
             return to_minutes(text, match)
-    raise TimeFormatError(f'Invalid duration {text!r}, expected e.g. 1:30, 1.5, 1h30m or 90m')
+    raise TimeFormatError(texts.text("Invalid duration '{text}', expected e.g. 1:30, 1.5, 1h30m or 90m", text=text))
 
 
 def _from_clock_format(text: str, match: re.Match) -> int:
@@ -55,7 +57,7 @@ def _from_units(text: str, match: re.Match) -> int:
     if match[2] is None:
         return _from_hours(text, match)
     if not match[1].isdigit():
-        raise TimeFormatError(f'Invalid duration {text!r}: decimal hours and minutes together')
+        raise TimeFormatError(texts.text("Invalid duration '{text}': decimal hours and minutes together", text=text))
     return _hours_and_minutes(text, int(match[1]), int(match[2]))
 
 
@@ -65,13 +67,13 @@ def _from_minutes(text: str, match: re.Match) -> int:
 
 def _hours_and_minutes(text: str, hours: int, minutes: int) -> int:
     if minutes >= MINUTES_PER_HOUR:
-        raise TimeFormatError(f'Invalid duration {text!r}, minutes out of range')
+        raise TimeFormatError(texts.text("Invalid duration '{text}', minutes out of range", text=text))
     return hours * MINUTES_PER_HOUR + minutes
 
 
 def _whole_minutes(text: str, minutes: Decimal) -> int:
     if minutes != minutes.to_integral_value():
-        raise TimeFormatError(f'Duration {text!r} is not a whole number of minutes')
+        raise TimeFormatError(texts.text("Duration '{text}' is not a whole number of minutes", text=text))
     return int(minutes)
 
 

@@ -15,7 +15,9 @@ from typing import Self
 from pydantic import BaseModel, Field, model_validator
 
 from src.lib.durations import format_duration, parse_duration
+from src.lib.texts import text
 from src.models.teams import Team
+from src.modules.pages.languages import in_request_language
 from src.modules.reports.schemas import PeriodWork, Reports, month_bounds
 from src.modules.storage.store import Store
 from src.modules.teams.schemas import StayView
@@ -141,8 +143,8 @@ def _stay_part(stay: StayView, start: dt.date, end: dt.date) -> str | None:
     if joined and until:
         return f'{joined:%d.%m.}–{until:%d.%m.}'
     if joined:
-        return f'from {joined:%d.%m.}'
-    return f'until {until:%d.%m.}' if until else None
+        return in_request_language(text('from {date}', date=f'{joined:%d.%m.}'))
+    return in_request_language(text('until {date}', date=f'{until:%d.%m.}')) if until else None
 
 
 def _last_day(stay: StayView, end: dt.date) -> dt.date | None:

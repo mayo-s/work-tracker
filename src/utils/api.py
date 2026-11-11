@@ -7,6 +7,7 @@ from typing import Annotated, Self
 from pydantic import AfterValidator, BaseModel, Field, ValidationError, model_validator
 
 from src.lib.durations import format_clock, format_duration, parse_clock, parse_duration, parse_signed_duration
+from src.lib.texts import joined, raised_text, text
 
 MAX_DAYS = 366
 
@@ -31,7 +32,7 @@ class PeriodQuery(BaseModel):
             raise ValueError('give either week, or start and end')
         start, end = self.period()
         if not 0 <= (end - start).days < MAX_DAYS:
-            raise ValueError(f'end must be on or after start, at most {MAX_DAYS} days')
+            raise ValueError(text('end must be on or after start, at most {count} days', count=MAX_DAYS))
         return self
 
     def period(self) -> tuple[dt.date, dt.date]:
@@ -47,9 +48,11 @@ class PeriodQuery(BaseModel):
 def check_domain(build: Callable[[], object]) -> None:
     """Run a domain model check inside an API model validator, passing on only the messages.
 
-    The domain model's own errors may contain values that cannot be shown as JSON (e.g. dates).
+    The domain model's own errors may contain values that cannot be shown as JSON (e.g. dates). Texts stay texts, to be
+    answered in the request's language.
     """
     try:
         build()
     except ValidationError as error:
-        raise ValueError('; '.join(detail['msg'].removeprefix('Value error, ') for detail in error.errors())) from None
+        messages = [raised_text(detail) or detail['msg'].removeprefix('Value error, ') for detail in error.errors()]
+        raise ValueError(joined(messages)) from None

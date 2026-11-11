@@ -4,6 +4,7 @@
 import falcon
 from spectree import Response
 
+from src.lib.texts import text
 from src.modules.entries.schemas import (
     ActivityTypeAssignment, AssignedEntries, ChangeView, EntryInput, EntryView, EntryViewer,
 )
@@ -123,4 +124,4 @@ def _check_ticket(store: Store, user_id: str, entry: Entry) -> None:
     """An activity type that requires a ticket is entered with one (only imported entries wait for it in the review)."""
     activity_type = next((kind for kind in store.activity_types(user_id).all() if kind.id == entry.activity_type_id), None)
     if activity_type and activity_type.ticket_required and entry.ticket_key is None:
-        raise ConflictError(f'{activity_type.name} needs a ticket')
+        raise ConflictError(text('{activity_type} needs a ticket', activity_type=activity_type.name))

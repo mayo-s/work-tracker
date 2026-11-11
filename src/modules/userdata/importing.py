@@ -3,6 +3,7 @@
 import datetime as dt
 from collections.abc import Iterable
 
+from src.lib.texts import text
 from src.models.catalog import Service
 from src.models.history import EntryChange, HistoryAction
 from src.modules.storage.errors import ConflictError
@@ -61,7 +62,7 @@ class _Import:
         if self._store.import_unfinished(self._user):
             self._store.clear_records(self._user)
         elif self._has_records():
-            raise ConflictError('Only an account without days and entries can import a file; this one has some')
+            raise ConflictError(text('Only an account without days and entries can import a file; this one has some'))
         self._store.start_import(self._user)
 
     def _has_records(self) -> bool:

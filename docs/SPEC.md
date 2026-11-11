@@ -693,6 +693,14 @@ The UI comes in English, German and Spanish (TASKS.md L.8, in steps L.8a–e).
   as the word order differs between the languages. A test finds every text of the templates, every page title and
   every `t`/`tn` of the scripts, and fails when a catalog misses one, holds one no longer used, or changes a
   placeholder.
+- **The server's messages**: what people meet is marked `text('Unknown ticket {key}', key=key)`: the English sentence
+  that keeps its template and values, translated where the answer leaves the app: an error's `description`, the
+  messages of a refused request (422; pydantic's own, such as "Field required", stay English) and texts in an answer
+  (the team report's "from 04.11."). The scripts send the page's language as `Accept-Language`, and the API answers in
+  it (else English). So do the names the app gives: the holidays (the English names of the `holidays` package, through
+  the catalogs) and "Deleted user" and "Support" in place of a person's name. Messages for developers stay English (an
+  unknown id in a misused call, a schema version, the command line, the logs). The test also finds every `text(…)`,
+  each a whole sentence in quotes, and every holiday name of all federal states for this year and the next ten.
 - **Steps**: L.8a the mechanism, the setting, the switch and the frame (header, navigation, menu, footer, page
   titles); L.8b the pages' HTML; L.8c the scripts' texts and formats (c1 the formats and shared parts, c2 the tracking
   pages, c3 account and setup, c4 team and administration); L.8d the server's messages and the holiday names; L.8e

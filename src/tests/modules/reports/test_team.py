@@ -109,6 +109,14 @@ def csv_report(app, ids, name, params=NOVEMBER):
     return app.simulate_get(f'/api/teams/{ids["platform"]}/report.csv', cookies=logged_in(app, name), params=params)
 
 
+def test_the_notes_come_in_the_requests_language_but_the_csv_file_stays_english(app, ids):
+    german, cookies, path = {'Accept-Language': 'de'}, logged_in(app, 'hans'), f'/api/teams/{ids["platform"]}/report'
+    members = app.simulate_get(path, cookies=cookies, params=NOVEMBER, headers=german).json['members']
+    csv = app.simulate_get(f'{path}.csv', cookies=cookies, params=NOVEMBER, headers=german).text
+    assert ([member['note'] for member in members], 'Member;Hans Dampf;Note;from 02.11.' in csv) == (
+        ['ab 02.11.', 'ab 04.11.'], True)
+
+
 def test_a_team_admin_sees_the_current_members_from_the_day_they_joined(app, ids):
     result = report(app, ids, 'hans')
     assert result.status == falcon.HTTP_200

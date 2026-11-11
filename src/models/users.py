@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import Field
 
+from src.lib.texts import text
 from src.models.base import DomainModel
 
 USERNAME_PATTERN = r'^[A-Za-z0-9][A-Za-z0-9._-]{2,29}$'
@@ -55,7 +56,7 @@ def password_problem(password: str) -> str | None:
     """Why a new password is not allowed, or None: it needs at least 12 characters with letters, digits and a special
     character (anything but letters, digits and spaces). Existing passwords are not checked."""
     if len(password) < PASSWORD_MIN_LENGTH:
-        return f'The password needs at least {PASSWORD_MIN_LENGTH} characters.'
+        return text('The password needs at least {count} characters.', count=PASSWORD_MIN_LENGTH)
     if not all(any(kind(char) for char in password) for kind in _PASSWORD_CHARACTERS):
-        return 'The password needs letters, digits and a special character, e.g. ! ? # or %.'
+        return text('The password needs letters, digits and a special character, e.g. ! ? # or %.')
     return None

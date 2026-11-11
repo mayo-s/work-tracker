@@ -4,6 +4,7 @@ import datetime as dt
 import sqlite3
 from collections.abc import Callable
 
+from src.lib.texts import text
 from src.models.base import new_id
 from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRecord, TeamRole
 from src.models.users import DELETED_USER
@@ -45,7 +46,7 @@ class TeamRepository:
         """Only a team without members; its open invitations, services and auditors go with it, its history stays."""
         self.get(team_id)
         if self.members(team_id):
-            raise ConflictError('The team still has members; remove them first')
+            raise ConflictError(text('The team still has members; remove them first'))
         self._conn.execute('DELETE FROM team_invitations WHERE team_id = ?', (team_id,))
         self._conn.execute('DELETE FROM team_auditors WHERE team_id = ?', (team_id,))
         self._conn.execute('DELETE FROM services WHERE team_id = ?', (team_id,))
@@ -118,7 +119,7 @@ class TeamRepository:
     def set_team_role(self, user_id: str, team_role: TeamRole) -> Membership:
         """The role in the team the user is in now (409 if they are in none)."""
         if self.membership(user_id) is None:
-            raise ConflictError('Only a member of a team has a team role; invite them first')
+            raise ConflictError(text('Only a member of a team has a team role; invite them first'))
         self._conn.execute(f'UPDATE team_memberships SET team_role = ? WHERE user_id = ? AND {_CURRENT}',
                            (team_role, user_id))
         return self.membership(user_id)
@@ -142,7 +143,7 @@ class TeamRepository:
         try:
             return self._conn.execute(sql, params)
         except sqlite3.IntegrityError as error:
-            raise ConflictError(f'A team named "{name}" already exists') from error
+            raise ConflictError(text('A team named "{name}" already exists', name=name)) from error
 
 
 class AuditorRepository:

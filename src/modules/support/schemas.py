@@ -6,6 +6,7 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.messages import ChangeKind, ContactMessage, MessageChange, MessageStatus
+from src.modules.pages.languages import PersonName
 
 
 class SupportQuery(BaseModel):
@@ -27,7 +28,7 @@ class NoteInput(BaseModel):
 
 class MessageChangeView(BaseModel):
     at: dt.datetime
-    actor: str = Field(description='Who made it, or "Support" once the message is archived')
+    actor: PersonName = Field(description='Who made it, or "Support" once the message is archived')
     kind: ChangeKind
     detail: str = Field(description='The new status, or the note')
 

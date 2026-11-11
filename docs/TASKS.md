@@ -415,7 +415,11 @@ L.16 (a–i) → 9.1 (a–i).
           is "Start counting", as its first step is "Start"
         - [x] **L.8c4** Team and administration: admin, team, team report, team view, support, contact; a changed role
           as a whole sentence per role (`roleChanged`), lists of teams in the language
-    - [ ] **L.8d** The server's messages (refusals, errors) and the holiday names
+    - [x] **L.8d** The server's messages (refusals, errors) and the holiday names: what people meet is marked
+      `text('…', key=value)` (`src/lib/texts.py`) and translated where the answer leaves the app (an error's
+      description, a refused request's messages, the team report's notes), pieced messages became whole sentences; the
+      scripts send the page's language as `Accept-Language`; holiday names, "Deleted user" and "Support" answered in it;
+      the completeness test finds every `text(…)` and every holiday name of all federal states for the next ten years
     - [ ] **L.8e** Imprint and privacy policy, with a note that the German text is the binding one
 - [x] **L.9** Exact times, in steps:
     - [x] **L.9a** No more quarter-hour rule: an entry's duration may be any whole minutes, in the form and the API;

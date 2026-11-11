@@ -1,6 +1,7 @@
 """Presence, legal break and worked time of a day, all in minutes."""
 
 from src.lib.durations import MINUTES_PER_DAY, format_clock
+from src.lib.texts import text
 
 SIX_HOURS = 6 * 60
 NINE_HOURS = 9 * 60
@@ -11,7 +12,7 @@ LONG_BREAK = 45
 def presence_time(start: int, end: int) -> int:
     """Minutes between start and end (minutes since midnight); a day cannot pass midnight."""
     if end < start:
-        raise ValueError(f'End {format_clock(end)} is before start {format_clock(start)}')
+        raise ValueError(text('End {end} is before start {start}', end=format_clock(end), start=format_clock(start)))
     return end - start
 
 
@@ -36,7 +37,8 @@ def worked_time(start: int, end: int, break_minutes: int | None = None) -> int:
     if break_minutes is None:
         break_minutes = legal_break(presence)
     if not 0 <= break_minutes <= presence:
-        raise ValueError(f'Break {break_minutes} must be between 0 and the presence time {presence}')
+        raise ValueError(text('Break {minutes} must be between 0 and the presence time {presence}', minutes=break_minutes,
+                              presence=presence))
     return presence - break_minutes
 
 

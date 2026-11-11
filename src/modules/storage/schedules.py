@@ -3,6 +3,7 @@
 import sqlite3
 
 from src.lib.schedules import STANDARD, Schedules
+from src.lib.texts import text
 from src.models.base import new_id
 from src.models.schedules import Schedule
 from src.modules.storage.errors import ConflictError, NotFoundError
@@ -46,7 +47,7 @@ class ScheduleRepository:
     def delete(self, schedule_id: str) -> None:
         self.get(schedule_id)
         if len(self.all()) == 1:
-            raise ConflictError('The only work schedule cannot be deleted')
+            raise ConflictError(text('The only work schedule cannot be deleted'))
         self._conn.execute('DELETE FROM work_schedules WHERE id = ? AND user_id = ?', (schedule_id, self._user))
 
     def replace_all(self, schedule: Schedule) -> Schedule:
@@ -63,7 +64,8 @@ class ScheduleRepository:
         try:
             return self._conn.execute(sql, params)
         except sqlite3.IntegrityError as error:
-            raise ConflictError(f'A work schedule from {schedule.valid_from:%d.%m.%Y} already exists') from error
+            raise ConflictError(text('A work schedule from {date} already exists',
+                                     date=f'{schedule.valid_from:%d.%m.%Y}')) from error
 
 
 def _values(schedule: Schedule) -> tuple:

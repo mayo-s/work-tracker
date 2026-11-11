@@ -6,6 +6,7 @@ from typing import Self
 from pydantic import BaseModel, Field
 
 from src.models.audit import AuditAction, AuditEntry
+from src.modules.pages.languages import PersonName
 from src.modules.storage.store import Store
 
 
@@ -18,7 +19,7 @@ def record(store: Store, at: dt.datetime, actor_id: str, action: AuditAction, us
 
 class AuditView(BaseModel):
     at: dt.datetime
-    actor: str = Field(description='Name of who made the change')
+    actor: PersonName = Field(description='Name of who made the change, "Deleted user" once their account is deleted')
     action: AuditAction
     user: str | None = Field(description='Name of whose account it is about')
     team: str | None = Field(description='Name of the team (now, after a rename)')

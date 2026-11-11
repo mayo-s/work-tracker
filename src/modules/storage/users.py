@@ -10,7 +10,7 @@ from collections.abc import Callable
 
 from src.lib.passwords import hash_password, verify_password
 from src.models.users import Role, TwoFactor, User
-from src.modules.storage.errors import ConflictError, NotFoundError
+from src.modules.storage.errors import TAKEN, ConflictError, NotFoundError
 from src.modules.storage.owners import start_with_defaults, take_over_unowned
 
 SESSION_LIFETIME = dt.timedelta(hours=24)
@@ -173,8 +173,7 @@ class UserRepository:
         try:
             return self._conn.execute(sql, params)
         except sqlite3.IntegrityError as error:
-            field = 'e-mail address' if 'email' in str(error) else 'username'
-            raise ConflictError(f'This {field} is already taken') from error
+            raise ConflictError(TAKEN['email' if 'email' in str(error) else 'username']) from error
 
 
 class SessionRepository:

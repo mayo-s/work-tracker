@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from spectree import Response
 
 from src.lib.passwords import one_time_password
+from src.lib.texts import text
 from src.modules.admin.audit import AuditView, record
 from src.modules.admin.deletion import delete_account
 from src.modules.admin.schemas import (
@@ -38,7 +39,18 @@ TEAM_PARAMETER = {'team_id': 'Id of the team'}
 
 
 STAFF: tuple[Role, ...] = ('root', 'admin')
-ONLY = {STAFF: 'Only root and admins may do this', ('admin',): 'Only admins may do this', ('root',): 'Only root may do this'}
+ONLY = {STAFF: text('Only root and admins may do this'), ('admin',): text('Only admins may do this'),
+        ('root',): text('Only root may do this')}
+# Who helps (_helps) whom, by what they do: the refusal for an admin's account (root helps) and for a user's (admins)
+_ONLY_HELPERS = {
+    'delete': (text('Only root for admins may delete them'), text('Only admins for users may delete them')),
+    'activate': (text('Only root for admins may deactivate or reactivate them'),
+                 text('Only admins for users may deactivate or reactivate them')),
+    'password': (text('Only root for admins may set one-time passwords'),
+                 text('Only admins for users may set one-time passwords')),
+    'two_factor': (text('Only root for admins may reset two-factor login'),
+                   text('Only admins for users may reset two-factor login')),
+}
 
 
 def _staff(req: falcon.Request, store: Store, roles: tuple[Role, ...] = STAFF) -> User:
@@ -58,9 +70,10 @@ def _helps(target: User) -> Role:
 
 
 def _check_help(actor: User, target: User, action: str) -> None:
+    """403 unless the actor helps the target (`action` from _ONLY_HELPERS)."""
     if actor.role != _helps(target):
-        who = 'root for admins' if target.role == 'admin' else 'admins for users'
-        raise falcon.HTTPForbidden(description=f'Only {who} may {action}')
+        for_admins, for_users = _ONLY_HELPERS[action]
+        raise falcon.HTTPForbidden(description=for_admins if target.role == 'admin' else for_users)
 
 
 class _AdminResource:
@@ -95,7 +108,7 @@ class AdminUserItem(_AdminResource):
             users, teams = store.users(), store.teams()
             actor, target = _staff(req, store), users.get(user_id)
             if target.role == 'root':
-                raise ConflictError('Root stays root and active')
+                raise ConflictError(text('Root stays root and active'))
             membership = teams.membership(user_id)
             if user_id == actor.id:
                 _check_own_change(json, membership, target)
@@ -124,12 +137,12 @@ class AdminUserItem(_AdminResource):
         with self._storage.transaction() as store:
             actor, target = _staff(req, store), store.users().get(user_id)
             if target.role == 'root':
-                raise ConflictError('Root runs the app and is never deleted')
+                raise ConflictError(text('Root runs the app and is never deleted'))
             if user_id == actor.id:
-                raise ConflictError('Delete your own account in your settings')
-            _check_help(actor, target, 'delete them')
+                raise ConflictError(text('Delete your own account in your settings'))
+            _check_help(actor, target, 'delete')
             if target.active:
-                raise ConflictError('Deactivate the account first')
+                raise ConflictError(text('Deactivate the account first'))
             delete_account(store, user_id, actor.id, self._clock())
         resp.status = falcon.HTTP_204
 
@@ -149,19 +162,19 @@ def _record_role_and_status(store: Store, now: dt.datetime, actor_id: str, targe
 
 def _check_rights(actor: User, target: User, json: AdminUserInput, membership: Membership | None) -> None:
     if json.role != target.role and actor.role != 'root':
-        raise falcon.HTTPForbidden(description='Only root appoints and removes admins')
+        raise falcon.HTTPForbidden(description=text('Only root appoints and removes admins'))
     if actor.role != 'admin':
         _check_admins_only(json, target, membership)
     if json.active != target.active:
-        _check_help(actor, target, 'deactivate or reactivate them')
+        _check_help(actor, target, 'activate')
 
 
 def _check_admins_only(json: AdminUserInput, target: User, membership: Membership | None) -> None:
     """What only admins give: team roles and the support role."""
     if _team_role_changes(json, membership):
-        raise falcon.HTTPForbidden(description='Only admins give team roles')
+        raise falcon.HTTPForbidden(description=text('Only admins give team roles'))
     if _support_changes(json, target):
-        raise falcon.HTTPForbidden(description='Only admins give the support role')
+        raise falcon.HTTPForbidden(description=text('Only admins give the support role'))
 
 
 def _team_role_changes(json: AdminUserInput, membership: Membership | None) -> bool:
@@ -174,9 +187,9 @@ def _support_changes(json: AdminUserInput, target: User) -> bool:
 
 def _check_own_change(json: AdminUserInput, membership: Membership | None, target: User) -> None:
     if json.role != 'admin' or not json.active:
-        raise ConflictError('You cannot demote or deactivate yourself; ask another admin')
+        raise ConflictError(text('You cannot demote or deactivate yourself; ask another admin'))
     if _team_role_changes(json, membership):
-        raise ConflictError('You cannot change your own team role; ask another admin')
+        raise ConflictError(text('You cannot change your own team role; ask another admin'))
 
 
 class AdminOneTimePassword(_AdminResource):
@@ -192,11 +205,11 @@ class AdminOneTimePassword(_AdminResource):
         with self._storage.transaction() as store:
             actor = _staff(req, store)
             if user_id == actor.id:
-                raise ConflictError('Change your own password in your settings')
+                raise ConflictError(text('Change your own password in your settings'))
             target = store.users().get(user_id)
             if target.role == 'root':
-                raise ConflictError("Root's password is changed in its own settings")
-            _check_help(actor, target, 'set one-time passwords')
+                raise ConflictError(text("Root's password is changed in its own settings"))
+            _check_help(actor, target, 'password')
             password = one_time_password()
             store.users().set_one_time_password(user_id, password)
             record(store, self._clock(), actor.id, 'one_time_password', user_id)
@@ -214,13 +227,13 @@ class AdminTwoFactorReset(_AdminResource):
         with self._storage.transaction() as store:
             actor, users = _staff(req, store), store.users()
             if user_id == actor.id:
-                raise ConflictError('Not for your own account: log in with a recovery code instead')
+                raise ConflictError(text('Not for your own account: log in with a recovery code instead'))
             target = users.get(user_id)
             if target.role == 'root':
-                raise ConflictError("Root resets its own login with a new setup token")
-            _check_help(actor, target, 'reset two-factor login')
+                raise ConflictError(text('Root resets its own login with a new setup token'))
+            _check_help(actor, target, 'two_factor')
             if not target.two_factor:
-                raise ConflictError('Two-factor login is off already')
+                raise ConflictError(text('Two-factor login is off already'))
             users.save_two_factor(user_id, None)
             record(store, self._clock(), actor.id, 'two_factor_reset', user_id)
         resp.status = falcon.HTTP_204
@@ -290,9 +303,9 @@ class AdminAuditorItem(_AdminResource):
             actor = _staff(req, store, ('admin',))
             store.teams().get(team_id)
             if store.users().get(user_id).role == 'root':
-                raise ConflictError('Root tracks no work and audits no team')
+                raise ConflictError(text('Root tracks no work and audits no team'))
             if user_id == actor.id:
-                raise ConflictError('You cannot make yourself an auditor; ask another admin')
+                raise ConflictError(text('You cannot make yourself an auditor; ask another admin'))
             now, auditors = self._clock(), store.auditors()
             auditors.assign(Auditor(team_id=team_id, user_id=user_id, until=json.until, assigned_by=actor.id, assigned_at=now))
             record(store, now, actor.id, 'auditor_assigned', user_id, team_id, json.until.isoformat() if json.until else '')
@@ -376,8 +389,8 @@ class AdminRestoreResource(_AdminResource):
         with self._storage.transaction() as store:
             root = _staff(req, store, ('root',))
             if store.users().count() > 1 and json.confirm != 'purge':
-                raise falcon.HTTPConflict(code=PURGE_NEEDED, description='Everyone but root goes before the backup comes '
-                                                                         "in; confirm with 'purge'")
+                raise falcon.HTTPConflict(code=PURGE_NEEDED, description=text(
+                    "Everyone but root goes before the backup comes in; confirm with 'purge'"))
             _check(backup, root, json.root_login)
             resp.media = restore_backup(store, backup, root.id, json.root_login)
             record(store, self._clock(), root.id, 'backup_restored', detail='root login' if json.root_login else '')
@@ -388,7 +401,8 @@ class AdminRestoreResource(_AdminResource):
 def _check_two_factor(root: User, root_login: bool) -> None:
     """Without two-factor login, root only restores a backup whose root login it takes over (see may_restore_instead)."""
     if required(root) and not root.two_factor and not root_login:
-        raise falcon.HTTPForbidden(description="Set up two-factor login first, on /2fa, or take over the backup's root login")
+        raise falcon.HTTPForbidden(
+            description=text("Set up two-factor login first, on /2fa, or take over the backup's root login"))
 
 
 def _read_backup(json: RestoreInput) -> Backup:
@@ -396,16 +410,16 @@ def _read_backup(json: RestoreInput) -> Backup:
     try:
         return read_backup_file(base64.b64decode(json.file, validate=True), json.passphrase)
     except (ValidationError, OSError, EOFError) as error:
-        raise falcon.HTTPUnprocessableEntity(description='The backup file is damaged') from error
+        raise falcon.HTTPUnprocessableEntity(description=text('The backup file is damaged')) from error
     except ValueError as error:
-        raise falcon.HTTPUnprocessableEntity(description=str(error)) from error
+        raise falcon.HTTPUnprocessableEntity(description=error.args[0]) from error
 
 
 def _check(backup: Backup, root: User, root_login: bool) -> None:
     try:
         check_backup(backup, root, root_login)
     except BackupError as error:
-        raise falcon.HTTPUnprocessableEntity(description=str(error)) from error
+        raise falcon.HTTPUnprocessableEntity(description=error.args[0]) from error
 
 
 class AdminAuditResource(_AdminResource):

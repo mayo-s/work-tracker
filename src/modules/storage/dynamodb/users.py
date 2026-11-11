@@ -11,13 +11,12 @@ from src.modules.storage.dynamodb.catalog import add_default_activity_types
 from src.modules.storage.dynamodb.keys import ATTEMPTS, LOGIN, ROOT, USERS, user_partition
 from src.modules.storage.dynamodb.table import Item
 from src.modules.storage.dynamodb.unit import Unit
-from src.modules.storage.errors import NotFoundError
+from src.modules.storage.errors import TAKEN, NotFoundError
 from src.modules.storage.users import (
     ATTEMPT_PAUSE, ATTEMPTS_ALLOWED, BROWSER_LIFETIME, random_id, session_lifetime, session_renewal, token_hash,
 )
 
 _PROFILE = ('username', 'email', 'first_name', 'last_name')
-_TAKEN = {'username': 'This username is already taken', 'email': 'This e-mail address is already taken'}
 _LAST = '\U0010ffff'  # sorts after every other character, as the end of a sort key range
 
 
@@ -179,7 +178,7 @@ class DynamoUsers:
         self._unit.put(self._profile(user_id) | values)
 
     def _claim(self, field: str, value: str, user_id: str) -> None:
-        self._unit.put({'PK': LOGIN, 'SK': _login_key(field, value), 'user_id': user_id}, unique=_TAKEN[field])
+        self._unit.put({'PK': LOGIN, 'SK': _login_key(field, value), 'user_id': user_id}, unique=TAKEN[field])
 
 
 def _values(user: User) -> Item:
