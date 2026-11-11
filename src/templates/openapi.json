@@ -1931,6 +1931,49 @@
         }
       }
     },
+    "/api/language": {
+      "put": {
+        "summary": "Choose the UI language of all pages: kept in this browser (a cookie, also before the login) and, logged in, in the account, so it follows the user to other devices.",
+        "operationId": "put__api_language",
+        "description": "",
+        "tags": [
+          "Settings"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LanguageView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LanguageView"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/export": {
       "get": {
         "summary": "All of your own records as a file to download, e.g. `work-tracker-klara-2026-10-30.json`: settings, work schedules, PTO years, services, activity types, tickets, days, entries with their history.",
@@ -8577,6 +8620,26 @@
         "title": "ThemeView",
         "type": "object"
       },
+      "LanguageView": {
+        "additionalProperties": false,
+        "properties": {
+          "language": {
+            "description": "UI language: de (Deutsch), en (English) or es (Español)",
+            "enum": [
+              "de",
+              "en",
+              "es"
+            ],
+            "title": "Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "language"
+        ],
+        "title": "LanguageView",
+        "type": "object"
+      },
       "SupportQuery": {
         "properties": {
           "text": {
@@ -9105,6 +9168,24 @@
             ],
             "title": "Theme",
             "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "enum": [
+                  "de",
+                  "en",
+                  "es"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The chosen UI language; none: the browser's",
+            "title": "Language"
           },
           "work_schedules": {
             "items": {

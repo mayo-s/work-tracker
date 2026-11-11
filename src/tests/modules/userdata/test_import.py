@@ -48,6 +48,7 @@ def kind_id(store, name, user_id):
 def record_klaras_work(store, klara):
     """Something of every kind, also what an export renumbers: deleted entries and activity types, a split."""
     store.save_theme(klara, 'dark')
+    store.save_language(klara, 'es')
     store.save_settings(klara, store.load_settings(klara).model_copy(update={'work_mode': 'tickets'}))
     store.schedules(klara).add(Schedule(valid_from=dt.date(2027, 1, 1), weekly_minutes=1920, work_days=[1, 2, 3, 4]))
     days, entries = store.days(klara), store.entries(klara, clock=lambda: NOW)

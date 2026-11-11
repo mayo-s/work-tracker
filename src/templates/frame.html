@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"{{theme}}>
+<html lang="{{language}}"{{theme}}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,7 +11,7 @@
 <body>
   <a class="skip-link" href="#app">Skip to content</a>
   <header class="app-header">
-    <a class="app-name" href="/">Work Tracker</a>
+    <a class="app-name" href="/" translate="no">Work Tracker</a>
     <a class="review-shortcut" href="/review" hidden>Review</a>
     <button type="button" class="button-small menu-toggle" aria-expanded="false" aria-controls="app-menu">
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -43,7 +43,7 @@
   <main id="app" data-page="{{page}}" tabindex="-1">
 {{content}}
   </main>
-  <noscript>This page needs JavaScript (build it with <code>npm run build</code>).</noscript>
+  <noscript>This page needs JavaScript (build it with <code translate="no">npm run build</code>).</noscript>
   <footer class="app-footer">
     <a href="/imprint">Imprint</a>
     <span aria-hidden="true">·</span>

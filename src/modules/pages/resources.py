@@ -4,8 +4,9 @@ from pathlib import Path
 
 import falcon
 
+from src.modules.pages.languages import chosen_language, translate, translate_html
 from src.modules.storage.owners import NO_OWNER
-from src.modules.storage.store import Storage, Store
+from src.modules.storage.store import Language, Storage, Store, Theme
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / 'templates'
 STATIC_DIR = TEMPLATES_DIR / 'static'
@@ -13,13 +14,14 @@ STATIC_DIR = TEMPLATES_DIR / 'static'
 BEFORE_SETUP = ('password', 'two-factor', 'imprint', 'privacy', 'contact')
 
 
-def render_page(name: str, title: str, theme: str = 'system') -> str:
-    """The frame with the page's title, name, content and color theme filled in (`system` sets no theme)."""
-    frame = (TEMPLATES_DIR / 'frame.html').read_text(encoding='utf-8')
+def render_page(name: str, title: str, theme: str = 'system', language: Language = 'en') -> str:
+    """The frame in the language with the page's title, name, content and color theme filled in (`system` sets no
+    theme)."""
+    frame = translate_html((TEMPLATES_DIR / 'frame.html').read_text(encoding='utf-8'), language)
     content = (TEMPLATES_DIR / 'pages' / f'{name}.html').read_text(encoding='utf-8').rstrip('\n')
     theme_attribute = '' if theme == 'system' else f' data-theme="{theme}"'
-    return (frame.replace('{{title}}', title).replace('{{page}}', name).replace('{{theme}}', theme_attribute)
-            .replace('{{content}}', content))
+    return (frame.replace('{{language}}', language).replace('{{title}}', translate(title, language))
+            .replace('{{page}}', name).replace('{{theme}}', theme_attribute).replace('{{content}}', content))
 
 
 class Page:
@@ -31,7 +33,7 @@ class Page:
 
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         resp.content_type = falcon.MEDIA_HTML
-        resp.text = render_page(self.name, self._title, req.context.get('theme', 'system'))
+        resp.text = render_page(self.name, self._title, req.context.get('theme', 'system'), req.context.get('language', 'en'))
 
 
 class StartPage(Page):
@@ -62,9 +64,9 @@ class RegisterPage(Page):
 
 
 class PageSettings:
-    """Middleware for pages: the color theme for the frame; until the database is set up, pages forward to /setup,
-    and /setup forwards to the week once it is. The imprint, the privacy policy and the contact page are always there
-    (SPEC 5.13–5.15)."""
+    """Middleware for pages: the color theme and the language (SPEC 5.16); until the database is set up, pages forward
+    to /setup, and /setup forwards to the week once it is. The imprint, the privacy policy and the contact page are
+    always there (SPEC 5.13–5.15)."""
 
     def __init__(self, storage: Storage) -> None:
         self._storage = storage
@@ -75,9 +77,18 @@ class PageSettings:
         user_id = req.context.get('user_id')
         with self._storage.transaction() as store:
             done = _set_up(store, user_id)
-            req.context.theme = store.load_theme(NO_OWNER if user_id is None else user_id)
+            req.context.theme, account = _appearance(store, user_id)
+        req.context.language = chosen_language(req, account)
         if resource.name not in BEFORE_SETUP and done == (resource.name == 'setup'):
             raise falcon.HTTPSeeOther('/' if done else '/setup')
+
+
+def _appearance(store: Store, user_id: str | None) -> tuple[Theme, Language | None]:
+    """The user's color theme and chosen language; not logged in, the theme of the data without owner and no language
+    (the browser's applies)."""
+    if user_id is None:
+        return store.load_theme(NO_OWNER), None
+    return store.load_theme(user_id), store.load_language(user_id)
 
 
 def _set_up(store: Store, user_id: str | None) -> bool:

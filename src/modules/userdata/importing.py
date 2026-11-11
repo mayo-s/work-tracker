@@ -71,6 +71,8 @@ class _Import:
     def _settings(self) -> None:
         self._store.save_settings(self._user, self._data.settings)
         self._store.save_theme(self._user, self._data.theme)
+        if self._data.language:
+            self._store.save_language(self._user, self._data.language)
         schedules = self._store.schedules(self._user)
         if self._data.work_schedules:
             first, *later = self._data.work_schedules

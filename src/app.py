@@ -38,7 +38,7 @@ from src.modules.review.resources import Review, ReviewCountsResource
 from src.modules.schedules.resources import ScheduleCollection, ScheduleItem
 from src.modules.search.resources import SearchResource
 from src.modules.setup.resources import SetupImportResource, SetupResource
-from src.modules.settings.resources import SettingsResource, ThemeResource
+from src.modules.settings.resources import LanguageResource, SettingsResource, ThemeResource
 from src.modules.storage.database import Database
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.sqlite import SqliteStorage
@@ -134,6 +134,7 @@ def create_app(
     app.add_route('/api/search', SearchResource(storage))
     app.add_route('/api/settings', SettingsResource(storage))
     app.add_route('/api/theme', ThemeResource(storage))
+    app.add_route('/api/language', LanguageResource(storage))
     app.add_route('/api/export', ExportResource(storage, clock))
     app.add_route('/api/setup', SetupResource(storage))
     app.add_route('/api/setup/import', SetupImportResource(storage))

@@ -182,7 +182,8 @@ def test_settings_before_the_setup(storage, klara):
     rainer = add(storage, RAINER).id  # not the first user, who takes over what a new SQLite database seeds
     settings = run(storage, lambda store: store.load_settings(rainer))
     assert settings == Settings(balance_start=dt.date.today(), opening_balance=0, work_mode='tickets')
-    assert run(storage, lambda store: (store.setup_done(rainer), store.load_theme(rainer))) == (False, 'system')
+    assert run(storage, lambda store: (store.setup_done(rainer), store.load_theme(rainer), store.load_language(rainer))) == (
+        False, 'system', None)  # no language chosen: the browser's applies
 
 
 def test_save_settings_and_finish_the_setup(storage, klara):
@@ -190,8 +191,9 @@ def test_save_settings_and_finish_the_setup(storage, klara):
     run(storage, lambda store: store.save_settings(klara.id, changed))
     run(storage, lambda store: store.finish_setup(klara.id))
     run(storage, lambda store: store.save_theme(klara.id, 'dark'))
+    run(storage, lambda store: store.save_language(klara.id, 'de'))
     assert run(storage, lambda store: (store.load_settings(klara.id), store.setup_done(klara.id))) == (changed, True)
-    assert run(storage, lambda store: store.load_theme(klara.id)) == 'dark'
+    assert run(storage, lambda store: (store.load_theme(klara.id), store.load_language(klara.id))) == ('dark', 'de')
 
 
 def test_settings_are_per_user(storage, klara):

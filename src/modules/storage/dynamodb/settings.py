@@ -1,4 +1,5 @@
-"""A user's settings (balance, way of working, setup, theme) in their partition's `SETTINGS` item; app-wide ones."""
+"""A user's settings (balance, way of working, setup, theme, language) in their partition's `SETTINGS` item; app-wide
+ones."""
 
 import datetime as dt
 from typing import Any, get_args
@@ -7,7 +8,7 @@ from src.models.settings import Settings
 from src.modules.storage.dynamodb.keys import APP, SETTINGS, user_partition
 from src.modules.storage.dynamodb.table import Item
 from src.modules.storage.dynamodb.unit import Unit
-from src.modules.storage.store import Theme
+from src.modules.storage.store import Language, Theme
 
 
 def _values(unit: Unit, pk: str) -> Item:
@@ -57,6 +58,16 @@ def load_theme(unit: Unit, user_id: str) -> Theme:
 
 def save_theme(unit: Unit, user_id: str, theme: Theme) -> None:
     _save(unit, user_partition(user_id), theme=theme)
+
+
+def load_language(unit: Unit, user_id: str) -> Language | None:
+    """The chosen UI language; None until one is chosen (then the browser's applies)."""
+    language = _values(unit, user_partition(user_id)).get('language')
+    return language if language in get_args(Language) else None
+
+
+def save_language(unit: Unit, user_id: str, language: Language) -> None:
+    _save(unit, user_partition(user_id), language=language)
 
 
 def registration_open(unit: Unit) -> bool:

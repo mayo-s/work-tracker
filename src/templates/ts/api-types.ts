@@ -428,6 +428,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/language": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Choose the UI language of all pages: kept in this browser (a cookie, also before the login) and, logged in, in the account, so it follows the user to other devices. */
+        put: operations["put__api_language"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/export": {
         parameters: {
             query?: never;
@@ -3018,6 +3035,15 @@ export interface components {
              */
             theme: "system" | "light" | "dark";
         };
+        /** LanguageView */
+        LanguageView: {
+            /**
+             * Language
+             * @description UI language: de (Deutsch), en (English) or es (Español)
+             * @enum {string}
+             */
+            language: "de" | "en" | "es";
+        };
         /** SupportQuery */
         SupportQuery: {
             /**
@@ -3279,6 +3305,12 @@ export interface components {
              * @enum {string}
              */
             theme: "system" | "light" | "dark";
+            /**
+             * Language
+             * @description The chosen UI language; none: the browser's
+             * @default null
+             */
+            language?: ("de" | "en" | "es") | null;
             /** Work Schedules */
             work_schedules: components["schemas"]["Schedule"][];
             /** Pto Years */
@@ -5603,6 +5635,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ThemeView"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    put__api_language: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LanguageView"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LanguageView"];
                 };
             };
             /** @description Unprocessable Content */

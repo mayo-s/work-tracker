@@ -34,7 +34,7 @@ def test_file_header_and_settings(store):
     store.save_theme(USER, 'dark')
     data = export(store)
     assert (data.format, data.version, data.exported_at) == ('work-tracker', 3, NOW.replace(microsecond=0))
-    assert (data.settings.balance_start, data.theme) == (dt.date(2024, 6, 1), 'dark')
+    assert (data.settings.balance_start, data.theme, data.language) == (dt.date(2024, 6, 1), 'dark', None)
     assert [year.year for year in data.pto_years] == [2024, 2025, 2026, 2027]
     assert [(schedule.id, schedule.weekly_minutes) for schedule in data.work_schedules] == [('1', 2400)]
 

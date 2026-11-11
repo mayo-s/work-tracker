@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from src.lib.durations import format_duration, parse_signed_duration
 from src.models.settings import Settings, WorkMode
-from src.modules.storage.settings import Theme
+from src.modules.storage.store import Language, Theme
 from src.utils.api import SignedDurationText
 
 
@@ -28,6 +28,12 @@ class SettingsView(BaseModel):
     def to_settings(self) -> Settings:
         return Settings(balance_start=self.balance_start, opening_balance=parse_signed_duration(self.opening_balance),
                         work_mode=self.work_mode)
+
+
+class LanguageView(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    language: Language = Field(description='UI language: de (Deutsch), en (English) or es (Español)')
 
 
 class ThemeView(BaseModel):

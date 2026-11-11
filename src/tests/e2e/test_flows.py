@@ -254,8 +254,8 @@ def test_the_tabs_and_the_menu_in_their_order(logged_in, persona, tabs, menu):
     expect(page.locator('.account-links > *')).to_have_text(menu)
 
 
-# The right end of the header: the search field, the name, the dark mode switch, the menu
-HEADER_END = [re.compile('nav-search'), 'muted', re.compile('theme-toggle'), 'account-menu']
+# The right end of the header: the search field, the name, the language switch, the dark mode switch, the menu
+HEADER_END = [re.compile('nav-search'), 'muted', 'language-switch', re.compile('theme-toggle'), 'account-menu']
 
 
 def test_the_menu_opens_below_its_button_and_closes(logged_in):
@@ -379,6 +379,24 @@ def test_the_dark_mode_switch_saves_the_theme(logged_in):
     expect(page.locator('html')).to_have_attribute('data-theme', 'light')
     expect(page.locator('input[name="theme"][value="light"]')).to_be_checked()
     page.request.put('/api/theme', data={'theme': 'system'})  # the other tests show the browser's theme
+
+
+def test_a_visitor_chooses_a_language_and_a_users_choice_follows_them_to_other_devices(browser, base, logged_in):
+    visitor = browser.new_page(base_url=base)
+    visitor.goto('/login')
+    visitor.get_by_role('button', name='EN – Language: English').click()
+    visitor.locator('#language-list').get_by_role('button', name='Deutsch').click()
+    expect(visitor.locator('html')).to_have_attribute('lang', 'de')
+    expect(visitor.locator('footer a[href="/imprint"]')).to_have_text('Impressum')
+    page = logged_in('hans')
+    page.goto('/week')
+    page.get_by_role('button', name='EN – Language: English').click()
+    page.locator('#language-list').get_by_role('button', name='Español').click()
+    expect(page.locator('.app-nav a[href="/week"]')).to_have_text('Semana')
+    expect(page.get_by_role('button', name='ES – Idioma: Español')).to_be_visible()
+    other = logged_in('hans')  # another browser: no choice of its own, the account's language
+    other.goto('/week')
+    expect(other.locator('html')).to_have_attribute('lang', 'es')
 
 
 def test_search_all_time_from_the_navigation_then_a_custom_period(logged_in):

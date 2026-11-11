@@ -23,7 +23,7 @@ from src.modules.storage.dynamodb.tickets import DynamoTickets
 from src.modules.storage.dynamodb.unit import Unit
 from src.modules.storage.dynamodb.users import DynamoAttempts, DynamoBrowsers, DynamoSessions, DynamoUsers
 from src.modules.storage.errors import USED_TOKEN, SchemaVersionError
-from src.modules.storage.store import Clock, RenameResult, Theme
+from src.modules.storage.store import Clock, Language, RenameResult, Theme
 
 # Changes of the item layout, applied once in order: MIGRATIONS[0] brings a table from version 1 to 2, and so on
 MIGRATIONS: list[Callable[[Table], None]] = [
@@ -133,6 +133,12 @@ class DynamoStore:
 
     def save_theme(self, user_id: str, theme: Theme) -> None:
         stored_settings.save_theme(self._unit, user_id, theme)
+
+    def load_language(self, user_id: str) -> Language | None:
+        return stored_settings.load_language(self._unit, user_id)
+
+    def save_language(self, user_id: str, language: Language) -> None:
+        stored_settings.save_language(self._unit, user_id, language)
 
     def registration_open(self) -> bool:
         return stored_settings.registration_open(self._unit)

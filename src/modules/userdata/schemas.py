@@ -20,7 +20,7 @@ from src.models.history import EntryChange
 from src.models.pto import PtoYear
 from src.models.schedules import Schedule
 from src.models.settings import Settings
-from src.modules.storage.store import Theme
+from src.modules.storage.store import Language, Theme
 
 FORMAT = 'work-tracker'
 VERSION = 3
@@ -32,6 +32,7 @@ class UserData(DomainModel):
     exported_at: dt.datetime
     settings: Settings
     theme: Theme
+    language: Language | None = Field(default=None, description='The chosen UI language; none: the browser\'s')
     work_schedules: list[Schedule]
     pto_years: list[PtoYear]
     services: list[ServiceChoice] = Field(description='Personal services, and team services (`team`) the tickets use')

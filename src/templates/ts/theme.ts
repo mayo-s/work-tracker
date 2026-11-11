@@ -2,6 +2,7 @@
 
 import { api, type Theme } from './api.ts';
 import { el } from './dom.ts';
+import { t } from './i18n.ts';
 
 const ICON = 'viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" '
   + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
@@ -33,8 +34,8 @@ export function shownTheme(root: HTMLElement, systemDark: boolean): 'light' | 'd
 export function themeToggle(doc: Document): HTMLButtonElement {
   const root = doc.documentElement;
   const system = doc.defaultView!.matchMedia('(prefers-color-scheme: dark)');
-  const toggle = el('button', { type: 'button', class: 'icon-button theme-toggle', 'aria-label': 'Dark mode',
-    title: 'Dark mode' });
+  const toggle = el('button', { type: 'button', class: 'icon-button theme-toggle', 'aria-label': t('Dark mode'),
+    title: t('Dark mode') });
   const show = (): void => {
     const dark = shownTheme(root, system.matches) === 'dark';
     toggle.setAttribute('aria-pressed', String(dark));

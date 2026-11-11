@@ -1,6 +1,8 @@
 // Entry point of the frontend: loaded as an ES module by every page.
 // Modules import each other with the compiled extension, e.g. `import { api } from './api.ts'`.
 
+import { loadCatalog, t, tn } from './i18n.ts';
+
 export const APP_NAME = 'Work Tracker';
 
 /** Marks the navigation link of the current page, e.g. `/week` (also with a query like `/week?member=…`). */
@@ -48,18 +50,19 @@ async function showReviewCount(): Promise<void> {
   showReviewBadge(document, await api.reviewCounts());
 }
 
-/** The right end of the header: the search field (in the frame), the user's name (`showUser`), the dark mode switch,
- * then the menu (in the frame) or, on the pages that come first, "Log out". Both load side by side, so the switch goes
- * before the shown menu or "Log out" if that is there already. */
-function headerEnd(header: Element): Element {
+/** The right end of the header: the search field (in the frame), the user's name (`showUser`), the language switch and
+ * the dark mode switch, then the menu (in the frame) or, on the pages that come first, "Log out". They load side by
+ * side, so the switches go before the shown menu or "Log out" if that is there already. Without `theme` (the pages
+ * before the login), only the language switch. */
+function headerEnd(header: Element, theme = true): Element {
   const end = header.querySelector('.app-user')!;
-  import('./theme.ts').then(({ themeToggle }) => {
-    const toggle = themeToggle(document);
+  Promise.all([import('./language.ts'), theme ? import('./theme.ts') : null]).then(([language, themes]) => {
+    const switches = [language.languageSwitch(document), ...(themes ? [themes.themeToggle(document)] : [])];
     const after = end.querySelector('.account-menu:not([hidden]), .logout');
     if (after) {
-      after.before(toggle);
+      after.before(...switches);
     } else {
-      end.append(toggle);
+      end.append(...switches);
     }
   }).catch(() => undefined);
   return end;
@@ -75,9 +78,11 @@ function badge(count: number, title: string): HTMLElement {
 
 /** What waits behind ☰, for its label: e.g. `Menu, 1 open team invitation, 2 new contact messages`. */
 function menuLabel(invitations: number, newMessages: number): string {
-  const waiting: [number, string][] = [[invitations, 'open team invitation'], [newMessages, 'new contact message']];
-  return ['Menu', ...waiting.filter(([count]) => count).map(([count, what]) => `${count} ${what}${count > 1 ? 's' : ''}`)]
-    .join(', ');
+  const waiting = [
+    invitations ? tn(invitations, '{count} open team invitation', '{count} open team invitations') : '',
+    newMessages ? tn(newMessages, '{count} new contact message', '{count} new contact messages') : '',
+  ];
+  return [t('Menu'), ...waiting.filter(Boolean)].join(', ');
 }
 
 /** The menu (☰) at the right end of the header (SPEC 5.5): a panel with Team, Settings, Admin and "Log out" below it,
@@ -115,7 +120,7 @@ async function showUser(user: Element, nav: Element | null): Promise<void> {
     return;
   }
   const logout = Object.assign(document.createElement('button'), { type: 'button', className: 'button-small logout',
-    textContent: 'Log out' });
+    textContent: t('Log out') });
   logout.addEventListener('click', () => void api.logout().then(() => window.location.assign('/login')));
   const name = Object.assign(document.createElement('span'), { className: 'muted', textContent: status.user.first_name });
   const search = user.querySelector('.nav-search');
@@ -136,30 +141,30 @@ async function showUser(user: Element, nav: Element | null): Promise<void> {
   }
   const settings = links.querySelector('a[href="/settings"]')!;
   if (status.team?.team_role === 'team_admin') {
-    settings.before(navLink('/team', 'Team'));
+    settings.before(navLink('/team', t('Team')));
   }
   if (status.user.support) {
-    const support = navLink('/support', 'Support');
+    const support = navLink('/support', t('Support'));
     settings.before(support);
     if (status.new_messages) {
-      support.append(' ', badge(status.new_messages, 'New contact messages'));
+      support.append(' ', badge(status.new_messages, t('New contact messages')));
     }
   }
   if (status.team?.team_role === 'team_admin' || status.auditor) {
-    nav.querySelector('a[href^="/year"]')?.after(navLink('/team/report', 'Audit'));  // the team view adds the member to it
+    nav.querySelector('a[href^="/year"]')?.after(navLink('/team/report', t('Audit')));  // the team view adds the member to it
   }
   if (status.user.role === 'admin' || status.user.role === 'root') {
-    settings.after(navLink('/admin', 'Admin'));
+    settings.after(navLink('/admin', t('Admin')));
   }
   markCurrentPage(nav, window.location.pathname);
   markCurrentPage(links, window.location.pathname);
   if (status.invitations) {  // open team invitations wait in the settings
-    settings.append(' ', badge(status.invitations, 'Open team invitations'));
+    settings.append(' ', badge(status.invitations, t('Open team invitations')));
   }
   const [invitations, newMessages] = [status.invitations ?? 0, status.new_messages ?? 0];
   if (invitations + newMessages) {
     const toggle = user.querySelector('.account-toggle')!;
-    toggle.append(badge(invitations + newMessages, 'Open team invitations and new contact messages'));
+    toggle.append(badge(invitations + newMessages, t('Open team invitations and new contact messages')));
     toggle.setAttribute('aria-label', menuLabel(invitations, newMessages));
   }
 }
@@ -188,6 +193,8 @@ export function trackHeaderHeight(header: HTMLElement, root: HTMLElement): void 
   new ResizeObserver(() => root.style.setProperty('--header-offset', `${header.offsetHeight}px`)).observe(header);
 }
 
+await loadCatalog(document.documentElement.lang);  // before any text shows
+
 const header = document.querySelector<HTMLElement>('.app-header');
 if (header) {
   trackHeaderHeight(header, document.documentElement);
@@ -209,6 +216,9 @@ if (nav && !['login', 'register', 'setup', 'password', 'two-factor', 'imprint', 
 }
 if (['setup', 'password', 'two-factor'].includes(page ?? '')) {  // still to do first: still able to log out
   showUser(headerEnd(document.querySelector('.app-header')!), null).catch(() => undefined);
+}
+if (['login', 'register', 'imprint', 'privacy', 'contact'].includes(page ?? '')) {  // visitors choose their language
+  headerEnd(document.querySelector('.app-header')!, false);
 }
 
 const member = new URLSearchParams(window.location.search).get('member');

@@ -18,10 +18,11 @@ from src.modules.storage.pto_years import PtoYearRepository
 from src.modules.storage.renames import rename_ticket
 from src.modules.storage.schedules import ScheduleRepository
 from src.modules.storage.settings import (
-    finish_restore, finish_setup, import_unfinished, load_settings, load_theme, registration_open, restore_unfinished,
-    save_settings, save_theme, set_registration, setup_done, start_import, start_restore,
+    finish_restore, finish_setup, import_unfinished, load_language, load_settings, load_theme, registration_open,
+    restore_unfinished, save_language, save_settings, save_theme, set_registration, setup_done, start_import,
+    start_restore,
 )
-from src.modules.storage.store import Clock, RenameResult, Theme
+from src.modules.storage.store import Clock, Language, RenameResult, Theme
 from src.modules.storage.teams import AuditorRepository, InvitationRepository, ReportViewLog, TeamRepository
 from src.modules.storage.tickets import TicketRepository
 from src.modules.storage.users import BrowserRepository, LoginAttempts, SessionRepository, UserRepository
@@ -119,6 +120,12 @@ class SqliteStore:
 
     def save_theme(self, user_id: str, theme: Theme) -> None:
         save_theme(self._conn, user_id, theme)
+
+    def load_language(self, user_id: str) -> Language | None:
+        return load_language(self._conn, user_id)
+
+    def save_language(self, user_id: str, language: Language) -> None:
+        save_language(self._conn, user_id, language)
 
     def registration_open(self) -> bool:
         return registration_open(self._conn)

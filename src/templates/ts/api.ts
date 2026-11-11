@@ -62,6 +62,8 @@ export type SettingsView = Schemas['SettingsView'];
 export type WorkMode = SettingsView['work_mode'];
 export type ThemeView = Schemas['ThemeView'];
 export type Theme = ThemeView['theme'];
+export type LanguageView = Schemas['LanguageView'];
+export type Language = LanguageView['language'];
 export type SetupInput = Schemas['SetupInput'];
 export type SetupImportInput = Schemas['SetupImportInput'];
 export type ImportSummary = Schemas['ImportSummary'];
@@ -321,6 +323,7 @@ export const api = {
   saveSettings: (input: SettingsView) => request<SettingsView>('PUT', '/api/settings', input),
   theme: () => request<ThemeView>('GET', '/api/theme'),
   saveTheme: (theme: Theme) => request<ThemeView>('PUT', '/api/theme', { theme }),
+  saveLanguage: (language: Language) => request<LanguageView>('PUT', '/api/language', { language }),
 
   schedules: () => request<ScheduleView[]>('GET', '/api/work-schedules'),
   addSchedule: (input: ScheduleInput) => request<ScheduleView>('POST', '/api/work-schedules', input),

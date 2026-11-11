@@ -20,6 +20,7 @@ PAUSED = 'Too many attempts; try again in a minute'
 OPEN_PATHS = {
     '/login', '/register', '/health', '/api/auth/status', '/api/auth/login', '/api/auth/logout', '/api/auth/root',
     '/api/auth/root/reset', '/api/auth/register', '/imprint', '/api/imprint', '/privacy', '/contact', '/api/contact',
+    '/api/language',  # also before the login: kept in the browser, and in the account when logged in
 }
 OPEN_PREFIXES = ('/static/', '/apidoc')
 # After a one-time password, until the user chose their own: only this page, its API and what every page needs
@@ -56,10 +57,14 @@ def set_browser_cookie(req: falcon.Request, resp: falcon.Response, token: str) -
     _set_cookie(req, resp, BROWSER_COOKIE, token, BROWSER_LIFETIME)
 
 
+def served_over_https(req: falcon.Request) -> bool:
+    """Whether the browser reached the app over HTTPS (on Lambda, CloudFront says so), so its cookies are secure."""
+    return req.scheme == 'https' or req.get_header('X-Forwarded-Proto') == 'https'
+
+
 def _set_cookie(req: falcon.Request, resp: falcon.Response, name: str, token: str, lifetime: dt.timedelta) -> None:
-    https = req.scheme == 'https' or req.get_header('X-Forwarded-Proto') == 'https'
-    resp.set_cookie(name, token, max_age=int(lifetime.total_seconds()), path='/', secure=https, http_only=True,
-                    same_site='Strict')
+    resp.set_cookie(name, token, max_age=int(lifetime.total_seconds()), path='/', secure=served_over_https(req),
+                    http_only=True, same_site='Strict')
 
 
 def clear_session_cookie(resp: falcon.Response) -> None:

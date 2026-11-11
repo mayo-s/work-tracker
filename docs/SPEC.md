@@ -20,7 +20,7 @@ Out of scope for now: export of personal reports (the team report has its own, 5
 
 | Topic       | Rule                                                                                                                                                           |
 |-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| UI language | English                                                                                                                                                        |
+| UI language | English, German or Spanish, chosen in the header (5.16)                                                                                                        |
 | Dates (UI)  | `DD.MM.YYYY`; weeks start on Monday                                                                                                                            |
 | Dates (API) | ISO 8601 `YYYY-MM-DD`                                                                                                                                          |
 | Times       | 24 h format `HH:MM`                                                                                                                                            |
@@ -384,8 +384,8 @@ below 40rem (640 px), where the narrow-screen rules start; the desktop does not 
 ### 5.7 Data per user
 
 - Each user has their own days, entries with their history, tickets with their service, services,
-  activity types, work schedules, PTO years and settings (balance start, opening balance, theme, way of working,
-  setup done).
+  activity types, work schedules, PTO years and settings (balance start, opening balance, theme, language, way of
+  working, setup done).
   Nobody sees or changes another user's records, root and admins neither; an unknown or foreign id answers 404, using
   another user's service or activity type 409.
 - A user is identified by a random UUID and has one app role; in a team, the membership has a team role; an auditor
@@ -471,8 +471,8 @@ below 40rem (640 px), where the narrow-screen rules start; the desktop does not 
 ### 5.8 Export and import (own data)
 
 - Export: "Export my data" on the settings page downloads one JSON file of the user's own records: days, entries with
-  their history (also of deleted entries), tickets, services, activity types, work schedules, PTO years, settings
-  and theme. It starts with `{"format": "work-tracker", "version": 3, "exported_at": …}`; every record has a
+  their history (also of deleted entries), tickets, services, activity types, work schedules, PTO years, settings,
+  theme and language (if chosen). It starts with `{"format": "work-tracker", "version": 3, "exported_at": …}`; every record has a
   file id (1, 2, …), and references inside the file use them, also in history lines. Team services the tickets use are
   included by short name, name and team.
 - Not in the file: password, sessions, users, teams, memberships, invitations and the report view log.
@@ -654,8 +654,8 @@ What personal data the app keeps, why and for how long, as GDPR Art. 13 requires
   imprint's details (5.13); the rest is static text in the page, which whoever runs the app adapts.
 - Contents: overview (no tracking, analysis, advertising or outside resources, no profiling); hosting on AWS as
   processor in `eu-central-1`, CloudFront with possible transfer to the US (EU-US Data Privacy Framework), no IP
-  addresses stored by the app, error logs in CloudWatch for 30 days, restore points of the table for 35 days; the two
-  cookies (`wt_session`, `wt_browser`), strictly necessary, no consent; the account; time tracking and teams (who
+  addresses stored by the app, error logs in CloudWatch for 30 days, restore points of the table for 35 days; the three
+  cookies (`wt_session`, `wt_browser`, `wt_language`), strictly necessary, no consent; the account; time tracking and teams (who
   sees the reports, the log of their looks, the audit log); the contact form (anonymized 90 days after Done); the full
   backup; the user's rights (Art. 15–18, 20, 21, 77), asked for by e-mail or the contact form.
 - Retention as stated there: account, time data, audit log and the log of looks at reports as long as the account
@@ -663,6 +663,35 @@ What personal data the app keeps, why and for how long, as GDPR Art. 13 requires
   README).
 - Deleting the account (5.7): in the settings, or by an admin on request; what goes and what stays without a name, as
   there. The privacy policy says so under the account and the rights.
+
+### 5.16 Languages
+
+The UI comes in English, German and Spanish (TASKS.md L.8, in steps L.8a–e).
+
+- **Switch**: in the header next to the dark mode switch, the code of the page's language (`EN`, `DE`, `ES`; its name
+  "EN – Language: English" holds the code, WCAG 2.5.3). It opens a list of the languages, each named in its own
+  language ("Deutsch", "English", "Español", with `lang`), no flags: they stand for countries. On phones it sits in
+  the menu next to the dark mode switch; the pages before the login (login, register, imprint, privacy, contact) show
+  it too, in the header's row. A choice reloads the page in that language.
+- **Which language applies**: the account's choice (stored like the theme, so the same on every device; in the export
+  and so in the full backup), else this browser's (the cookie `wt_language`, a year, set by every choice, also before
+  the login), else the browser's language (`Accept-Language`), else English. `<html lang>` says which.
+  `PUT /api/language` is open to everyone: it sets the cookie, and saves the choice in the account when logged in.
+- **What is translated**: everything a user sees: the pages, the texts of the scripts (messages, sentences, the audit
+  log, reports), the server's messages, the names of weekdays, months and holidays. In English stay the API (field
+  names, codes such as `Mon`), the CSV export, the API docs and the logs. Imprint and privacy policy are translated,
+  with a note that the German text is the binding one. Dates stay `DD.MM.YYYY` and durations `h:mm` in every
+  language; day counts get a decimal comma in German and Spanish ("2,5 Tage"); durations are entered as before.
+- **Catalogs**: one per language, `static/locales/de.json` and `es.json`, keyed by the English text, with placeholders
+  such as `{username}`; English needs none, and a text without a translation shows in English. The server renders a
+  page in its language (the texts and the attributes people read: `aria-label`, `title`, `placeholder`, `alt`; not
+  what is marked `translate="no"`, e.g. the app's name), so it shows without a flash of English; the scripts load the
+  same catalog (cached by CloudFront) and translate with `t('…')` and `tn(count, one, other)` for plurals. A test
+  finds every text of the templates, every page title and every `t`/`tn` of the scripts, and fails when a catalog
+  misses one, holds one no longer used, or changes a placeholder.
+- **Steps**: L.8a the mechanism, the setting, the switch and the frame (header, navigation, menu, footer, page
+  titles); L.8b the pages' HTML; L.8c the scripts' texts and formats; L.8d the server's messages and the holiday names;
+  L.8e imprint and privacy policy.
 
 ## 6. Import (spreadsheet CSV), removed
 

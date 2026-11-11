@@ -1651,6 +1651,52 @@ button.button-danger {
   display: block;
 }
 
+/* The language switch (SPEC 5.16): the code of the page's language, its list a popover below it (main.ts places it) */
+.language-toggle {
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-strong);
+  letter-spacing: 0.04em;
+}
+
+.language-list {
+  position: fixed;
+  inset: auto;  /* not the centre of the screen, where popovers go by default: top and right come from language.ts */
+  flex-direction: column;
+  min-width: 9rem;
+  margin: 0;
+  padding: var(--space-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--color-background);
+  color: var(--color-text);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);  /* lifted above the page it covers */
+}
+
+.language-list:popover-open {
+  display: flex;
+}
+
+.language-list > button {
+  justify-content: flex-start;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+}
+
+.language-list > button:hover {
+  background: var(--color-surface);
+}
+
+.language-list > button[aria-current='true'] {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  font-weight: var(--font-weight-strong);
+}
+
 /* The menu (☰): a panel below it with Team, Settings, Admin and "Log out" */
 .account-menu {
   position: relative;
@@ -1935,6 +1981,13 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
                    [data-page='two-factor'], [data-page='imprint'], [data-page='privacy'],
                    [data-page='contact'])) .app-menu {
     display: contents;
+  }
+
+  /* The pages before the login hold only the language switch there: in the header's one row, at its right */
+  body:has(main:is([data-page='login'], [data-page='register'], [data-page='imprint'], [data-page='privacy'],
+                   [data-page='contact'])) .app-user {
+    width: auto;
+    margin-left: auto;
   }
 
   .nav-search,

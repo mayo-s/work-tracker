@@ -45,7 +45,8 @@ class _Export:
         entries = self._entries_list()
         return UserData(
             format=FORMAT, version=VERSION, exported_at=exported_at, settings=self._store.load_settings(self._user),
-            theme=self._store.load_theme(self._user), work_schedules=self._schedules(),
+            theme=self._store.load_theme(self._user), language=self._store.load_language(self._user),
+            work_schedules=self._schedules(),
             pto_years=self._store.pto_years(self._user).all(), services=services, activity_types=activity_types,
             tickets=[ticket.model_copy(update={'service_id': self._services.known(ticket.service_id)}) for ticket in tickets],
             days=self._store.days(self._user).between(dt.date.min, dt.date.max), entries=entries,

@@ -397,8 +397,16 @@ L.16 (a–i) → 9.1 (a–i).
   On hold: kept as day notes for now, to see how hours off are used in practice
 - [x] **L.7** Clean up - remove spreadsheet import functionality (the command and its tests; its ticket clean-up moved
   into the review, which still suggests splits for guessed tickets of imported data)
-- [ ] **L.8** i18n - add a flag icon dropdown next to the dark mode icon to switch ui language to german, english,
-  spanish
+- [ ] **L.8** i18n: switch the UI language between German, English and Spanish (SPEC 5.16), in steps:
+    - [x] **L.8a** The mechanism and the frame: the language setting (account, both backends, export and backup;
+      cookie and `Accept-Language` before it), `PUT /api/language`, the switch in the header (also before the login),
+      the catalogs `static/locales/de.json` and `es.json` with their completeness test, the server rendering the
+      frame (header, navigation, menu, footer) and the page titles in the language, `t`/`tn` in the scripts
+    - [ ] **L.8b** The pages' HTML texts
+    - [ ] **L.8c** The scripts' texts and formats: messages, sentences, the audit log, reports, month and weekday
+      names, decimal comma for day counts
+    - [ ] **L.8d** The server's messages (refusals, errors) and the holiday names
+    - [ ] **L.8e** Imprint and privacy policy, with a note that the German text is the binding one
 - [x] **L.9** Exact times, in steps:
     - [x] **L.9a** No more quarter-hour rule: an entry's duration may be any whole minutes, in the form and the API;
       the popup offering the two nearest quarter hours is gone
