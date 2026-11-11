@@ -467,3 +467,4 @@ L.16 (a–i) → 9.1 (a–i).
 - [x] **L.23** Support secure connection: some browsers complain that the site does not support secure connection.
   HTTPS itself worked; the app now sends HSTS, so after the first visit the browser goes to HTTPS directly, plus
   `nosniff`, `Referrer-Policy: same-origin` and no framing (SPEC 7.4)
+- [ ] **L.24** Infrastructure as Code: using Terraform/Terragrunt to easily deploy and update infrastructure on AWS

@@ -344,8 +344,8 @@ def test_the_header_stays_at_the_top_and_what_scrolls_into_view_stays_below_it(l
     page = logged_in('hans')
     page.set_viewport_size({'width': width, 'height': 500})
     page.goto('/settings')
+    page.locator('.review-shortcut .badge').wait_for(state='attached')  # the header's final height (taller on phones)
     section = page.locator('#services')
-    section.wait_for()
     section.evaluate('(element) => element.scrollIntoView()')
     header = page.locator('.app-header').bounding_box()
     assert (header['y'], page.evaluate('window.scrollY') > 0, section.bounding_box()['y'] >= header['height']) == (
