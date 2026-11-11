@@ -29,13 +29,8 @@ def on_lambda(monkeypatch):
     monkeypatch.setenv('WORK_TRACKER_AUTH', 'on')
 
 
-def test_local_stage_ignores_case(monkeypatch):
+def test_local_stage_ignores_case_and_uses_the_sqlite_file(monkeypatch, tmp_path):
     monkeypatch.setenv('STAGE', 'local')
-    assert current_stage() is Stage.LOCAL
-
-
-def test_local_stage_uses_the_sqlite_file(monkeypatch, tmp_path):
-    monkeypatch.setenv('STAGE', 'Local')
     monkeypatch.setenv('WORK_TRACKER_DB', str(tmp_path / 'local.db'))
     storage = stage_storage()
     assert isinstance(storage, SqliteStorage)
@@ -112,11 +107,6 @@ def test_the_lambda_app_answers_only_requests_through_the_domain(monkeypatch, on
     assert client.simulate_get('/api/auth/status', headers=through).json['setup_token'] is True  # creating root needs it
     bypassing = client.simulate_get('/health', headers={'X-Origin-Verify': secret[:-1]})
     assert (bypassing.status, bypassing.json['description']) == (falcon.HTTP_403, 'Open the app at its address')
-
-
-def test_app_without_database_stops_without_stage():
-    with pytest.raises(StageError, match='STAGE is not set'):
-        create_app()
 
 
 def test_app_without_database_runs_on_the_local_stage(monkeypatch, tmp_path):

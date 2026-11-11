@@ -53,9 +53,9 @@ def test_missing_schedule(schedules):
         schedules.delete(404)
 
 
-def test_replace_all(schedules):
+def test_replace_all_even_on_the_day_of_a_replaced_schedule(schedules):
     schedules.add(PART_TIME)
-    replaced = schedules.replace_all(PART_TIME.model_copy(update={'valid_from': dt.date(2027, 4, 1)}))
+    replaced = schedules.replace_all(PART_TIME.model_copy(update={'valid_from': dt.date(2024, 6, 1)}))
     assert schedules.all() == [replaced]
 
 
@@ -63,8 +63,3 @@ def test_moving_a_schedule_frees_its_day(schedules):
     added = schedules.add(PART_TIME)
     schedules.update(added.model_copy(update={'valid_from': dt.date(2027, 4, 1)}))
     assert schedules.add(PART_TIME).valid_from == dt.date(2027, 3, 1)
-
-
-def test_replace_all_on_the_same_day(schedules):
-    replaced = schedules.replace_all(PART_TIME.model_copy(update={'valid_from': dt.date(2024, 6, 1)}))
-    assert schedules.all() == [replaced]

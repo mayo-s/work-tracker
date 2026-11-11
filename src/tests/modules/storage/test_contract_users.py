@@ -227,31 +227,29 @@ def test_a_used_setup_token_is_refused_the_second_time(storage):
         run(storage, lambda store: store.use_setup_token('hash', LOGIN))
 
 
-def test_two_factor_is_set_up_confirmed_and_switched_off(storage, klara):
-    def users(action):
-        return run(storage, lambda store: action(store.users()))
+def users(storage, action):
+    return run(storage, lambda store: action(store.users()))
 
+
+def test_two_factor_is_set_up_confirmed_and_switched_off(storage, klara):
     confirmed = TwoFactor(secret='ABC', enabled=True, last_step=7)
-    assert users(lambda repository: repository.two_factor(klara.id)) is None
-    users(lambda repository: repository.save_two_factor(klara.id, TwoFactor(secret='ABC')))
-    assert users(lambda repository: repository.get(klara.id)).two_factor is False  # not confirmed yet
-    users(lambda repository: repository.save_two_factor(klara.id, confirmed))
-    assert users(lambda repository: repository.two_factor(klara.id)) == confirmed
-    assert users(lambda repository: repository.get(klara.id)).two_factor is True
-    users(lambda repository: repository.save_two_factor(klara.id, None))
-    assert users(lambda repository: repository.two_factor(klara.id)) is None
+    assert users(storage, lambda repository: repository.two_factor(klara.id)) is None
+    users(storage, lambda repository: repository.save_two_factor(klara.id, TwoFactor(secret='ABC')))
+    assert users(storage, lambda repository: repository.get(klara.id)).two_factor is False  # not confirmed yet
+    users(storage, lambda repository: repository.save_two_factor(klara.id, confirmed))
+    assert users(storage, lambda repository: repository.two_factor(klara.id)) == confirmed
+    assert users(storage, lambda repository: repository.get(klara.id)).two_factor is True
+    users(storage, lambda repository: repository.save_two_factor(klara.id, None))
+    assert users(storage, lambda repository: repository.two_factor(klara.id)) is None
 
 
 def test_a_new_authenticator_app_is_kept_until_confirmed(storage, klara):
-    def users(action):
-        return run(storage, lambda store: action(store.users()))
-
     with_new_app = TwoFactor(secret='ABC', enabled=True, last_step=7, new_secret='DEF')
-    users(lambda repository: repository.save_two_factor(klara.id, with_new_app))
-    assert users(lambda repository: repository.two_factor(klara.id)) == with_new_app
-    users(lambda repository: repository.save_two_factor(klara.id, None))
-    users(lambda repository: repository.save_two_factor(klara.id, TwoFactor(secret='GHI')))
-    assert users(lambda repository: repository.two_factor(klara.id)).new_secret is None
+    users(storage, lambda repository: repository.save_two_factor(klara.id, with_new_app))
+    assert users(storage, lambda repository: repository.two_factor(klara.id)) == with_new_app
+    users(storage, lambda repository: repository.save_two_factor(klara.id, None))
+    users(storage, lambda repository: repository.save_two_factor(klara.id, TwoFactor(secret='GHI')))
+    assert users(storage, lambda repository: repository.two_factor(klara.id)).new_secret is None
 
 
 def test_root_sessions_end_after_an_hour_without_activity(storage):

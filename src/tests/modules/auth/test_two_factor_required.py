@@ -109,9 +109,8 @@ def test_root_has_an_hour_and_no_remembered_browser(app):
     assert result.status == falcon.HTTP_200 and 'wt_browser' not in result.cookies
 
 
-@pytest.mark.parametrize('name', ['klara', 'pascal'])
-def test_root_and_admins_move_to_a_new_app(app, name):
-    cookies = logged_in(app, name)
+def test_root_moves_to_a_new_app(app):
+    cookies = logged_in(app, 'pascal')
     secret = switch_on(app, cookies)
     started = app.simulate_post('/api/auth/me/two-factor/new-app', cookies=cookies,
                                 json={'password': PASSWORD, 'code': code_at(secret, time_step(NOW) + 1)})

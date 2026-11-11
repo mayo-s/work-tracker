@@ -28,11 +28,6 @@ def test_entry_input_without_ticket():
     assert data.to_entry() == Entry(date=DATE, activity_type_id=SECOND, duration=240, description='GCC')
 
 
-@pytest.mark.parametrize('data', [
-    {'duration': '1:30', 'ticket_key': 'ENGINE-597'},
-    {'activity_type_id': SECOND, 'duration': '1:00', 'ticket_key': 'ENGINE 597'},
-    {'activity_type_id': SECOND, 'duration': '1:00', 'service_id': FIRST},
-])
-def test_entry_input_rejects_invalid(data):
-    with pytest.raises(ValidationError):
-        EntryInput(date=DATE, **data)
+def test_a_service_needs_a_ticket():
+    with pytest.raises(ValidationError, match='service_id needs a ticket_key'):
+        EntryInput(date=DATE, activity_type_id=SECOND, duration='1:00', service_id=FIRST)

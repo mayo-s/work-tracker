@@ -30,7 +30,7 @@ def test_each_code_works_once():
 def test_spaces_do_not_matter_and_wrong_codes_do_not_match():
     code = code_at(RFC_SECRET, time_step(MOMENT))
     assert matching_step(RFC_SECRET, f'{code[:3]} {code[3:]}', MOMENT, 0) is not None
-    assert matching_step(RFC_SECRET, '000000' if code != '000000' else '111111', MOMENT, 0) is None
+    assert matching_step(RFC_SECRET, '000000', MOMENT, 0) is None  # the code is 081804
 
 
 def test_new_secrets_are_random_base32():

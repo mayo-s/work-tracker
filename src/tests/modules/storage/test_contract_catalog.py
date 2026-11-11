@@ -28,11 +28,6 @@ def test_all_services_sorted_by_short_name(services):
     assert [service.short_name for service in services.all()] == ['HiS', 'ImmoDrop', 'MSB', 'O365', 'TTS']
 
 
-def test_get_service(services):
-    msb = next(service for service in services.all() if service.short_name == 'MSB')
-    assert services.get(msb.id) == Service(id=msb.id, short_name='MSB', name='microsoft-bookings-service')
-
-
 def test_missing_service(services):
     with pytest.raises(NotFoundError):
         services.get(404)

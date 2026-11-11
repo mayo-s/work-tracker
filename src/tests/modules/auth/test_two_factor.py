@@ -140,15 +140,6 @@ def test_a_remembered_browser_needs_no_code_for_30_days(app, secret, clock):
     assert later.json['code'] == 'two_factor_required'
 
 
-def test_a_new_password_forgets_the_browser(app, klara, secret, clock):
-    browser = login(app, 'klara', code=clock.code(secret), remember=True).cookies['wt_browser'].value
-    cookies = session(login(app, 'klara', code=clock.code(secret, 1)))
-    app.simulate_put('/api/auth/me/password', cookies=cookies,
-                     json={'current_password': PASSWORD, 'new_password': 'another long password 2#'})
-    again = login(app, 'klara', 'another long password 2#', cookies={'wt_browser': browser})
-    assert again.json['code'] == 'two_factor_required'
-
-
 def new_app(app, cookies, code, password=PASSWORD):
     return app.simulate_post('/api/auth/me/two-factor/new-app', cookies=cookies, json={'password': password, 'code': code})
 

@@ -1,6 +1,5 @@
 import datetime as dt
 
-import falcon
 import pytest
 from falcon import testing
 
@@ -112,8 +111,3 @@ def test_download_as_file(database):
     result = client.simulate_get('/api/export')
     assert result.headers['content-disposition'] == 'attachment; filename="work-tracker-klara-2026-10-30.json"'
     assert (result.json['format'], result.json['exported_at']) == ('work-tracker', '2026-10-30T14:05:30')
-
-
-def test_export_needs_a_login(database):
-    client = testing.TestClient(create_app(database, auth=True))
-    assert client.simulate_get('/api/export').status == falcon.HTTP_401

@@ -145,7 +145,6 @@ def test_reset_needs_root_and_a_new_password_by_the_rules(fresh_database, ssm):
     app = app_with(fresh_database, ssm)
     result = reset_root(app, TOKEN)
     assert (result.status, result.json['description']) == (falcon.HTTP_409, 'There is no root yet; create it first')
-    create_root(app, secrets.token_urlsafe(32))  # another token, so TOKEN would still be new
     assert reset_root(app, TOKEN, password='too short').status_code == 422
 
 

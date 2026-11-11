@@ -77,4 +77,4 @@ def test_a_new_message_archives_the_due_ones(app, database, clock):
     with database.transaction() as conn:
         MessageRepository(conn).add(done)
     send(app)
-    assert stored(database)[0][0] != 'Klara Himmel'  # a color and an animal now
+    assert [email for _, email, _, _ in stored(database)] == ['', 'rainer.zufall@example.com']  # Klara's is erased

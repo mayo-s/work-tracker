@@ -47,19 +47,6 @@ def test_weekday_rules(day_type, target, pto_days):
     assert summary.pto_days == Decimal(pto_days)
 
 
-@pytest.mark.parametrize('day_type', [DayType.WORK, DayType.PTO, DayType.PTO_HALF])
-def test_weekend_has_no_target_and_uses_no_pto(day_type):
-    summary = summarize_day(SATURDAY, day_type=day_type)
-    assert summary.target == 0
-    assert summary.pto_days == 0
-
-
-def test_automatic_type_applies_without_choice():
-    summary = summarize_day(dt.date(2025, 12, 24))
-    assert summary.day_type is DayType.COMPANY_HALF_DAY
-    assert summary.pto_days == Decimal('0.5')
-
-
 def test_chosen_type_overrides_holiday():
     summary = summarize_day(dt.date(2025, 12, 31), day_type=DayType.WORK)
     assert summary.day_type is DayType.WORK

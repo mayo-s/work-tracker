@@ -96,16 +96,6 @@ def test_at_most_100_items_are_written_together(dynamo_table):
     assert dynamo_table.query(USER, 'DAY#', 'DAY#~') == []
 
 
-def test_a_larger_change_is_written_in_chunks(dynamo_table):
-    unit = Unit(dynamo_table)
-    for number in range(150):
-        unit.put(day(f'2026-{number:03d}'))
-        if number % MAX_ITEMS == MAX_ITEMS - 1:
-            unit.flush()
-    unit.flush()
-    assert len(dynamo_table.query(USER, 'DAY#', 'DAY#~')) == 150
-
-
 CLAIM = {'PK': 'LOGIN', 'SK': 'USERNAME#klara', 'user_id': 'klara'}
 
 

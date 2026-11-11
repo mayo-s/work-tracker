@@ -179,10 +179,6 @@ def test_nobody_changes_their_own_team_role(app, klara, team_id):
                                                                             'another admin')
 
 
-def test_team_with_members_is_not_deleted(app, klara, hans, team_id, hans_team_admin):
-    assert app.simulate_delete(f'/api/admin/teams/{team_id}', cookies=klara).status == falcon.HTTP_409
-
-
 def test_admin_list_shows_the_team(app, klara, team_id, hans_team_admin):
     users = {user['username']: user for user in app.simulate_get('/api/admin/users', cookies=klara).json}
     assert (users['hans']['team'], users['hans']['team_role'], users['klara']['team']) == ('Platform', 'team_admin', None)

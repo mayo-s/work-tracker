@@ -42,11 +42,6 @@ def test_root_downloads_the_whole_database_and_it_is_logged(app):
     assert app.simulate_get('/api/admin/audit', cookies=root).json[0]['action'] == 'backup_made'
 
 
-def test_only_root(app):
-    result = download(app, logged_in(app, 'klara'))
-    assert (result.status, result.json['description']) == (falcon.HTTP_403, 'Only root may do this')
-
-
 def test_the_passphrase_needs_12_characters(app):
     assert download(app, logged_in(app, 'pascal'), 'too short').status_code == 422
 
@@ -108,9 +103,10 @@ def test_a_file_that_cannot_be_read_is_refused_before_anything_changes(app, back
     assert len(app.simulate_get('/api/admin/users', cookies=root).json) == 2
 
 
-def test_only_root_restores(app, backup):
-    result = restore(app, logged_in(app, 'klara'), backup, confirm='purge')
-    assert (result.status, result.json['description']) == (falcon.HTTP_403, 'Only root may do this')
+def test_only_root_backs_up_and_restores(app, backup):
+    klara = logged_in(app, 'klara')
+    for result in (download(app, klara), restore(app, klara, backup, confirm='purge')):
+        assert (result.status, result.json['description']) == (falcon.HTTP_403, 'Only root may do this')
 
 
 def test_until_an_unfinished_restore_is_done_only_root_uses_the_app(app, database):

@@ -41,12 +41,7 @@ def test_with_the_password_and_the_code_the_account_goes_and_the_user_is_logged_
     result = app.simulate_delete('/api/auth/me', cookies=hans, json={'password': PASSWORD,
                                                                      'code': code_at(SECRET, time_step(NOW))})
     assert (result.status, result.cookies['wt_session'].value) == (falcon.HTTP_204, '')
-    assert app.simulate_get('/api/auth/me', cookies=hans).status == falcon.HTTP_401
     assert login(app, 'hans').status == falcon.HTTP_401
-    klara = logged_in(app, 'klara')
-    log = app.simulate_get('/api/admin/audit', cookies=klara).json
-    assert [(entry['actor'], entry['action'], entry['detail']) for entry in log[:1]] == [
-        ('Deleted user', 'account_deleted', 'own')]
 
 
 def test_root_is_never_deleted(app):

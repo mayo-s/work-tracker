@@ -48,17 +48,13 @@ def accept(storage, clock, user_id, invitation_id):
 def test_add_rename_and_list(teams, platform):
     teams.add(Team(name='Billing'))
     teams.rename(platform.model_copy(update={'name': 'Core'}))
-    assert [team.name for team in teams.all()] == ['Billing', 'Core']
+    teams.add(Team(name='Platform'))  # the old name is free
+    assert [team.name for team in teams.all()] == ['Billing', 'Core', 'Platform']
 
 
 def test_names_are_unique_ignoring_case(teams, platform):
     with pytest.raises(ConflictError):
         teams.add(Team(name='platform'))
-
-
-def test_a_renamed_team_frees_its_old_name(teams, platform):
-    teams.rename(platform.model_copy(update={'name': 'Core'}))
-    assert teams.add(Team(name='Platform')).name == 'Platform'
 
 
 def test_unknown_team(teams):
@@ -128,15 +124,19 @@ def test_team_with_members_cannot_be_deleted(teams, platform, klara_id):
         teams.delete(platform.id)
 
 
-def test_deleted_team_stays_in_the_history_and_frees_its_name(per_call, teams, platform, invitations, klara_id):
+def test_deleted_team_stays_in_the_history_and_frees_its_name(per_call, teams, platform, invitations, auditors, hans,
+                                                              klara_id):
     team_services = per_call(lambda store: store.team_services(platform.id))
     team_services.add(Service(short_name='AUTH'))
     invitations.invite(platform.id, 'hans.dampf@example.com', klara_id)
+    auditors.assign(auditor(platform.id, hans))
     teams.join(klara_id, platform.id)
     teams.leave(klara_id)
     teams.delete(platform.id)
     assert [m.team_name for m in teams.history(klara_id)] == ['Platform']
-    assert (teams.all(), invitations.of_team(platform.id), team_services.all()) == ([], [], [])
+    assert (teams.all(), invitations.of_team(platform.id), invitations.of_user(hans), team_services.all()) == (
+        [], [], [], [])
+    assert (auditors.all(), auditors.of_user(hans)) == ([], [])
     assert teams.add(Team(name='Platform')).id != platform.id
 
 
@@ -176,12 +176,6 @@ def test_another_users_invitation_is_unknown(storage, clock, invitations, platfo
     invitation_id = invitations.of_user(hans)[0].id
     with pytest.raises(NotFoundError):
         accept(storage, clock, klara_id, invitation_id)
-
-
-def test_invitations_of_a_deleted_team_are_gone(teams, invitations, platform, hans, klara_id):
-    invitations.invite(platform.id, 'hans.dampf@example.com', klara_id)
-    teams.delete(platform.id)
-    assert invitations.of_user(hans) == []
 
 
 def test_withdraw(invitations, platform, hans, klara_id):
@@ -276,12 +270,6 @@ def test_an_assignment_ends_after_its_last_day():
     assigned = auditor('team', 'hans', until=dt.date(2026, 11, 30))
     assert (assigned.active(dt.date(2026, 11, 30)), assigned.active(dt.date(2026, 12, 1))) == (True, False)
     assert auditor('team', 'hans').active(dt.date(2099, 1, 1))
-
-
-def test_deleting_a_team_ends_its_auditors(teams, auditors, platform, hans):
-    auditors.assign(auditor(platform.id, hans))
-    teams.delete(platform.id)
-    assert (auditors.all(), auditors.of_user(hans)) == ([], [])
 
 
 def test_all_teams_with_the_deleted_ones(teams, platform, clock):

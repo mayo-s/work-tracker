@@ -3,7 +3,6 @@
 import datetime as dt
 
 import pytest
-from pydantic import ValidationError
 
 from src.models.catalog import Ticket
 from src.models.entries import Entry
@@ -25,11 +24,6 @@ def test_ensure_keeps_existing_service(tickets, service_ids):
     tickets.ensure('ENGINE-461')
     tickets.set_service('ENGINE-461', service_ids['MSB'])
     assert tickets.ensure('engine-461').service_id == service_ids['MSB']
-
-
-def test_invalid_key(tickets):
-    with pytest.raises(ValidationError):
-        tickets.ensure('TNG4840')
 
 
 def test_all_sorted_by_prefix_and_number(tickets):

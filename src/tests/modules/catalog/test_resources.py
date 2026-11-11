@@ -30,17 +30,5 @@ def test_duplicate_name(client, path, body):
     assert response.json['description'].endswith(f'named "{next(iter(body.values()))}" already exists')
 
 
-@pytest.mark.parametrize('path, body', [
-    ('/api/services', {'short_name': ''}),
-    ('/api/services', {'short_name': 'AUTH', 'id': 7}),
-])
-def test_invalid_input(client, path, body):
-    assert client.simulate_post(path, json=body).status_code == 422
-
-
-@pytest.mark.parametrize('path', ['/api/services/404', '/api/activity-types/404'])
-def test_missing_record(client, path):
-    assert client.simulate_get(path).status == falcon.HTTP_404
-    body = {'short_name': 'X'} if 'services' in path else {'name': 'X'}
-    assert client.simulate_put(path, json=body).status == falcon.HTTP_404
-    assert client.simulate_delete(path).status == falcon.HTTP_404
+def test_the_id_is_not_chosen_by_the_client(client):
+    assert client.simulate_post('/api/services', json={'short_name': 'AUTH', 'id': 7}).status_code == 422

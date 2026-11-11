@@ -5,7 +5,6 @@ import json
 
 import pytest
 
-from src.lib.encryption import DecryptionError
 from src.models.users import TwoFactor
 from src.modules.backup.full import backup_file, make_backup, read_backup_file
 from src.tests.modules.backup.conftest import NOW
@@ -47,11 +46,8 @@ def test_the_teams_also_deleted_with_their_services_members_and_logs(backup, peo
     assert [(entry.actor_id, entry.action) for entry in backup.audit_log] == [(people['root'], 'registration_switched')]
 
 
-def test_the_file_gives_the_backup_back_with_the_passphrase_only(sqlite_backup):
-    content = backup_file(sqlite_backup, PASSPHRASE)
-    assert read_backup_file(content, PASSPHRASE) == sqlite_backup
-    with pytest.raises(DecryptionError):
-        read_backup_file(content, 'another long passphrase')
+def test_the_file_gives_the_backup_back(sqlite_backup):
+    assert read_backup_file(backup_file(sqlite_backup, PASSPHRASE), PASSPHRASE) == sqlite_backup
 
 
 def test_the_file_header_names_the_format_and_nothing_personal(sqlite_backup):

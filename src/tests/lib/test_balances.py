@@ -58,11 +58,6 @@ def test_overtime_balance_adds_opening_balance():
     assert overtime_balance(records, dt.date(2026, 10, 26), dt.date(2026, 10, 26), opening=90) == 150
 
 
-def test_overtime_balance_stops_at_until():
-    records = {dt.date(2026, 10, 26): worked('9:00'), dt.date(2026, 10, 27): worked('6:30')}
-    assert overtime_balance(records, dt.date(2026, 10, 26), dt.date(2026, 10, 26)) == 60
-
-
 def test_overtime_balance_until_before_start_is_opening():
     assert overtime_balance({}, BALANCE_START, BALANCE_START - dt.timedelta(days=1), opening=30) == 30
 

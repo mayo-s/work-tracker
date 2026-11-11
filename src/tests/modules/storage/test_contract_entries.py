@@ -12,9 +12,6 @@ from src.modules.storage.errors import ConflictError, NotFoundError
 MONDAY = dt.date(2026, 10, 26)
 NOW = dt.datetime(2026, 10, 28, 14, 5)
 
-# The rules both backends share (EntryRules) refuse before anything is stored: one backend is enough
-SHARED_RULE = pytest.mark.parametrize('storage', ['sqlite'], indirect=True)
-
 
 @pytest.fixture
 def entries(per_call, klara_id):

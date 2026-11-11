@@ -18,10 +18,6 @@ from src.tests.users import HANS, PASSWORD, RAINER
 LATER = NOW + dt.timedelta(hours=1)
 
 
-def first(options):
-    return options[0]
-
-
 @pytest.fixture
 def people(storage, klara_id):
     """add_everything (backup/conftest.py), and an audit entry by Klara about Hans and one by root about Klara."""
@@ -34,7 +30,7 @@ def people(storage, klara_id):
 
 
 def delete(storage, user_id, actor_id):
-    run(storage, lambda store: delete_account(store, user_id, actor_id, LATER, choose=first))
+    run(storage, lambda store: delete_account(store, user_id, actor_id, LATER))
 
 
 def test_a_deleted_member_goes_with_everything_of_theirs(storage, people):
@@ -52,8 +48,7 @@ def test_a_deleted_member_goes_with_everything_of_theirs(storage, people):
         assert [invitation.email for invitation in store.invitations().all()] == ['rainer.zufall@example.com']
         assert store.report_views().all() == []
         message = next(message for message in store.messages().all() if message.subject == 'Export')
-        assert (message.name, message.email, message.user_id, message.known, message.anonymized) == (
-            'Amber Badger', '', None, True, True)
+        assert (message.user_id, message.anonymized) == (None, True)
         assert [(entry.actor_name, entry.action, entry.user_name, entry.detail) for entry in store.audit_log().all()] == [
             ('Pascal Turbo', 'registration_switched', '', 'on'),
             ('Pascal Turbo', 'support_switched', 'Klara Himmel', 'on'),

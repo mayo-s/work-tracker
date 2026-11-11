@@ -20,7 +20,8 @@ def test_replace_all(years):
 
 
 def test_save_inserts_and_replaces(years):
-    changed = PtoYear(year=2026, allowance=Decimal(30), extra_days=Decimal(1), carried_over=Decimal(3), note='extra day')
+    changed = PtoYear(year=2026, allowance=Decimal('30.5'), extra_days=Decimal(1), carried_over=Decimal('-2.5'),
+                      note='extra day')  # carried over may be negative, and halves
     years.save(PtoYear(year=2030, allowance=Decimal(30)))
     years.save(changed)
     assert years.get(2026) == changed
@@ -42,9 +43,3 @@ def test_missing_year(years):
 def test_terms(years):
     years.save(PtoYear(year=2026, allowance=Decimal(30), extra_days=Decimal(1), carried_over=Decimal(3)))
     assert years.terms()[2026] == PtoTerms(Decimal(30), Decimal(1), Decimal(3))
-
-
-def test_carried_over_days_may_be_negative_and_halves(years):
-    year = PtoYear(year=2026, allowance=Decimal('30.5'), carried_over=Decimal('-2.5'))
-    years.save(year)
-    assert years.get(2026) == year

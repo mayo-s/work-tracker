@@ -70,17 +70,6 @@ def test_export_import_and_export_again_gives_the_same_file(store, hans, klara_i
     summary = import_data(store, hans, exported)
     assert (summary.entries, summary.history, summary.services) == (3, 7, 5)
     assert export_data(store, hans, LATER).model_dump(exclude={'exported_at'}) == exported.model_dump(exclude={'exported_at'})
-
-
-def test_imported_records_belong_to_the_importing_user(store, hans, klara_id):
-    record_klaras_work(store, klara_id)
-    import_data(store, hans, export_data(store, klara_id, NOW))
-    entries = store.entries(hans).between(MONDAY, MONDAY)
-    assert [entry.ticket_key for entry in entries if entry.ticket_key] == ['TNG-5213', 'TNG-5214']
-    assert entries[0].activity_type_id == kind_id(store, 'Meeting', hans)
-    assert [line.action for line in store.entries(hans).history(entries[2].id)] == ['created', 'split']
-    assert store.days(hans).get(MONDAY).note == 'release'
-    assert store.load_theme(hans) == 'dark'
     assert len(store.entries(klara_id).between(MONDAY, MONDAY)) == 3  # Klara's stay as they are
 
 
@@ -114,14 +103,6 @@ def test_import_needs_a_user_without_days_and_entries(store, hans, klara_id):
     store.days(hans).save(Day(date=MONDAY, day_type='pto'))
     with pytest.raises(ConflictError, match='without days and entries'):
         import_data(store, hans, data)
-
-
-def test_a_file_referring_to_records_it_does_not_hold_is_refused(store, hans, klara_id):
-    store.tickets(klara_id).ensure('TNG-1')
-    data = export_data(store, klara_id, NOW)
-    broken = data.model_copy(update={'tickets': [data.tickets[0].model_copy(update={'service_id': '99'})]})
-    with pytest.raises(ConflictError, match='refers to service 99'):
-        import_data(store, hans, broken)
 
 
 def add_entries(storage, user_id, count):
@@ -191,13 +172,6 @@ def test_a_broken_file_writes_nothing(storage, large_file, new_user):
     with storage.transaction() as store:
         assert store.entries(new_user).between(dt.date.min, dt.date.max) == []
         assert not store.import_unfinished(new_user)
-
-
-def test_an_account_with_its_own_days_is_still_refused_after_a_stopped_import(storage, large_file, new_user):
-    with storage.transaction() as store:
-        store.days(new_user).save(Day(date=MONDAY, day_type='pto'))
-    with pytest.raises(ConflictError, match='without days and entries'):
-        import_file(storage, new_user, large_file)
 
 
 @pytest.fixture

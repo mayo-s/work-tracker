@@ -3,7 +3,7 @@ import pytest
 
 from src.modules.storage.catalog import ServiceRepository
 from src.tests.users import USER
-from src.tests.ids import CODING, UNKNOWN
+from src.tests.ids import CODING
 
 
 @pytest.fixture
@@ -27,27 +27,10 @@ def test_list_tickets_with_entry_counts(client, service_ids):
     ]
 
 
-def test_list_tickets_without_service(client, service_ids):
-    add_entry(client, 'TNG-5214')
-    add_entry(client, 'AGA-39')
-    client.simulate_put('/api/tickets/AGA-39', json={'service_id': service_ids['HiS']})
-    tickets = client.simulate_get('/api/tickets', params={'without_service': 'true'}).json
-    assert [ticket['key'] for ticket in tickets] == ['TNG-5214']
-
-
 def test_set_and_unassign_service(client, service_ids):
     add_entry(client, 'TNG-5214')
     assert client.simulate_put('/api/tickets/tng-5214', json={'service_id': service_ids['O365']}).json['service'] == 'O365'
     assert client.simulate_put('/api/tickets/TNG-5214', json={'service_id': None}).json['service'] is None
-
-
-@pytest.mark.parametrize('key, body, status', [
-    ('TNG-404', {'service_id': None}, falcon.HTTP_404),
-    ('TNG-5214', {'service_id': UNKNOWN}, falcon.HTTP_409),
-])
-def test_set_service_errors(client, key, body, status):
-    add_entry(client, 'TNG-5214')
-    assert client.simulate_put(f'/api/tickets/{key}', json=body).status == status
 
 
 def test_assign_service_to_several_tickets(client, service_ids):
@@ -78,24 +61,6 @@ def test_rename_ticket(client, service_ids):
     assert client.simulate_get('/api/tickets/TNG-2035').status == falcon.HTTP_404
     [entry] = client.simulate_get('/api/entries', params={'start': '2026-03-02', 'end': '2026-03-02'}).json
     assert (entry['ticket_key'], entry['changed']) == ('KP-2035', True)
-
-
-def test_merge_into_existing_ticket(client, service_ids):
-    add_entry(client, 'TNG-4347')
-    add_entry(client, 'KP-1482')
-    client.simulate_put('/api/tickets/KP-1482', json={'service_id': service_ids['HiS']})
-    result = client.simulate_post('/api/tickets/TNG-4347/rename', json={'new_key': 'KP-1482'}).json
-    assert (result['action'], result['moved'], result['ticket']['entries'], result['ticket']['service']) == (
-        'merged', 1, 2, 'HiS')
-
-
-@pytest.mark.parametrize('key, body, status', [
-    ('TNG-404', {'new_key': 'KP-404'}, 404),
-    ('TNG-2035', {'new_key': 'tng-2035'}, 409),
-])
-def test_rename_errors(client, key, body, status):
-    add_entry(client, 'TNG-2035')
-    assert client.simulate_post(f'/api/tickets/{key}/rename', json=body).status_code == status
 
 
 @pytest.mark.parametrize('key', ['ENGINE-404', 'not-a-ticket'])

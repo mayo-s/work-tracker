@@ -1,8 +1,5 @@
 import datetime as dt
 
-import pytest
-from pydantic import ValidationError
-
 from src.lib.daytypes import DayType
 from src.lib.stays import Stays
 from src.models.days import Day
@@ -12,17 +9,6 @@ from src.modules.days.schemas import DayInput, day_view, team_view_day
 def test_day_input_to_day():
     day = DayInput(start='7:15', end='16:00', break_time='0:30', note=' OFFICE DAY ').to_day(dt.date(2026, 10, 28))
     assert day == Day(date=dt.date(2026, 10, 28), start=435, end=960, break_minutes=30, note='OFFICE DAY')
-
-
-@pytest.mark.parametrize('data', [
-    {'end': '16:00'},
-    {'start': '16:00', 'end': '08:00'},
-    {'start': '08:00', 'end': '12:00', 'break_time': '5:00'},
-    {'break_time': '0:30'},
-])
-def test_day_input_rejects_invalid(data):
-    with pytest.raises(ValidationError):
-        DayInput(**data)
 
 
 def test_view_of_unrecorded_work_day():

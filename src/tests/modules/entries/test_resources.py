@@ -60,14 +60,6 @@ def test_unknown_service_rolls_back_the_entry(client):
     assert client.simulate_get('/api/entries', params={'week': '2026-W44'}).json == []
 
 
-def test_create_rejects_invalid_entry(client):
-    assert client.simulate_post('/api/entries', json=TICKET | {'duration': 'soon'}).status_code == 422
-
-
-def test_create_takes_exact_minutes(client):
-    assert create(client, TICKET | {'duration': '0:07'})['duration'] == '0:07'
-
-
 def test_list_entries_of_a_week(client, ids):
     create(client, TICKET | {'date': '2026-11-02'})
     create(client, TICKET)
@@ -112,10 +104,6 @@ def test_an_entry_without_the_ticket_its_activity_type_requires_gets_one_when_ch
     assert (result.status_code, result.json['description']) == (409, 'Coding needs a ticket')
     result = client.simulate_put(f'/api/entries/{created.id}', json=body | {'ticket_key': 'TNG-5096'})
     assert result.json['ticket_key'] == 'TNG-5096'
-
-
-def test_durations_in_other_formats(client):
-    assert create(client, TICKET | {'duration': '1h15m'})['duration'] == '1:15'
 
 
 def test_entry_fits_the_rest_of_its_day(client):

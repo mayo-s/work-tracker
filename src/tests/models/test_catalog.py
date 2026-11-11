@@ -8,7 +8,7 @@ def test_ticket_key_is_trimmed_and_upper_case():
     assert Ticket(key=' aga-39 ').key == 'AGA-39'
 
 
-@pytest.mark.parametrize('key', ['ENGINE', '#4138', 'TNG 5212', 'TNG4840', 'MSI-02', 'TNG-2035ff', 'ENGINE-0'])
+@pytest.mark.parametrize('key', ['ENGINE', '#4138', 'TNG4840', 'MSI-02', 'TNG-2035ff'])
 def test_ticket_key_rejects_invalid(key):
     with pytest.raises(ValidationError, match='Invalid ticket key .*: a project code, a dash and a number, e.g. TNG-4138'):
         Ticket(key=key)

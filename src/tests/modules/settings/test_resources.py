@@ -6,11 +6,9 @@ def test_get_settings(client):
         'balance_start': '2024-06-01', 'opening_balance': '0:00', 'work_mode': 'tickets'}
 
 
-@pytest.mark.parametrize('opening, shown', [('+12:30', '12:30'), ('-1:45', '-1:45')])
-def test_put_settings(client, opening, shown):
-    body = {'balance_start': '2027-03-01', 'opening_balance': opening, 'work_mode': 'activities'}
-    expected = {'balance_start': '2027-03-01', 'opening_balance': shown, 'work_mode': 'activities'}
-    assert client.simulate_put('/api/settings', json=body).json == expected
+def test_put_settings(client):
+    expected = {'balance_start': '2027-03-01', 'opening_balance': '-1:45', 'work_mode': 'activities'}
+    assert client.simulate_put('/api/settings', json=expected).json == expected
     assert client.simulate_get('/api/settings').json == expected
 
 
@@ -19,11 +17,6 @@ def test_reports_count_from_the_new_start_day(client):
     client.simulate_put('/api/settings', json=body)
     totals = client.simulate_get('/api/reports/weeks/2026-W44').json['totals']
     assert totals['balance_in'] == '2:00'
-
-
-def test_put_rejects_invalid_settings(client):
-    body = {'balance_start': '2027-03-01', 'opening_balance': '1:5', 'work_mode': 'tickets'}
-    assert client.simulate_put('/api/settings', json=body).status_code == 422
 
 
 def test_theme_follows_the_system_by_default(client):

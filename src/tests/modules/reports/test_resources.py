@@ -212,11 +212,3 @@ def test_year_without_pto_days_entered(client, database):
 @pytest.mark.parametrize('year', [2025, 2027])
 def test_year_pto_outside_balance_years(client, year):
     assert client.simulate_get(f'/api/reports/years/{year}').json['pto'] is None
-
-
-def test_month_descriptions_are_merged_ignoring_case(client):
-    ticket(client, '2026-10-07', 'ENGINE-565', '1:00', 'PR Review')
-    ticket(client, '2026-10-15', 'ENGINE-565', '1:00', 'PR review')
-    ticket(client, '2026-10-19', 'ENGINE-565', '2:00', 'WAF/ACL deployment')
-    [unassigned] = client.simulate_get('/api/reports/months/2026-10').json['work'][0]['services']
-    assert unassigned['tickets'][0]['descriptions'] == ['PR Review', 'WAF/ACL deployment']

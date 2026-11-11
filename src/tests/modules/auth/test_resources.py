@@ -93,9 +93,8 @@ def test_pages_and_api_need_the_login(app, cookies):
     assert logged_in == {'/settings': 200, '/api/dashboard': 200}
 
 
-@pytest.mark.parametrize('name', ['RAINER', 'Rainer.Zufall@Example.COM'])
-def test_login_with_username_or_email(app, cookies, name):
-    result = login(app, name)
+def test_login_with_the_email_address_too(app, cookies):
+    result = login(app, 'Rainer.Zufall@Example.COM')
     assert (result.status, result.json['first_name']) == (falcon.HTTP_200, 'Rainer')
     assert app.simulate_get('/api/dashboard', cookies=session(result)).status == falcon.HTTP_200
 

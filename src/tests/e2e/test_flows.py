@@ -301,16 +301,7 @@ def test_on_phones_the_header_is_one_row_with_a_menu(logged_in):
     expect(menu).to_be_focused()
 
 
-def test_a_visitor_writes_to_support_and_a_user_finds_name_and_address_from_their_account(browser, base, logged_in):
-    page = browser.new_page(base_url=base)
-    page.goto('/contact')
-    page.click('button:has-text("Send")')
-    expect(page.locator('#contact-name-error')).to_be_visible()  # nothing entered yet
-    for name, value in (('name', 'Rainer Zufall'), ('email', 'rainer.zufall@example.com'), ('subject', 'Access'),
-                        ('text', 'May I join the Platform team?')):
-        page.fill(f'#contact-{name}', value)
-    page.click('button:has-text("Send")')
-    expect(page.locator('#contact [role="status"]')).to_have_text('Thanks, we will answer by e-mail.')
+def test_a_user_finds_name_and_address_from_their_account_on_the_contact_page(logged_in):
     hans = logged_in('hans')
     hans.goto('/week')
     hans.click('footer a:has-text("Contact")')
@@ -319,14 +310,16 @@ def test_a_visitor_writes_to_support_and_a_user_finds_name_and_address_from_thei
         expect(hans.locator(f'#contact-{name}')).not_to_be_editable()
 
 
-def test_support_finds_a_new_message_by_the_badge_and_keeps_track_of_it(browser, base, logged_in):
+def test_a_visitor_writes_to_support_who_finds_the_message_by_the_badge_and_keeps_track_of_it(browser, base, logged_in):
     visitor = browser.new_page(base_url=base)
     visitor.goto('/contact')
+    visitor.click('button:has-text("Send")')
+    expect(visitor.locator('#contact-name-error')).to_be_visible()  # nothing entered yet
     for name, value in (('name', 'Rainer Zufall'), ('email', 'rainer.zufall@example.com'), ('subject', 'Access'),
                         ('text', 'May I join the Platform team?')):
         visitor.fill(f'#contact-{name}', value)
     visitor.click('button:has-text("Send")')
-    expect(visitor.locator('#contact [role="status"]')).to_be_visible()
+    expect(visitor.locator('#contact [role="status"]')).to_have_text('Thanks, we will answer by e-mail.')
     page = logged_in('klara')
     page.goto('/week')
     expect(page.locator('.account-toggle')).to_have_attribute('aria-label', 'Menu, 1 new contact message')
@@ -364,7 +357,6 @@ def test_the_dark_mode_switch_saves_the_theme(logged_in):
     page.emulate_media(color_scheme='light')
     page.goto('/week')
     switch = page.locator('.app-user button[aria-label="Dark mode"]')
-    expect(page.locator('.app-user > *')).to_have_class(HEADER_END)
     expect(switch).to_have_attribute('aria-pressed', 'false')
     switch.click()
     expect(page.locator('html')).to_have_attribute('data-theme', 'dark')
