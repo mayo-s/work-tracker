@@ -144,6 +144,27 @@ def test_root_stays_as_it_is(app, klara, root_id):
     assert (result.status, result.json['description']) == (falcon.HTTP_409, "Root's password is changed in its own settings")
 
 
+def test_admins_delete_a_deactivated_user_with_a_question_first_root_a_deactivated_admin(app, root, klara, hans_id):
+    def delete(cookies, user_id):
+        result = app.simulate_delete(f'/api/admin/users/{user_id}', cookies=cookies)
+        return result.status, (result.json or {}).get('description')
+
+    assert delete(klara, hans_id) == (falcon.HTTP_409, 'Deactivate the account first')
+    change(app, klara, hans_id, active=False)
+    assert delete(root, hans_id) == (falcon.HTTP_403, 'Only admins for users may delete them')
+    assert delete(klara, USER) == (falcon.HTTP_409, 'Delete your own account in your settings')
+    assert delete(klara, hans_id) == (falcon.HTTP_204, None)
+    assert [user['username'] for user in app.simulate_get('/api/admin/users', cookies=klara).json] == ['klara', 'pascal']
+    assert login(app, 'hans').status == falcon.HTTP_401
+    change(app, root, USER, role='admin', active=False)
+    assert delete(root, USER) == (falcon.HTTP_204, None)
+
+
+def test_root_is_never_deleted(app, klara, root_id):
+    result = app.simulate_delete(f'/api/admin/users/{root_id}', cookies=klara)
+    assert (result.status, result.json['description']) == (falcon.HTTP_409, 'Root runs the app and is never deleted')
+
+
 def test_nobody_is_made_root(app, klara, hans_id):
     body = {'role': 'root', 'active': True}
     assert app.simulate_put(f'/api/admin/users/{hans_id}', cookies=klara, json=body).status_code == 422

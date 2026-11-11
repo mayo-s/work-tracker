@@ -3,6 +3,7 @@
 
 from src.models.audit import AuditEntry
 from src.models.base import new_id
+from src.models.users import DELETED_USER
 from src.modules.storage.dynamodb.keys import USERS, user_partition
 from src.modules.storage.dynamodb.memberships import team_item
 from src.modules.storage.dynamodb.table import Item, attributes
@@ -39,9 +40,10 @@ class DynamoAuditLog:
 
     def _entry(self, item: Item) -> AuditEntry:
         team = team_item(self._unit, item['team_id']) if item['team_id'] else None
-        return AuditEntry(**attributes(item), actor_name=self._name(item['actor_id']), user_name=self._name(item['user_id']),
-                          team_name=team['name'] if team else '')
+        return AuditEntry(**attributes(item), actor_name=self._name(item['actor_id']) or DELETED_USER,
+                          user_name=self._name(item['user_id']), team_name=team['name'] if team else '')
 
     def _name(self, user_id: str | None) -> str:
+        """The user's name; empty without a user or for a deleted account."""
         profile = self._unit.get(USERS, f'USER#{user_id}') if user_id else None
         return f'{profile["first_name"]} {profile["last_name"]}'.strip() if profile else ''

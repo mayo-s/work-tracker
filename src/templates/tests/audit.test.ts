@@ -45,6 +45,12 @@ test('changes to the own login', () => {
   assert.equal(auditText({ ...own, action: 'recovery_codes_renewed' }), 'Hans Dampf made new recovery codes');
 });
 
+test('a deleted account, without whose', () => {
+  const deleted = { ...ENTRY, action: 'account_deleted' as const, user: null, detail: '' };
+  assert.equal(auditText({ ...deleted, actor: 'Klara Himmel' }), 'Klara Himmel deleted an account');
+  assert.equal(auditText({ ...deleted, actor: 'Deleted user', detail: 'own' }), 'Deleted user deleted their account');
+});
+
 test('a full backup', () => {
   assert.equal(auditText({ ...ENTRY, action: 'backup_made', user: null, detail: '' }), 'Pascal Turbo downloaded a full backup');
   assert.equal(auditText({ ...ENTRY, action: 'backup_restored', user: null, detail: '' }), 'Pascal Turbo restored a full backup');

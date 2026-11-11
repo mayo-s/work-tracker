@@ -680,4 +680,60 @@ MIGRATIONS: tuple[Migration, ...] = (
     ALTER TABLE contact_messages ADD COLUMN known INTEGER NOT NULL DEFAULT 0 CHECK (known IN (0, 1));
     UPDATE contact_messages SET known = 1 WHERE user_id IS NOT NULL;
     """,
+    # 29: accounts can be deleted (TASKS.md L.20, SPEC 5.7): who made a change, looked at a report, sent an invitation or
+    # assigned an auditor may be a deleted account ("Deleted user"), so these ids no longer refer to users
+    """
+    CREATE TABLE new_audit_log (
+        id       TEXT NOT NULL PRIMARY KEY,
+        at       TEXT NOT NULL,
+        actor_id TEXT NOT NULL,  -- may be a deleted account
+        action   TEXT NOT NULL,  -- AuditAction (src/models/audit.py)
+        user_id  TEXT REFERENCES users (id),  -- whose account it is about
+        team_id  TEXT REFERENCES teams (id),
+        detail   TEXT NOT NULL DEFAULT ''  -- e.g. the new role, 'on' or 'off', a team's former name
+    );
+    INSERT INTO new_audit_log SELECT id, at, actor_id, action, user_id, team_id, detail FROM audit_log;
+    DROP TABLE audit_log;
+    ALTER TABLE new_audit_log RENAME TO audit_log;
+    CREATE INDEX audit_log_by_time ON audit_log (at);
+    CREATE INDEX audit_log_by_user ON audit_log (user_id, at);
+
+    CREATE TABLE new_report_views (
+        id        TEXT NOT NULL PRIMARY KEY,
+        member_id TEXT NOT NULL REFERENCES users (id),
+        viewer_id TEXT NOT NULL,  -- may be a deleted account
+        report    TEXT NOT NULL CHECK (report IN ('dashboard', 'week', 'month', 'year')),
+        period    TEXT NOT NULL DEFAULT '',  -- e.g. 2026-W44, 2026-10, 2026; empty for the dashboard
+        viewed_at TEXT NOT NULL
+    );
+    INSERT INTO new_report_views SELECT id, member_id, viewer_id, report, period, viewed_at FROM report_views;
+    DROP TABLE report_views;
+    ALTER TABLE new_report_views RENAME TO report_views;
+    CREATE INDEX report_views_by_member ON report_views (member_id, viewed_at);
+
+    CREATE TABLE new_team_invitations (
+        id         TEXT NOT NULL PRIMARY KEY,
+        team_id    TEXT NOT NULL REFERENCES teams (id) ON DELETE CASCADE,
+        email      TEXT NOT NULL COLLATE NOCASE,  -- no user id: an invitation does not tell whether the user exists
+        invited_by TEXT NOT NULL,  -- may be a deleted account
+        invited_at TEXT NOT NULL,
+        UNIQUE (team_id, email)
+    );
+    INSERT INTO new_team_invitations SELECT id, team_id, email, invited_by, invited_at FROM team_invitations;
+    DROP TABLE team_invitations;
+    ALTER TABLE new_team_invitations RENAME TO team_invitations;
+
+    CREATE TABLE new_team_auditors (
+        team_id     TEXT NOT NULL REFERENCES teams (id),
+        user_id     TEXT NOT NULL REFERENCES users (id),
+        until       TEXT,  -- the last day; NULL: until removed
+        assigned_by TEXT NOT NULL,  -- may be a deleted account
+        assigned_at TEXT NOT NULL,
+        PRIMARY KEY (team_id, user_id)
+    );
+    INSERT INTO new_team_auditors SELECT team_id, user_id, until, assigned_by, assigned_at FROM team_auditors;
+    DROP TABLE team_auditors;
+    ALTER TABLE new_team_auditors RENAME TO team_auditors;
+    CREATE INDEX team_auditors_by_user ON team_auditors (user_id);
+    """,
 )

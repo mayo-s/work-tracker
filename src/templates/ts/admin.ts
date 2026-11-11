@@ -221,7 +221,30 @@ function teamRoleCell(user: AdminUserView, canEdit: boolean, page: Page): HTMLTa
   return el('td', {}, select);
 }
 
-/** Active or deactivated, chosen in place if `canEdit`; a deactivation asks first. */
+/** Whether the typed confirmation is the username (ignoring surrounding spaces). */
+export function confirmsDeletion(user: AdminUserView, typed: string): boolean {
+  return typed.trim() === user.username;
+}
+
+/** Deletes a deactivated user's account (SPEC 5.7, GDPR Art. 17) once the viewer typed the username in the dialog. */
+async function deleteUser(user: AdminUserView, page: Page): Promise<void> {
+  const typed = el('input', { id: 'delete-confirm', autocomplete: 'off' });
+  const go = await ask(`Delete ${user.username}`, [
+    `The account goes with all records of ${user.username}, their team memberships and the log about them; their `
+    + 'contact messages are anonymized. In other people\'s records they become "Deleted user". This cannot be undone.',
+    field('delete', 'confirm', `Type ${user.username} to confirm`, typed)],
+  [{ label: 'Delete account', value: true, primary: true }]);
+  if (!go) {
+    return;
+  }
+  if (!confirmsDeletion(user, typed.value)) {
+    page.fail(new ApiError(422, `Type ${user.username} to delete the account.`, null));
+    return;
+  }
+  api.deleteAdminUser(user.id).then(() => page.reload(`Deleted ${user.username}`), page.fail);
+}
+
+/** Active or deactivated, chosen in place if `canEdit`; a deactivation asks first. A deactivated user can be deleted. */
 function statusCell(user: AdminUserView, canEdit: boolean, page: Page): HTMLTableCellElement {
   const badge = [
     user.active && user.must_change_password ? el('span', { class: 'badge admin-badge' }, 'One-time password') : '',
@@ -243,7 +266,9 @@ function statusCell(user: AdminUserView, canEdit: boolean, page: Page): HTMLTabl
     api.updateAdminUser(user.id, userInput(user, { active }))
       .then(() => page.reload(`${active ? 'Reactivated' : 'Deactivated'} ${user.username}`), page.fail);
   });
-  return el('td', {}, select, ...badge);
+  const remove = user.active ? '' : button('Delete', () => void deleteUser(user, page),
+    { class: 'button-small button-danger', 'aria-label': `Delete ${user.username}` });
+  return el('td', {}, select, remove, ...badge);
 }
 
 /** Whether the user answers the messages of the contact page (SPEC 5.14), switched in place if `canEdit`. */
@@ -344,10 +369,11 @@ function userRow(user: AdminUserView, viewer: Viewer, me: string | undefined, pa
 
 const USERS_HINT: Record<Viewer, string> = {
   root: 'You appoint and remove admins (Role) and look after them: their status, and a one-time password below. Admins '
-    + 'look after everyone else and the teams. A deactivated user is logged out and cannot log in; their data is kept. '
-    + 'Root tracks no work and sees nobody\'s days or entries.',
+    + 'look after everyone else and the teams. A deactivated user is logged out and cannot log in; their data is kept until '
+    + 'you delete the account, e.g. when they ask for it. Root tracks no work and sees nobody\'s days or entries.',
   admin: 'You give team roles and look after the users: their status, and a one-time password below; root appoints the '
-    + 'admins and looks after them. A deactivated user is logged out and cannot log in; their data is kept. The team role '
+    + 'admins and looks after them. A deactivated user is logged out and cannot log in; their data is kept until you delete '
+    + 'the account, e.g. when they ask for it. The team role '
     + 'belongs to the team: a team admin, admin or user, manages the team they are in (its members, invitations and '
     + 'services) and sees its members\' reports; leaving the team ends it. Support answers the messages of the contact '
     + 'page; you can also make yourself support. Otherwise nobody changes their own row.',

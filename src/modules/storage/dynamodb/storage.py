@@ -14,7 +14,7 @@ from src.modules.storage.dynamodb.entry_kinds import to_one_kind
 from src.modules.storage.dynamodb.flag_removal import drop_flags
 from src.modules.storage.dynamodb.keys import APP, META, SCHEMA, user_partition
 from src.modules.storage.dynamodb.messages import DynamoMessages
-from src.modules.storage.dynamodb.purge import purge
+from src.modules.storage.dynamodb.purge import delete_user, purge
 from src.modules.storage.dynamodb.renames import rename_ticket
 from src.modules.storage.dynamodb.schedules import DynamoPtoYears, DynamoSchedules
 from src.modules.storage.dynamodb.table import Table
@@ -143,6 +143,10 @@ class DynamoStore:
     def use_setup_token(self, token_hash: str, at: dt.datetime) -> None:
         """Marks the setup token used (by its hash): it works only once (409 for a second time)."""
         self._unit.put({'PK': APP, 'SK': f'TOKEN#{token_hash}', 'used_at': at.isoformat()}, unique=USED_TOKEN)
+
+    def delete_user(self, user_id: str) -> None:
+        """The user goes with everything of theirs (in chunks)."""
+        delete_user(self._unit, user_id)
 
     def purge(self, root_id: str) -> None:
         """Everything but root goes (in chunks), before a full backup is restored."""

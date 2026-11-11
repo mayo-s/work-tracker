@@ -13,18 +13,20 @@ AuditAction = Literal[
     'registration_switched', 'team_created', 'team_renamed', 'team_deleted', 'member_removed', 'auditor_assigned',
     'auditor_removed', 'root_login_reset', 'two_factor_reset', 'password_changed', 'two_factor_on', 'two_factor_off',
     'two_factor_new_app', 'recovery_codes_renewed', 'backup_made', 'backup_restored', 'support_switched',
+    'account_deleted',
 ]
 
 
 class AuditEntry(DomainModel):
-    """One change; the names are filled in when the log is read (users are never deleted, teams stay)."""
+    """One change; the names are filled in when the log is read (a deleted account's is "Deleted user", teams stay)."""
 
     actor_id: str
     action: AuditAction
     user_id: str | None = Field(default=None, description='Whose account the change is about')
     team_id: str | None = None
     detail: str = Field(default='', description="e.g. the new role, 'on' or 'off', a team's former name, an auditor's "
-                                                "last day, 'command' for a password set with the set-password command")
+                                                "last day, 'command' for a password set with the set-password command, "
+                                                "'own' for an account its user deleted")
     at: dt.datetime
     actor_name: str = ''
     user_name: str = ''

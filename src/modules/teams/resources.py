@@ -10,11 +10,12 @@ from spectree import Response
 
 from src.models.catalog import Service, ServiceChoice
 from src.models.teams import Auditor, Member
+from src.models.users import User
 from src.modules.admin.audit import record
 from src.modules.auth.sessions import current_user
 from src.modules.catalog.resources import ServiceInput
 from src.modules.storage.errors import NotFoundError
-from src.modules.storage.store import Storage, Store
+from src.modules.storage.store import Storage, Store, Users
 from src.modules.teams.schemas import (
     AuditedMember, AuditedTeam, AuditorNote, InvitationInput, InvitationSent, InvitationView, MemberView, MyInvitationView,
     MyTeamView, ReportViewEntry, StayView, TeamPageView, TeamRef,
@@ -184,13 +185,21 @@ class ServiceChoices:
             resp.media = store.services(current_user(req)).choices()
 
 
+def _user(users: Users, user_id: str) -> User | None:
+    """The user, or None for a deleted account."""
+    try:
+        return users.get(user_id)
+    except NotFoundError:
+        return None
+
+
 def my_team(store: Store, user_id: str, today: dt.date) -> MyTeamView:
     teams, users = store.teams(), store.users()
     membership = teams.membership(user_id)
     members = teams.members(membership.team_id) if membership else []
     return MyTeamView(
         team=TeamRef.of(membership) if membership else None,
-        invitations=[MyInvitationView.of(invitation, users.get(invitation.invited_by))
+        invitations=[MyInvitationView.of(invitation, _user(users, invitation.invited_by))
                      for invitation in store.invitations().of_user(user_id)],
         team_admins=_team_admin_names(members, user_id),
         auditors=[AuditorNote.of(auditor) for auditor in _auditors_of_my_teams(store, user_id, today)],

@@ -268,6 +268,7 @@ export const api = {
   saveProfile: (input: ProfileInput) => request<UserView>('PUT', '/api/auth/me', input),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<void>('PUT', '/api/auth/me/password', { current_password: currentPassword, new_password: newPassword }),
+  deleteAccount: (password: string, code: string) => request<void>('DELETE', '/api/auth/me', { password, code }),
 
   adminUsers: () => request<AdminUserView[]>('GET', '/api/admin/users'),
   adminAudit: () => request<AuditView[]>('GET', '/api/admin/audit'),
@@ -276,6 +277,7 @@ export const api = {
     request<OneTimePasswordView>('POST', `/api/admin/users/${segment(userId)}/one-time-password`),
   updateAdminUser: (id: string, input: AdminUserInput) =>
     request<AdminUserView>('PUT', `/api/admin/users/${segment(id)}`, input),
+  deleteAdminUser: (id: string) => request<void>('DELETE', `/api/admin/users/${segment(id)}`),
   adminSettings: () => request<AdminSettingsView>('GET', '/api/admin/settings'),
   saveAdminSettings: (input: AdminSettings) => request<AdminSettings>('PUT', '/api/admin/settings', input),
   adminTeams: () => request<AdminTeamView[]>('GET', '/api/admin/teams'),

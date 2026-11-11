@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { editable, passphraseError, restoredText, roleName, toBase64, userByEmail, userInput } from '../ts/admin.ts';
+import { confirmsDeletion, editable, passphraseError, restoredText, roleName, toBase64, userByEmail, userInput } from '../ts/admin.ts';
 import type { AdminUserView } from '../ts/api.ts';
 
 const HANS: AdminUserView = {
@@ -19,6 +19,11 @@ test('a change keeps the rest of the user', () => {
   const member = { ...HANS, team: 'Platform', team_role: 'member' as const };
   assert.deepEqual(userInput(member, { team_role: 'team_admin' }),
     { role: 'user', team_role: 'team_admin', active: true, support: false });
+});
+
+test('a deletion is confirmed by typing the exact username', () => {
+  assert.equal(confirmsDeletion(HANS, ' hans '), true);
+  assert.equal(confirmsDeletion(HANS, 'Hans'), false);
 });
 
 test('roles read as a sentence', () => {

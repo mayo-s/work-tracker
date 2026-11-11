@@ -609,7 +609,8 @@ export interface paths {
         /** Change username, e-mail address and name of the logged-in user. */
         put: operations["put__api_auth_me"];
         post?: never;
-        delete?: never;
+        /** Delete the own account with all its data (GDPR Art. 17), as an admin deletes one (DELETE /api/admin/users/{user_id}), and log out. With the current password and, with two-factor login on, a current code or a recovery code (403 if wrong; counts as a failed login, 429 after 5 within a minute). Not for root (409). */
+        delete: operations["delete__api_auth_me"];
         options?: never;
         head?: never;
         patch?: never;
@@ -751,7 +752,11 @@ export interface paths {
          */
         put: operations["put__api_admin_users_{user_id}"];
         post?: never;
-        delete?: never;
+        /**
+         * Delete a deactivated user's account with all their data (GDPR Art. 17), e.g. on their request: records, settings, memberships, auditor assignments, open invitations to their e-mail address, the log of looks at their reports and the audit log about them; their contact messages are anonymized. Where they appear in other people's records, they become "Deleted user". The audit log keeps that an account was deleted, not whose.
+         * @description Root for admins, admins for everyone else (403 otherwise). Never root, not the own account (deleted in the settings) and only once deactivated (409).
+         */
+        delete: operations["delete__api_admin_users_{user_id}"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1862,6 +1867,20 @@ export interface components {
              * @default
              */
             last_name?: string;
+        };
+        /** DeleteAccountInput */
+        DeleteAccountInput: {
+            /**
+             * Password
+             * @description The current password
+             */
+            password: string;
+            /**
+             * Code
+             * @description With two-factor login on: a current code of the authenticator app, or a recovery code
+             * @default
+             */
+            code?: string;
         };
         /** TwoFactorStatus */
         TwoFactorStatus: {
@@ -3318,7 +3337,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed" | "root_login_reset" | "two_factor_reset" | "password_changed" | "two_factor_on" | "two_factor_off" | "two_factor_new_app" | "recovery_codes_renewed" | "backup_made" | "backup_restored" | "support_switched";
+            action: "root_created" | "role_changed" | "team_role_changed" | "deactivated" | "reactivated" | "one_time_password" | "registration_switched" | "team_created" | "team_renamed" | "team_deleted" | "member_removed" | "auditor_assigned" | "auditor_removed" | "root_login_reset" | "two_factor_reset" | "password_changed" | "two_factor_on" | "two_factor_off" | "two_factor_new_app" | "recovery_codes_renewed" | "backup_made" | "backup_restored" | "support_switched" | "account_deleted";
             /**
              * User
              * @description Name of whose account it is about
@@ -4144,7 +4163,7 @@ export interface components {
             invited_at: string;
             /**
              * Invited By
-             * @description Name of the inviting admin
+             * @description Name of the inviting admin, "Deleted user" once their account is deleted
              */
             invited_by: string;
         };
@@ -6090,6 +6109,65 @@ export interface operations {
             };
         };
     };
+    delete__api_auth_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteAccountInput"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     put__api_auth_me_password: {
         parameters: {
             query?: never;
@@ -6576,6 +6654,57 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminUserView"];
                 };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "delete__api_admin_users_{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id (UUID) of the user */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Forbidden */
             403: {

@@ -1,11 +1,13 @@
 """Everything but root goes, before a full backup is restored (SPEC 5.9), in atomic chunks: every other user with their
 partition, login names and sessions, the teams with their members, invitations, services and auditors, the audit log,
 the failed logins and the messages of the contact page with their changes. Root (profile, settings, sessions), the app
-settings, the used setup tokens and the schema version stay."""
+settings, the used setup tokens and the schema version stay.
+
+A deleted account goes the same way, alone (SPEC 5.7, delete_user)."""
 
 from src.modules.storage.dynamodb.audit import AUDIT
 from src.modules.storage.dynamodb.keys import ATTEMPTS, LOGIN, USERS, user_partition
-from src.modules.storage.dynamodb.memberships import TEAMS, team_partition
+from src.modules.storage.dynamodb.memberships import MEMBERSHIP, TEAMS, team_partition
 from src.modules.storage.dynamodb.messages import MESSAGES, message_partition
 from src.modules.storage.dynamodb.table import Item
 from src.modules.storage.dynamodb.unit import Unit
@@ -24,6 +26,37 @@ def purge(unit: Unit, root_id: str) -> None:
         _delete(unit, _partition(unit, message_partition(message['id'])))
     for pk in (TEAMS, AUDIT, ATTEMPTS, MESSAGES):
         _delete(unit, _partition(unit, pk))
+
+
+def delete_user(unit: Unit, user_id: str) -> None:
+    """The user goes with everything of theirs, as on SQLite (owners.py), in atomic chunks; the profile and login names
+    go last, so deleting again finishes a deletion that stopped halfway. Their messages must be anonymized first."""
+    profile = unit.get(USERS, f'USER#{user_id}')
+    for invitation in unit.query_prefix(f'INVITES#{profile["email"].strip().lower()}', 'TEAM#'):
+        _delete(unit, [{'PK': team_partition(invitation['team_id']), 'SK': f'INVITE#{invitation["id"]}'}, invitation])
+    _forget_changes(unit, user_id)
+    _delete(unit, [item for item in _partition(unit, AUDIT) if item.get('user_id') == user_id])
+    _leave_teams(unit, user_id)
+    _purge_user(unit, profile)
+
+
+def _forget_changes(unit: Unit, user_id: str) -> None:
+    """Their status changes and notes on contact messages become "Support"'s."""
+    for message in unit.query_prefix(MESSAGES, 'MESSAGE#'):
+        for change in unit.query_prefix(message_partition(message['id']), 'CHANGE#'):
+            if change.get('actor_id') == user_id:
+                unit.make_room(1)
+                unit.put(change | {'actor_id': None})
+
+
+def _leave_teams(unit: Unit, user_id: str) -> None:
+    """Their stays in teams, current and former, and their auditor assignments go from the teams' partitions."""
+    pk = user_partition(user_id)
+    for stay in unit.query_prefix(pk, MEMBERSHIP):
+        _delete(unit, [{'PK': team_partition(stay['team_id']), 'SK': f'STAY#{stay["SK"].removeprefix(MEMBERSHIP)}'},
+                       {'PK': team_partition(stay['team_id']), 'SK': f'MEMBER#{user_id}'}])
+    _delete(unit, [{'PK': team_partition(item['team_id']), 'SK': f'AUDITOR#{user_id}'}
+                   for item in unit.query_prefix(pk, 'AUDITS#')])
 
 
 def _purge_team(unit: Unit, team_id: str) -> None:

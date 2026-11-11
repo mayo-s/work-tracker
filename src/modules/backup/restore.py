@@ -20,9 +20,9 @@ from src.modules.userdata.importing import check_references, import_data
 
 ROOM = 5  # the most items one record of the backup takes, e.g. a membership with its stay and member items
 # Where the backup refers to users and teams: (list, field)
-_USER_FIELDS = (('memberships', 'user_id'), ('auditors', 'user_id'), ('auditors', 'assigned_by'),
-                ('invitations', 'invited_by'), ('report_views', 'member_id'), ('report_views', 'viewer_id'),
-                ('audit_log', 'actor_id'), ('audit_log', 'user_id'), ('messages', 'user_id'), ('message_changes', 'actor_id'))
+# who assigned an auditor, sent an invitation, looked at a report or made a change may be a deleted account (SPEC 5.7)
+_USER_FIELDS = (('memberships', 'user_id'), ('auditors', 'user_id'), ('report_views', 'member_id'), ('audit_log', 'user_id'),
+                ('messages', 'user_id'), ('message_changes', 'actor_id'))
 _TEAM_FIELDS = (('memberships', 'team_id'), ('auditors', 'team_id'), ('invitations', 'team_id'), ('audit_log', 'team_id'))
 
 

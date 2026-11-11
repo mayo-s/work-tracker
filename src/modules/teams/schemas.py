@@ -6,7 +6,7 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRole
-from src.models.users import EMAIL_PATTERN, User
+from src.models.users import DELETED_USER, EMAIL_PATTERN, User
 
 
 class TeamInput(BaseModel):
@@ -77,12 +77,12 @@ class MyInvitationView(BaseModel):
     id: str
     team_name: str
     invited_at: dt.datetime
-    invited_by: str = Field(description='Name of the inviting admin')
+    invited_by: str = Field(description='Name of the inviting admin, "Deleted user" once their account is deleted')
 
     @classmethod
-    def of(cls, invitation: Invitation, inviter: User) -> Self:
+    def of(cls, invitation: Invitation, inviter: User | None) -> Self:
         return cls(id=invitation.id, team_name=invitation.team_name, invited_at=invitation.invited_at,
-                   invited_by=' '.join(filter(None, (inviter.first_name, inviter.last_name))))
+                   invited_by=inviter.full_name if inviter else DELETED_USER)
 
 
 class AuditorNote(BaseModel):

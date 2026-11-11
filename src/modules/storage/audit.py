@@ -4,11 +4,13 @@ import sqlite3
 
 from src.models.audit import AuditEntry
 from src.models.base import new_id
+from src.models.users import DELETED_USER
 
 _SELECT = (
-    "SELECT actor_id, action, user_id, team_id, detail, at, trim(actor.first_name || ' ' || actor.last_name) AS actor_name,"
+    "SELECT actor_id, action, user_id, team_id, detail, at,"
+    f" COALESCE(trim(actor.first_name || ' ' || actor.last_name), '{DELETED_USER}') AS actor_name,"
     " COALESCE(trim(about.first_name || ' ' || about.last_name), '') AS user_name, COALESCE(teams.name, '') AS team_name"
-    ' FROM audit_log JOIN users AS actor ON actor.id = actor_id LEFT JOIN users AS about ON about.id = user_id'
+    ' FROM audit_log LEFT JOIN users AS actor ON actor.id = actor_id LEFT JOIN users AS about ON about.id = user_id'
     ' LEFT JOIN teams ON teams.id = team_id'
 )
 

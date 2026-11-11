@@ -3,6 +3,7 @@
 import {
   api, ApiError, errorText, type NewUserInput, type ProfileInput, type TwoFactorSetup, type TwoFactorStatus, type UserView,
 } from './api.ts';
+import { ask } from './dialog.ts';
 import { el } from './dom.ts';
 import { field, submit } from './forms.ts';
 
@@ -99,11 +100,13 @@ export async function renderLoginPage(doc: Document): Promise<void> {
   };
   const intro = 'This database has no root yet. Root runs the app (registration, admins, backups) and tracks no work; '
     + 'create it once.';
+  const deleted = new URLSearchParams(doc.location.search).has('deleted')
+    ? [el('p', { class: 'review-status', role: 'status' }, 'Your account and all its data are deleted.')] : [];
   if (!status.has_users) {
     doc.querySelector('#login-title')!.textContent = 'Create root admin';
     root.replaceChildren(rootForm(status.setup_token ?? false, intro));
   } else {
-    root.replaceChildren(loginForm(error, fail, next, status.registration, status.root_reset ?? false),
+    root.replaceChildren(...deleted, loginForm(error, fail, next, status.registration, status.root_reset ?? false),
       ...(status.has_root ? [] : [el('h2', { class: 'account-heading' }, 'Create root admin'),
         rootForm(status.setup_token ?? false, intro)]),
       ...(status.root_reset ? [rootResetForm()] : []));
@@ -280,7 +283,39 @@ export function accountSection(user: UserView | null, enabled: boolean, reload: 
   }
   section.append(profileForm(user, reload), el('h3', { class: 'account-heading' }, 'Change password'), passwordForm(reload),
     el('h3', { class: 'account-heading' }, 'Two-factor login'), twoFactorPart(user, reload));
+  if (user.role !== 'root') {  // root runs the app and is never deleted
+    section.append(el('h3', { class: 'account-heading', id: 'delete-account' }, 'Delete account'), deleteAccountForm(user));
+  }
   return section;
+}
+
+/** Deletes the own account with all its data (SPEC 5.7, GDPR Art. 17), with the password and, with two-factor login on,
+ * a code, after a question; then on to the login page. */
+function deleteAccountForm(user: UserView): HTMLElement {
+  const password = el('input', { id: 'delete-account-password', type: 'password', autocomplete: 'current-password' });
+  const code = el('input', { id: 'delete-account-code', autocomplete: 'one-time-code' });
+  const form = el('form', { class: 'balance-form', novalidate: true },
+    field('delete-account', 'password', 'Current password', password),
+    user.two_factor ? field('delete-account', 'code', 'Code of your authenticator app', code,
+      'Six digits, or a recovery code.') : null,
+    el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'button-danger' }, 'Delete my account')));
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    void submit(form, 'delete-account', ['password', 'code'], async () => {
+      const go = await ask('Delete your account', ['Your account and all your data go now. This cannot be undone.'],
+        [{ label: 'Delete my account', value: true, primary: true }]);
+      if (go) {
+        await api.deleteAccount(password.value, code.value.trim());
+        window.location.assign('/login?deleted');
+      }
+    }, () => form.querySelectorAll('button').forEach((item) => (item.disabled = false)));  // e.g. after Cancel
+  });
+  return el('div', {},
+    el('p', {}, 'Your account goes with all your data: days, entries, tickets, settings, your team memberships and the '
+      + 'log about your account; your contact messages are anonymized. In other people\'s records you become "Deleted '
+      + 'user". This cannot be undone: export your data first if you want to keep it.'),
+    form);
 }
 
 /** On: the recovery codes left, new ones and (if not required) switching off, each with the password, and a new

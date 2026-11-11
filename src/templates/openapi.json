@@ -2355,6 +2355,52 @@
       }
     },
     "/api/auth/me": {
+      "delete": {
+        "summary": "Delete the own account with all its data (GDPR Art. 17), as an admin deletes one (DELETE /api/admin/users/{user_id}), and log out. With the current password and, with two-factor login on, a current code or a recovery code (403 if wrong; counts as a failed login, 429 after 5 within a minute). Not for root (409).",
+        "operationId": "delete__api_auth_me",
+        "description": "",
+        "tags": [
+          "Login"
+        ],
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountInput"
+              }
+            }
+          },
+          "required": true
+        }
+      },
       "get": {
         "summary": "The logged-in user.",
         "operationId": "get__api_auth_me",
@@ -2867,6 +2913,49 @@
       }
     },
     "/api/admin/users/{user_id}": {
+      "delete": {
+        "summary": "Delete a deactivated user's account with all their data (GDPR Art. 17), e.g. on their request: records, settings, memberships, auditor assignments, open invitations to their e-mail address, the log of looks at their reports and the audit log about them; their contact messages are anonymized. Where they appear in other people's records, they become \"Deleted user\". The audit log keeps that an account was deleted, not whose.",
+        "operationId": "delete__api_admin_users_{user_id}",
+        "description": "Root for admins, admins for everyone else (403 otherwise). Never root, not the own account (deleted in the settings) and only once deactivated (409).",
+        "tags": [
+          "Admin"
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id (UUID) of the user"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "put": {
         "summary": "Change a user's role, team role or support role, or deactivate (their sessions end, their data is kept) or reactivate them.",
         "operationId": "put__api_admin_users_{user_id}",
@@ -6213,6 +6302,30 @@
         "title": "ProfileInput",
         "type": "object"
       },
+      "DeleteAccountInput": {
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "description": "The current password",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          },
+          "code": {
+            "default": "",
+            "description": "With two-factor login on: a current code of the authenticator app, or a recovery code",
+            "maxLength": 20,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "DeleteAccountInput",
+        "type": "object"
+      },
       "TwoFactorStatus": {
         "properties": {
           "enabled": {
@@ -9146,7 +9259,8 @@
               "recovery_codes_renewed",
               "backup_made",
               "backup_restored",
-              "support_switched"
+              "support_switched",
+              "account_deleted"
             ],
             "title": "Action",
             "type": "string"
@@ -10860,7 +10974,7 @@
             "type": "string"
           },
           "invited_by": {
-            "description": "Name of the inviting admin",
+            "description": "Name of the inviting admin, \"Deleted user\" once their account is deleted",
             "title": "Invited By",
             "type": "string"
           }

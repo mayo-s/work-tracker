@@ -162,6 +162,30 @@ def test_an_admin_sets_a_one_time_password(logged_in):
     expect(page.locator('body')).to_contain_text('Set a one-time password for hans')
 
 
+def test_an_admin_deletes_a_deactivated_user_after_typing_the_username(logged_in):
+    page = logged_in('klara')
+    page.goto('/admin')
+    page.once('dialog', lambda dialog: dialog.accept())  # "Deactivate rainer?"
+    page.get_by_label('Status of rainer').select_option('deactivated')
+    page.get_by_role('button', name='Delete rainer').click()
+    dialog = page.locator('dialog')
+    expect(dialog.locator('h2')).to_have_text('Delete rainer')
+    dialog.get_by_label('Type rainer to confirm').fill('rainer')
+    dialog.locator('button:has-text("Delete account")').click()
+    expect(page.locator('body')).to_contain_text('Deleted rainer')
+    expect(page.locator('#users tr', has_text='rainer.zufall@example.com')).to_have_count(0)
+
+
+def test_a_user_deletes_their_own_account_in_the_settings(logged_in):
+    page = logged_in('hans')
+    page.goto('/settings#delete-account')
+    page.fill('#delete-account-password', PASSWORD)
+    page.click('button:has-text("Delete my account")')
+    page.locator('dialog button:has-text("Delete my account")').click()
+    expect(page).to_have_url(re.compile(r'/login\?deleted$'))
+    expect(page.get_by_role('status')).to_have_text('Your account and all its data are deleted.')
+
+
 def test_a_team_admin_views_a_member_read_only(logged_in, people):
     page = logged_in('hans')
     page.goto('/')

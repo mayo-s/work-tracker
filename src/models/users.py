@@ -17,6 +17,7 @@ _PASSWORD_CHARACTERS = (str.isalpha, str.isdecimal, lambda char: not char.isalnu
 # The app role (a team admin is a member's team role, teams.py): exactly one root runs the app and tracks no work
 Role = Literal['root', 'admin', 'user']
 AssignableRole = Literal['admin', 'user']  # root is created once, never given or taken
+DELETED_USER = 'Deleted user'  # who a deleted account is in other people's records (SPEC 5.7)
 
 
 class User(DomainModel):

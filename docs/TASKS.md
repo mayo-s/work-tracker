@@ -456,7 +456,7 @@ L.16 (a–i) → 9.1 (a–i).
 - [x] **L.18** Privacy policy (Datenschutzerklärung, GDPR Art. 13): what personal data the app keeps, why and for how
   long, linked next to the imprint in the footer
 - [x] **L.19** sticky nav bar
-- [ ] **L.20** Delete an account with all its data (GDPR Art. 17), e.g. by an admin on request: days, entries and their
+- [x] **L.20** Delete an account with all its data (GDPR Art. 17), e.g. by an admin on request: days, entries and their
   history, settings, team membership, audit log and report views about them; their contact messages anonymized
 - [ ] **L.21** Anonymous data analysis: aggregate figures across users (e.g. hours by activity type), only for groups
   of at least 5 people, without free text (descriptions, notes); the privacy policy (SPEC 5.15) says what is analyzed,

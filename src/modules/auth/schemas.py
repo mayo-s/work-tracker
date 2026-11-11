@@ -112,6 +112,14 @@ class TwoFactorOff(BaseModel):
     password: str = Field(min_length=1, max_length=200, description='The current password')
 
 
+class DeleteAccountInput(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    password: str = Field(min_length=1, max_length=200, description='The current password')
+    code: str = Field(default='', max_length=20, description='With two-factor login on: a current code of the '
+                                                             'authenticator app, or a recovery code')
+
+
 class PasswordInput(BaseModel):
     model_config = ConfigDict(extra='forbid')
 

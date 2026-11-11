@@ -13,7 +13,7 @@ from src.modules.storage.days import DayRepository
 from src.modules.storage.entries import EntryRepository
 from src.modules.storage.errors import USED_TOKEN, ConflictError
 from src.modules.storage.messages import MessageRepository
-from src.modules.storage.owners import clear_records, purge
+from src.modules.storage.owners import clear_records, delete_user, purge
 from src.modules.storage.pto_years import PtoYearRepository
 from src.modules.storage.renames import rename_ticket
 from src.modules.storage.schedules import ScheduleRepository
@@ -132,6 +132,9 @@ class SqliteStore:
             self._conn.execute('INSERT INTO used_setup_tokens (hash, used_at) VALUES (?, ?)', (token_hash, at.isoformat()))
         except sqlite3.IntegrityError as error:
             raise ConflictError(USED_TOKEN) from error
+
+    def delete_user(self, user_id: str) -> None:
+        delete_user(self._conn, user_id)
 
     def purge(self, root_id: str) -> None:
         """Everything but root goes, before a full backup is restored."""

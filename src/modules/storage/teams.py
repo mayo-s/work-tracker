@@ -6,10 +6,12 @@ from collections.abc import Callable
 
 from src.models.base import new_id
 from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRecord, TeamRole
+from src.models.users import DELETED_USER
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.store import Teams
 
 _CURRENT = 'left_on IS NULL'
+_VIEWER = f"COALESCE(trim(first_name || ' ' || last_name), '{DELETED_USER}') AS viewer_name"  # or a deleted account
 
 
 class TeamRepository:
@@ -260,14 +262,14 @@ class ReportViewLog:
     def of_member(self, member_id: str, limit: int = 50) -> list[ReportView]:
         """The latest views of the member's reports, newest first."""
         rows = self._conn.execute(
-            "SELECT member_id, viewer_id, trim(first_name || ' ' || last_name) AS viewer_name, report, period, viewed_at"
-            ' FROM report_views JOIN users ON users.id = viewer_id WHERE member_id = ?'
+            f"SELECT member_id, viewer_id, {_VIEWER}, report, period, viewed_at"
+            ' FROM report_views LEFT JOIN users ON users.id = viewer_id WHERE member_id = ?'
             ' ORDER BY viewed_at DESC, report_views.id DESC LIMIT ?', (member_id, limit))
         return [ReportView(**dict(row)) for row in rows]
 
     def all(self) -> list[ReportView]:
         """All views of everyone's reports, oldest first (for the full backup)."""
         rows = self._conn.execute(
-            "SELECT member_id, viewer_id, trim(first_name || ' ' || last_name) AS viewer_name, report, period, viewed_at"
-            ' FROM report_views JOIN users ON users.id = viewer_id ORDER BY viewed_at, report_views.id')
+            f"SELECT member_id, viewer_id, {_VIEWER}, report, period, viewed_at"
+            ' FROM report_views LEFT JOIN users ON users.id = viewer_id ORDER BY viewed_at, report_views.id')
         return [ReportView(**dict(row)) for row in rows]

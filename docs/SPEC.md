@@ -422,7 +422,27 @@ below 40rem (640 px), where the narrow-screen rules start; the desktop does not 
   time data; roles and the status (Active or Deactivated, a deactivation asked first) are dropdowns in the table, a
   one-time password has a section of its own. Root sees registration, the admins and the full backup; admins see
   users, teams and auditors. Deactivated users are logged out at once and refused at login, their data kept. Nobody demotes or deactivates
-  themselves; users are not deleted. Locally, a forgotten password is also reset with the command.
+  themselves; an account is deleted only as below. Locally, a forgotten password is also reset with the command.
+- Deleting an account (GDPR Art. 17), never root's:
+  - By an admin on request: a deactivated user has "Delete" next to their status, for whoever deactivates them (root
+    for admins, admins for everyone else; 403 otherwise). It is asked first and confirmed by typing the username. Only
+    once deactivated, and not the own account (409).
+  - By the user in their settings (Account, "Delete account"), also an admin: with the password and, with two-factor
+    login on, a current code or a recovery code (a wrong one counts as a failed login), asked first. They are logged
+    out and land on the login page.
+  - What goes: the account with its login, two-factor login, sessions and remembered browsers; all own records (days,
+    entries with their history, tickets, services, activity types, work schedules, PTO years, settings); every team
+    membership, also former ones, so team reports no longer count them; their auditor assignments; open invitations to
+    their e-mail address; the log of who looked at their reports; the audit log entries about their account. Their
+    username and e-mail address are free again. Their contact messages are anonymized right away, as in the archive
+    (5.14).
+  - What stays, without their name: in other people's records they are "Deleted user": changes they made in the audit
+    log, their looks at members' reports, invitations they sent; in support's history of a message, their status
+    changes and notes are by "Support".
+  - The audit log keeps that an account was deleted, by whom and when, but not whose: "Klara Himmel deleted an account",
+    or "Deleted user deleted their account".
+  - Full backups made earlier still hold it, until root replaces them (5.9), and the database's restore points for 35
+    days (7.2, 5.15). On DynamoDB the deletion writes chunks; one that stops halfway is finished by deleting again.
 - Audit log: every change of roles, team admins and auditors, deactivation and reactivation, one-time password,
   two-factor reset, registration switch, team change, full backup and restore is logged with who, what, whom and when
   (no personal records); so are everyone's changes to their own login: a new password (also with the `set-password`
@@ -640,7 +660,8 @@ What personal data the app keeps, why and for how long, as GDPR Art. 13 requires
 - Retention as stated there: account, time data, audit log and the log of looks at reports as long as the account
   exists; failed logins one minute; contact messages until anonymized; CloudWatch logs 30 days (set per stage, see
   README).
-- An account is deleted on request; until the app can do it (TASKS.md L.20), by hand.
+- Deleting the account (5.7): in the settings, or by an admin on request; what goes and what stays without a name, as
+  there. The privacy policy says so under the account and the rights.
 
 ## 6. Import (spreadsheet CSV), removed
 

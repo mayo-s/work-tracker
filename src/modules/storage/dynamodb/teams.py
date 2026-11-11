@@ -12,6 +12,7 @@ from collections.abc import Callable
 from src.models.base import new_id
 from src.models.catalog import Service
 from src.models.teams import Auditor, Invitation, Member, Membership, ReportView, Team, TeamRecord, TeamRole
+from src.models.users import DELETED_USER
 from src.modules.storage.dynamodb.catalog import DynamoServices, DynamoTeamServices
 from src.modules.storage.dynamodb.keys import USERS, user_partition
 from src.modules.storage.dynamodb.memberships import (
@@ -331,7 +332,7 @@ class DynamoReportViews:
     def _views(self, items: list[Item]) -> list[ReportView]:
         views = []
         for item in items:
-            if viewer := _profile(self._unit, item['viewer_id']):
-                name = f'{viewer["first_name"]} {viewer["last_name"]}'.strip()
-                views.append(ReportView(**attributes(item), viewer_name=name))
+            viewer = _profile(self._unit, item['viewer_id'])
+            name = f'{viewer["first_name"]} {viewer["last_name"]}'.strip() if viewer else DELETED_USER
+            views.append(ReportView(**attributes(item), viewer_name=name))
         return views

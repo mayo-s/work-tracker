@@ -2,8 +2,8 @@
 also by id, and the auditors (admins), and /api/admin/settings, /api/admin/backup and /api/admin/restore (root). Every
 change goes into the audit log.
 
-Root appoints and removes admins and helps them (one-time password, deactivate, reactivate); admins help users and
-team admins, give team roles and manage teams (SPEC 5.7)."""
+Root appoints and removes admins and helps them (one-time password, deactivate, reactivate, delete); admins help users
+and team admins, give team roles and manage teams (SPEC 5.7)."""
 
 import base64
 import datetime as dt
@@ -15,6 +15,7 @@ from spectree import Response
 
 from src.lib.passwords import one_time_password
 from src.modules.admin.audit import AuditView, record
+from src.modules.admin.deletion import delete_account
 from src.modules.admin.schemas import (
     AdminSettings, AdminSettingsView, AdminTeamView, AdminUserInput, AdminUserView, AuditorInput, AuditorView,
     OneTimePasswordView,
@@ -108,6 +109,29 @@ class AdminUserItem(_AdminResource):
             _record_role_and_status(store, now, actor.id, target, json)
             _switch_support(store, now, actor.id, target, json)
             resp.media = _view(store, user_id)
+
+    @spec.validate(resp=Response('HTTP_204', 'HTTP_403', 'HTTP_404', 'HTTP_409'), tags=TAGS,
+                   path_parameter_descriptions=ID_PARAMETER)
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, user_id: str) -> None:
+        """Delete a deactivated user's account with all their data (GDPR Art. 17), e.g. on their request: records,
+        settings, memberships, auditor assignments, open invitations to their e-mail address, the log of looks at their
+        reports and the audit log about them; their contact messages are anonymized. Where they appear in other people's
+        records, they become "Deleted user". The audit log keeps that an account was deleted, not whose.
+
+        Root for admins, admins for everyone else (403 otherwise). Never root, not the own account (deleted in the
+        settings) and only once deactivated (409).
+        """
+        with self._storage.transaction() as store:
+            actor, target = _staff(req, store), store.users().get(user_id)
+            if target.role == 'root':
+                raise ConflictError('Root runs the app and is never deleted')
+            if user_id == actor.id:
+                raise ConflictError('Delete your own account in your settings')
+            _check_help(actor, target, 'delete them')
+            if target.active:
+                raise ConflictError('Deactivate the account first')
+            delete_account(store, user_id, actor.id, self._clock())
+        resp.status = falcon.HTTP_204
 
 
 def _switch_support(store: Store, now: dt.datetime, actor_id: str, target: User, json: AdminUserInput) -> None:

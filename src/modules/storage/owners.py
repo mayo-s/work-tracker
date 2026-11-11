@@ -1,5 +1,5 @@
-"""Owners of the data: what a new user starts with, the first user taking over records without an owner, and everyone
-but root going before a full backup is restored."""
+"""Owners of the data: what a new user starts with, the first user taking over records without an owner, a deleted
+account going with its data, and everyone but root going before a full backup is restored."""
 
 import sqlite3
 
@@ -23,6 +23,21 @@ def clear_records(conn: sqlite3.Connection, user_id: str) -> None:
     schedules, PTO years); their account and settings stay."""
     for table in ('entry_history', 'entries', 'days', 'tickets', 'services', 'activity_types', 'pto_years', 'work_schedules'):
         conn.execute(f'DELETE FROM {table} WHERE user_id = ?', (user_id,))
+
+
+def delete_user(conn: sqlite3.Connection, user_id: str) -> None:
+    """The user goes with everything of theirs (SPEC 5.7): records, settings, memberships, auditor assignments, open
+    invitations to their e-mail address, the log of looks at their reports, the audit log about them, sessions and
+    browsers; their notes and status changes on contact messages become "Support"'s. Their messages must be anonymized
+    first. Where they looked, invited, assigned or changed something for others, their id stays: "Deleted user"."""
+    conn.execute('DELETE FROM team_invitations WHERE email = (SELECT email FROM users WHERE id = ?)', (user_id,))
+    conn.execute('UPDATE message_changes SET actor_id = NULL WHERE actor_id = ?', (user_id,))
+    for table, column in (('report_views', 'member_id'), ('audit_log', 'user_id'), ('team_auditors', 'user_id'),
+                          ('team_memberships', 'user_id')):
+        conn.execute(f'DELETE FROM {table} WHERE {column} = ?', (user_id,))
+    clear_records(conn, user_id)
+    conn.execute('DELETE FROM user_settings WHERE user_id = ?', (user_id,))
+    conn.execute('DELETE FROM users WHERE id = ?', (user_id,))  # their sessions and browsers with them
 
 
 def purge(conn: sqlite3.Connection, root_id: str) -> None:

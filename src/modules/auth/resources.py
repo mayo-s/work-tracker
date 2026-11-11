@@ -10,9 +10,10 @@ from spectree import Response
 from src.lib.totp import new_secret, provisioning_uri
 from src.models.users import Role, TwoFactor, User
 from src.modules.admin.audit import AuditView, record
+from src.modules.admin.deletion import delete_account
 from src.modules.auth.schemas import (
-    AuthStatus, LoginInput, NewAppInput, NewUserInput, PasswordInput, ProfileInput, RecoveryCodes, RootInput, RootResetInput,
-    TwoFactorCode, TwoFactorOff, TwoFactorSetup, TwoFactorStatus, UserView,
+    AuthStatus, DeleteAccountInput, LoginInput, NewAppInput, NewUserInput, PasswordInput, ProfileInput, RecoveryCodes,
+    RootInput, RootResetInput, TwoFactorCode, TwoFactorOff, TwoFactorSetup, TwoFactorStatus, UserView,
 )
 from src.modules.teams.schemas import TeamRef
 from src.modules.auth.sessions import (
@@ -233,6 +234,37 @@ class MeResource(_AuthResource):
         """Change username, e-mail address and name of the logged-in user."""
         with self._storage.transaction() as store:
             resp.media = UserView.of(store.users().update(json.to_user(_user_id(req))))
+
+    @spec.validate(json=DeleteAccountInput, resp=Response('HTTP_204', 'HTTP_401', 'HTTP_403', 'HTTP_409', 'HTTP_429'),
+                   tags=TAGS)
+    def on_delete(self, req: falcon.Request, resp: falcon.Response, json: DeleteAccountInput) -> None:
+        """Delete the own account with all its data (GDPR Art. 17), as an admin deletes one (DELETE
+        /api/admin/users/{user_id}), and log out. With the current password and, with two-factor login on, a current
+        code or a recovery code (403 if wrong; counts as a failed login, 429 after 5 within a minute). Not for root
+        (409)."""
+        with self._storage.transaction() as store:
+            refusal = self._delete(store, _user_id(req), json)
+        if refusal:  # answered after the transaction, so the failed attempt is stored
+            raise falcon.HTTPForbidden(description=refusal)
+        clear_session_cookie(resp)
+        resp.status = falcon.HTTP_204
+
+    def _delete(self, store: Store, user_id: str, json: DeleteAccountInput) -> str | None:
+        """None once the account is deleted, or why it was refused (counted as a failed login)."""
+        now, attempts, users = self._clock(), store.attempts(), store.users()
+        if attempts.paused(now):
+            raise falcon.HTTPTooManyRequests(description=PAUSED)
+        user = users.get(user_id)
+        if user.role == 'root':
+            raise ConflictError('Root runs the app and is never deleted')
+        if not users.check_password(user_id, json.password):
+            attempts.add(now)
+            return 'The current password is wrong'
+        if user.two_factor and not code_or_recovery_accepted(store, user_id, json.code, now):
+            attempts.add(now)
+            return WRONG_CODE
+        delete_account(store, user_id, user_id, now)
+        return None
 
 
 class MyAuditResource(_AuthResource):
