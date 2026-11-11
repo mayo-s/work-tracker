@@ -1,0 +1,14 @@
+{
+  "Name": "work-tracker-static",
+  "Comment": "Static files of the Work Tracker (/static/*): kept a year, cleared by deploy/zappa.sh after each update",
+  "MinTTL": 31536000,
+  "DefaultTTL": 31536000,
+  "MaxTTL": 31536000,
+  "ParametersInCacheKeyAndForwardedToOrigin": {
+    "EnableAcceptEncodingGzip": true,
+    "EnableAcceptEncodingBrotli": true,
+    "HeadersConfig": {"HeaderBehavior": "none"},
+    "CookiesConfig": {"CookieBehavior": "none"},
+    "QueryStringsConfig": {"QueryStringBehavior": "none"}
+  }
+}

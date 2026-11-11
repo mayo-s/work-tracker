@@ -18,3 +18,12 @@ PIPENV_VERBOSITY=-1 PIPENV_DONT_LOAD_ENV=1 pipenv requirements > "$venv/requirem
 "$venv/bin/pip" install --quiet -r "$venv/requirements.txt" zappa==0.63.0
 . "$venv/bin/activate"
 zappa "${2:-update}" "$stage"
+case "${2:-update}" in
+  deploy|update)  # CloudFront keeps the static files (README, "Deploy to AWS"): the new ones show at once
+    distribution=$(aws cloudfront list-distributions --output text \
+      --query "DistributionList.Items[?starts_with(Comment, 'work-tracker-$stage:')].Id")
+    if [ -n "$distribution" ] && [ "$distribution" != None ]; then  # None: no distribution in the account
+      aws cloudfront create-invalidation --distribution-id "$distribution" --paths '/static/*' --query Invalidation.Id \
+        --output text >/dev/null && echo "Cleared /static/* from CloudFront ($distribution)"
+    fi ;;
+esac

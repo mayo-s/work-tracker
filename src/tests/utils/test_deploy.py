@@ -11,6 +11,7 @@ POLICY = (ROOT / 'deploy' / 'lambda-policy.json').read_text()
 TRUST = (ROOT / 'deploy' / 'lambda-trust-policy.json').read_text()
 CLOUDFRONT = (ROOT / 'deploy' / 'cloudfront.json').read_text()
 DNS_ALIAS = (ROOT / 'deploy' / 'dns-alias.json').read_text()
+STATIC_POLICY = (ROOT / 'deploy' / 'cache-policy-static.json').read_text()
 STAGES = ['dev', 'prod']
 BASE = ZAPPA['base']  # the stages differ only in their bucket
 
@@ -22,7 +23,7 @@ def test_dev_and_prod_share_one_base_and_differ_only_in_their_bucket():
 
 
 def test_no_account_id_in_the_settings_and_the_policy():
-    for text in (json.dumps(ZAPPA), POLICY, TRUST, CLOUDFRONT, DNS_ALIAS):
+    for text in (json.dumps(ZAPPA), POLICY, TRUST, CLOUDFRONT, DNS_ALIAS, STATIC_POLICY):
         assert not re.search(r'\d{12}', text)
 
 
@@ -75,3 +76,34 @@ def test_cloudfront_passes_every_request_on_uncached_over_https_with_the_origin_
     assert (behavior['ViewerProtocolPolicy'], behavior['AllowedMethods']['Quantity']) == ('redirect-to-https', 7)
     assert origin['CustomOriginConfig']['OriginProtocolPolicy'] == 'https-only'
     assert origin['CustomHeaders']['Items'] == [{'HeaderName': 'X-Origin-Verify', 'HeaderValue': 'SECRET'}]
+
+
+def test_cloudfront_keeps_the_static_files_for_everyone_alike_until_a_deploy_clears_them():
+    """TASKS.md L.22: a page runs the Lambda only for its API calls."""
+    [behavior] = json.loads(CLOUDFRONT)['CacheBehaviors']['Items']
+    assert (behavior['PathPattern'], behavior['CachePolicyId'], behavior['AllowedMethods']['Items'], behavior['Compress']) == (
+        '/static/*', 'STATIC_POLICY', ['GET', 'HEAD'], True)
+    policy = json.loads(STATIC_POLICY)
+    assert (policy['MinTTL'], policy['MaxTTL']) == (31536000, 31536000)  # a year, also despite the app's no-cache
+    key = policy['ParametersInCacheKeyAndForwardedToOrigin']
+    assert (key['CookiesConfig'], key['HeadersConfig'], key['QueryStringsConfig']) == (
+        {'CookieBehavior': 'none'}, {'HeaderBehavior': 'none'}, {'QueryStringBehavior': 'none'})
+    assert "create-invalidation --distribution-id \"$distribution\" --paths '/static/*'" in (
+        ROOT / 'deploy' / 'zappa.sh').read_text()
+
+
+def test_an_existing_distribution_gets_the_static_cache_with_everything_else_unchanged():
+    spec = importlib.util.spec_from_file_location('static_cache', ROOT / 'deploy' / 'static_cache.py')
+    static_cache = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(static_cache)
+    current = json.loads(CLOUDFRONT)  # created before L.22, as get-distribution-config returns it
+    del current['CacheBehaviors']
+    current['DefaultCacheBehavior'] |= {'SmoothStreaming': False, 'FieldLevelEncryptionId': '',
+                                        'LambdaFunctionAssociations': {'Quantity': 0}}
+    config = static_cache.with_static_cache({'ETag': 'E2QWRUHAPOMQZL', 'DistributionConfig': current}, 'policy-id')
+    assert config == current | {'CacheBehaviors': {'Quantity': 1, 'Items': [{
+        'PathPattern': '/static/*', 'TargetOriginId': 'function-url', 'ViewerProtocolPolicy': 'redirect-to-https',
+        'AllowedMethods': {'Quantity': 2, 'Items': ['GET', 'HEAD'],
+                           'CachedMethods': {'Quantity': 2, 'Items': ['GET', 'HEAD']}},
+        'CachePolicyId': 'policy-id', 'Compress': True,
+        'SmoothStreaming': False, 'FieldLevelEncryptionId': '', 'LambdaFunctionAssociations': {'Quantity': 0}}]}}

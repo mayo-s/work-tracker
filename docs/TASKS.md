@@ -461,4 +461,7 @@ L.16 (a–i) → 9.1 (a–i).
 - [ ] **L.21** Anonymous data analysis: aggregate figures across users (e.g. hours by activity type), only for groups
   of at least 5 people, without free text (descriptions, notes); the privacy policy (SPEC 5.15) says what is analyzed,
   why and on what legal basis before it starts, and drops "keine Analyse" from its overview
-
+- [x] **L.22** CloudFront caches the static files (`/static/*`: scripts, CSS, fonts) with a cache policy of its own,
+  so a page runs the Lambda only for its API calls (a page's ~20 modules at once over HTTP/2 reached the Lambda's
+  concurrency limit: 429); `deploy/zappa.sh` clears that cache after each update, so a new version shows at once
+- [ ] **L.23** Support secure connection: some browsers complain that the site does not support secure connection.

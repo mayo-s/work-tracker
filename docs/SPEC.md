@@ -751,6 +751,13 @@ splitting an entry among several tickets went once they were all reviewed (TASKS
   Route 53 holds the zone `<app-domain>` (ALIAS records to the distributions); the DNS provider of the operator's
   domain, which keeps the rest of it (e.g. its mail), delegates it by four NS records. The settings are
   `deploy/cloudfront.json` and `deploy/dns-alias.json`.
+- **Static files at CloudFront**: `/static/*` (scripts, CSS, fonts, icon) is kept a year by the cache policy
+  `work-tracker-static` (`deploy/cache-policy-static.json`, once per account), the same for everyone (no cookies,
+  query or headers in its key), compressed with gzip or Brotli; browsers still check it with CloudFront on each use
+  (their `no-cache`, by the ETag). So a page runs the function only for its API calls: about 20 scripts at once over
+  HTTP/2 had reached the function's concurrency limit (429). `deploy/zappa.sh` clears `/static/*` from the stage's
+  distribution after each `deploy` or `update`, so a new version shows at once; `deploy/static_cache.py` adds the rule
+  to a distribution created before.
 - **Only through the domain**: CloudFront adds the stage's secret, a SecureString `/work-tracker-<stage>/origin-secret`
   (or `WORK_TRACKER_ORIGIN_SECRET_PARAMETER`), as the header `X-Origin-Verify`; the app refuses every request without
   it, before anything else (403, "Open the app at its address"), also while the parameter is missing. The function

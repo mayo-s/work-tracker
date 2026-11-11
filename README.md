@@ -172,6 +172,8 @@ zone for `<app-domain>`; the rest of your domain, mail included, stays with your
 app_domain=tracker.example.com                                                  # your <app-domain>
 aws route53 create-hosted-zone --name $app_domain --caller-reference work-tracker \
   --query DelegationSet.NameServers --output text                                # its four name servers
+aws cloudfront create-cache-policy --cache-policy-config file://deploy/cache-policy-static.json \
+  --query CachePolicy.Id --output text                                           # keeps the static files
 ```
 
 At your DNS provider, add an `NS` record for the subdomain (e.g. the host `tracker` of `example.com`) for each of the
@@ -181,6 +183,8 @@ four name servers. `dig +short NS $app_domain` shows them once they are there (m
 ```shell
 stage=dev domain=dev.$app_domain
 zone=$(aws route53 list-hosted-zones-by-name --dns-name $app_domain --query 'HostedZones[0].Id' --output text)
+policy=$(aws cloudfront list-cache-policies --type custom --output text \
+  --query "CachePolicyList.Items[?CachePolicy.CachePolicyConfig.Name=='work-tracker-static'].CachePolicy.Id")
 cert=$(aws acm request-certificate --region us-east-1 --domain-name $domain --validation-method DNS \
   --query CertificateArn --output text)                                          # CloudFront takes it from us-east-1
 sleep 10; read -r name value <<< "$(aws acm describe-certificate --region us-east-1 --certificate-arn $cert \
@@ -195,10 +199,27 @@ secret=$(aws ssm get-parameter --region eu-central-1 --name /work-tracker-$stage
 origin=$(aws lambda get-function-url-config --region eu-central-1 --function-name work-tracker-$stage \
   --query FunctionUrl --output text | sed 's|https://||; s|/$||')
 distribution=$(aws cloudfront create-distribution --query Distribution.DomainName --output text --distribution-config \
-  "$(sed "s/STAGE/$stage/g; s/DOMAIN/$domain/g; s/ORIGIN/$origin/g; s|CERTIFICATE|$cert|; s/SECRET/$secret/" \
-  deploy/cloudfront.json)")                                                      # no caching, everything passed on
+  "$(sed "s/STAGE/$stage/g; s/DOMAIN/$domain/g; s/ORIGIN/$origin/g; s|CERTIFICATE|$cert|; s/SECRET/$secret/;
+  s/STATIC_POLICY/$policy/" deploy/cloudfront.json)")                            # caches only /static/*
 aws route53 change-resource-record-sets --hosted-zone-id $zone \
   --change-batch "$(sed "s/DOMAIN/$domain/g; s/DISTRIBUTION/$distribution/g" deploy/dns-alias.json)"
+```
+
+CloudFront passes every request on to the function uncached, with cookies, query and headers, except the static files
+(`/static/*`): it keeps those a year, the same for everyone, so a page runs the function only for its API calls (each
+page loads about 20 scripts at once). After each `deploy` or `update`, `deploy/zappa.sh` clears them from the stage's
+distribution (the one whose comment starts with `work-tracker-<stage>:`), so the new ones show at once; browsers check
+with CloudFront on each use. A distribution created before this gets the rule like this (with `stage`, `policy` as
+above):
+
+```shell
+id=$(aws cloudfront list-distributions --output text \
+  --query "DistributionList.Items[?starts_with(Comment, 'work-tracker-$stage:')].Id")
+aws cloudfront get-distribution-config --id $id > /tmp/distribution.json
+python3 deploy/static_cache.py $policy < /tmp/distribution.json > /tmp/distribution-config.json
+aws cloudfront update-distribution --id $id --distribution-config file:///tmp/distribution-config.json \
+  --if-match "$(python3 -c "import json; print(json.load(open('/tmp/distribution.json'))['ETag'])")" \
+  --query Distribution.Status --output text
 ```
 
 A stage deployed before the origin secret needs the `put-role-policy` line above again, so the function may read it,
