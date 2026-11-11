@@ -301,6 +301,18 @@ def test_on_phones_the_header_is_one_row_with_a_menu(logged_in):
     expect(menu).to_be_focused()
 
 
+def test_on_the_narrowest_phones_menu_shows_only_its_icon_so_the_header_stays_one_row(logged_in):
+    page = logged_in('hans')
+    page.set_viewport_size({'width': 320, 'height': 640})
+    page.goto('/week')
+    expect(page.locator('.review-shortcut')).to_have_text('Review 2')  # its count has arrived
+    menu = page.get_by_role('button', name='Menu')  # the label stays for screen readers
+    assert (page.locator('.app-header').bounding_box()['height'], menu.bounding_box()['width'] < 44) == (56, True)
+    page.set_viewport_size({'width': 360, 'height': 640})
+    expect(menu).to_have_text('Menu')
+    assert page.locator('.app-header').bounding_box()['height'] == 56
+
+
 def test_a_user_finds_name_and_address_from_their_account_on_the_contact_page(logged_in):
     hans = logged_in('hans')
     hans.goto('/week')

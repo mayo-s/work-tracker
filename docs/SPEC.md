@@ -319,7 +319,8 @@ The app stays desktop first; on phones it gets a layout of its own, not the desk
 below 40rem (640 px), where the narrow-screen rules start; the desktop does not change.
 
 - **Header**: one row with the app's name, the review count (while items are open) and a menu button ("Menu", with
-  `aria-expanded`). The menu opens below the header with the tabs, the search field, the user's name, the dark mode
+  `aria-expanded`). The row never wraps, so the header keeps its height when the review count arrives: below 360 px the
+  button shows only its icon ("Menu" stays for screen readers), and a name without room ends in "…". The menu opens below the header with the tabs, the search field, the user's name, the dark mode
   switch, then the entries of the desktop's ☰ menu (Team, Support, Settings, Admin, "Log out") listed directly,
   without ☰; Escape or a second tap closes it, and focus returns to the button. A menu taller than the screen scrolls
   within it. Pages without navigation (login, setup, imprint, …) show only what they show on the desktop.

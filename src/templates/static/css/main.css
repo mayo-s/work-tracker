@@ -1854,9 +1854,14 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
     gap: var(--space-2) var(--space-4);
   }
 
-  /* One row with the name, the review count and "Menu"; the menu opens below it (SPEC 5.5a) */
+  /* One row with the name, the review count and "Menu"; the menu opens below it (SPEC 5.5a). The row never wraps:
+     the name takes the room left and, if too little, ends in "…" */
   .app-name {
-    margin-right: auto;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .app-header .menu-toggle,
@@ -1869,6 +1874,12 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
   .review-shortcut {
     color: var(--color-muted);
     text-decoration: none;  /* like the links of the navigation */
+  }
+
+  .review-shortcut,
+  .app-header .menu-toggle {
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
   .app-menu {
@@ -2064,6 +2075,20 @@ body:has(main[data-page='search']) .nav-search {  /* the search page has its own
     grid-row: 2;
     grid-column: 1 / -1;
     font-weight: var(--font-weight-normal);
+  }
+}
+
+/* The narrowest phones (below 360 px): "Menu" only for screen readers, its icon shows, so the name and the review count
+   fit in the header's one row (SPEC 5.5a) */
+
+@media (width < 22.5rem) {
+  .menu-toggle .menu-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 }
 

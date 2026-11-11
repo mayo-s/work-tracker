@@ -126,9 +126,9 @@ Durations are entered as `1:30`, `1.5`, `1h30m` or `90m`, in any whole minutes; 
 is asked about as minutes. Company half days (24.12., 31.12.) take 0.5 PTO by themselves. Former links forward
 (`/?week=…`, `/lists`). All pages meet WCAG 2.2 AA in both themes (axe-core) and on narrow screens or zoomed in down
 to 320 CSS px, where wide tables scroll sideways in their own area; Escape closes inline forms.
-On phones (below 40rem, SPEC 5.5a) the header is one row with the name, the review count and "Menu", which opens the
-navigation, search, name, dark mode switch and the entries of ☰ below it (scrolling within the screen when taller); the
-desktop does not change. The week shows a card per day there (times and break, worked, target and overtime, then the
+On phones (below 40rem, SPEC 5.5a) the header is one row with the name, the review count and "Menu" (below 360 px
+only its icon), which opens the navigation, search, name, dark mode switch and the entries of ☰ below it (scrolling
+within the screen when taller); the desktop does not change. The week shows a card per day there (times and break, worked, target and overtime, then the
 entries), with its forms in the card. Other list tables turn each row into a block: its first cell as the title, the
 others as "label value" with the column's header as label; the month report shows a ticket's hours on its line and its
 descriptions below. Fields have 16 px text there (phones would zoom in otherwise), and on touch screens buttons and
