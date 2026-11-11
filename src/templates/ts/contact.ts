@@ -5,18 +5,19 @@ import { EMAIL } from './account.ts';
 import { api, ApiError, type ContactInput } from './api.ts';
 import { el } from './dom.ts';
 import { field, submit } from './forms.ts';
+import { t } from './i18n.ts';
 
 const FIELDS = ['name', 'email', 'subject', 'text'] as const;
-export const THANKS = 'Thanks, we will answer by e-mail.';
+export const THANKS = t('Thanks, we will answer by e-mail.');
 
 /** What is missing or wrong, as errors under the fields in the form of the API's (which checks the same, in its own
  * words). */
 export function contactProblems(input: ContactInput): { loc: string[]; msg: string }[] {
   const problems: [string, boolean, string][] = [
-    ['name', !input.name.trim(), 'Enter your name.'],
-    ['email', !EMAIL.test(input.email.trim()), 'Enter an e-mail address like name@example.com.'],
-    ['subject', !input.subject.trim(), 'Enter a subject.'],
-    ['text', !input.text.trim(), 'Enter your message.'],
+    ['name', !input.name.trim(), t('Enter your name.')],
+    ['email', !EMAIL.test(input.email.trim()), t('Enter an e-mail address like name@example.com.')],
+    ['subject', !input.subject.trim(), t('Enter a subject.')],
+    ['text', !input.text.trim(), t('Enter your message.')],
   ];
   return problems.filter(([, wrong]) => wrong).map(([name, , msg]) => ({ loc: [name], msg }));
 }
@@ -46,14 +47,14 @@ export async function renderContactPage(doc: Document): Promise<void> {
   const text = el('textarea', { id: 'contact-text', name: 'text', maxlength: 5000, rows: 8 });
   const website = el('input', { name: 'website', tabindex: -1, autocomplete: 'off' });  // a trap for bots, hidden from people
   const form = el('form', { class: 'login-form', novalidate: true },
-    field('contact', 'name', 'Name', name, user ? 'From your account.' : undefined),
-    field('contact', 'email', 'E-mail address', email,
-      user ? 'Where support answers, from your account.' : 'Where support answers.'),
-    field('contact', 'subject', 'Subject', subject),
-    field('contact', 'text', 'Message', text, 'Up to 5,000 characters.'),
+    field('contact', 'name', t('Name'), name, user ? t('From your account.') : undefined),
+    field('contact', 'email', t('E-mail address'), email,
+      user ? t('Where support answers, from your account.') : t('Where support answers.')),
+    field('contact', 'subject', t('Subject'), subject),
+    field('contact', 'text', t('Message'), text, t('Up to 5,000 characters.')),
     el('div', { class: 'contact-trap', 'aria-hidden': 'true' }, el('label', {}, 'Website ', website)),
     el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
-    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Send')));
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, t('Send'))));
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     void submit(form, 'contact', FIELDS, () => send({

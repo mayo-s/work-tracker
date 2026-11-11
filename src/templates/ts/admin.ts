@@ -12,16 +12,16 @@ import { formatDate, formatTimestamp } from './dates.ts';
 import { ask } from './dialog.ts';
 import { button, el, scrolling } from './dom.ts';
 import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
-import { t } from './i18n.ts';
 import { field, submit } from './forms.ts';
+import { t, tn } from './i18n.ts';
 
 type TeamRole = NonNullable<AdminUserInput['team_role']>;
 
 type Viewer = 'root' | 'admin';
 
-const ROLES: [AdminUserInput['role'], string][] = [['admin', 'Admin'], ['user', 'User']];  // root is never given
-const ROLE_LABELS: Record<AdminUserView['role'], string> = { root: 'Root', admin: 'Admin', user: 'User' };
-const TEAM_ROLES: [TeamRole, string][] = [['member', 'Member'], ['team_admin', 'Team admin']];
+const ROLES: [AdminUserInput['role'], string][] = [['admin', t('Admin')], ['user', t('User')]];  // root is never given
+const ROLE_LABELS: Record<AdminUserView['role'], string> = { root: t('Root'), admin: t('Admin'), user: t('User') };
+const TEAM_ROLES: [TeamRole, string][] = [['member', t('Member')], ['team_admin', t('Team admin')]];
 
 /** What the viewer may change in a user's row: root the role of anyone and the status of admins; admins team roles and
  * the status of everyone else, and the support role of anyone but root. Nobody changes their own row but an admin their
@@ -48,45 +48,50 @@ export function userInput(user: AdminUserView, changes: Partial<AdminUserInput>)
     support: user.support ?? false, ...changes };
 }
 
-/** `an admin`, `a user`, `a team admin`, `a member`. */
-export function roleName(role: AdminUserInput['role'] | TeamRole): string {
-  return { admin: 'an admin', user: 'a user', team_admin: 'a team admin', member: 'a member' }[role];
+/** `hans is now an admin`, or with the team `hans is now team admin of Platform`: whole sentences, as the languages put
+ * the role in different places. */
+export function roleChanged(username: string, role: AdminUserInput['role'] | TeamRole, team = ''): string {
+  const names = { user: username, team };
+  const texts: Record<AdminUserInput['role'] | TeamRole, () => string> = {
+    admin: () => t('{user} is now an admin', names), user: () => t('{user} is now a user', names),
+    team_admin: () => t('{user} is now team admin of {team}', names), member: () => t('{user} is now a member of {team}', names),
+  };
+  return texts[role]();
 }
 
 function registrationSection(open: boolean, page: Page): HTMLElement {
   const box = el('input', { id: 'admin-registration', type: 'checkbox', checked: open });
   box.addEventListener('change', () => {
     api.saveAdminSettings({ registration: box.checked })
-      .then(() => page.reload(box.checked ? 'Registration is on' : 'Registration is off'), page.fail);
+      .then(() => page.reload(box.checked ? t('Registration is on') : t('Registration is off')), page.fail);
   });
   return el('section', { class: 'review-section', id: 'registration' },
-    el('h2', {}, 'Registration'),
-    el('p', { class: 'muted' }, 'While on, the login page links to /register, where anyone who reaches the app can create '
-      + 'an account. New users start with empty data of their own and go through the setup.'),
-    el('label', { class: 'checkbox-field', for: 'admin-registration' }, box, 'Allow registration'));
+    el('h2', {}, t('Registration')),
+    el('p', { class: 'muted' },
+      t('While on, the login page links to /register, where anyone who reaches the app can create an account. New users start with empty data of their own and go through the setup.')),
+    el('label', { class: 'checkbox-field', for: 'admin-registration' }, box, t('Allow registration')));
 }
 
 /** What keeps the passphrase of the full backup from being used, or null: at least 12 characters, entered twice. */
 export function passphraseError(passphrase: string, repeat: string): string | null {
   if (passphrase.length < PASSWORD_MIN_LENGTH) {
-    return `The passphrase needs at least ${PASSWORD_MIN_LENGTH} characters.`;
+    return t('The passphrase needs at least {count} characters.', { count: PASSWORD_MIN_LENGTH });
   }
-  return passphrase === repeat ? null : 'The two passphrases differ.';
+  return passphrase === repeat ? null : t('The two passphrases differ.');
 }
 
 /** Root downloads the whole database, encrypted with a passphrase that is stored nowhere, and restores it. */
 function backupSection(settings: AdminSettingsView, users: AdminUserView[], page: Page): HTMLElement {
   return el('section', { class: 'review-section', id: 'backup' },
-    el('h2', {}, 'Full backup'),
-    settings.restore_unfinished ? el('p', { class: 'form-error', role: 'alert' }, 'A restore stopped halfway: only you '
-      + 'can use the app until it is finished. Restore the file again.') : null,
-    el('p', { class: 'muted' }, 'One file of the whole database: all users with their passwords and two-factor login, '
-      + "the teams, everyone's records, the logs and the settings; not the sessions. It is compressed and encrypted with "
-      + 'the passphrase, which is stored nowhere: keep it apart from the file, without it the backup cannot be restored.'),
+    el('h2', {}, t('Full backup')),
+    settings.restore_unfinished ? el('p', { class: 'form-error', role: 'alert' },
+      t('A restore stopped halfway: only you can use the app until it is finished. Restore the file again.')) : null,
+    el('p', { class: 'muted' },
+      t("One file of the whole database: all users with their passwords and two-factor login, the teams, everyone's records, the logs and the settings; not the sessions. It is compressed and encrypted with the passphrase, which is stored nowhere: keep it apart from the file, without it the backup cannot be restored.")),
     downloadForm(page),
-    el('h3', { class: 'account-heading' }, 'Restore'),
-    el('p', { class: 'muted' }, 'Everyone but you goes first, then the backup comes in: its users log in with their '
-      + "passwords from then. You stay as you are, unless you take over the backup's root login."),
+    el('h3', { class: 'account-heading' }, t('Restore')),
+    el('p', { class: 'muted' },
+      t("Everyone but you goes first, then the backup comes in: its users log in with their passwords from then. You stay as you are, unless you take over the backup's root login.")),
     restoreForm(users.length > 1, page));
 }
 
@@ -94,10 +99,10 @@ function downloadForm(page: Page): HTMLFormElement {
   const passphrase = el('input', { id: 'backup-passphrase', type: 'password', autocomplete: 'new-password' });
   const repeat = el('input', { id: 'backup-repeat', type: 'password', autocomplete: 'new-password' });
   const form = el('form', { class: 'balance-form', novalidate: true },
-    field('backup', 'passphrase', 'Passphrase', passphrase, `At least ${PASSWORD_MIN_LENGTH} characters.`),
-    field('backup', 'repeat', 'Repeat the passphrase', repeat),
+    field('backup', 'passphrase', t('Passphrase'), passphrase, t('At least {count} characters.', { count: PASSWORD_MIN_LENGTH })),
+    field('backup', 'repeat', t('Repeat the passphrase'), repeat),
     el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
-    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Download backup')));
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, t('Download backup'))));
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     void submit(form, 'backup', ['passphrase'], async () => {
@@ -106,7 +111,7 @@ function downloadForm(page: Page): HTMLFormElement {
         throw new ApiError(422, problem, null);
       }
       saveFile(await api.backup(passphrase.value));
-    }, () => page.reload('Downloaded the backup'));
+    }, () => page.reload(t('Downloaded the backup')));
   });
   return form;
 }
@@ -118,13 +123,13 @@ export function restoreForm(othersExist: boolean, page: Page | null): HTMLFormEl
   const passphrase = el('input', { id: 'restore-passphrase', type: 'password', autocomplete: 'off' });
   const rootLogin = el('input', { id: 'restore-root-login', type: 'checkbox', checked: !page });
   const form = el('form', { class: 'balance-form', novalidate: true },
-    field('restore', 'file', 'Backup file', file),
-    field('restore', 'passphrase', 'Passphrase', passphrase),
+    field('restore', 'file', t('Backup file'), file),
+    field('restore', 'passphrase', t('Passphrase'), passphrase),
     page ? el('label', { class: 'checkbox-field', for: 'restore-root-login' }, rootLogin,
-      "Take over the backup's root login (username, e-mail address, name, password, two-factor login); you log in "
-      + 'again with it afterwards') : null,
+      t("Take over the backup's root login (username, e-mail address, name, password, two-factor login); you log in again with it afterwards"))
+      : null,
     el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
-    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'button-danger' }, 'Restore backup')));
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'button-danger' }, t('Restore backup'))));
   let summary: RestoreSummary | null = null;
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -132,7 +137,7 @@ export function restoreForm(othersExist: boolean, page: Page | null): HTMLFormEl
     void submit(form, 'restore', ['file', 'passphrase'], async () => {
       const chosen = file.files?.[0];
       if (!chosen || !passphrase.value) {
-        throw new ApiError(422, 'Choose the backup file and enter its passphrase.', null);
+        throw new ApiError(422, t('Choose the backup file and enter its passphrase.'), null);
       }
       const confirm = othersExist ? await askPurge() : null;
       if (othersExist && confirm === null) {
@@ -156,22 +161,23 @@ export function restoreForm(othersExist: boolean, page: Page | null): HTMLFormEl
 /** `purge` once root typed it in the dialog; null when cancelled. */
 async function askPurge(): Promise<string | null> {
   const typed = el('input', { id: 'purge-confirm', autocomplete: 'off' });
-  const go = await ask('Replace everything with the backup', [
-    'Everyone but you goes, with all their records, the teams and the logs; then the backup comes in. This cannot be undone.',
-    field('purge', 'confirm', 'Type purge to confirm', typed)], [{ label: 'Restore backup', value: true, primary: true }]);
+  const go = await ask(t('Replace everything with the backup'), [
+    t('Everyone but you goes, with all their records, the teams and the logs; then the backup comes in. This cannot be undone.'),
+    field('purge', 'confirm', t('Type purge to confirm'), typed)], [{ label: t('Restore backup'), value: true, primary: true }]);
   if (!go) {
     return null;
   }
   if (typed.value.trim() !== 'purge') {
-    throw new ApiError(422, 'Type purge to confirm the restore.', null);
+    throw new ApiError(422, t('Type purge to confirm the restore.'), null);
   }
   return 'purge';
 }
 
 export function restoredText(summary: RestoreSummary): string {
-  const count = (number: number, one: string, more: string): string => `${number} ${number === 1 ? one : more}`;
-  return `Restored the backup: ${count(summary.users, 'user', 'users')}, ${count(summary.teams, 'team', 'teams')}, `
-    + `${count(summary.entries, 'entry', 'entries')}`;
+  return t('Restored the backup: {users}, {teams}, {entries}', {
+    users: tn(summary.users, '{count} user', '{count} users'), teams: tn(summary.teams, '{count} team', '{count} teams'),
+    entries: tn(summary.entries, '{count} entry', '{count} entries'),
+  });
 }
 
 /** The bytes as base64, in slices (a large file would overflow the arguments of one call). */
@@ -194,12 +200,12 @@ function saveFile({ blob, name }: DownloadedFile): void {
 }
 
 function roleSelect(user: AdminUserView, page: Page): HTMLSelectElement {
-  const select = el('select', { 'aria-label': `Role of ${user.username}` },
+  const select = el('select', { 'aria-label': t('Role of {user}', { user: user.username }) },
     ...ROLES.map(([value, label]) => el('option', { value, selected: user.role === value }, label)));
   select.addEventListener('change', () => {
     const role = select.value as AdminUserInput['role'];
     api.updateAdminUser(user.id, userInput(user, { role }))
-      .then(() => page.reload(`${user.username} is now ${roleName(role)}`), page.fail);
+      .then(() => page.reload(roleChanged(user.username, role)), page.fail);
   });
   return select;
 }
@@ -212,12 +218,12 @@ function teamRoleCell(user: AdminUserView, canEdit: boolean, page: Page): HTMLTa
   if (!canEdit) {
     return el('td', {}, TEAM_ROLES.find(([value]) => value === user.team_role)?.[1] ?? '');
   }
-  const select = el('select', { 'aria-label': `Role of ${user.username} in ${user.team}` },
+  const select = el('select', { 'aria-label': t('Role of {user} in {team}', { user: user.username, team: user.team }) },
     ...TEAM_ROLES.map(([value, label]) => el('option', { value, selected: user.team_role === value }, label)));
   select.addEventListener('change', () => {
     const teamRole = select.value as TeamRole;
     api.updateAdminUser(user.id, userInput(user, { team_role: teamRole }))
-      .then(() => page.reload(`${user.username} is now ${roleName(teamRole)} of ${user.team}`), page.fail);
+      .then(() => page.reload(roleChanged(user.username, teamRole, user.team ?? '')), page.fail);
   });
   return el('td', {}, select);
 }
@@ -230,58 +236,61 @@ export function confirmsDeletion(user: AdminUserView, typed: string): boolean {
 /** Deletes a deactivated user's account (SPEC 5.7, GDPR Art. 17) once the viewer typed the username in the dialog. */
 async function deleteUser(user: AdminUserView, page: Page): Promise<void> {
   const typed = el('input', { id: 'delete-confirm', autocomplete: 'off' });
-  const go = await ask(`Delete ${user.username}`, [
-    `The account goes with all records of ${user.username}, their team memberships and the log about them; their `
-    + 'contact messages are anonymized. In other people\'s records they become "Deleted user". This cannot be undone.',
-    field('delete', 'confirm', `Type ${user.username} to confirm`, typed)],
-  [{ label: 'Delete account', value: true, primary: true }]);
+  const names = { user: user.username };
+  const go = await ask(t('Delete {user}', names), [
+    t('The account goes with all records of {user}, their team memberships and the log about them; their contact messages are anonymized. In other people\'s records they become "Deleted user". This cannot be undone.',
+      names),
+    field('delete', 'confirm', t('Type {user} to confirm', names), typed)],
+  [{ label: t('Delete account'), value: true, primary: true }]);
   if (!go) {
     return;
   }
   if (!confirmsDeletion(user, typed.value)) {
-    page.fail(new ApiError(422, `Type ${user.username} to delete the account.`, null));
+    page.fail(new ApiError(422, t('Type {user} to delete the account.', names), null));
     return;
   }
-  api.deleteAdminUser(user.id).then(() => page.reload(`Deleted ${user.username}`), page.fail);
+  api.deleteAdminUser(user.id).then(() => page.reload(t('Deleted {user}', names)), page.fail);
 }
 
 /** Active or deactivated, chosen in place if `canEdit`; a deactivation asks first. A deactivated user can be deleted. */
 function statusCell(user: AdminUserView, canEdit: boolean, page: Page): HTMLTableCellElement {
   const badge = [
-    user.active && user.must_change_password ? el('span', { class: 'badge admin-badge' }, 'One-time password') : '',
-    user.two_factor ? el('span', { class: 'badge admin-badge', title: 'Two-factor login is on' }, '2FA') : '',
+    user.active && user.must_change_password ? el('span', { class: 'badge admin-badge' }, t('One-time password')) : '',
+    user.two_factor ? el('span', { class: 'badge admin-badge', title: t('Two-factor login is on') }, '2FA') : '',
   ];
   if (!canEdit) {
-    return el('td', {}, user.active ? 'Active' : el('span', { class: 'badge warning' }, 'Deactivated'), ...badge);
+    return el('td', {}, user.active ? t('Active') : el('span', { class: 'badge warning' }, t('Deactivated')), ...badge);
   }
-  const select = el('select', { 'aria-label': `Status of ${user.username}` },
-    el('option', { value: 'active', selected: user.active }, 'Active'),
-    el('option', { value: 'deactivated', selected: !user.active }, 'Deactivated'));
+  const names = { user: user.username };
+  const select = el('select', { 'aria-label': t('Status of {user}', names) },
+    el('option', { value: 'active', selected: user.active }, t('Active')),
+    el('option', { value: 'deactivated', selected: !user.active }, t('Deactivated')));
   select.addEventListener('change', () => {
     const active = select.value === 'active';
-    if (!active && !window.confirm(`Deactivate ${user.username}? They are logged out and cannot log in until `
-      + 'reactivated; their data is kept.')) {
+    if (!active && !window.confirm(
+      t('Deactivate {user}? They are logged out and cannot log in until reactivated; their data is kept.', names))) {
       select.value = 'active';
       return;
     }
     api.updateAdminUser(user.id, userInput(user, { active }))
-      .then(() => page.reload(`${active ? 'Reactivated' : 'Deactivated'} ${user.username}`), page.fail);
+      .then(() => page.reload(active ? t('Reactivated {user}', names) : t('Deactivated {user}', names)), page.fail);
   });
-  const remove = user.active ? '' : button('Delete', () => void deleteUser(user, page),
-    { class: 'button-small button-danger', 'aria-label': `Delete ${user.username}` });
+  const remove = user.active ? '' : button(t('Delete'), () => void deleteUser(user, page),
+    { class: 'button-small button-danger', 'aria-label': t('Delete {user}', names) });
   return el('td', {}, select, remove, ...badge);
 }
 
 /** Whether the user answers the messages of the contact page (SPEC 5.14), switched in place if `canEdit`. */
 function supportCell(user: AdminUserView, canEdit: boolean, page: Page): HTMLTableCellElement {
   if (!canEdit) {
-    return el('td', {}, user.support ? 'Yes' : el('span', { class: 'muted' }, '—'));
+    return el('td', {}, user.support ? t('Yes') : el('span', { class: 'muted' }, '—'));
   }
-  const box = el('input', { type: 'checkbox', checked: Boolean(user.support), 'aria-label': `Support: ${user.username}` });
+  const names = { user: user.username };
+  const box = el('input', { type: 'checkbox', checked: Boolean(user.support), 'aria-label': t('Support: {user}', names) });
   box.addEventListener('change', () => {
     api.updateAdminUser(user.id, userInput(user, { support: box.checked }))
-      .then(() => page.reload(`${user.username} ${box.checked ? 'now answers' : 'no longer answers'} the contact messages`),
-        page.fail);
+      .then(() => page.reload(box.checked ? t('{user} now answers the contact messages', names)
+        : t('{user} no longer answers the contact messages', names)), page.fail);
   });
   return el('td', {}, box);
 }
@@ -296,7 +305,7 @@ export function userByEmail(users: AdminUserView[], email: string): AdminUserVie
 function enteredUser(users: AdminUserView[], email: HTMLInputElement): AdminUserView {
   const user = userByEmail(users, email.value);
   if (!user) {
-    throw new ApiError(404, 'No user has this e-mail address.', [{ loc: ['email'], msg: 'No user has this e-mail address.' }]);
+    throw new ApiError(404, t('No user has this e-mail address.'), [{ loc: ['email'], msg: t('No user has this e-mail address.') }]);
   }
   return user;
 }
@@ -305,23 +314,24 @@ function enteredUser(users: AdminUserView[], email: HTMLInputElement): AdminUser
  * two-factor login (a lost phone): root for an admin, an admin for anyone else. */
 function loginHelpSection(users: AdminUserView[], viewer: Viewer, page: Page): HTMLElement {
   const email = el('input', { id: 'otp-email', name: 'email', type: 'email', autocomplete: 'off' });
-  const reset = el('button', { type: 'button' }, 'Reset two-factor login');
+  const reset = el('button', { type: 'button' }, t('Reset two-factor login'));
   const form = el('form', { class: 'balance-form invite-form', novalidate: true },
-    field('otp', 'email', 'E-mail address', email, 'The exact address of the user (upper and lower case do not matter).'),
+    field('otp', 'email', t('E-mail address'), email, t('The exact address of the user (upper and lower case do not matter).')),
     el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
-    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Set one-time password'), reset));
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, t('Set one-time password')), reset));
   let done = '';
   const finish = (): void => (done ? page.reload(done) : form.querySelectorAll('button').forEach((item) => (item.disabled = false)));
   reset.addEventListener('click', () => {
     done = '';
     void submit(form, 'otp', ['email'], async () => {
       const user = enteredUser(users, email);
-      const go = await ask(`Reset the two-factor login of ${user.username}`, [
-        `${user.username} logs in with the password only, e.g. after losing the phone; root and admins set it up again `
-        + 'right after.'], [{ label: 'Reset two-factor login', value: true, primary: true }]);
+      const names = { user: user.username };
+      const go = await ask(t('Reset the two-factor login of {user}', names), [
+        t('{user} logs in with the password only, e.g. after losing the phone; root and admins set it up again right after.',
+          names)], [{ label: t('Reset two-factor login'), value: true, primary: true }]);
       if (go) {
         await api.resetTwoFactor(user.id);
-        done = `Reset the two-factor login of ${user.username}`;
+        done = t('Reset the two-factor login of {user}', names);
       }
     }, finish);
   });
@@ -330,25 +340,26 @@ function loginHelpSection(users: AdminUserView[], viewer: Viewer, page: Page): H
     done = '';
     void submit(form, 'otp', ['email'], async () => {
       const user = enteredUser(users, email);
-      const go = await ask(`One-time password for ${user.username}`, [
-        `${user.username} is logged out, the current password stops working, and at the next login ${user.username} `
-        + 'chooses a new one with the one-time password.'], [{ label: 'Set one-time password', value: true, primary: true }]);
+      const names = { user: user.username };
+      const go = await ask(t('One-time password for {user}', names), [
+        t('{user} is logged out, the current password stops working, and at the next login {user} chooses a new one with the one-time password.',
+          names)], [{ label: t('Set one-time password'), value: true, primary: true }]);
       if (!go) {
         return;
       }
       const { password } = await api.oneTimePassword(user.id);
-      await ask(`One-time password for ${user.username}`, [
+      await ask(t('One-time password for {user}', names), [
         el('p', {}, el('code', { class: 'one-time-password' }, password)),
-        `Give it to ${user.username} in person or by phone. It is shown only now.`], [{ label: 'Done', value: true, primary: true }]);
-      done = `Set a one-time password for ${user.username}`;
+        t('Give it to {user} in person or by phone. It is shown only now.', names)],
+      [{ label: t('Done'), value: true, primary: true }]);
+      done = t('Set a one-time password for {user}', names);
     }, finish);
   });
   return el('section', { class: 'review-section', id: 'one-time-password' },
-    el('h2', {}, 'Login help'),
-    el('p', { class: 'muted' }, `For ${viewer === 'root' ? 'an admin' : 'a user'} who forgot their password or lost their `
-      + `authenticator app (${viewer === 'root' ? 'users get help from an admin' : 'admins get help from root'}). A `
-      + 'one-time password logs them out; at the next login they choose a new password with it. It is shown only once, '
-      + 'to pass on in person or by phone. Your own login is changed in your settings.'),
+    el('h2', {}, t('Login help')),
+    el('p', { class: 'muted' }, viewer === 'root'
+      ? t('For an admin who forgot their password or lost their authenticator app (users get help from an admin). A one-time password logs them out; at the next login they choose a new password with it. It is shown only once, to pass on in person or by phone. Your own login is changed in your settings.')
+      : t('For a user who forgot their password or lost their authenticator app (admins get help from root). A one-time password logs them out; at the next login they choose a new password with it. It is shown only once, to pass on in person or by phone. Your own login is changed in your settings.')),
     form);
 }
 
@@ -356,7 +367,7 @@ function userRow(user: AdminUserView, viewer: Viewer, me: string | undefined, pa
   const self = user.id === me;
   const can = editable(viewer, user, self);
   return el('tr', {},
-    el('td', {}, el('strong', {}, user.username), self ? el('span', { class: 'muted' }, ' (you)') : ''),
+    el('td', {}, el('strong', {}, user.username), self ? el('span', { class: 'muted' }, ` ${t('(you)')}`) : ''),
     el('td', {}, [user.first_name, user.last_name].filter(Boolean).join(' ')),
     el('td', {}, user.email),
     el('td', {}, user.team ?? el('span', { class: 'muted' }, '—')),
@@ -369,22 +380,15 @@ function userRow(user: AdminUserView, viewer: Viewer, me: string | undefined, pa
 }
 
 const USERS_HINT: Record<Viewer, string> = {
-  root: 'You appoint and remove admins (Role) and look after them: their status, and a one-time password below. Admins '
-    + 'look after everyone else and the teams. A deactivated user is logged out and cannot log in; their data is kept until '
-    + 'you delete the account, e.g. when they ask for it. Root tracks no work and sees nobody\'s days or entries.',
-  admin: 'You give team roles and look after the users: their status, and a one-time password below; root appoints the '
-    + 'admins and looks after them. A deactivated user is logged out and cannot log in; their data is kept until you delete '
-    + 'the account, e.g. when they ask for it. The team role '
-    + 'belongs to the team: a team admin, admin or user, manages the team they are in (its members, invitations and '
-    + 'services) and sees its members\' reports; leaving the team ends it. Support answers the messages of the contact '
-    + 'page; you can also make yourself support. Otherwise nobody changes their own row.',
+  root: t('You appoint and remove admins (Role) and look after them: their status, and a one-time password below. Admins look after everyone else and the teams. A deactivated user is logged out and cannot log in; their data is kept until you delete the account, e.g. when they ask for it. Root tracks no work and sees nobody\'s days or entries.'),
+  admin: t('You give team roles and look after the users: their status, and a one-time password below; root appoints the admins and looks after them. A deactivated user is logged out and cannot log in; their data is kept until you delete the account, e.g. when they ask for it. The team role belongs to the team: a team admin, admin or user, manages the team they are in (its members, invitations and services) and sees its members\' reports; leaving the team ends it. Support answers the messages of the contact page; you can also make yourself support. Otherwise nobody changes their own row.'),
 };
 
 function usersSection(users: AdminUserView[], viewer: Viewer, me: string | undefined, page: Page): HTMLElement {
-  const header = el('tr', {}, ...['Username', 'Name', 'E-mail address', 'Team', 'Team role', 'Role', 'Status', 'Support',
-    'Registered', 'Last login'].map((label) => el('th', {}, label)));
+  const header = el('tr', {}, ...[t('Username'), t('Name'), t('E-mail address'), t('Team'), t('Team role'), t('Role'),
+    t('Status'), t('Support'), t('Registered'), t('Last login')].map((label) => el('th', {}, label)));
   return el('section', { class: 'review-section', id: 'users' },
-    el('h2', {}, 'Users'),
+    el('h2', {}, t('Users')),
     el('p', { class: 'muted' }, USERS_HINT[viewer]),
     scrolling(el('table', { class: 'review-table list-table admin-users' }, el('thead', {}, header),
       el('tbody', {}, ...users.map((user) => userRow(user, viewer, me, page))))));
@@ -415,23 +419,22 @@ function teamsTable(teams: AdminTeamView[]): EditableTable {
 function auditorsSection(auditors: AuditorView[], users: AdminUserView[], teams: AdminTeamView[], page: Page): HTMLElement {
   const row = (auditor: AuditorView): HTMLTableRowElement => el('tr', {},
     el('td', {}, auditor.team), el('td', {}, auditor.user),
-    el('td', {}, auditor.until ? formatDate(auditor.until) : el('span', { class: 'muted' }, 'until removed')),
-    el('td', { class: 'row-actions' }, button('Remove', () => {
+    el('td', {}, auditor.until ? formatDate(auditor.until) : el('span', { class: 'muted' }, t('until removed'))),
+    el('td', { class: 'row-actions' }, button(t('Remove'), () => {
       api.removeAuditor(auditor.team_id, auditor.user_id)
-        .then(() => page.reload(`${auditor.user} no longer audits ${auditor.team}`), page.fail);
+        .then(() => page.reload(t('{user} no longer audits {team}', { user: auditor.user, team: auditor.team })), page.fail);
     })));
   return el('section', { class: 'review-section', id: 'auditors' },
-    el('h2', {}, 'Auditors'),
-    el('p', { class: 'muted' }, 'An auditor sees the dashboard, week, month and year of everyone who was ever in the team, '
-      + 'for the days they belonged to it, read-only (no day notes, no review); the members see who can look. The access '
-      + 'ends after the last day, or when removed. Not for yourself.'),
+    el('h2', {}, t('Auditors')),
+    el('p', { class: 'muted' },
+      t('An auditor sees the dashboard, week, month and year of everyone who was ever in the team, for the days they belonged to it, read-only (no day notes, no review); the members see who can look. The access ends after the last day, or when removed. Not for yourself.')),
     auditors.length
       ? scrolling(el('table', { class: 'review-table list-table' },
-        el('thead', {}, el('tr', {}, ...['Team', 'Auditor', 'Last day'].map((label) => el('th', {}, label)),
-          el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
+        el('thead', {}, el('tr', {}, ...[t('Team'), t('Auditor'), t('Last day')].map((label) => el('th', {}, label)),
+          el('th', {}, el('span', { class: 'visually-hidden' }, t('Actions'))))),
         el('tbody', {}, ...auditors.map(row))))
-      : el('p', {}, 'No auditors yet.'),
-    teams.length ? auditorForm(users, teams, page) : el('p', { class: 'muted' }, 'Create a team first.'));
+      : el('p', {}, t('No auditors yet.')),
+    teams.length ? auditorForm(users, teams, page) : el('p', { class: 'muted' }, t('Create a team first.')));
 }
 
 function auditorForm(users: AdminUserView[], teams: AdminTeamView[], page: Page): HTMLFormElement {
@@ -440,21 +443,21 @@ function auditorForm(users: AdminUserView[], teams: AdminTeamView[], page: Page)
     ...teams.map((item) => el('option', { value: item.id }, item.name)));
   const until = el('input', { id: 'auditor-until', name: 'until', type: 'date' });
   const form = el('form', { class: 'balance-form invite-form', novalidate: true },
-    field('auditor', 'email', 'E-mail address', email, 'The exact address of the user or admin.'),
-    field('auditor', 'team', 'Team', team),
-    field('auditor', 'until', 'Last day (optional)', until, 'Empty: until removed.'),
+    field('auditor', 'email', t('E-mail address'), email, t('The exact address of the user or admin.')),
+    field('auditor', 'team', t('Team'), team),
+    field('auditor', 'until', t('Last day (optional)'), until, t('Empty: until removed.')),
     el('p', { class: 'form-error field-error', role: 'alert', hidden: true }),
-    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, 'Assign')));
+    el('div', { class: 'form-actions' }, el('button', { type: 'submit', class: 'primary' }, t('Assign'))));
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     let done = '';
     void submit(form, 'auditor', ['email', 'team', 'until'], async () => {
       const user = userByEmail(users, email.value);
       if (!user) {
-        throw new ApiError(404, 'No user has this e-mail address.', [{ loc: ['email'], msg: 'No user has this e-mail address.' }]);
+        throw new ApiError(404, t('No user has this e-mail address.'), [{ loc: ['email'], msg: t('No user has this e-mail address.') }]);
       }
       const assigned = await api.assignAuditor(team.value, user.id, until.value || null);
-      done = `${assigned.user} audits ${assigned.team}`;
+      done = t('{user} audits {team}', { user: assigned.user, team: assigned.team });
     }, () => page.reload(done));
   });
   return form;
@@ -462,11 +465,10 @@ function auditorForm(users: AdminUserView[], teams: AdminTeamView[], page: Page)
 
 function auditSection(entries: AuditView[]): HTMLElement {
   return el('section', { class: 'review-section', id: 'audit' },
-    el('h2', {}, 'Audit log'),
-    el('p', { class: 'muted' }, 'Who changed roles, team roles or the status of users, set one-time passwords, switched '
-      + 'registration or changed teams, and when; the latest 200. Every user sees the changes to their own account in '
-      + 'their settings.'),
-    auditTable(entries, 'No changes yet.'));
+    el('h2', {}, t('Audit log')),
+    el('p', { class: 'muted' },
+      t('Who changed roles, team roles or the status of users, set one-time passwords, switched registration or changed teams, and when; the latest 200. Every user sees the changes to their own account in their settings.')),
+    auditTable(entries, t('No changes yet.')));
 }
 
 export async function renderAdminPage(doc: Document): Promise<void> {

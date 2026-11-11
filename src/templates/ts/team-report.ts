@@ -3,6 +3,7 @@
 import { api, errorText, type AuditedTeam, type AuthStatus, type TeamReport } from './api.ts';
 import { clockTime, formatMonth, formatShortDate, isoDate, isoMonth, shiftMonth, type IsoDate } from './dates.ts';
 import { button, el } from './dom.ts';
+import { t } from './i18n.ts';
 import { monthFromSearch } from './month.ts';
 import { periodHeader, value, type Period } from './week.ts';
 import { yearFromSearch } from './year.ts';
@@ -69,13 +70,13 @@ function header(period: ReportPeriod, team: string | null, today: IsoDate): Peri
   const href = (next: ReportPeriod): string => reportHref(team, next);
   if (period.kind === 'month') {
     return {
-      title: `Team report · ${formatMonth(period.month)}`, start: `${period.month}-01`,
+      title: t('Team report · {period}', { period: formatMonth(period.month) }), start: `${period.month}-01`,
       shifted: (shift) => href({ kind: 'month', month: shiftMonth(period.month, shift) }),
       of: (date) => href({ kind: 'month', month: isoMonth(date) }), current: period.month === isoMonth(today),
     };
   }
   return {
-    title: `Team report · ${period.year}`, start: `${period.year}-01-01`,
+    title: t('Team report · {period}', { period: period.year }), start: `${period.year}-01-01`,
     shifted: (shift) => href({ kind: 'year', year: period.year + shift }),
     of: (date) => href({ kind: 'year', year: Number(date.slice(0, 4)) }), current: String(period.year) === today.slice(0, 4),
   };
@@ -98,10 +99,10 @@ function figure(label: string, ...content: (HTMLElement | string)[]): HTMLElemen
 
 function figures(hours: Hours): HTMLElement[] {
   return [
-    figure('Worked', el('span', { class: 'num' }, hours.worked), el('span', { class: 'muted' }, ' of '),
+    figure(t('Worked'), el('span', { class: 'num' }, hours.worked), el('span', { class: 'muted' }, ` ${t('of')} `),
       el('span', { class: 'num' }, hours.target)),
-    figure('Overtime', value(hours.overtime, true)),
-    figure('Entries', el('span', { class: 'num' }, hours.entries ?? '—')),
+    figure(t('Overtime'), value(hours.overtime, true)),
+    figure(t('Entries'), el('span', { class: 'num' }, hours.entries ?? '—')),
   ];
 }
 
@@ -113,9 +114,9 @@ function hoursList(rows: [string, string][]): HTMLElement {
 
 function serviceCard(service: Service): HTMLElement {
   return el('div', { class: 'card' },
-    el('div', { class: 'work-service-header' }, el('h3', {}, service.service ?? 'No service'),
+    el('div', { class: 'work-service-header' }, el('h3', {}, service.service ?? t('No service')),
       el('span', { class: 'num' }, service.duration)),
-    hoursList(service.tickets.map((ticket) => [ticket.ticket_key ?? 'No ticket', ticket.duration])));
+    hoursList(service.tickets.map((ticket) => [ticket.ticket_key ?? t('No ticket'), ticket.duration])));
 }
 
 /** A member's month or year report in the team view, for the same period; the own one is not a look at someone else's. */
@@ -135,7 +136,7 @@ function memberCard(member: Member, view: ReportView): HTMLElement {
     ...figures(member),
     member.activity_types.length
       ? hoursList(member.activity_types.map((item) => [item.activity_type, item.duration])) : null,
-    el('span', { class: 'report-open' }, 'Open report ›'));
+    el('span', { class: 'report-open' }, t('Open report ›')));
 }
 
 function cards(title: string, items: HTMLElement[], empty: string | null): HTMLElement | null {
@@ -149,13 +150,14 @@ function cards(title: string, items: HTMLElement[], empty: string | null): HTMLE
 function reportContent(report: TeamReport, view: ReportView): (HTMLElement | null)[] {
   return [
     el('div', { class: 'card card-surface week-summary' }, el('strong', {}, report.team), ...figures(report.totals),
-      report.until && report.until < report.end ? el('div', { class: 'muted' }, `counted up to ${formatShortDate(report.until)}`) : null),
-    report.current_members_only ? el('p', { class: 'muted' }, 'Current members only, each from the day they joined: the total of '
-      + 'a past period shrinks when someone leaves.') : null,
-    cards('Activity types', report.activity_types.map((item) => el('div', { class: 'card' }, el('h3', {}, item.activity_type),
-      el('p', { class: 'tile-value num' }, item.duration))), 'No entries in this period.'),
-    cards('Services', report.services.map(serviceCard), null),
-    cards('Members', report.members.map((member) => memberCard(member, view)), 'Nobody was in the team in this period.'),
+      report.until && report.until < report.end
+        ? el('div', { class: 'muted' }, t('counted up to {date}', { date: formatShortDate(report.until) })) : null),
+    report.current_members_only ? el('p', { class: 'muted' },
+      t('Current members only, each from the day they joined: the total of a past period shrinks when someone leaves.')) : null,
+    cards(t('Activity types'), report.activity_types.map((item) => el('div', { class: 'card' }, el('h3', {}, item.activity_type),
+      el('p', { class: 'tile-value num' }, item.duration))), t('No entries in this period.')),
+    cards(t('Services'), report.services.map(serviceCard), null),
+    cards(t('Members'), report.members.map((member) => memberCard(member, view)), t('Nobody was in the team in this period.')),
   ];
 }
 
@@ -166,27 +168,27 @@ function teamChooser(teams: TeamChoice[], team: string | null, period: ReportPer
   }
   const hidden = period.kind === 'month' ? { name: 'month', value: period.month } : { name: 'year', value: String(period.year) };
   return el('form', { class: 'member-chooser', method: 'get', action: '/team/report' },
-    el('label', { for: 'team-report-team' }, 'Team'),
+    el('label', { for: 'team-report-team' }, t('Team')),
     el('select', { id: 'team-report-team', name: 'team' },
       ...teams.map((item) => el('option', { value: item.id, selected: item.id === team }, item.name))),
     el('input', { type: 'hidden', ...hidden }),
-    el('button', { type: 'submit', class: 'button-small' }, 'Show'));
+    el('button', { type: 'submit', class: 'button-small' }, t('Show')));
 }
 
 function periodLinks(doc: Document, period: ReportPeriod, team: string | null, today: IsoDate): void {
   const current = doc.querySelector<HTMLAnchorElement>('#team-report-current')!;
   current.href = reportHref(team, currentPeriod(period, today));
-  current.textContent = period.kind === 'month' ? 'Current month' : 'Current year';
+  current.textContent = period.kind === 'month' ? t('Current month') : t('Current year');
   const kind = doc.querySelector<HTMLAnchorElement>('#team-report-kind')!;
   kind.href = reportHref(team, otherKind(period, today));
-  kind.textContent = period.kind === 'month' ? 'Year' : 'Month';
+  kind.textContent = period.kind === 'month' ? t('Year') : t('Month');
 }
 
 /** The exports of the shown report, next to the date field. */
 function showExports(doc: Document, team: string, report: TeamReport, period: ReportPeriod): void {
   doc.querySelector('#team-report-exports')?.replaceChildren(
-    el('a', { class: 'button', href: csvHref(team, period) }, 'Export CSV'),
-    button('Save as PDF', () => saveAsPdf(report.team), { class: 'button' }));
+    el('a', { class: 'button', href: csvHref(team, period) }, t('Export CSV')),
+    button(t('Save as PDF'), () => saveAsPdf(report.team), { class: 'button' }));
 }
 
 function loadReport(team: string, period: ReportPeriod): Promise<TeamReport> {
@@ -198,7 +200,7 @@ export async function renderTeamReportPage(doc: Document): Promise<void> {
   if (!root) {
     return;
   }
-  root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
+  root.replaceChildren(el('p', { class: 'muted' }, t('Loading…')));
   try {
     const today = isoDate(new Date());
     const period = periodFromSearch(doc.location.search, today);
@@ -208,7 +210,7 @@ export async function renderTeamReportPage(doc: Document): Promise<void> {
     periodHeader(doc, 'team-report', header(period, team, today));
     periodLinks(doc, period, team, today);
     if (team === null) {
-      root.replaceChildren(el('div', { class: 'card' }, 'The team report is for the team admins and auditors of a team.'));
+      root.replaceChildren(el('div', { class: 'card' }, t('The team report is for the team admins and auditors of a team.')));
       return;
     }
     const chooser = teamChooser(teams, team, period);
@@ -219,6 +221,7 @@ export async function renderTeamReportPage(doc: Document): Promise<void> {
     root.replaceChildren(...reportContent(report, { me: status.user?.id ?? null, period }).filter((part) => part !== null));
     showExports(doc, team, report, period);
   } catch (error) {
-    root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' }, errorText(error, 'The team report could not be loaded.')));
+    root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },
+      errorText(error, t('The team report could not be loaded.'))));
   }
 }

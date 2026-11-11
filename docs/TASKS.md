@@ -404,7 +404,7 @@ L.16 (a–i) → 9.1 (a–i).
       frame (header, navigation, menu, footer) and the page titles in the language, `t`/`tn` in the scripts
     - [x] **L.8b** The pages' HTML texts (what the scripts write comes with L.8c); the component gallery stays English, a
       reference for developers, imprint and privacy policy come as a whole with L.8e
-    - [ ] **L.8c** The scripts' texts and formats, in steps:
+    - [x] **L.8c** The scripts' texts and formats, in steps:
         - [x] **L.8c1** The formats (month and weekday names in the page's language) and the shared parts: day types,
           ways of working, dialogs, forms, the API client's messages, the day and entry editors with the duration
           question, an entry's details and history, the audit log as whole sentences
@@ -413,7 +413,8 @@ L.16 (a–i) → 9.1 (a–i).
         - [x] **L.8c3** Account and setup: login, register, password, two-factor login, setup, settings (with the
           editable tables of services and activity types, their messages as whole sentences); the setup's last button
           is "Start counting", as its first step is "Start"
-        - [ ] **L.8c4** Team and administration: admin, team, team report, team view, support, contact
+        - [x] **L.8c4** Team and administration: admin, team, team report, team view, support, contact; a changed role
+          as a whole sentence per role (`roleChanged`), lists of teams in the language
     - [ ] **L.8d** The server's messages (refusals, errors) and the holiday names
     - [ ] **L.8e** Imprint and privacy policy, with a note that the German text is the binding one
 - [x] **L.9** Exact times, in steps:

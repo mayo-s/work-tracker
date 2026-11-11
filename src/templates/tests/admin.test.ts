@@ -3,7 +3,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { confirmsDeletion, editable, passphraseError, restoredText, roleName, toBase64, userByEmail, userInput } from '../ts/admin.ts';
+import {
+  confirmsDeletion, editable, passphraseError, restoredText, roleChanged, toBase64, userByEmail, userInput,
+} from '../ts/admin.ts';
 import type { AdminUserView } from '../ts/api.ts';
 
 const HANS: AdminUserView = {
@@ -26,9 +28,9 @@ test('a deletion is confirmed by typing the exact username', () => {
   assert.equal(confirmsDeletion(HANS, 'Hans'), false);
 });
 
-test('roles read as a sentence', () => {
-  assert.equal(roleName('admin'), 'an admin');
-  assert.equal(roleName('team_admin'), 'a team admin');
+test('a changed role reads as a sentence, a team role with its team', () => {
+  assert.deepEqual([roleChanged('hans', 'admin'), roleChanged('hans', 'team_admin', 'Platform')],
+    ['hans is now an admin', 'hans is now team admin of Platform']);
 });
 
 test('the user for a one-time password is found by e-mail address, ignoring case and spaces', () => {
