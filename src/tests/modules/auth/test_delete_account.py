@@ -44,6 +44,16 @@ def test_with_the_password_and_the_code_the_account_goes_and_the_user_is_logged_
     assert login(app, 'hans').status == falcon.HTTP_401
 
 
+def test_wrong_passwords_and_codes_count_as_failed_logins(app):
+    hans = logged_in(app, 'hans', code=code_at(SECRET, time_step(NOW) - 1))
+    for _ in range(4):
+        delete(app, hans, password='wrong')
+    delete(app, hans, password=PASSWORD, code='000000')
+    right = {'password': PASSWORD, 'code': code_at(SECRET, time_step(NOW))}
+    assert delete(app, hans, **right) == (falcon.HTTP_429, 'Too many attempts; try again in a minute')
+    assert login(app, 'hans', code=right['code']).status == falcon.HTTP_429  # the login pauses as well
+
+
 def test_root_is_never_deleted(app):
     pascal = logged_in(app, 'pascal')
     assert delete(app, pascal, password=PASSWORD) == (falcon.HTTP_409, 'Root runs the app and is never deleted')
