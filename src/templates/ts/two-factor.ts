@@ -4,6 +4,7 @@
 import { setupButton } from './account.ts';
 import { api } from './api.ts';
 import { el } from './dom.ts';
+import { t } from './i18n.ts';
 
 export async function renderTwoFactorPage(doc: Document): Promise<void> {
   const root = doc.querySelector<HTMLElement>('#two-factor');
@@ -15,8 +16,8 @@ export async function renderTwoFactorPage(doc: Document): Promise<void> {
     window.location.assign('/');
     return;
   }
-  const part = el('div', { class: 'card login-form' }, el('p', {}, 'You need an authenticator app on your phone, e.g. Google '
-    + 'Authenticator, Microsoft Authenticator or 1Password.'));
+  const part = el('div', { class: 'card login-form' },
+    el('p', {}, t('You need an authenticator app on your phone, e.g. Google Authenticator, Microsoft Authenticator or 1Password.')));
   part.append(setupButton(part, () => window.location.assign('/')));
   root.replaceChildren(part);
   if (status.restore_instead) {
@@ -29,8 +30,8 @@ export async function renderTwoFactorPage(doc: Document): Promise<void> {
 async function restoreCard(): Promise<HTMLElement> {
   const { restoreForm } = await import('./admin.ts');
   return el('section', { class: 'card login-form', id: 'restore' },
-    el('h2', {}, 'Or restore a full backup'),
-    el('p', { class: 'muted' }, 'Moving from another Work Tracker? Restore its full backup instead: you take over its '
-      + 'root login (username, password and two-factor login) and log in again with it.'),
+    el('h2', {}, t('Or restore a full backup')),
+    el('p', { class: 'muted' },
+      t('Moving from another Work Tracker? Restore its full backup instead: you take over its root login (username, password and two-factor login) and log in again with it.')),
     restoreForm(false, null));
 }

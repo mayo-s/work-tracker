@@ -3,6 +3,7 @@
 import { api, type ActivityType, type Service, type ServiceChoice, type TicketView } from './api.ts';
 import { el } from './dom.ts';
 import type { EditableTable } from './editable-table.ts';
+import { t, tn } from './i18n.ts';
 
 /** Number of tickets per service id. */
 export function ticketCounts(tickets: TicketView[]): Map<string, number> {
@@ -18,21 +19,21 @@ export function ticketCounts(tickets: TicketView[]): Map<string, number> {
 /** `Delete MSB? 12 tickets lose their service and show up in the review.` */
 export function deleteServiceQuestion(shortName: string, tickets: number): string {
   if (!tickets) {
-    return `Delete ${shortName}? No ticket uses it.`;
+    return t('Delete {name}? No ticket uses it.', { name: shortName });
   }
-  return tickets === 1
-    ? `Delete ${shortName}? 1 ticket loses its service and shows up in the review.`
-    : `Delete ${shortName}? ${tickets} tickets lose their service and show up in the review.`;
+  return tn(tickets, 'Delete {name}? {count} ticket loses its service and shows up in the review.',
+    'Delete {name}? {count} tickets lose their service and show up in the review.', { name: shortName });
 }
 
 /** Services to choose grouped as `Team <name>` (first) and `Personal`; one group without a name when there is no team. */
 export function serviceGroups(choices: ServiceChoice[]): [string, ServiceChoice[]][] {
+  const personal = t('Personal');
   const groups = new Map<string, ServiceChoice[]>();
   for (const choice of choices) {
-    const group = choice.team ? `Team ${choice.team}` : 'Personal';
+    const group = choice.team ? t('Team {name}', { name: choice.team }) : personal;
     groups.set(group, [...groups.get(group) ?? [], choice]);
   }
-  return groups.size === 1 && groups.has('Personal') ? [['', choices]] : [...groups];
+  return groups.size === 1 && groups.has(personal) ? [['', choices]] : [...groups];
 }
 
 /** The options of a service select, in groups while the user is in a team; `label` gives each option's text. */
@@ -47,15 +48,17 @@ export function servicesTable(services: Service[], tickets: TicketView[]): Edita
   const counts = ticketCounts(tickets);
   return {
     id: 'services',
-    title: 'Services',
-    hint: 'The service of a ticket applies to all its entries; the month report groups coding work by service. These are '
-      + 'your personal services; the services of your team are managed by its team admins.',
-    noun: 'service',
+    title: t('Services'),
+    hint: t('The service of a ticket applies to all its entries; the month report groups coding work by service. These are your personal services; the services of your team are managed by its team admins.'),
+    texts: {
+      added: (name) => t('Added service {name}', { name }), saved: (name) => t('Saved service {name}', { name }),
+      deleted: (name) => t('Deleted service {name}', { name }), none: t('No services yet.'), add: t('Add service'),
+    },
     fields: [
-      { name: 'short_name', label: 'Short name', maxLength: 30, required: true },
-      { name: 'name', label: 'Full name', maxLength: 100, required: false },
+      { name: 'short_name', label: t('Short name'), maxLength: 30, required: true },
+      { name: 'name', label: t('Full name'), maxLength: 100, required: false },
     ],
-    usageLabel: 'Tickets',
+    usageLabel: t('Tickets'),
     items: services.map((service) => ({
       id: service.id!, label: service.short_name, values: { short_name: service.short_name, name: service.name ?? '' },
       usage: String(counts.get(service.id!) ?? 0),
@@ -72,14 +75,17 @@ export function servicesTable(services: Service[], tickets: TicketView[]): Edita
 export function activityTypesTable(activityTypes: ActivityType[]): EditableTable {
   return {
     id: 'activity-types',
-    title: 'Activity types',
-    hint: 'Every entry has one, e.g. Coding, Meeting or Travel; an entry of a type that requires a ticket needs one. A '
-      + 'type used by entries cannot be deleted.',
-    noun: 'activity type',
+    title: t('Activity types'),
+    hint: t('Every entry has one, e.g. Coding, Meeting or Travel; an entry of a type that requires a ticket needs one. A type used by entries cannot be deleted.'),
+    texts: {
+      added: (name) => t('Added activity type {name}', { name }), saved: (name) => t('Saved activity type {name}', { name }),
+      deleted: (name) => t('Deleted activity type {name}', { name }), none: t('No activity types yet.'),
+      add: t('Add activity type'),
+    },
     fields: [
-      { name: 'name', label: 'Name', maxLength: 50, required: true },
-      { name: 'ticket_required', label: 'Ticket required', required: false, type: 'checkbox', defaultValue: 'false',
-        format: (value) => (value === 'true' ? 'yes' : 'no') },
+      { name: 'name', label: t('Name'), maxLength: 50, required: true },
+      { name: 'ticket_required', label: t('Ticket required'), required: false, type: 'checkbox', defaultValue: 'false',
+        format: (value) => (value === 'true' ? t('yes') : t('no')) },
     ],
     items: activityTypes.map((type) => ({
       id: type.id!, label: type.name, values: { name: type.name, ticket_required: String(type.ticket_required ?? false) },
@@ -89,6 +95,6 @@ export function activityTypesTable(activityTypes: ActivityType[]): EditableTable
       return id === null ? api.addActivityType(type) : api.updateActivityType(id, type);
     },
     remove: (id) => api.deleteActivityType(id),
-    deleteQuestion: (item) => `Delete ${item.label}?`,
+    deleteQuestion: (item) => t('Delete {name}?', { name: item.label }),
   };
 }

@@ -46,8 +46,8 @@ pipenv run python -m src
 2. Root switches registration on in `/admin`; you register on `/register`.
 3. Your setup asks in five steps for the first day, opening balance and way of working (Tickets and activities,
    Activities only, Times only), the work schedule (hours per week, work days, federal state, company half days), the
-   PTO days (a pro-rata number for the first year is proposed) and, with ticket entries, the services. "Start" saves
-   it all; `/settings` changes it later. New users start with the activity types Meeting, Travel, Planning,
+   PTO days (a pro-rata number for the first year is proposed) and, with ticket entries, the services. "Start counting"
+   saves it all; `/settings` changes it later. New users start with the activity types Meeting, Travel, Planning,
    Documentation and Other; with tickets, the setup also adds Coding (requires a ticket) unless unchecked.
 
 From the first day on, each work day counts its full target as missing until its times are entered (today included).
@@ -139,7 +139,7 @@ are written in English; `src/templates/static/locales/de.json` and `es.json` tra
 missing or no longer used). So far the frame (header, navigation, menu, footer), the page titles, the pages' own texts
 and the scripts' shared parts (dialogs, forms, the day and entry editors, history, audit log, month and weekday names)
 and tracking pages (week, days off, month, year, dashboard, review, search; day counts with a decimal comma in German
-and Spanish); account, settings, team and administration follow (TASKS.md L.8c–e).
+and Spanish), login, setup and settings; team and administration follow (TASKS.md L.8c–e).
 
 ## Deploy to AWS
 

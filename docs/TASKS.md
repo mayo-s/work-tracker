@@ -410,8 +410,9 @@ L.16 (a–i) → 9.1 (a–i).
           question, an entry's details and history, the audit log as whole sentences
         - [x] **L.8c2** The tracking pages: week, days off, month, year, dashboard, review, search; decimal comma for
           day counts, lists joined in the language (`A und B`), short month names in the year and the chart
-        - [ ] **L.8c3** Account and setup: login, register, password, two-factor login, setup, settings (with the
-          editable tables of services and activity types, their messages as whole sentences)
+        - [x] **L.8c3** Account and setup: login, register, password, two-factor login, setup, settings (with the
+          editable tables of services and activity types, their messages as whole sentences); the setup's last button
+          is "Start counting", as its first step is "Start"
         - [ ] **L.8c4** Team and administration: admin, team, team report, team view, support, contact
     - [ ] **L.8d** The server's messages (refusals, errors) and the holiday names
     - [ ] **L.8e** Imprint and privacy policy, with a note that the German text is the binding one

@@ -3,7 +3,8 @@
 import { errorText } from './api.ts';
 import { button, el, onEscape, scrolling } from './dom.ts';
 import { normalizeOnLeave, settleDuration, type DurationRules } from './duration-input.ts';
-import { WEEKDAY_NAMES } from './labels.ts';
+import { t } from './i18n.ts';
+import { WEEKDAY_NAMES, weekdayName } from './labels.ts';
 
 /**
  * A field of a record, e.g. the short name of a service; `fixed` fields can only be entered for a new record.
@@ -34,12 +35,19 @@ export type Item = {
   id: string; label: string; values: Record<string, string>; usage?: string; link?: { href: string; label: string };
 };
 
+/** The messages of a table, each a whole sentence (the word order and the plural differ between the languages): after
+ * adding, saving and deleting a record (its name), without records, and the button that adds one. */
+export type TableTexts = {
+  added: (name: string) => string; saved: (name: string) => string; deleted: (name: string) => string; none: string;
+  add: string;
+};
+
 /** One editable table: its records and how to save and delete them. */
 export type EditableTable = {
   id: string;
   title: string;
   hint: string;
-  noun: string;
+  texts: TableTexts;
   fields: Field[];
   usageLabel?: string;
   items: Item[];
@@ -55,7 +63,7 @@ export type Page = { reload: (message: string) => void; fail: (error: unknown) =
 type Control = { name: string; element: HTMLElement; read: () => string; settle?: () => Promise<boolean> };
 
 function controlLabel(item: Item, field: Field): string {
-  return `${field.label} of ${item.label}`;
+  return t('{field} of {item}', { field: field.label, item: item.label });
 }
 
 /**
@@ -98,7 +106,7 @@ function weekdaysControl(item: Item | null, field: Field): Control {
   const boxes = WEEKDAY_NAMES.map((day) => el('input', { type: 'checkbox', value: day, checked: selected.has(day) }));
   const picker = el('fieldset', { class: 'weekday-picker' },
     el('legend', { class: 'visually-hidden' }, item ? controlLabel(item, field) : field.label),
-    ...boxes.map((box, index) => el('label', {}, box, WEEKDAY_NAMES[index])));
+    ...boxes.map((box, index) => el('label', {}, box, weekdayName(WEEKDAY_NAMES[index]!))));
   const label = el('span', { class: 'field-label', 'aria-hidden': 'true' }, field.label);  // the legend names it
   const element = item ? picker : el('div', { class: 'list-field' }, label, picker);
   return { name: field.name, element, read: () => boxes.filter((box) => box.checked).map((box) => box.value).join(',') };
@@ -144,7 +152,7 @@ function itemForm(table: EditableTable, item: Item | null, page: Page, ...button
     }
     const entered = values(fields);
     const name = item?.label ?? entered[table.fields[0]!.name];
-    const message = `${item ? 'Saved' : 'Added'} ${table.noun} ${name}`;
+    const message = item ? table.texts.saved(name ?? '') : table.texts.added(name ?? '');
     table.save(item?.id ?? null, entered).then(() => page.reload(message), page.fail);
   });
   return form;
@@ -158,7 +166,7 @@ function editRow(table: EditableTable, item: Item, page: Page, row: HTMLTableRow
     opener.focus();
   };
   const form = itemForm(table, item, page,
-    el('button', { type: 'submit', class: 'button-small primary' }, 'Save'), button('Cancel', cancel));
+    el('button', { type: 'submit', class: 'button-small primary' }, t('Save')), button(t('Cancel'), cancel));
   onEscape(form, cancel);
   row.replaceChildren(el('td', { colspan: columns }, form));
   queueMicrotask(() => form.querySelector<HTMLElement>('input, select')?.focus());
@@ -172,16 +180,16 @@ function cell(field: Field, value: string | undefined, first: boolean): HTMLElem
 
 function itemRow(table: EditableTable, item: Item, page: Page): HTMLTableRowElement {
   const row = el('tr', {});
-  const edit: HTMLButtonElement = button('Edit', () => editRow(table, item, page, row, edit));
+  const edit: HTMLButtonElement = button(t('Edit'), () => editRow(table, item, page, row, edit));
   row.append(
     ...table.fields.map((field, index) => cell(field, item.values[field.name], index === 0)),
     table.usageLabel ? el('td', { class: 'num' }, item.usage ?? '') : '',
     el('td', { class: 'row-actions' },
       item.link ? el('a', { href: item.link.href, class: 'button-small' }, item.link.label) : '',
       edit,
-      button('Delete', () => {
+      button(t('Delete'), () => {
         if (window.confirm(table.deleteQuestion(item))) {
-          table.remove(item.id).then(() => page.reload(`Deleted ${table.noun} ${item.label}`), page.fail);
+          table.remove(item.id).then(() => page.reload(table.texts.deleted(item.label)), page.fail);
         }
       })),
   );
@@ -192,15 +200,15 @@ export function tableSection(table: EditableTable, page: Page): HTMLElement {
   const header = el('tr', {},
     ...table.fields.map((field) => el('th', { class: field.numeric ? 'num' : null }, field.label)),
     table.usageLabel ? el('th', { class: 'num' }, table.usageLabel) : '',
-    el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')));
+    el('th', {}, el('span', { class: 'visually-hidden' }, t('Actions'))));
   return el('section', { class: 'review-section', id: table.id },
     el('h2', {}, table.title),
     el('p', { class: 'muted' }, table.hint),
     table.items.length
       ? scrolling(el('table', { class: 'review-table list-table' }, el('thead', {}, header),
         el('tbody', {}, ...table.items.map((item) => itemRow(table, item, page)))))
-      : el('p', {}, `No ${table.noun}s yet.`),
-    itemForm(table, null, page, el('button', { type: 'submit', class: 'primary' }, `Add ${table.noun}`)),
+      : el('p', {}, table.texts.none),
+    itemForm(table, null, page, el('button', { type: 'submit', class: 'primary' }, table.texts.add)),
   );
 }
 
@@ -227,6 +235,6 @@ export async function renderEditablePage(
       root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' }, errorText(error)));
     }
   };
-  root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
+  root.replaceChildren(el('p', { class: 'muted' }, t('Loading…')));
   await load();
 }

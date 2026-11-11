@@ -12,6 +12,7 @@ import { formatDate, formatTimestamp } from './dates.ts';
 import { ask } from './dialog.ts';
 import { button, el, scrolling } from './dom.ts';
 import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
+import { t } from './i18n.ts';
 import { field, submit } from './forms.ts';
 
 type TeamRole = NonNullable<AdminUserInput['team_role']>;
@@ -392,19 +393,21 @@ function usersSection(users: AdminUserView[], viewer: Viewer, me: string | undef
 function teamsTable(teams: AdminTeamView[]): EditableTable {
   return {
     id: 'teams',
-    title: 'Teams',
-    hint: 'Members share the services of their team; users never see which teams exist, they are invited. "Open" shows a '
-      + 'team\'s members, invitations and services. Only a team without members can be deleted.',
-    noun: 'team',
-    fields: [{ name: 'name', label: 'Name', maxLength: 50, required: true }],
-    usageLabel: 'Members',
+    title: t('Teams'),
+    hint: t('Members share the services of their team; users never see which teams exist, they are invited. "Open" shows a team\'s members, invitations and services. Only a team without members can be deleted.'),
+    texts: {
+      added: (name) => t('Added team {name}', { name }), saved: (name) => t('Saved team {name}', { name }),
+      deleted: (name) => t('Deleted team {name}', { name }), none: t('No teams yet.'), add: t('Add team'),
+    },
+    fields: [{ name: 'name', label: t('Name'), maxLength: 50, required: true }],
+    usageLabel: t('Members'),
     items: teams.map((team) => ({
       id: team.id, label: team.name, values: { name: team.name }, usage: String(team.members),
-      link: { href: `/team?team=${team.id}`, label: 'Open' },
+      link: { href: `/team?team=${team.id}`, label: t('Open') },
     })),
     save: (id, values) => (id === null ? api.addTeam(values['name'] ?? '') : api.renameTeam(id, values['name'] ?? '')),
     remove: (id) => api.deleteTeam(id),
-    deleteQuestion: (item) => `Delete the team ${item.label}? Its open invitations and services go with it.`,
+    deleteQuestion: (item) => t('Delete the team {name}? Its open invitations and services go with it.', { name: item.label }),
   };
 }
 

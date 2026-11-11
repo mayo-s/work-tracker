@@ -4,6 +4,7 @@ import { api, type InvitationView, type MemberView, type Service, type TeamPageV
 import { formatDate, formatTimestamp } from './dates.ts';
 import { button, el, scrolling } from './dom.ts';
 import { renderEditablePage, tableSection, type EditableTable, type Page } from './editable-table.ts';
+import { t } from './i18n.ts';
 import { field, submit } from './forms.ts';
 
 const ROLE_LABELS: Record<MemberView['team_role'], string> = { team_admin: 'Team admin', member: 'Member' };
@@ -75,13 +76,16 @@ function invitationsSection(team: TeamPageView, page: Page): HTMLElement {
 function servicesTable(teamId: string, services: Service[]): EditableTable {
   return {
     id: 'team-services',
-    title: 'Team services',
-    hint: 'Members choose these in their entries, next to their personal services. Deleting one leaves the members\' '
-      + 'tickets with it without service.',
-    noun: 'team service',
+    title: t('Team services'),
+    hint: t('Members choose these in their entries, next to their personal services. Deleting one leaves the members\' tickets with it without service.'),
+    texts: {
+      added: (name) => t('Added team service {name}', { name }), saved: (name) => t('Saved team service {name}', { name }),
+      deleted: (name) => t('Deleted team service {name}', { name }), none: t('No team services yet.'),
+      add: t('Add team service'),
+    },
     fields: [
-      { name: 'short_name', label: 'Short name', maxLength: 30, required: true },
-      { name: 'name', label: 'Full name', maxLength: 100, required: false },
+      { name: 'short_name', label: t('Short name'), maxLength: 30, required: true },
+      { name: 'name', label: t('Full name'), maxLength: 100, required: false },
     ],
     items: services.map((service) => ({
       id: service.id!, label: service.short_name, values: { short_name: service.short_name, name: service.name ?? '' },
@@ -91,7 +95,8 @@ function servicesTable(teamId: string, services: Service[]): EditableTable {
       return id === null ? api.addTeamService(teamId, service) : api.updateTeamService(teamId, id, service);
     },
     remove: (id) => api.deleteTeamService(teamId, id),
-    deleteQuestion: (item) => `Delete ${item.label}? Members' tickets with it lose their service and show up in their review.`,
+    deleteQuestion: (item) => t("Delete {name}? Members' tickets with it lose their service and show up in their review.",
+      { name: item.label }),
   };
 }
 
