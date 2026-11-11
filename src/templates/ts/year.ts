@@ -2,15 +2,14 @@
 // and activity type (its parts follow the way of working).
 
 import { api, errorText, type DayType, type WorkMode, type YearReport } from './api.ts';
-import { isoDate, isoMonth, type IsoDate } from './dates.ts';
+import { isoDate, isoMonth, shortMonth, type IsoDate } from './dates.ts';
 import { el, scrolling } from './dom.ts';
 import { fromMinutes, toMinutes } from './durations.ts';
+import { decimal, t } from './i18n.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
 import { entriesOfWorked, periodHeader, periodSummary, value } from './week.ts';
 import { hasTickets, showsWork } from './work-modes.ts';
-
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** The year from `?year=2025`, otherwise the current year. */
 export function yearFromSearch(search: string, today: IsoDate): number {
@@ -31,9 +30,9 @@ export function daysOffRows(daysOff: Partial<Record<DayType, number>>): [string,
     .map((type) => [DAY_TYPE_LABELS[type], daysOff[type] ?? 0]);
 }
 
-/** `2.5` → `2.5`, `17` → `17` (PTO days without trailing zeros) */
+/** `2.5` → `2.5`, `17` → `17` (PTO days without trailing zeros; German and Spanish `2,5`) */
 export function formatDays(days: number): string {
-  return String(Number(days.toFixed(1)));
+  return decimal(days);
 }
 
 function cardRow(label: string, value: string): HTMLElement {
@@ -43,26 +42,27 @@ function cardRow(label: string, value: string): HTMLElement {
 function ptoCard(report: YearReport): HTMLElement {
   const pto = report.pto;
   if (!pto) {
-    return el('div', { class: 'card' }, el('h3', {}, 'PTO'), el('p', { class: 'muted' }, 'No PTO days entered for this year.'));
+    return el('div', { class: 'card' }, el('h3', {}, t('PTO')),
+      el('p', { class: 'muted' }, t('No PTO days entered for this year.')));
   }
-  return el('div', { class: 'card' }, el('h3', {}, 'PTO'),
+  return el('div', { class: 'card' }, el('h3', {}, t('PTO')),
     el('table', { class: 'card-table' }, el('tbody', {},
-      cardRow(pto.carried_over_fixed ? 'Carried over (fixed)' : 'Carried over', formatDays(pto.carried_over)),
-      cardRow('+ Allowance', formatDays(pto.allowance)),
-      pto.extra_days ? cardRow('+ Extra days', formatDays(pto.extra_days)) : null,
-      cardRow('− Used', formatDays(pto.used)),
-      cardRow('− Planned', formatDays(pto.planned)),
-      el('tr', { class: 'card-table-total' }, el('td', {}, el('strong', {}, 'Remaining')),
+      cardRow(pto.carried_over_fixed ? t('Carried over (fixed)') : t('Carried over'), formatDays(pto.carried_over)),
+      cardRow(t('+ Allowance'), formatDays(pto.allowance)),
+      pto.extra_days ? cardRow(t('+ Extra days'), formatDays(pto.extra_days)) : null,
+      cardRow(t('− Used'), formatDays(pto.used)),
+      cardRow(t('− Planned'), formatDays(pto.planned)),
+      el('tr', { class: 'card-table-total' }, el('td', {}, el('strong', {}, t('Remaining'))),
         el('td', { class: `num ${pto.remaining < 0 ? 'value-negative' : 'value-positive'}` },
           el('strong', {}, formatDays(pto.remaining)))))));
 }
 
 function daysOffCard(report: YearReport): HTMLElement {
   const rows = daysOffRows(report.days_off);
-  return el('div', { class: 'card' }, el('h3', {}, 'Days off'),
+  return el('div', { class: 'card' }, el('h3', {}, t('Days off')),
     rows.length
-      ? el('table', { class: 'card-table' }, el('tbody', {}, ...rows.map(([label, count]) => cardRow(label, String(count)))))
-      : el('p', { class: 'muted' }, 'None'));
+      ? el('table', { class: 'card-table' }, el('tbody', {}, ...rows.map(([label, count]) => cardRow(label, decimal(count)))))
+      : el('p', { class: 'muted' }, t('None')));
 }
 
 /** A card of the year's work: hours by service or activity type and the total; `None` if there is none. */
@@ -70,9 +70,9 @@ function workCard(title: string, rows: [string, string][], total: string): HTMLE
   return el('div', { class: 'card' }, el('h3', {}, title),
     rows.length
       ? el('table', { class: 'card-table' }, el('tbody', {}, ...rows.map(([label, duration]) => cardRow(label, duration)),
-        el('tr', { class: 'card-table-total' }, el('td', {}, el('strong', {}, 'Total')),
+        el('tr', { class: 'card-table-total' }, el('td', {}, el('strong', {}, t('Total'))),
           el('td', { class: 'num' }, el('strong', {}, total)))))
-      : el('p', { class: 'muted' }, 'None'));
+      : el('p', { class: 'muted' }, t('None')));
 }
 
 /** The work cards: hours by activity type, and by service (with ticket and service, or when there is ticket work); none
@@ -82,11 +82,11 @@ function workCards(report: YearReport, mode: WorkMode): HTMLElement[] {
     return [];
   }
   const services = hasTickets(mode) || report.services.length > 0
-    ? workCard('Services', report.services.map((service) => [service.service ?? 'No service', service.duration]),
+    ? workCard(t('Services'), report.services.map((service) => [service.service ?? t('No service'), service.duration]),
       report.services_total)
     : null;
-  return [el('h2', { class: 'year-work' }, 'Work'), el('div', { class: 'year-cards' },
-    workCard('Activity types', report.work.map((work) => [work.activity_type, work.duration]), report.work_total),
+  return [el('h2', { class: 'year-work' }, t('Work')), el('div', { class: 'year-cards' },
+    workCard(t('Activity types'), report.work.map((work) => [work.activity_type, work.duration]), report.work_total),
     services ?? '')];
 }
 
@@ -94,12 +94,12 @@ function monthsTable(report: YearReport): HTMLElement {
   const balances = runningBalances(report.totals.balance_in, report.months.map((month) => month.overtime));
   const counted = report.totals.until ? isoMonth(report.totals.until) : '';
   return scrolling(el('table', { class: 'year-months' },
-    el('thead', {}, el('tr', {}, el('th', {}, 'Month'), el('th', { class: 'num' }, 'Worked'), el('th', { class: 'num' }, 'Target'),
-      el('th', { class: 'num' }, 'Overtime'), el('th', { class: 'num' }, 'Balance'))),
+    el('thead', {}, el('tr', {}, el('th', {}, t('Month')), el('th', { class: 'num' }, t('Worked')),
+      el('th', { class: 'num' }, t('Target')), el('th', { class: 'num' }, t('Overtime')), el('th', { class: 'num' }, t('Balance')))),
     el('tbody', {}, ...report.months.map((month, index) => {
       const future = !counted || month.month > counted;
       return el('tr', { class: future ? 'is-future' : null },
-        el('td', {}, el('a', { href: `/month?month=${month.month}` }, MONTH_LABELS[index] ?? month.month)),
+        el('td', {}, el('a', { href: `/month?month=${month.month}` }, shortMonth(month.month))),
         el('td', { class: 'num' }, future ? '—' : month.worked),
         el('td', { class: 'num muted' }, future ? '—' : month.target),
         el('td', { class: 'num' }, future ? '—' : value(month.overtime, true)),
@@ -119,19 +119,20 @@ export async function renderYearPage(doc: Document): Promise<void> {
     title: String(year), start: `${year}-01-01`, shifted: (shift) => `/year?year=${year + shift}`,
     of: (date) => `/year?year=${date.slice(0, 4)}`, current: year === Number(today.slice(0, 4)),
   });
-  root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
+  root.replaceChildren(el('p', { class: 'muted' }, t('Loading…')));
   try {
     const member = viewedMember(doc.location.search);
     const report = await api.yearReport(year, member);
-    const worked = el('div', {}, el('span', { class: 'muted' }, 'Days worked '), el('span', { class: 'num' }, String(report.days_worked)),
-      el('span', { class: 'muted' }, ' · average '), el('span', { class: 'num' }, report.average_per_day_worked));
+    const worked = el('div', {}, el('span', { class: 'muted' }, `${t('Days worked')} `),
+      el('span', { class: 'num' }, String(report.days_worked)), el('span', { class: 'muted' }, ` · ${t('average')} `),
+      el('span', { class: 'num' }, report.average_per_day_worked));
     const work = workCards(report, report.work_mode);  // the member's way of working in the team view
     root.replaceChildren(
       periodSummary(report.totals, work.length ? entriesOfWorked(report.entries, report.totals) : null, worked),
       el('div', { class: 'year-cards' }, ptoCard(report), daysOffCard(report)),
-      el('h2', {}, 'Months'), monthsTable(report), ...work);
+      el('h2', {}, t('Months')), monthsTable(report), ...work);
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },
-      errorText(error, 'The year could not be loaded.')));
+      errorText(error, t('The year could not be loaded.'))));
   }
 }

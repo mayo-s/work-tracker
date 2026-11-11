@@ -114,6 +114,13 @@ export function shiftMonth(month: IsoMonth, months: number): IsoMonth {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
 }
 
+/** `2026-10` → `Oct` in the page's language (German `Okt.`, Spanish `Oct`). */
+export function shortMonth(month: IsoMonth): string {
+  const [year = 0, number = 1] = month.split('-').map(Number);
+  const name = new Intl.DateTimeFormat(language(), { month: 'short' }).format(new Date(year, number - 1, 1));
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 /** `2026-10` → `October 2026` in the page's language (German `Oktober 2026`, Spanish `Octubre de 2026`); anything
  * else as it is. */
 export function formatMonth(month: IsoMonth): string {

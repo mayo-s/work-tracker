@@ -28,6 +28,11 @@ export async function loadCatalog(code: string, fetcher: typeof fetch = fetch): 
   }
 }
 
+/** A count of days (or the like) as the page's language writes it, to one decimal: `2.5`, German and Spanish `2,5`. */
+export function decimal(value: number): string {
+  return new Intl.NumberFormat(current, { maximumFractionDigits: 1, useGrouping: false }).format(value);
+}
+
 /** The text in the page's language with its placeholders filled in, e.g. `t('Deleted {username}', { username })`. */
 export function t(text: string, params: Params = {}): string {
   let translated = entries[text] ?? text;
@@ -37,7 +42,13 @@ export function t(text: string, params: Params = {}): string {
   return translated;
 }
 
-/** `one` for a count of 1, else `other`, translated with `{count}` and the other placeholders filled in. */
+/** `one` for a count of 1, else `other`, translated with `{count}` and the other placeholders filled in; `params` may
+ * give `count` as shown, e.g. `decimal(14.5)`. */
 export function tn(count: number, one: string, other: string, params: Params = {}): string {
-  return t(count === 1 ? one : other, { ...params, count });
+  return t(count === 1 ? one : other, { count, ...params });
+}
+
+/** Items as a list in the page's language: `A and B`, German `A und B`. */
+export function listOf(items: string[]): string {
+  return new Intl.ListFormat(current, { type: 'conjunction' }).format(items);
 }

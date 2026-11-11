@@ -106,9 +106,12 @@ def script_texts():
     return {literal[1:-1].replace("\\'", "'").replace('\\"', '"') for literal in literals}
 
 
-def test_scripts_translate_quoted_texts_only():
-    """Texts in backticks (template literals) are missed by the catalogs' test: placeholders go into the parameters."""
-    assert [name for name, code in scripts().items() if re.search(r'(?<![\w.])tn?\(\s*`|tn\([^,]+,\s*`', code)] == []
+def test_scripts_translate_whole_quoted_texts_only():
+    """The catalogs' test reads texts in quotes: not in backticks (placeholders go into the parameters), not put together
+    with `+` (the catalog would be asked for the whole, the test would find a part)."""
+    unread = (rf'(?<![\w.])tn?\(\s*`|tn\([^,]+,\s*`|(?<![\w.])t\(\s*{LITERAL}\s*\+'
+              rf'|(?<![\w.])tn\([^,]+,\s*{LITERAL}\s*\+|(?<![\w.])tn\([^,]+,\s*{LITERAL},\s*{LITERAL}\s*\+')
+    assert [name for name, code in scripts().items() if re.search(unread, code)] == []
 
 
 def texts_to_translate():

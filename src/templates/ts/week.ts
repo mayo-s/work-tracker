@@ -11,6 +11,7 @@ import { ask } from './dialog.ts';
 import { button, el, PHONE, scrolling } from './dom.ts';
 import { entryEditor, type EntryEditorOptions } from './entry-editor.ts';
 import { historyPanel } from './history.ts';
+import { decimal, t } from './i18n.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember, withMember } from './team-view.ts';
 
@@ -84,7 +85,8 @@ export function entryFromSearch(search: string, entries: Map<IsoDate, EntryView[
  * `Company half day · 0.5 PTO (half free)`. */
 export function dayTypeLabel(day: Pick<DayView, 'day_type' | 'pto_days'>): string {
   const label = DAY_TYPE_LABELS[day.day_type];
-  return day.day_type === 'company_half_day' && day.pto_days ? `${label} · ${day.pto_days} PTO (half free)` : label;
+  return day.day_type === 'company_half_day' && day.pto_days
+    ? t('{type} · {days} PTO (half free)', { type: label, days: decimal(day.pto_days) }) : label;
 }
 
 export function value(duration: string, withSign = false): HTMLElement {
@@ -119,7 +121,7 @@ function renderHeader(doc: Document, week: string, today: IsoDate): void {
   const monday = mondayOf(week);
   const [year, number] = week.split('-W');
   periodHeader(doc, 'week', {
-    title: `Week ${Number(number)} · ${year}`, start: monday, shifted: (shift) => `/week?week=${shiftWeek(week, shift)}`,
+    title: t('Week {number} · {year}', { number: Number(number), year: year ?? '' }), start: monday, shifted: (shift) => `/week?week=${shiftWeek(week, shift)}`,
     of: (date) => `/week?week=${isoWeek(date)}`, current: week === isoWeek(today),
   });
   doc.querySelector('#week-period')!.textContent = `${formatDate(monday)} – ${formatDate(addDays(monday, 6))}`;
@@ -129,21 +131,22 @@ function renderHeader(doc: Document, week: string, today: IsoDate): void {
  * the `extra` lines of the page. */
 export function periodSummary(totals: PeriodTotals, ...extra: (HTMLElement | null)[]): HTMLElement {
   return el('div', { class: 'card card-surface week-summary' },
-    el('div', {}, el('span', { class: 'muted' }, 'Worked '), el('span', { class: 'num' }, totals.worked),
-      el('span', { class: 'muted' }, ' of '), el('span', { class: 'num' }, totals.target)),
-    el('div', {}, el('span', { class: 'muted' }, 'Overtime '), value(totals.overtime, true)),
-    el('div', {}, el('span', { class: 'muted' }, 'Balance '), value(totals.balance_in), el('span', { class: 'muted' }, ' → '),
-      value(totals.balance_out)),
+    el('div', {}, el('span', { class: 'muted' }, `${t('Worked')} `), el('span', { class: 'num' }, totals.worked),
+      el('span', { class: 'muted' }, ` ${t('of')} `), el('span', { class: 'num' }, totals.target)),
+    el('div', {}, el('span', { class: 'muted' }, `${t('Overtime')} `), value(totals.overtime, true)),
+    el('div', {}, el('span', { class: 'muted' }, `${t('Balance')} `), value(totals.balance_in),
+      el('span', { class: 'muted' }, ' → '), value(totals.balance_out)),
     totals.until && totals.until < totals.end
-      ? el('div', { class: 'muted' }, `counted up to ${formatDate(totals.until)}`) : null,
+      ? el('div', { class: 'muted' }, t('counted up to {date}', { date: formatDate(totals.until) })) : null,
     ...extra,
   );
 }
 
 /** `Entries 152:30 of 160:00 worked`: the hours in entries next to the hours worked by the day times (month, year). */
 export function entriesOfWorked(entries: string, totals: PeriodTotals): HTMLElement {
-  return el('div', {}, el('span', { class: 'muted' }, 'Entries '), el('span', { class: 'num' }, entries),
-    el('span', { class: 'muted' }, ' of '), el('span', { class: 'num' }, totals.worked), el('span', { class: 'muted' }, ' worked'));
+  return el('div', {}, el('span', { class: 'muted' }, `${t('Entries')} `), el('span', { class: 'num' }, entries),
+    el('span', { class: 'muted' }, ` ${t('of')} `), el('span', { class: 'num' }, totals.worked),
+    el('span', { class: 'muted' }, ` ${t('worked')}`));
 }
 
 type WeekData = {
@@ -174,11 +177,11 @@ export function openerKey(editing: Editing): string | null {
 /** The name an entry is listed by: its ticket (or "No ticket" where its activity type requires one), otherwise its
  * activity type; then the activity type of an entry on a ticket. */
 function entryLabel(entry: EntryView): (HTMLElement | null)[] {
-  const activity = entry.activity_type ?? 'No activity type';
+  const activity = entry.activity_type ?? t('No activity type');
   if (!entry.ticket_key && !entry.ticket_required) {
     return [el('strong', { class: entry.activity_type ? '' : 'value-negative' }, activity)];
   }
-  return [el('strong', { class: entry.ticket_key ? '' : 'value-negative' }, entry.ticket_key ?? 'No ticket'),
+  return [el('strong', { class: entry.ticket_key ? '' : 'value-negative' }, entry.ticket_key ?? t('No ticket')),
     el('span', { class: entry.activity_type ? 'badge positive' : 'badge warning' }, activity)];
 }
 
@@ -186,11 +189,11 @@ function entryLabel(entry: EntryView): (HTMLElement | null)[] {
 export function entryContent(entry: EntryView): (HTMLElement | null)[] {
   return [
     el('span', { class: entry.duration === '0:00' ? 'num value-negative' : 'num', title: entry.duration === '0:00'
-      ? 'No duration yet' : null }, entry.duration),
+      ? t('No duration yet') : null }, entry.duration),
     ...entryLabel(entry),
     entry.service ? el('span', { class: 'badge' }, entry.service) : null,
     entry.description ? el('span', { class: 'entry-text' }, entry.description) : null,
-    entry.changed ? el('span', { class: 'badge', title: 'Changed after it was created or imported' }, 'changed') : null,
+    entry.changed ? el('span', { class: 'badge', title: t('Changed after it was created or imported') }, t('changed')) : null,
   ];
 }
 
@@ -215,8 +218,9 @@ function entryItem(entry: EntryView, view: View): HTMLElement {
   return el('li', {},
     el('div', { class: 'entry' }, ...entryContent(entry),
       el('span', { class: 'entry-actions' },
-        button(historyOpen ? 'Hide history' : 'History', () => view.actions.toggleHistory(entry.id), { 'aria-expanded': String(historyOpen) }),
-        button('Edit', () => view.actions.edit({ kind: 'entry', date: entry.date, id: entry.id }),
+        button(historyOpen ? t('Hide history') : t('History'), () => view.actions.toggleHistory(entry.id),
+          { 'aria-expanded': String(historyOpen) }),
+        button(t('Edit'), () => view.actions.edit({ kind: 'entry', date: entry.date, id: entry.id }),
           { 'data-opens': `entry-${entry.id}` }))),
     historyOpen ? historyPanel(entry.id, activityNames) : null,
   );
@@ -238,7 +242,7 @@ function dayCell(day: DayView, warnings: string[], today: IsoDate): HTMLElement 
 /** "Start now" or "End now" on today's row, saved at once; not while a form is open, as saving redraws the page. */
 function clockButton(day: DayView, view: View): HTMLElement | null {
   const name = view.readOnly || view.editing ? null : clockField(day, view.today);
-  return name && button(name === 'start' ? 'Start now' : 'End now', () => view.actions.clock(day, name),
+  return name && button(name === 'start' ? t('Start now') : t('End now'), () => view.actions.clock(day, name),
     { class: 'button-small primary clock-button', 'data-opens': `clock-${day.date}` });
 }
 
@@ -250,12 +254,13 @@ function times(day: DayView, view: View): (HTMLElement | null)[] {
   }
   return day.end ? [el('span', { class: 'num' }, `${day.start}–${day.end}`)]
     : [el('span', { class: 'num' }, `${day.start}–`), day.best_end ? el('span',
-      { class: 'num muted', title: 'The end that meets the target, without overtime or loss' }, ` best ${day.best_end}`) : null, clock];
+      { class: 'num muted', title: t('The end that meets the target, without overtime or loss') },
+      ` ${t('best {time}', { time: day.best_end })}`) : null, clock];
 }
 
 /** The break; `legal` when it is the legal minimum, as none was entered. */
 function breakTime(day: DayView): (HTMLElement | string)[] {
-  return [day.break_time ?? '', day.break_default ? el('span', { class: 'muted' }, ' legal') : ''];
+  return [day.break_time ?? '', day.break_default ? el('span', { class: 'muted' }, ` ${t('legal')}`) : ''];
 }
 
 function typeBadge(day: DayView): HTMLElement | null {
@@ -264,8 +269,8 @@ function typeBadge(day: DayView): HTMLElement | null {
 
 function editDayButton(day: DayView, view: View): HTMLElement | null {
   const editingDay = view.editing?.kind === 'day' && view.editing.date === day.date;
-  return editingDay || view.readOnly ? null : button('Edit', () => view.actions.edit({ kind: 'day', date: day.date }),
-    { 'aria-label': `Edit ${formatDay(day.date, day.weekday)}`, 'data-opens': `day-${day.date}` });
+  return editingDay || view.readOnly ? null : button(t('Edit'), () => view.actions.edit({ kind: 'day', date: day.date }),
+    { 'aria-label': t('Edit {day}', { day: formatDay(day.date, day.weekday) }), 'data-opens': `day-${day.date}` });
 }
 
 function rowClass(day: DayView, warning: boolean, today: IsoDate): string | null {
@@ -277,7 +282,7 @@ function rowClass(day: DayView, warning: boolean, today: IsoDate): string | null
 function outsideTeamRow(day: DayView, view: View): HTMLElement {
   return el('tr', { class: rowClass(day, false, view.today) },
     dayCell(day, [], view.today),
-    el('td', { colspan: COLUMNS - 1 }, el('span', { class: 'muted' }, 'Not in this team')));
+    el('td', { colspan: COLUMNS - 1 }, el('span', { class: 'muted' }, t('Not in this team'))));
 }
 
 function dayRow(day: DayView, warnings: string[], view: View): HTMLElement {
@@ -302,7 +307,7 @@ function newEntry(day: DayView, view: View): HTMLElement {
   if (editing?.kind === 'entry' && editing.id === null && editing.date === day.date) {
     return el('div', { class: 'entry-editing' }, entryEditor(editorOptions(view, day.date, null)));
   }
-  return button('+ Add entry', () => view.actions.edit({ kind: 'entry', date: day.date, id: null }),
+  return button(t('+ Add entry'), () => view.actions.edit({ kind: 'entry', date: day.date, id: null }),
     { 'data-opens': `add-${day.date}` });
 }
 
@@ -321,8 +326,8 @@ function detailsRow(day: DayView, entries: EntryView[], className: string | null
 /** A day's entries and warnings: "No entries" on a past work day without any, "No end" on a past open day. */
 function dayState(day: DayView, view: View): { entries: EntryView[]; warnings: string[] } {
   const entries = view.data.entries.get(day.date) ?? [];
-  return { entries, warnings: [needsWarning(day, entries, view.today, view.data.workMode) ? 'No entries' : '',
-    leftOpen(day, view.today) ? 'No end' : ''].filter(Boolean) };
+  return { entries, warnings: [needsWarning(day, entries, view.today, view.data.workMode) ? t('No entries') : '',
+    leftOpen(day, view.today) ? t('No end') : ''].filter(Boolean) };
 }
 
 function openDayEditor(day: DayView, view: View): HTMLElement | null {
@@ -350,24 +355,24 @@ function dayCard(day: DayView, view: View): HTMLElement {
   const title = el('div', { class: 'day-card-title' }, el('h2', {}, formatDay(day.date, day.weekday)), ...dayNotes(day, warnings));
   const className = ['card day-card', rowClass(day, warnings.length > 0, view.today)].filter(Boolean).join(' ');
   if (day.in_team === false) {
-    return el('li', { class: className }, title, el('p', { class: 'muted' }, 'Not in this team'));
+    return el('li', { class: className }, title, el('p', { class: 'muted' }, t('Not in this team')));
   }
-  const label = (text: string): HTMLElement => el('span', { class: 'muted' }, text);
+  const label = (text: string): HTMLElement => el('span', { class: 'muted' }, `${text} `);
   return el('li', { class: className },
     el('div', { class: 'day-card-head' }, title, typeBadge(day), editDayButton(day, view)),
     // the spaces between the parts are for screen readers and copied text; the layout spaces them itself
-    el('p', { class: 'day-card-line' }, el('span', {}, label('Times '), ...times(day, view)),
-      ...(day.break_time ? [' ', el('span', {}, label('Break '), el('span', { class: 'num' }, ...breakTime(day)))] : [])),
-    el('p', { class: 'day-card-line' }, el('span', {}, label('Worked '), el('span', { class: 'num' }, day.worked)), ' ',
-      el('span', {}, label('Target '), el('span', { class: 'num' }, day.target)), ' ',
-      el('span', {}, label('Overtime '), value(day.overtime, true))),
+    el('p', { class: 'day-card-line' }, el('span', {}, label(t('Times')), ...times(day, view)),
+      ...(day.break_time ? [' ', el('span', {}, label(t('Break')), el('span', { class: 'num' }, ...breakTime(day)))] : [])),
+    el('p', { class: 'day-card-line' }, el('span', {}, label(t('Worked')), el('span', { class: 'num' }, day.worked)), ' ',
+      el('span', {}, label(t('Target')), el('span', { class: 'num' }, day.target)), ' ',
+      el('span', {}, label(t('Overtime')), value(day.overtime, true))),
     openDayEditor(day, view),
     ...(view.readOnly && !entries.length ? [] : details(day, entries, view)),
   );
 }
 
 function dayCards(view: View): HTMLElement {
-  return el('ol', { class: 'day-cards', 'aria-label': 'Days' },
+  return el('ol', { class: 'day-cards', 'aria-label': t('Days') },
     ...shownDays(view.data.days, view.data.entries, view.editing).map((day) => dayCard(day, view)));
 }
 
@@ -379,9 +384,9 @@ export function shownDays(days: DayView[], entries: Map<IsoDate, EntryView[]>, e
 function dayTable(view: View): HTMLElement {
   return scrolling(el('table', { class: 'week-table' },
     el('thead', {}, el('tr', {},
-      el('th', {}, 'Day'), el('th', {}, 'Type'), el('th', {}, 'Times'), el('th', { class: 'num' }, 'Break'),
-      el('th', { class: 'num' }, 'Worked'), el('th', { class: 'num' }, 'Target'), el('th', { class: 'num' }, 'Overtime'),
-      el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
+      el('th', {}, t('Day')), el('th', {}, t('Type')), el('th', {}, t('Times')), el('th', { class: 'num' }, t('Break')),
+      el('th', { class: 'num' }, t('Worked')), el('th', { class: 'num' }, t('Target')),
+      el('th', { class: 'num' }, t('Overtime')), el('th', {}, el('span', { class: 'visually-hidden' }, t('Actions'))))),
     el('tbody', {}, ...shownDays(view.data.days, view.data.entries, view.editing).flatMap((day) => dayRows(day, view))),
   ));
 }
@@ -391,13 +396,13 @@ function weekendLinks(view: View): HTMLElement | null {
   if (!hidden.length || view.readOnly) {
     return null;
   }
-  return el('p', { class: 'muted week-weekend' }, 'Worked on a day off? ',
-    ...hidden.map((day) => button(`Record ${formatDay(day.date, day.weekday)}`,
+  return el('p', { class: 'muted week-weekend' }, `${t('Worked on a day off?')} `,
+    ...hidden.map((day) => button(t('Record {day}', { day: formatDay(day.date, day.weekday) }),
       () => view.actions.edit({ kind: 'day', date: day.date }), { 'data-opens': `day-${day.date}` })));
 }
 
 function errorCard(error: unknown): HTMLElement {
-  const message = errorText(error, 'The week could not be loaded.');
+  const message = errorText(error, t('The week could not be loaded.'));
   return el('div', { class: 'card is-warning', role: 'alert' }, message);
 }
 
@@ -480,7 +485,7 @@ export async function renderWeekPage(doc: Document): Promise<void> {
       api.saveDay(day.date, input).then(() => {
         returnFocus = { key: `clock-${day.date}`, date: day.date };
         return load();
-      }, (error: unknown) => ask('The time was not saved', [errorText(error)], [], 'Close'));
+      }, (error: unknown) => ask(t('The time was not saved'), [errorText(error)], [], t('Close')));
     },
   };
 
@@ -496,7 +501,7 @@ export async function renderWeekPage(doc: Document): Promise<void> {
   } else {
     wireDaysOff(doc, mondayOf(week));
   }
-  root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
+  root.replaceChildren(el('p', { class: 'muted' }, t('Loading…')));
   await load();
 }
 

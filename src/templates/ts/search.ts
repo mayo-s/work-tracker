@@ -9,6 +9,7 @@ import {
 import { addDays, formatDate, formatMonth, isoDate, isoMonth, shiftMonth, weekLink, type IsoDate } from './dates.ts';
 import { button, el, scrolling } from './dom.ts';
 import { detailsButton } from './entry-details.ts';
+import { t, tn } from './i18n.ts';
 import { entryContent } from './week.ts';
 import { hasTickets } from './work-modes.ts';
 
@@ -18,9 +19,9 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const LIMIT = 100;
 
 const PERIODS = {
-  '': 'All time', 'this-year': 'This year', 'last-year': 'Last year', 'last-12-months': 'Last 12 months',
-  'this-month': 'This month', custom: 'Custom',
-} as const;
+  '': t('All time'), 'this-year': t('This year'), 'last-year': t('Last year'), 'last-12-months': t('Last 12 months'),
+  'this-month': t('This month'), custom: t('Custom'),
+};
 export type Period = keyof typeof PERIODS;
 
 /** What to search for: text, at most one of service (`none`: tickets without service) and activity type, and the
@@ -74,7 +75,7 @@ export function periodRange(criteria: Pick<SearchCriteria, 'period' | 'start' | 
 export function describePeriod(period: Period, range: DateRange): string {
   const { start, end } = range;
   const dates = start && end ? `${formatDate(start)} – ${formatDate(end)}`
-    : start ? `from ${formatDate(start)}` : end ? `until ${formatDate(end)}` : '';
+    : start ? t('from {date}', { date: formatDate(start) }) : end ? t('until {date}', { date: formatDate(end) }) : '';
   if (period === 'custom' || period === '') {
     return dates || PERIODS[''];
   }
@@ -114,17 +115,17 @@ export function scopeCriteria(value: string): Pick<SearchCriteria, 'service_id' 
 
 /** The labels of the text field and the select: without ticket entries there are no ticket keys and services. */
 export function searchLabels(mode: WorkMode): { text: string; scope: string } {
-  return hasTickets(mode) ? { text: 'Words or ticket key', scope: 'Service or activity type' }
-    : { text: 'Words', scope: 'Activity type' };
+  return hasTickets(mode) ? { text: t('Words or ticket key'), scope: t('Service or activity type') }
+    : { text: t('Words'), scope: t('Activity type') };
 }
 
 function scopeOptions(services: ServiceChoice[], activityTypes: ActivityType[], mode: WorkMode): HTMLElement[] {
-  const activities = el('optgroup', { label: 'Activity type' },
+  const activities = el('optgroup', { label: t('Activity type') },
     ...activityTypes.map((type) => el('option', { value: `activity:${type.id}` }, type.name)));
   return hasTickets(mode) ? [
-    el('optgroup', { label: 'Service' },
+    el('optgroup', { label: t('Service') },
       ...services.map((service) => el('option', { value: `service:${service.id}` }, service.short_name)),
-      el('option', { value: `service:${NO_SERVICE}` }, 'No service')),
+      el('option', { value: `service:${NO_SERVICE}` }, t('No service'))),
     activities,
   ] : [activities];
 }
@@ -164,8 +165,8 @@ function fillForm(form: HTMLFormElement, criteria: SearchCriteria, options: HTML
 
 function summary(result: SearchResult, period: string): HTMLElement {
   return el('div', { class: 'card card-surface week-summary' },
-    el('div', {}, el('span', { class: 'muted' }, 'Found '), el('strong', { class: 'num' }, result.duration),
-      el('span', { class: 'muted' }, ` in ${result.count} ${result.count === 1 ? 'entry' : 'entries'}`)),
+    el('div', {}, el('span', { class: 'muted' }, `${t('Found')} `), el('strong', { class: 'num' }, result.duration),
+      el('span', { class: 'muted' }, ` ${tn(result.count, 'in {count} entry', 'in {count} entries')}`)),
     el('div', { class: 'muted' }, period));
 }
 
@@ -174,7 +175,7 @@ function sumCard(title: string, column: string, rows: [HTMLElement, number, stri
   return el('div', { class: 'card' }, el('h2', {}, title),
     scrolling(el('table', { class: 'card-table' },
       el('thead', {}, el('tr', {}, el('th', {}, column),
-        el('th', { class: 'num' }, 'Entries'), el('th', { class: 'num' }, 'Hours'))),
+        el('th', { class: 'num' }, t('Entries')), el('th', { class: 'num' }, t('Hours')))),
       el('tbody', {}, ...rows.map(([label, count, duration]) => el('tr', {},
         el('td', {}, label), el('td', { class: 'num' }, String(count)), el('td', { class: 'num' }, duration)))))));
 }
@@ -184,20 +185,20 @@ function entryRow(entry: EntryView, fail: (error: unknown) => void): HTMLElement
   return el('tr', {},
     el('td', { class: 'num' }, el('a', { href: link }, formatDate(entry.date))),
     el('td', {}, el('div', { class: 'entry' }, ...entryContent(entry))),
-    el('td', { class: 'row-actions' }, el('a', { class: 'button button-small', href: link }, 'Open'),
-      detailsButton(entry.ticket_key ?? entry.activity_type ?? 'Entry without ticket', [entry], fail)));
+    el('td', { class: 'row-actions' }, el('a', { class: 'button button-small', href: link }, t('Open')),
+      detailsButton(entry.ticket_key ?? entry.activity_type ?? t('Entry without ticket'), [entry], fail)));
 }
 
 /** The entries listed; while not all are, a note and "Show all" to load the rest. */
 function entriesList(result: SearchResult, showAll: () => Promise<SearchResult>, fail: (error: unknown) => void): HTMLElement {
-  const section = el('section', { class: 'search-entries' }, el('h2', {}, 'Entries'),
+  const section = el('section', { class: 'search-entries' }, el('h2', {}, t('Entries')),
     scrolling(el('table', { class: 'review-table' },
       el('tbody', {}, ...result.entries.map((entry) => entryRow(entry, fail))))));
   if (result.entries.length < result.count) {
-    const more = button('Show all', () => void showAll().then((all) => section.replaceWith(entriesList(all, showAll, fail)), fail),
-      { class: 'button' });
-    section.append(el('p', { class: 'search-more' },
-      el('span', { class: 'muted' }, `The newest ${result.entries.length} of ${result.count} entries. `), more));
+    const more = button(t('Show all'),
+      () => void showAll().then((all) => section.replaceWith(entriesList(all, showAll, fail)), fail), { class: 'button' });
+    section.append(el('p', { class: 'search-more' }, el('span', { class: 'muted' },
+      `${t('The newest {shown} of {count} entries.', { shown: result.entries.length, count: result.count })} `), more));
   }
   return section;
 }
@@ -205,16 +206,16 @@ function entriesList(result: SearchResult, showAll: () => Promise<SearchResult>,
 function results(result: SearchResult, period: string, showAll: () => Promise<SearchResult>,
   fail: (error: unknown) => void): HTMLElement[] {
   if (!result.count) {
-    return [summary(result, period), el('p', { class: 'muted' }, 'No entries found.')];
+    return [summary(result, period), el('p', { class: 'muted' }, t('No entries found.'))];
   }
   return [
     summary(result, period),
     el('div', { class: 'search-cards' },
-      sumCard('By ticket or activity type', 'Ticket or activity', result.groups.map((group) => [
-        group.kind === 'activity' ? el('span', {}, group.key ?? '', el('span', { class: 'muted' }, ' · activity'))
-          : el('strong', { class: group.key ? '' : 'value-negative' }, group.key ?? 'No ticket'),
+      sumCard(t('By ticket or activity type'), t('Ticket or activity'), result.groups.map((group) => [
+        group.kind === 'activity' ? el('span', {}, group.key ?? '', el('span', { class: 'muted' }, ` · ${t('activity')}`))
+          : el('strong', { class: group.key ? '' : 'value-negative' }, group.key ?? t('No ticket')),
         group.entries, group.duration])),
-      sumCard('By month', 'Month', result.months.map((month) => [
+      sumCard(t('By month'), t('Month'), result.months.map((month) => [
         el('a', { href: `/month?month=${month.month}` }, formatMonth(month.month)), month.entries, month.duration]))),
     entriesList(result, showAll, fail),
   ];
@@ -229,7 +230,7 @@ export async function renderSearchPage(doc: Document): Promise<void> {
   const criteria = criteriaFromSearch(doc.location.search);
   const today = isoDate(new Date());
   const fail = (error: unknown): void => root.prepend(el('div', { class: 'card is-warning', role: 'alert' },
-    errorText(error, 'Something went wrong.')));
+    errorText(error, t('Something went wrong.'))));
   try {
     const [services, activityTypes, settings] = await Promise.all([api.serviceChoices(), api.activityTypes(), api.settings()]);
     const mode = settings.work_mode;
@@ -238,11 +239,11 @@ export async function renderSearchPage(doc: Document): Promise<void> {
     if (!doc.location.search) {  // nothing asked yet
       return;
     }
-    root.replaceChildren(el('p', { class: 'muted' }, 'Searching…'));
+    root.replaceChildren(el('p', { class: 'muted' }, t('Searching…')));
     const showAll = (): Promise<SearchResult> => api.search(apiQuery(criteria, today, null));
     const period = describePeriod(criteria.period, periodRange(criteria, today));
     root.replaceChildren(...results(await api.search(apiQuery(criteria, today, LIMIT)), period, showAll, fail));
   } catch (error) {
-    root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' }, errorText(error, 'The search failed.')));
+    root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' }, errorText(error, t('The search failed.'))));
   }
 }

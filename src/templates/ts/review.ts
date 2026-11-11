@@ -8,13 +8,14 @@ import {
 import { formatDate, weekLink } from './dates.ts';
 import { button, el, onEscape, scrolling } from './dom.ts';
 import { detailsButton } from './entry-details.ts';
+import { t, tn } from './i18n.ts';
 import { serviceOptions } from './lists.ts';
 import { entryContent } from './week.ts';
 
 export const REASON_LABELS: Record<ReviewReason, string> = {
-  zero_duration: 'No duration',
-  no_ticket: 'No ticket',
-  no_activity_type: 'No activity type',
+  zero_duration: t('No duration'),
+  no_ticket: t('No ticket'),
+  no_activity_type: t('No activity type'),
 };
 
 export function reviewTotal(counts: ReviewCounts): number {
@@ -70,21 +71,28 @@ function act(page: Page, action: () => Promise<unknown>, message: string): void 
 
 /** An inline form to rename a ticket, or merge it into an existing one. */
 function renameForm(key: string, page: Page, onCancel: () => void): HTMLElement {
-  const input = el('input', { value: key, 'aria-label': `New key for ${key}`, autocomplete: 'off', class: 'rename-input' });
+  const input = el('input', { value: key, 'aria-label': t('New key for {key}', { key }), autocomplete: 'off',
+    class: 'rename-input' });
   const form = el('form', { class: 'rename-form' }, input,
-    el('button', { type: 'submit', class: 'button-small primary' }, 'Rename'), button('Cancel', onCancel));
+    el('button', { type: 'submit', class: 'button-small primary' }, t('Rename')), button(t('Cancel'), onCancel));
   onEscape(form, onCancel);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const newKey = input.value.trim().toUpperCase();
     api.renameTicket(key, newKey).then(
-      (result) => page.reload(`${key} ${result.action === 'merged' ? 'merged into' : 'renamed to'} ${result.ticket.key} `
-        + `(${result.moved} ${result.moved === 1 ? 'entry' : 'entries'})`),
+      (result) => page.reload(renamed(key, result.ticket.key, result.action === 'merged', result.moved)),
       page.fail,
     );
   });
   queueMicrotask(() => input.select());
   return form;
+}
+
+/** `TNG-4347 renamed to KP-1483 (1 entry)`, or `merged into` an existing ticket. */
+function renamed(key: string, newKey: string, merged: boolean, moved: number): string {
+  const keys = { key, new: newKey };
+  return merged ? tn(moved, '{key} merged into {new} ({count} entry)', '{key} merged into {new} ({count} entries)', keys)
+    : tn(moved, '{key} renamed to {new} ({count} entry)', '{key} renamed to {new} ({count} entries)', keys);
 }
 
 /** Shows `form` in place of the cell's content; canceling restores the content and focuses `opener` again. */
@@ -97,15 +105,15 @@ function openInCell(cell: HTMLElement, opener: HTMLElement, form: (cancel: () =>
 }
 
 function renameAction(key: string, page: Page, cell: HTMLElement): HTMLButtonElement {
-  const rename: HTMLButtonElement = button('Rename',
+  const rename: HTMLButtonElement = button(t('Rename'),
     () => openInCell(cell, rename, (cancel) => renameForm(key, page, cancel)));
   return rename;
 }
 
-/** Rows to select (each `data-key`), with a filter, "select all shown" and a button that assigns the chosen value of
- * `choice` to the selected rows. `shown` gives the keys a filter text leaves. */
+/** Rows to select (each `data-key`), with a filter, "select all shown" (`selectAllLabel`) and a button that assigns the
+ * chosen value of `choice` to the selected rows. `shown` gives the keys a filter text leaves. */
 type BulkAssign = {
-  noun: [string, string]; filterLabel: string; placeholder: string; choice: HTMLSelectElement;
+  selectAllLabel: string; filterLabel: string; placeholder: string; choice: HTMLSelectElement;
   shown: (text: string) => Set<string>; assign: (keys: string[]) => void;
 };
 
@@ -115,8 +123,8 @@ function bulkAssign(options: BulkAssign): {
   const selected = new Set<string>();
   const rows: HTMLElement[] = [];
   const filter = el('input', { type: 'search', placeholder: options.placeholder, 'aria-label': options.filterLabel });
-  const selectAll = el('input', { type: 'checkbox', 'aria-label': `Select all shown ${options.noun[1]}` });
-  const assign = el('button', { type: 'button', class: 'primary', disabled: true }, 'Assign');
+  const selectAll = el('input', { type: 'checkbox', 'aria-label': options.selectAllLabel });
+  const assign = el('button', { type: 'button', class: 'primary', disabled: true }, t('Assign'));
   filter.addEventListener('input', () => {
     const shown = options.shown(filter.value);
     rows.forEach((row) => (row.hidden = !shown.has(row.dataset.key ?? '')));
@@ -133,7 +141,7 @@ function bulkAssign(options: BulkAssign): {
   /** The row with its checkbox in a first cell. */
   const select = (row: HTMLElement): HTMLElement => {
     const key = row.dataset.key ?? '';
-    const checkbox = el('input', { type: 'checkbox', 'aria-label': `Select ${row.dataset.label ?? key}` });
+    const checkbox = el('input', { type: 'checkbox', 'aria-label': t('Select {item}', { item: row.dataset.label ?? key }) });
     checkbox.addEventListener('change', () => {
       if (checkbox.checked) {
         selected.add(key);
@@ -141,18 +149,13 @@ function bulkAssign(options: BulkAssign): {
         selected.delete(key);
       }
       assign.disabled = selected.size === 0;
-      assign.textContent = selected.size ? `Assign to ${selected.size} selected` : 'Assign';
+      assign.textContent = selected.size ? t('Assign to {count} selected', { count: selected.size }) : t('Assign');
     });
     row.prepend(el('td', { class: 'select-cell' }, checkbox));
     rows.push(row);
     return row;
   };
   return { toolbar: el('div', { class: 'review-toolbar' }, filter, options.choice, assign), selectAll, select };
-}
-
-/** A count with its noun in the singular or plural, e.g. `2 tickets`. */
-function counted(count: number, noun: [string, string]): string {
-  return `${count} ${count === 1 ? noun[0] : noun[1]}`;
 }
 
 function ticketRow(ticket: TicketView, page: Page): HTMLElement {
@@ -165,51 +168,51 @@ function ticketRow(ticket: TicketView, page: Page): HTMLElement {
 }
 
 function serviceSelect(services: ServiceChoice[]): HTMLSelectElement {
-  return el('select', { 'aria-label': 'Service to assign' },
+  return el('select', { 'aria-label': t('Service to assign') },
     ...serviceOptions(services, (service) => `${service.short_name}${service.name ? ` · ${service.name}` : ''}`));
 }
 
 function ticketsSection(page: Page): HTMLElement {
   const tickets = page.data.tickets_without_service;
-  const noun: [string, string] = ['ticket', 'tickets'];
   const choice = serviceSelect(page.services);
   const bulk = bulkAssign({
-    noun, filterLabel: 'Filter tickets', placeholder: 'Filter, e.g. AGA or TNG-49', choice,
+    selectAllLabel: t('Select all shown tickets'), filterLabel: t('Filter tickets'),
+    placeholder: t('Filter, e.g. AGA or TNG-49'), choice,
     shown: (text) => new Set(filterTickets(tickets, text).map((ticket) => ticket.key)),
     assign: (keys) => {
-      const service = page.services.find((item) => String(item.id) === choice.value);
+      const service = page.services.find((item) => String(item.id) === choice.value)?.short_name ?? t('Service');
       act(page, () => api.assignService(keys, choice.value),
-        `${service?.short_name ?? 'Service'} assigned to ${counted(keys.length, noun)}`);
+        tn(keys.length, '{name} assigned to {count} ticket', '{name} assigned to {count} tickets', { name: service }));
     },
   });
   return el('section', { class: 'review-section', id: 'tickets' },
-    el('h2', {}, 'Tickets without service ', el('span', { class: 'badge warning' }, String(tickets.length))),
-    el('p', { class: 'muted' }, 'A service applies to all entries of a ticket. Filter, select, then assign.'),
+    el('h2', {}, `${t('Tickets without service')} `, el('span', { class: 'badge warning' }, String(tickets.length))),
+    el('p', { class: 'muted' }, t('A service applies to all entries of a ticket. Filter, select, then assign.')),
     tickets.length ? bulk.toolbar : null,
     tickets.length
       ? scrolling(el('table', { class: 'review-table' },
-        el('thead', {}, el('tr', {}, el('th', { class: 'select-cell' }, bulk.selectAll), el('th', {}, 'Ticket'),
-          el('th', { class: 'num' }, 'Entries'), el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
+        el('thead', {}, el('tr', {}, el('th', { class: 'select-cell' }, bulk.selectAll), el('th', {}, t('Ticket')),
+          el('th', { class: 'num' }, t('Entries')), el('th', {}, el('span', { class: 'visually-hidden' }, t('Actions'))))),
         el('tbody', {}, ...tickets.map((ticket) => bulk.select(ticketRow(ticket, page))))))
-      : el('p', {}, 'All tickets have a service.'),
+      : el('p', {}, t('All tickets have a service.')),
   );
 }
 
 function entryRow(item: ReviewEntry, page: Page): HTMLElement {
   const entry = item.entry;
   const link = weekLink(entry.date, `entry=${entry.id}`);
-  const label = `${entry.ticket_key ?? entry.description} of ${formatDate(entry.date)}`;  // for its checkbox
+  const label = t('{entry} of {date}', { entry: entry.ticket_key ?? entry.description, date: formatDate(entry.date) });
   return el('tr', { 'data-key': entry.id, 'data-label': label },
     el('td', { class: 'num' }, el('a', { href: link }, formatDate(entry.date))),
     el('td', {},
       el('div', { class: 'entry' }, ...entryContent(entry)),
       el('div', {}, ...item.reasons.map((reason) => el('span', { class: 'badge warning' }, REASON_LABELS[reason])))),
-    el('td', { class: 'row-actions' }, el('a', { class: 'button button-small', href: link }, 'Open'),
-      detailsButton(entry.ticket_key ?? entry.activity_type ?? 'Entry without ticket', [entry], page.fail)));
+    el('td', { class: 'row-actions' }, el('a', { class: 'button button-small', href: link }, t('Open')),
+      detailsButton(entry.ticket_key ?? entry.activity_type ?? t('Entry without ticket'), [entry], page.fail)));
 }
 
 function activityTypeSelect(activityTypes: ActivityType[]): HTMLSelectElement {
-  return el('select', { 'aria-label': 'Activity type to assign' },
+  return el('select', { 'aria-label': t('Activity type to assign') },
     ...activityTypes.map((type) => el('option', { value: type.id ?? '' }, type.name)));
 }
 
@@ -218,25 +221,25 @@ function untypedSection(untyped: ReviewEntry[], page: Page): HTMLElement | null 
   if (!untyped.length) {
     return null;
   }
-  const noun: [string, string] = ['entry', 'entries'];
   const choice = activityTypeSelect(page.activityTypes);
   const bulk = bulkAssign({
-    noun, filterLabel: 'Filter entries', placeholder: 'Filter, e.g. TNG-49 or investigation', choice,
+    selectAllLabel: t('Select all shown entries'), filterLabel: t('Filter entries'),
+    placeholder: t('Filter, e.g. TNG-49 or investigation'), choice,
     shown: (text) => new Set(filterEntries(untyped, text).map((item) => item.entry.id)),
     assign: (ids) => {
-      const type = page.activityTypes.find((item) => item.id === choice.value);
+      const type = page.activityTypes.find((item) => item.id === choice.value)?.name ?? t('Activity type');
       act(page, () => api.assignActivityType(ids, choice.value),
-        `${type?.name ?? 'Activity type'} assigned to ${counted(ids.length, noun)}`);
+        tn(ids.length, '{name} assigned to {count} entry', '{name} assigned to {count} entries', { name: type }));
     },
   });
   return el('section', { class: 'review-section', id: 'activity-types' },
-    el('h2', {}, 'Entries without activity type ', el('span', { class: 'badge warning' }, String(untyped.length))),
-    el('p', { class: 'muted' }, 'Ticket entries from before every entry had an activity type, whose activity was not '
-      + 'clear. Filter, select, then assign.'),
+    el('h2', {}, `${t('Entries without activity type')} `, el('span', { class: 'badge warning' }, String(untyped.length))),
+    el('p', { class: 'muted' },
+      t('Ticket entries from before every entry had an activity type, whose activity was not clear. Filter, select, then assign.')),
     bulk.toolbar,
     scrolling(el('table', { class: 'review-table' },
-      el('thead', {}, el('tr', {}, el('th', { class: 'select-cell' }, bulk.selectAll), el('th', {}, 'Date'),
-        el('th', {}, 'Entry'), el('th', {}, el('span', { class: 'visually-hidden' }, 'Actions')))),
+      el('thead', {}, el('tr', {}, el('th', { class: 'select-cell' }, bulk.selectAll), el('th', {}, t('Date')),
+        el('th', {}, t('Entry')), el('th', {}, el('span', { class: 'visually-hidden' }, t('Actions'))))),
       el('tbody', {}, ...untyped.map((item) => bulk.select(entryRow(  // the section names the missing activity type
         { ...item, reasons: item.reasons.filter((reason) => reason !== 'no_activity_type') }, page)))))),
   );
@@ -246,9 +249,9 @@ function openDayRow(day: DayView): HTMLElement {
   const link = weekLink(day.date, `edit=${day.date}`);
   return el('tr', {},
     el('td', { class: 'num' }, el('a', { href: link }, formatDate(day.date))),
-    el('td', {}, el('span', { class: 'num' }, `Start ${day.start}`),
-      day.best_end ? el('span', { class: 'num muted' }, ` · best end ${day.best_end}`) : null),
-    el('td', { class: 'row-actions' }, el('a', { class: 'button button-small', href: link }, 'Open')));
+    el('td', {}, el('span', { class: 'num' }, t('Start {time}', { time: day.start ?? '' })),
+      day.best_end ? el('span', { class: 'num muted' }, ` · ${t('best end {time}', { time: day.best_end })}`) : null),
+    el('td', { class: 'row-actions' }, el('a', { class: 'button button-small', href: link }, t('Open'))));
 }
 
 function openDaysSection(days: DayView[]): HTMLElement | null {
@@ -256,19 +259,19 @@ function openDaysSection(days: DayView[]): HTMLElement | null {
     return null;
   }
   return el('section', { class: 'review-section', id: 'open-days' },
-    el('h2', {}, 'Days without an end ', el('span', { class: 'badge warning' }, String(days.length))),
-    el('p', { class: 'muted' }, 'A day with a start but no end counts as nothing worked until it has an end.'),
+    el('h2', {}, `${t('Days without an end')} `, el('span', { class: 'badge warning' }, String(days.length))),
+    el('p', { class: 'muted' }, t('A day with a start but no end counts as nothing worked until it has an end.')),
     scrolling(el('table', { class: 'review-table' }, el('tbody', {}, ...days.map(openDayRow)))));
 }
 
 function entriesSection(others: ReviewEntry[], page: Page): HTMLElement {
   return el('section', { class: 'review-section', id: 'entries' },
-    el('h2', {}, 'Entries ', el('span', { class: 'badge warning' }, String(others.length))),
-    el('p', { class: 'muted' }, 'Entries without duration or without the ticket their activity type requires; open them '
-      + 'in the week view to fix them.'),
+    el('h2', {}, `${t('Entries')} `, el('span', { class: 'badge warning' }, String(others.length))),
+    el('p', { class: 'muted' },
+      t('Entries without duration or without the ticket their activity type requires; open them in the week view to fix them.')),
     others.length
       ? scrolling(el('table', { class: 'review-table' }, el('tbody', {}, ...others.map((item) => entryRow(item, page)))))
-      : el('p', {}, 'Nothing to review.'),
+      : el('p', {}, t('Nothing to review.')),
   );
 }
 
@@ -298,6 +301,6 @@ export async function renderReviewPage(doc: Document): Promise<void> {
       root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' }, errorText(error)));
     }
   };
-  root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
+  root.replaceChildren(el('p', { class: 'muted' }, t('Loading…')));
   await load();
 }

@@ -1,8 +1,9 @@
 // Dashboard (start page /): key figures, the overtime balance over time, days off coming up and this year's figures.
 
 import { api, errorText, type DashboardView, type WorkMode } from './api.ts';
-import { formatDate, formatDay, formatMonth, type IsoDate } from './dates.ts';
+import { formatDate, formatDay, formatMonth, shortMonth, type IsoDate } from './dates.ts';
 import { el, scrolling } from './dom.ts';
+import { decimal, t, tn } from './i18n.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { fullName, viewedMember } from './team-view.ts';
 import { valueClass } from './week.ts';
@@ -13,7 +14,7 @@ type Point = DashboardView['balance_series']['month'][number];
 type Range = keyof DashboardView['balance_series'];
 type ComingUp = DashboardView['coming_up'][number];
 
-const RANGES: [Range, string][] = [['month', 'Month'], ['year', 'Year'], ['last_12_months', '12 months'], ['all', 'All']];
+const RANGES: [Range, string][] = [['month', t('Month')], ['year', t('Year')], ['last_12_months', t('12 months')], ['all', t('All')]];
 const SVG = 'http://www.w3.org/2000/svg';
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MARGIN = { top: 16, right: 72, bottom: 28, left: 56 };
@@ -61,8 +62,9 @@ export function describeComingUp(item: ComingUp): string {
   const day = (date: IsoDate): string => formatDay(date, WEEKDAYS[new Date(`${date}T12:00:00`).getDay()]!);
   const dates = item.start === item.end ? day(item.start) : `${day(item.start)} – ${day(item.end)}`;
   const label = item.holiday ?? DAY_TYPE_LABELS[item.day_type];
-  const halfDay = item.day_type === 'company_half_day' && item.pto_days ? `company half day: ${item.pto_days} PTO` : '';
-  return [dates, label, halfDay, item.days > 1 ? `${item.days} days` : ''].filter(Boolean).join(' · ');
+  const halfDay = item.day_type === 'company_half_day' && item.pto_days
+    ? t('company half day: {days} PTO', { days: decimal(item.pto_days) }) : '';
+  return [dates, label, halfDay, item.days > 1 ? tn(item.days, '{count} day', '{count} days') : ''].filter(Boolean).join(' · ');
 }
 
 function tile(label: string, value: string, detail: string, href: string, valueClassName = ''): HTMLElement {
@@ -77,14 +79,16 @@ function keyFigures(data: DashboardView): HTMLElement {
   const week = data.this_week;
   const change = data.balance_change_this_year;
   return el('div', { class: 'tiles' },
-    tile('Overtime balance', data.balance, `${change.startsWith('-') ? change : `+${change}`} this year`, '/year',
-      valueClass(data.balance)),
-    pto ? tile(`PTO left ${data.today.slice(0, 4)}`, `${formatDays(pto.remaining)} days`, `${formatDays(pto.planned)} planned`,
-      '/year', pto.remaining < 0 ? 'value-negative' : '')
-      : tile('PTO', '—', 'No PTO days entered', '/settings#pto-years'),
-    tile('This week', `${week.worked} of ${data.week_target}`, `Overtime so far ${week.overtime}`, `/week?week=${data.week}`),
+    tile(t('Overtime balance'), data.balance,
+      t('{change} this year', { change: change.startsWith('-') ? change : `+${change}` }), '/year', valueClass(data.balance)),
+    pto ? tile(t('PTO left {year}', { year: data.today.slice(0, 4) }),
+      tn(pto.remaining, '{count} day', '{count} days', { count: formatDays(pto.remaining) }),
+      t('{days} planned', { days: formatDays(pto.planned) }), '/year', pto.remaining < 0 ? 'value-negative' : '')
+      : tile(t('PTO'), '—', t('No PTO days entered'), '/settings#pto-years'),
+    tile(t('This week'), t('{worked} of {target}', { worked: week.worked, target: data.week_target }),
+      t('Overtime so far {duration}', { duration: week.overtime }), `/week?week=${data.week}`),
     data.visible_from ? null  // the team view shows no review
-      : tile('To review', String(data.review_open), data.review_open ? 'open items' : 'nothing to review', '/review',
+      : tile(t('To review'), String(data.review_open), data.review_open ? t('open items') : t('nothing to review'), '/review',
         data.review_open ? 'value-negative' : ''));
 }
 
@@ -128,8 +132,7 @@ function axes(points: Point[], range: Range, g: Geometry): SVGGElement {
   for (const index of labelIndexes(points.length, labelCount(range, g.width - MARGIN.left - MARGIN.right))) {
     const label = svg('text', { x: g.x(index), y: HEIGHT - 8, 'text-anchor': 'middle', class: 'chart-text' });
     const date = points[index]!.date;
-    label.textContent = range === 'month'
-      ? `${Number(date.slice(8))}.` : formatMonth(date.slice(0, 7)).replace(/^(\w{3})\w*/, '$1');  // Oct 2026
+    label.textContent = range === 'month' ? `${Number(date.slice(8))}.` : `${shortMonth(date.slice(0, 7))} ${date.slice(0, 4)}`;
     group.append(label);
   }
   return group;
@@ -213,9 +216,10 @@ function hoverLayer(chart: HTMLElement, plot: SVGSVGElement, points: Point[], ra
 
 function balanceTable(points: Point[], range: Range): HTMLElement {
   return el('details', { class: 'chart-table' },
-    el('summary', {}, 'Show as table'),
+    el('summary', {}, t('Show as table')),
     scrolling(el('table', {},
-      el('thead', {}, el('tr', {}, el('th', {}, range === 'month' ? 'Day' : 'Month'), el('th', { class: 'num' }, 'Balance'))),
+      el('thead', {}, el('tr', {}, el('th', {}, range === 'month' ? t('Day') : t('Month')),
+        el('th', { class: 'num' }, t('Balance')))),
       el('tbody', {}, ...points.map((point) => el('tr', {}, el('td', {}, pointLabel(point, range)),
         el('td', { class: `num ${valueClass(point.balance)}` }, point.balance)))))));
 }
@@ -223,12 +227,12 @@ function balanceTable(points: Point[], range: Range): HTMLElement {
 function balanceChart(points: Point[], range: Range, width: number): HTMLElement {
   const chart = el('div', { class: 'chart' });
   if (!points.length) {
-    chart.append(el('p', { class: 'muted' }, 'No balance yet: counting starts on the first day.'));
+    chart.append(el('p', { class: 'muted' }, t('No balance yet: counting starts on the first day.')));
     return chart;
   }
   const g = geometry(points, width);
   const plot = svg('svg', { viewBox: `0 0 ${width} ${HEIGHT}`, width, height: HEIGHT, tabindex: 0, class: 'chart-plot',
-    'aria-label': 'Overtime balance; arrow keys read the values, or show them as a table below' });
+    'aria-label': t('Overtime balance; arrow keys read the values, or show them as a table below') });
   plot.append(axes(points, range, g), balanceMarks(points, g, `balance-${range}`), endMark(points, g));
   chart.append(plot);
   hoverLayer(chart, plot, points, range, g);
@@ -243,7 +247,7 @@ function balanceSection(data: DashboardView): HTMLElement {
   const draw = (): void => {
     holder.replaceChildren(balanceChart(data.balance_series[range], range, Math.max(width, 200)));
   };
-  const switcher = el('div', { class: 'segmented', role: 'radiogroup', 'aria-label': 'Period of the chart' },
+  const switcher = el('div', { class: 'segmented', role: 'radiogroup', 'aria-label': t('Period of the chart') },
     ...RANGES.map(([value, label]) => {
       const input = el('input', {
         type: 'radio', name: 'balance-range', value, id: `range-${value}`, checked: value === range,
@@ -261,17 +265,17 @@ function balanceSection(data: DashboardView): HTMLElement {
     }
   }).observe(holder);
   return el('section', { class: 'dashboard-section' },
-    el('div', { class: 'dashboard-section-header' }, el('h2', {}, 'Overtime balance'), switcher),
+    el('div', { class: 'dashboard-section-header' }, el('h2', {}, t('Overtime balance')), switcher),
     el('div', { class: 'card' }, holder));
 }
 
 function comingUpSection(items: ComingUp[]): HTMLElement {
   return el('section', { class: 'card' },
-    el('h2', {}, 'Coming up'),
-    el('p', { class: 'muted' }, 'Public holidays and planned days off in the next 60 days.'),
+    el('h2', {}, t('Coming up')),
+    el('p', { class: 'muted' }, t('Public holidays and planned days off in the next 60 days.')),
     items.length
       ? el('ul', { class: 'coming-up' }, ...items.map((item) => el('li', {}, describeComingUp(item))))
-      : el('p', {}, 'Nothing planned.'));
+      : el('p', {}, t('Nothing planned.')));
 }
 
 /** This year's figures; "Top services" only with ticket and service. */
@@ -280,16 +284,17 @@ function yearSection(figures: DashboardView['this_year'], mode: WorkMode): HTMLE
   const row = (label: string, value: string, list = false): HTMLElement =>
     el('tr', {}, el('td', {}, label), el('td', { class: list ? 'num card-table-list' : 'num' }, value));
   const types = figures.top_activity_types.map((type) => `${type.activity_type} ${type.duration}`).join(', ');
-  const top = figures.top_services.map((service) => `${service.service ?? 'No service'} ${service.duration}`).join(', ');
+  const top = figures.top_services.map((service) => `${service.service ?? t('No service')} ${service.duration}`).join(', ');
+  const offDays = figures.overtime_off_days;
   return el('section', { class: 'card' },
-    el('h2', {}, `This year ${figures.year}`),
+    el('h2', {}, t('This year {year}', { year: figures.year })),
     el('table', { class: 'card-table' }, el('tbody', {},
-      row('Days worked', String(figures.days_worked)),
-      row('Average per day worked', figures.average_per_day_worked),
-      row('Sick days', formatDays(figures.sick_days)),
-      row('Overtime off', `${figures.overtime_off_days} days`),
-      row('Top activity types', types || '—', true),
-      hasTickets(mode) ? row('Top services', top || '—', true) : null)));
+      row(t('Days worked'), String(figures.days_worked)),
+      row(t('Average per day worked'), figures.average_per_day_worked),
+      row(t('Sick days'), formatDays(figures.sick_days)),
+      row(t('Overtime off'), tn(offDays, '{count} day', '{count} days', { count: decimal(offDays) })),
+      row(t('Top activity types'), types || '—', true),
+      hasTickets(mode) ? row(t('Top services'), top || '—', true) : null)));
 }
 
 type Choice = [string, string];  // user id, name
@@ -302,7 +307,7 @@ async function memberChooser(member: string | null): Promise<HTMLElement | null>
     return null;
   }
   const me = status.user.id;
-  const groups: [string, Choice[]][] = (await api.audits()).map((team) => [`${team.team} (audit)`,
+  const groups: [string, Choice[]][] = (await api.audits()).map((team) => [t('{team} (audit)', { team: team.team }),
     team.members.map((item): Choice => [item.user_id, item.name])]);
   if (status.team?.team_role === 'team_admin') {
     const members = (await api.team(status.team.id)).members.filter((item) => item.user_id !== me);
@@ -313,11 +318,11 @@ async function memberChooser(member: string | null): Promise<HTMLElement | null>
     return null;
   }
   return el('form', { class: 'member-chooser', method: 'get', action: '/' },
-    el('label', { for: 'dashboard-member' }, 'Viewing'),
-    el('select', { id: 'dashboard-member', name: 'member' }, el('option', { value: '' }, 'Your data'),
+    el('label', { for: 'dashboard-member' }, t('Viewing')),
+    el('select', { id: 'dashboard-member', name: 'member' }, el('option', { value: '' }, t('Your data')),
       ...shown.map(([label, choices]) => el('optgroup', { label },
         ...choices.map(([id, name]) => el('option', { value: id, selected: id === member }, name))))),
-    el('button', { type: 'submit', class: 'button-small' }, 'Show'));
+    el('button', { type: 'submit', class: 'button-small' }, t('Show')));
 }
 
 export async function renderDashboardPage(doc: Document): Promise<void> {
@@ -327,15 +332,15 @@ export async function renderDashboardPage(doc: Document): Promise<void> {
   }
   const member = viewedMember(doc.location.search);
   memberChooser(member).then((chooser) => chooser && doc.querySelector('.week-header')?.append(chooser), () => undefined);
-  root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
+  root.replaceChildren(el('p', { class: 'muted' }, t('Loading…')));
   try {
     const data = await api.dashboard(member);
-    doc.querySelector('#dashboard-today')!.textContent = `Today, ${formatDate(data.today)} · counted up to today`;
+    doc.querySelector('#dashboard-today')!.textContent = t('Today, {date} · counted up to today', { date: formatDate(data.today) });
     root.replaceChildren(keyFigures(data), balanceSection(data),
       el('div', { class: 'dashboard-columns' }, comingUpSection(data.coming_up), yearSection(data.this_year, data.work_mode)));
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },
-      errorText(error, 'The dashboard could not be loaded.')));
+      errorText(error, t('The dashboard could not be loaded.'))));
   }
 }
 

@@ -4,6 +4,7 @@
 import { api, errorText, type DayType, type MonthReport, type WorkMode } from './api.ts';
 import { formatMonth, isoDate, isoMonth, isValidMonth, shiftMonth, type IsoDate } from './dates.ts';
 import { el, scrolling } from './dom.ts';
+import { decimal, t } from './i18n.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { viewedMember } from './team-view.ts';
 import { entriesOfWorked, periodHeader, periodSummary } from './week.ts';
@@ -26,8 +27,9 @@ export function describeDaysOff(daysOff: Partial<Record<DayType, number>>): stri
 function daysOff(report: MonthReport): HTMLElement | null {
   const text = describeDaysOff(report.days_off);
   return text || report.pto_days
-    ? el('div', {}, el('span', { class: 'muted' }, 'Days off '), text || '—',
-      report.pto_days ? el('span', { class: 'muted' }, ` (PTO used: ${report.pto_days})`) : null)
+    ? el('div', {}, el('span', { class: 'muted' }, `${t('Days off')} `), text || '—',
+      report.pto_days ? el('span', { class: 'muted' }, ` ${t('(PTO used: {days})', { days: decimal(report.pto_days) })}`)
+        : null)
     : null;
 }
 
@@ -35,13 +37,13 @@ function serviceSection(work: ServiceWork, readOnly: boolean): HTMLElement {
   const unassigned = work.service_id === null;
   return el('section', { class: 'work-service' },
     el('div', { class: 'work-service-header' },
-      el('h3', {}, unassigned ? 'No service ' : `${work.service} `,
-        unassigned && !readOnly ? el('a', { class: 'badge warning', href: '/review#tickets' }, 'assign in review') : null),
+      el('h3', {}, `${unassigned ? t('No service') : work.service} `,
+        unassigned && !readOnly ? el('a', { class: 'badge warning', href: '/review#tickets' }, t('assign in review')) : null),
       el('span', { class: 'num' }, work.duration)),
     scrolling(el('table', { class: 'work-tickets' },
       el('tbody', {}, ...work.tickets.map((ticket) => el('tr', {},
         el('td', { class: 'work-ticket' }, ticket.ticket_key ? el('strong', {}, ticket.ticket_key)
-          : el('strong', { class: 'value-negative' }, 'No ticket')),
+          : el('strong', { class: 'value-negative' }, t('No ticket'))),
         el('td', {}, texts(ticket.descriptions)),
         el('td', { class: 'num' }, ticket.duration)))))),
   );
@@ -58,7 +60,7 @@ function texts(items: string[]): HTMLElement {
 function workSection(title: string, total: string, content: HTMLElement | null, empty: string): HTMLElement {
   return el('section', { class: 'work-report' },
     el('div', { class: 'work-service-header' }, el('h2', {}, title),
-      el('span', { class: 'num' }, el('span', { class: 'muted' }, 'Total '), el('strong', {}, total))),
+      el('span', { class: 'num' }, el('span', { class: 'muted' }, `${t('Total')} `), el('strong', {}, total))),
     content ?? el('p', { class: 'muted' }, empty),
   );
 }
@@ -72,7 +74,7 @@ function activitySection(work: ActivityWork, readOnly: boolean): HTMLElement {
   const content = [servicesContent(work.services, readOnly), work.descriptions.length ? texts(work.descriptions) : null]
     .filter((part) => part !== null);
   return workSection(work.activity_type, work.duration, content.length ? el('div', {}, ...content) : null,
-    'No descriptions.');
+    t('No descriptions.'));
 }
 
 function workReport(report: MonthReport, mode: WorkMode): HTMLElement[] {
@@ -81,7 +83,7 @@ function workReport(report: MonthReport, mode: WorkMode): HTMLElement[] {
   }
   const readOnly = Boolean(report.visible_from);
   return report.work.length ? report.work.map((work) => activitySection(work, readOnly))
-    : [workSection('Work', report.work_total, null, 'No work recorded in this month.')];
+    : [workSection(t('Work'), report.work_total, null, t('No work recorded in this month.'))];
 }
 
 export async function renderMonthPage(doc: Document): Promise<void> {
@@ -95,7 +97,7 @@ export async function renderMonthPage(doc: Document): Promise<void> {
     title: formatMonth(month), start: `${month}-01`, shifted: (shift) => `/month?month=${shiftMonth(month, shift)}`,
     of: (date) => `/month?month=${isoMonth(date)}`, current: month === isoMonth(today),
   });
-  root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
+  root.replaceChildren(el('p', { class: 'muted' }, t('Loading…')));
   try {
     const member = viewedMember(doc.location.search);
     const report = await api.monthReport(month, member);
@@ -105,6 +107,6 @@ export async function renderMonthPage(doc: Document): Promise<void> {
       ...parts);
   } catch (error) {
     root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' },
-      errorText(error, 'The month could not be loaded.')));
+      errorText(error, t('The month could not be loaded.'))));
   }
 }

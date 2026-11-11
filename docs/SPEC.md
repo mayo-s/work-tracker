@@ -688,8 +688,8 @@ The UI comes in English, German and Spanish (TASKS.md L.8, in steps L.8a–e).
   page in its language (the texts and the attributes people read: `aria-label`, `title`, `placeholder`, `alt`; not
   what is marked `translate="no"`, e.g. the app's name), so it shows without a flash of English; the scripts load the
   same catalog (cached by CloudFront) and translate with `t('…')` and `tn(count, one, other)` for plurals, always
-  texts in quotes (a test refuses backticks there, which it could not read); month names come from `Intl` in the
-  page's language. Sentences are translated whole (e.g. each entry of the audit log), never put together from pieces,
+  texts in quotes, each one whole (a test refuses backticks and `+` there, which it could not read); month names,
+  day counts (`decimal`: `2,5`) and lists (`listOf`: `A und B`) come from `Intl` in the page's language. Sentences are translated whole (e.g. each entry of the audit log), never put together from pieces,
   as the word order differs between the languages. A test finds every text of the templates, every page title and
   every `t`/`tn` of the scripts, and fails when a catalog misses one, holds one no longer used, or changes a
   placeholder.

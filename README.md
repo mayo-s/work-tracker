@@ -137,8 +137,9 @@ The header's language switch (`EN`, `DE`, `ES`, SPEC 5.16) shows the UI in Engli
 the choice, the same on every device; before the login a cookie keeps it, else the browser's language applies. The texts
 are written in English; `src/templates/static/locales/de.json` and `es.json` translate them (a test fails when one is
 missing or no longer used). So far the frame (header, navigation, menu, footer), the page titles, the pages' own texts
-and the scripts' shared parts (dialogs, forms, the day and entry editors, history, audit log, month and weekday names);
-the rest of what the scripts write follows (TASKS.md L.8c–e).
+and the scripts' shared parts (dialogs, forms, the day and entry editors, history, audit log, month and weekday names)
+and tracking pages (week, days off, month, year, dashboard, review, search; day counts with a decimal comma in German
+and Spanish); account, settings, team and administration follow (TASKS.md L.8c–e).
 
 ## Deploy to AWS
 

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { loadCatalog, t, tn } from '../ts/i18n.ts';
+import { decimal, listOf, loadCatalog, t, tn } from '../ts/i18n.ts';
 import { languageName } from '../ts/language.ts';
 
 const GERMAN = { Week: 'Woche', '{count} open team invitation': '{count} offene Team-Einladung',
@@ -21,6 +21,15 @@ test('a loaded catalog translates, fills in placeholders and keeps unknown texts
   assert.deepEqual([t('Week'), tn(1, '{count} open team invitation', '{count} open team invitations'),
     tn(3, '{count} open team invitation', '{count} open team invitations'), t('Deleted {username}', { username: 'hans' })],
   ['Woche', '1 offene Team-Einladung', '3 offene Team-Einladungen', 'Deleted hans']);
+});
+
+test('day counts and lists as the language writes them; a count may come formatted', async () => {
+  await loadCatalog('de', serving({ 'uses {count} PTO days': 'braucht {count} Urlaubstage' }));
+  assert.deepEqual([decimal(2.5), decimal(17), listOf(['Do 24.12.', 'Do 31.12.']),
+    tn(14.5, 'uses {count} PTO day', 'uses {count} PTO days', { count: decimal(14.5) })],
+  ['2,5', '17', 'Do 24.12. und Do 31.12.', 'braucht 14,5 Urlaubstage']);
+  await loadCatalog('en');
+  assert.deepEqual([decimal(2.5), listOf(['A', 'B'])], ['2.5', 'A and B']);
 });
 
 test('English needs no catalog, and without one the texts stay English', async () => {
