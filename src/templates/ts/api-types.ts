@@ -513,7 +513,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Whether the login is on, whether users and root exist, who is logged in (with their team, number of open invitations, whether they audit a team and, for support, the number of new contact messages), whether new users can register, and whether creating root needs the setup token. */
+        /** Whether the login is on, whether users and root exist, who is logged in (with their team, number of open invitations, whether they audit a team and, for support, the number of new contact messages), whether new users can register, and whether creating root needs the setup token. Every page carries it in its HTML, as it was when the page was answered. */
         get: operations["get__api_auth_status"];
         put?: never;
         post?: never;

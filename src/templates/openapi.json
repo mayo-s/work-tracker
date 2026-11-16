@@ -2132,7 +2132,7 @@
     },
     "/api/auth/status": {
       "get": {
-        "summary": "Whether the login is on, whether users and root exist, who is logged in (with their team, number of open invitations, whether they audit a team and, for support, the number of new contact messages), whether new users can register, and whether creating root needs the setup token.",
+        "summary": "Whether the login is on, whether users and root exist, who is logged in (with their team, number of open invitations, whether they audit a team and, for support, the number of new contact messages), whether new users can register, and whether creating root needs the setup token. Every page carries it in its HTML, as it was when the page was answered.",
         "operationId": "get__api_auth_status",
         "description": "",
         "tags": [

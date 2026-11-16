@@ -1,4 +1,6 @@
 import datetime as dt
+import json
+import re
 
 import falcon
 import pytest
@@ -58,6 +60,18 @@ def test_without_a_user_pages_forward_to_login_to_create_it(app):
               'team': None, 'invitations': 0, 'auditor': False, 'new_messages': 0, 'setup_token': False,
               'root_reset': False}
     assert app.simulate_get('/api/auth/status').json == status
+
+
+def _status_in(page: testing.Result) -> dict:
+    return json.loads(re.search(r'<script type="application/json" id="auth-status">(.*?)</script>', page.text)[1])
+
+
+def test_every_page_carries_the_login_status_so_none_asks_for_it_and_nobody_keeps_the_page(app, cookies):
+    """TASKS.md 14.3a: what the API answers, for the user and for a visitor."""
+    page, status = app.simulate_get('/settings', cookies=cookies), app.simulate_get('/api/auth/status', cookies=cookies).json
+    assert (_status_in(page), page.headers['cache-control']) == (status, 'no-store')
+    assert (status['user']['first_name'], status['registration']) == ('Rainer', True)
+    assert _status_in(app.simulate_get('/login')) == status | {'user': None}
 
 
 def test_root_is_created_once_and_logs_in(app):

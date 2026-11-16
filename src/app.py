@@ -18,6 +18,7 @@ from src.modules.auth.resources import (
 )
 from src.modules.auth.sessions import Authentication, LocalUser, auth_enabled
 from src.modules.auth.setup_token import SetupToken
+from src.modules.auth.status import LoginStatus
 from src.modules.catalog.resources import ActivityTypeCollection, ActivityTypeItem, ServiceCollection, ServiceItem
 from src.modules.dashboard.resources import DashboardResource
 from src.modules.days.resources import DayCollection, DayItem, DayRange
@@ -58,14 +59,14 @@ from src.utils.timing import ServerTiming, server_timing
 
 def _middleware(
     storage: Storage, clock: Callable[[], dt.datetime], enabled: bool, origin_secret: OriginSecret | None,
-    timing: ServerTiming | None,
+    timing: ServerTiming | None, status: LoginStatus,
 ) -> list[object]:
     """What answering took (only when measuring), the security headers on every answer and its language; first the
     origin check (only with a secret), then the login (or the first user with the login off)."""
     origin = [OriginCheck(origin_secret)] if origin_secret else []
     login = [Authentication(storage, clock)] if enabled else [LocalUser(storage)]
     return [*([timing] if timing else []), SecurityHeaders(), RequestLanguage(), *origin, *login,
-            RevalidateStaticFiles(), PageSettings(storage)]
+            RevalidateStaticFiles(), PageSettings(storage, status)]
 
 
 def create_app(
@@ -91,7 +92,8 @@ def create_app(
     storage = storage or SqliteStorage(database)
     storage.migrate()
     enabled = auth_enabled() if auth is None else auth
-    app = falcon.App(middleware=_middleware(storage, clock, enabled, origin_secret, measuring))
+    status = LoginStatus(clock, enabled, setup_token)
+    app = falcon.App(middleware=_middleware(storage, clock, enabled, origin_secret, measuring, status))
     app.add_error_handler(NotFoundError, _not_found)
     app.add_error_handler(ConflictError, _conflict)
     app.set_error_serializer(serialize_error)
@@ -145,7 +147,7 @@ def create_app(
     app.add_route('/api/export', ExportResource(storage, clock))
     app.add_route('/api/setup', SetupResource(storage))
     app.add_route('/api/setup/import', SetupImportResource(storage))
-    app.add_route('/api/auth/status', AuthStatusResource(storage, clock, enabled, setup_token))
+    app.add_route('/api/auth/status', AuthStatusResource(storage, status))
     app.add_route('/api/auth/login', LoginResource(storage, clock))
     app.add_route('/api/auth/logout', LogoutResource(storage, clock))
     app.add_route('/api/auth/root', RootResource(storage, clock, setup_token=setup_token))

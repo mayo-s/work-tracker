@@ -1,9 +1,12 @@
 """Frontend pages: the shared frame (src/templates/frame.html) around a page's content (src/templates/pages)."""
 
+import json
 from pathlib import Path
 
 import falcon
 
+from src.modules.auth.schemas import AuthStatus
+from src.modules.auth.status import LoginStatus
 from src.modules.pages.languages import LANGUAGES, chosen_language, translate, translate_html
 from src.modules.storage.owners import NO_OWNER
 from src.modules.storage.store import Language, Storage, Store, Theme
@@ -18,10 +21,11 @@ OWN_LANGUAGE = ('components', 'imprint', 'privacy')
 
 
 def render_page(name: str, title: str, theme: str = 'system', language: Language = 'en',
-                content_language: Language | None = None) -> str:
+                content_language: Language | None = None, status: AuthStatus | None = None) -> str:
     """The frame with the page's title, name, content and color theme filled in (`system` sets no theme), in the
     language. The pages that keep their own (OWN_LANGUAGE) come as they are, in their translation into the content
-    language (by default the page's) if there is one."""
+    language (by default the page's) if there is one. With the login status as the API answers it, for the page's
+    scripts (`null` without)."""
     frame = translate_html((TEMPLATES_DIR / 'frame.html').read_text(encoding='utf-8'), language)
     if name in OWN_LANGUAGE:
         content = _own_content(name, content_language or language)
@@ -29,7 +33,14 @@ def render_page(name: str, title: str, theme: str = 'system', language: Language
         content = translate_html(_content(name), language)
     theme_attribute = '' if theme == 'system' else f' data-theme="{theme}"'
     return (frame.replace('{{language}}', language).replace('{{title}}', translate(title, language))
-            .replace('{{page}}', name).replace('{{theme}}', theme_attribute).replace('{{content}}', content))
+            .replace('{{page}}', name).replace('{{theme}}', theme_attribute).replace('{{content}}', content)
+            .replace('{{status}}', _json_in_html(status.model_dump(mode='json') if status else None)))  # last: it
+    # holds what users typed, which must not be taken for a placeholder
+
+
+def _json_in_html(value: object) -> str:
+    """JSON for a `<script type="application/json">`: no `<`, so nothing in it (e.g. a name) ends the script."""
+    return json.dumps(value).replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
 
 
 def _content(name: str) -> str:
@@ -50,11 +61,12 @@ class Page:
 
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         """`?lang=de` shows the content of imprint and privacy policy in German (the binding text) whatever the page's
-        language."""
+        language. The page carries the login status, so no browser or proxy may keep it."""
         resp.content_type = falcon.MEDIA_HTML
+        resp.set_header('Cache-Control', 'no-store')
         content_language = req.get_param('lang')
         resp.text = render_page(self.name, self._title, req.context.get('theme', 'system'), req.context.get('language', 'en'),
-                                content_language if content_language in LANGUAGES else None)
+                                content_language if content_language in LANGUAGES else None, req.context.get('status'))
 
 
 class StartPage(Page):
@@ -85,12 +97,13 @@ class RegisterPage(Page):
 
 
 class PageSettings:
-    """Middleware for pages: the color theme and the language (SPEC 5.16); until the database is set up, pages forward
-    to /setup, and /setup forwards to the week once it is. The imprint, the privacy policy and the contact page are
-    always there (SPEC 5.13–5.15)."""
+    """Middleware for pages: the color theme, the language (SPEC 5.16) and the login status (SPEC 5.6); until the
+    database is set up, pages forward to /setup, and /setup forwards to the week once it is. The imprint, the privacy
+    policy and the contact page are always there (SPEC 5.13–5.15)."""
 
-    def __init__(self, storage: Storage) -> None:
+    def __init__(self, storage: Storage, status: LoginStatus) -> None:
         self._storage = storage
+        self._status = status
 
     def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict) -> None:
         if not isinstance(resource, Page):
@@ -99,6 +112,7 @@ class PageSettings:
         with self._storage.transaction() as store:
             done = _set_up(store, user_id)
             req.context.theme, account = _appearance(store, user_id)
+            req.context.status = self._status.read(store, user_id)
         req.context.language = chosen_language(req, account)
         if resource.name not in BEFORE_SETUP and done == (resource.name == 'setup'):
             raise falcon.HTTPSeeOther('/' if done else '/setup')

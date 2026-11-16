@@ -349,6 +349,11 @@ below 40rem (640 px), where the narrow-screen rules start; the desktop does not 
   a hash. It stays valid for 24 hours since the last activity, root's for 1 hour (renewed at most every 30 minutes,
   root's every 5); "Log out" ends it, a new password ends all other sessions. After 5 failed logins or registrations within a minute, both pause for a
   minute.
+- Every page carries the login status in its HTML (TASKS.md 14.3a): what `GET /api/auth/status` answers, so who is
+  logged in, with their team, open invitations, audits and, for support, the new contact messages. The page's scripts
+  (the header, the member chooser, settings, admin) take it from there and send no request for it; once the page has
+  changed something, they ask the API. A page is therefore never stored (`Cache-Control: no-store`): going back in the
+  browser loads it anew.
 - Every page and the API need a login (pages forward to `/login?next=…`, the API answers 401); `/login`, `/register`,
   `/health`, the API docs and the static files stay open. A new database creates root in the setup (5.7); one with
   users but no root offers "Create root admin" once on `/login`; on AWS Lambda both only with the setup token (7.4).

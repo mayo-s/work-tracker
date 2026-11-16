@@ -436,10 +436,13 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
       read. The expected costs: SPEC 7.4
 - [ ] **14.3** One call at a time: calls sent one after the other (or as one) are answered by the one warm instance,
   every further call sent at once needs an instance of its own. In steps:
-    - [ ] **14.3a** The login status comes with the page: the server writes what `GET /api/auth/status` answers into
-      every page's HTML (never cached: `Cache-Control: no-store`), and the scripts' first read takes it from there (a
-      refresh after an action still calls the API). No call for the header, none for its second reader (the
-      dashboard's member chooser, team view, settings, admin)
+    - [x] **14.3a** The login status comes with the page (SPEC 5.6): the server writes what `GET /api/auth/status`
+      answers into every page's HTML (never stored: `Cache-Control: no-store`), and the scripts take it from there
+      until the page has changed something; after that they ask the API. No call for the header, none for its second
+      reader (the dashboard's member chooser, team view, settings, admin): the dashboard sent two, every other page
+      one. Measured on dev: a page's HTML now takes 13 DynamoDB calls and about 50 ms in the app (before 7 calls and
+      25 ms), and the pages show their data as fast as before (the status call ran beside the others); the gain is
+      one instance less needed per page view, two on the dashboard
     - [ ] **14.3b** The review count: the dashboard takes it from its own answer (today counted twice, 400 ms each);
       the other pages ask for it after their own data has arrived, not beside it
     - [ ] **14.3c** The week in one call: `GET /api/weeks/{week}` answers the week's days, entries and report with the

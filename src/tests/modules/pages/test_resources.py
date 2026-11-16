@@ -1,8 +1,10 @@
+import json
 import re
 
 import falcon
 import pytest
 
+from src.modules.auth.schemas import AuthStatus, UserView
 from src.modules.pages.resources import STATIC_DIR, TEMPLATES_DIR, render_page
 
 
@@ -11,6 +13,16 @@ def test_render_page_fills_the_frame():
     assert html.startswith('<!doctype html>')
     assert '<section id="week"' in html
     assert '{{' not in html
+
+
+def test_the_login_status_in_a_page_neither_ends_its_script_nor_fills_a_placeholder():
+    """It holds what users typed, e.g. their names."""
+    klara = UserView(id='u1', username='klara', email='klara.himmel@example.com', first_name='</script>{{content}}',
+                     last_name='Himmel & Co', role='user')
+    html = render_page('week', 'Week', status=AuthStatus(enabled=True, has_users=True, user=klara, registration=False))
+    status = re.search(r'<script type="application/json" id="auth-status">(.*?)</script>', html)[1]
+    assert json.loads(status)['user']['first_name'] == '</script>{{content}}'
+    assert not re.search('[<>&]', status)
 
 
 def test_every_page_links_imprint_privacy_contact_license_and_source_code_in_its_footer():

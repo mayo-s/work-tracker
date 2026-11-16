@@ -124,8 +124,18 @@ export function errorMessage(status: number, body: unknown): string {
   return t('Request failed with status {status}', { status });
 }
 
+let changed = false;  // whether this page has sent a change: the login status it came with may be outdated then
+
+/** The login status the server wrote into the page (`<script id="auth-status">` in the frame); none in a page
+ * without it. */
+function pageStatus(): AuthStatus | null {
+  const text = typeof document === 'undefined' ? null : document.querySelector('#auth-status')?.textContent;
+  return text ? JSON.parse(text) as AuthStatus | null : null;
+}
+
 /** The API answers its messages and names in the page's language. */
 async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
+  changed ||= method !== 'GET';
   const headers: Record<string, string> = { Accept: 'application/json', 'Accept-Language': language() };
   const init: RequestInit = { method, headers };
   if (body !== undefined) {
@@ -249,7 +259,10 @@ export const api = {
     request<MessageView>('POST', `/api/support/messages/${segment(id)}/notes`, { text }),
   deleteMessage: (id: string) => request<void>('DELETE', `/api/support/messages/${segment(id)}`),
 
-  authStatus: () => request<AuthStatus>('GET', '/api/auth/status'),
+  /** The login status as the page came with it, without a request; asked for again once this page has changed
+   * something (e.g. the profile, or an invitation accepted). */
+  authStatus: async (): Promise<AuthStatus> =>
+    (changed ? null : pageStatus()) ?? request<AuthStatus>('GET', '/api/auth/status'),
   login: (login: string, password: string, code: string | null = null, remember = false) =>
     request<UserView>('POST', '/api/auth/login', { login, password, code, remember }),
   twoFactor: () => request<TwoFactorStatus>('GET', '/api/auth/me/two-factor'),

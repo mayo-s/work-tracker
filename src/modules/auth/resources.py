@@ -16,11 +16,11 @@ from src.modules.auth.schemas import (
     AuthStatus, DeleteAccountInput, LoginInput, NewAppInput, NewUserInput, PasswordInput, ProfileInput, RecoveryCodes,
     RootInput, RootResetInput, TwoFactorCode, TwoFactorOff, TwoFactorSetup, TwoFactorStatus, UserView,
 )
-from src.modules.teams.schemas import TeamRef
 from src.modules.auth.sessions import (
     BROWSER_COOKIE, COOKIE, PAUSED, RESTORING, clear_session_cookie, set_browser_cookie, set_session_cookie,
 )
 from src.modules.auth.setup_token import SetupToken, check_setup_token
+from src.modules.auth.status import LoginStatus
 from src.modules.auth.two_factor import (
     WRONG_CODE, code_accepted, code_or_recovery_accepted, may_restore_instead, new_app_accepted, new_recovery_codes, qr_code,
     recovery_hash, required, second_factor,
@@ -69,34 +69,19 @@ def _user_id(req: falcon.Request) -> str:
     return user_id
 
 
-class AuthStatusResource(_AuthResource):
+class AuthStatusResource:
+    def __init__(self, storage: Storage, status: LoginStatus) -> None:
+        self._storage = storage
+        self._status = status
+
     @spec.validate(resp=Response(HTTP_200=AuthStatus), tags=TAGS)
     def on_get(self, req: falcon.Request, resp: falcon.Response) -> None:
         """Whether the login is on, whether users and root exist, who is logged in (with their team, number of open
         invitations, whether they audit a team and, for support, the number of new contact messages), whether new users
-        can register, and whether creating root needs the setup token."""
-        user_id = req.context.get('user_id') if self._enabled else None  # with the login off, nobody is logged in
+        can register, and whether creating root needs the setup token. Every page carries it in its HTML, as it was
+        when the page was answered."""
         with self._storage.transaction() as store:
-            status = self._status(store)
-            resp.media = _with_user(status, store, user_id, self._clock().date()) if user_id is not None else status
-
-    def _status(self, store: Store) -> AuthStatus:
-        users, token = store.users(), self._setup_token is not None
-        has_root = users.root_id() is not None
-        return AuthStatus(enabled=self._enabled, has_users=users.count() > 0, has_root=has_root, user=None,
-                          registration=self._enabled and store.registration_open(), setup_token=token and not has_root,
-                          root_reset=token and has_root)
-
-
-def _with_user(status: AuthStatus, store: Store, user_id: str, today: dt.date) -> AuthStatus:
-    """The logged-in user, with their team, number of open invitations, whether they audit a team today and, for
-    support, the number of new contact messages."""
-    membership, user = store.teams().membership(user_id), store.users().get(user_id)
-    new = sum(message.status == 'new' for message in store.messages().all()) if user.support else 0
-    return status.model_copy(update={'user': UserView.of(user), 'new_messages': new,
-                                     'team': TeamRef.of(membership) if membership else None,
-                                     'invitations': len(store.invitations().of_user(user_id)),
-                                     'auditor': any(auditor.active(today) for auditor in store.auditors().of_user(user_id))})
+            resp.media = self._status.read(store, req.context.get('user_id'))
 
 
 class LoginResource(_AuthResource):
