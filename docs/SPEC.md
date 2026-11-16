@@ -262,7 +262,9 @@ Lists everything that needs attention, each with its reason:
 An item leaves the list once the reason is fixed.
 
 The navigation shows "Review" with the count of open items only while there are any, and on the review page itself;
-it appears once the count is loaded, so it does not flash on pages without open items.
+it appears once the count is loaded, so it does not flash on pages without open items. A page asks for the count
+once its own data has arrived, not beside it; the dashboard takes it from its own answer (TASKS.md 14.3b), except
+when showing a member's data, which does not count the viewer's items.
 
 ### 5.5 UI style
 

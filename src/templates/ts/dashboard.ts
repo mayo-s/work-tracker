@@ -5,6 +5,7 @@ import { formatDate, formatDay, formatMonth, shortMonth, type IsoDate } from './
 import { el, scrolling } from './dom.ts';
 import { decimal, t, tn } from './i18n.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
+import { showReviewBadge } from './review.ts';
 import { fullName, viewedMember } from './team-view.ts';
 import { valueClass } from './week.ts';
 import { hasTickets } from './work-modes.ts';
@@ -335,6 +336,9 @@ export async function renderDashboardPage(doc: Document): Promise<void> {
   root.replaceChildren(el('p', { class: 'muted' }, t('Loading…')));
   try {
     const data = await api.dashboard(member);
+    if (!member) {  // a member's dashboard does not count the viewer's items
+      showReviewBadge(doc, data.review_open);
+    }
     doc.querySelector('#dashboard-today')!.textContent = t('Today, {date} · counted up to today', { date: formatDate(data.today) });
     root.replaceChildren(keyFigures(data), balanceSection(data),
       el('div', { class: 'dashboard-columns' }, comingUpSection(data.coming_up), yearSection(data.this_year, data.work_mode)));

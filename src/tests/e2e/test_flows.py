@@ -281,6 +281,20 @@ def test_the_menu_opens_below_its_button_and_closes(logged_in):
     expect(page.locator('.account-links a[aria-current="page"]')).to_have_text('Team')
 
 
+def test_the_dashboard_shows_the_review_count_of_its_own_answer_and_other_pages_ask_after_their_data(logged_in):
+    """TASKS.md 14.3b: no second count beside the dashboard's, no call beside a page's own."""
+    page, calls = logged_in('hans'), []
+    page.on('request', lambda request: calls.extend(re.findall(r'/api/([^?]+)', request.url)))
+    badge = page.locator('.app-nav a[href="/review"] .badge')
+    page.goto('/')
+    expect(badge).to_have_text('2')
+    assert 'review/counts' not in calls
+    calls.clear()
+    page.goto('/year?year=2026')
+    expect(badge).to_have_text('2')
+    assert calls == ['reports/years/2026', 'review/counts']
+
+
 def test_on_phones_the_header_is_one_row_with_a_menu(logged_in):
     page = logged_in('hans')
     page.goto('/week')

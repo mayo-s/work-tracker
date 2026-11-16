@@ -43,11 +43,11 @@ const PAGES: Record<string, () => Promise<void>> = {
 };
 
 /** Shows the Review link with the number of open review items while there are any (SPEC 5.4); the review page shows
- * the link anyway and keeps the count up to date itself. */
+ * the link anyway and keeps the count up to date itself, and the dashboard shows the count of its own answer. */
 async function showReviewCount(): Promise<void> {
   const { api } = await import('./api.ts');
-  const { showReviewBadge } = await import('./review.ts');
-  showReviewBadge(document, await api.reviewCounts());
+  const { reviewTotal, showReviewBadge } = await import('./review.ts');
+  showReviewBadge(document, reviewTotal(await api.reviewCounts()));
 }
 
 /** The right end of the header: the search field (in the frame), the user's name (`showUser`), the language switch and
@@ -202,6 +202,8 @@ if (header) {
 
 const page = document.querySelector<HTMLElement>('#app')?.dataset.page;
 const nav = document.querySelector('.app-nav');
+const member = new URLSearchParams(window.location.search).get('member');
+let reviewCountToAsk = false;  // asked for once the page's own data has arrived, not beside it
 if (nav && !['login', 'register', 'setup', 'password', 'two-factor', 'imprint', 'privacy', 'contact']
   .includes(page ?? '')) {
   setUpMenu(document.querySelector('.app-header')!);
@@ -210,7 +212,7 @@ if (nav && !['login', 'register', 'setup', 'password', 'two-factor', 'imprint', 
   if (page === 'review') {
     nav.querySelector<HTMLElement>('a[href="/review"]')!.hidden = false;
   } else {
-    showReviewCount().catch(() => undefined);  // the count is a hint; pages work without it
+    reviewCountToAsk = page !== 'dashboard' || Boolean(member);  // a member's dashboard does not count the viewer's
   }
   showUser(headerEnd(document.querySelector('.app-header')!), nav).catch(() => undefined);
 }
@@ -221,12 +223,17 @@ if (['login', 'register', 'imprint', 'privacy', 'contact'].includes(page ?? ''))
   headerEnd(document.querySelector('.app-header')!, false);
 }
 
-const member = new URLSearchParams(window.location.search).get('member');
 if (member && ['dashboard', 'week', 'month', 'year'].includes(page ?? '')) {
   const { showTeamView } = await import('./team-view.ts');
   showTeamView(document, member).catch(() => undefined);  // the banner is a hint; the page shows the data anyway
 }
 
-if (page && page in PAGES) {
-  await PAGES[page]?.();
+try {
+  if (page && page in PAGES) {
+    await PAGES[page]?.();
+  }
+} finally {
+  if (reviewCountToAsk) {
+    showReviewCount().catch(() => undefined);  // the count is a hint; pages work without it
+  }
 }

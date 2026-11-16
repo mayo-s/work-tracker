@@ -443,8 +443,12 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
       one. Measured on dev: a page's HTML now takes 13 DynamoDB calls and about 50 ms in the app (before 7 calls and
       25 ms), and the pages show their data as fast as before (the status call ran beside the others); the gain is
       one instance less needed per page view, two on the dashboard
-    - [ ] **14.3b** The review count: the dashboard takes it from its own answer (today counted twice, 400 ms each);
-      the other pages ask for it after their own data has arrived, not beside it
+    - [x] **14.3b** The review count (SPEC 5.4): the dashboard takes it from its own answer (before counted twice,
+      once more by `GET /api/review/counts`; a member's dashboard still asks, as it does not count the viewer's
+      items); the other pages ask for it after their own data has arrived, not beside it. Measured on dev: the
+      pages show their data as fast as before (dashboard 0.56 s, week 0.30 s, month 0.33 s, year 0.37 s); the
+      dashboard sends two calls at once (before four), month and year one; the count arrives about 0.2 s after the
+      data
     - [ ] **14.3c** The week in one call: `GET /api/weeks/{week}` answers the week's days, entries and report with the
       service choices and activity types (today 5 calls at once), also for the team view (`?member=`)
     - [ ] **14.3d** Member chooser and team view ask for teams (`/api/audits`, `/api/teams/{id}`) only for team admins

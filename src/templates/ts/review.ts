@@ -25,8 +25,7 @@ export function reviewTotal(counts: ReviewCounts): number {
 /** Shows the number of open review items next to the Review link of the navigation, as a warning badge (none at 0),
  * and the link itself while there are any; replaces the badge shown before, so the count follows every review action.
  * The same on the header's shortcut for phones (SPEC 5.5a), which shows only while there are any. */
-export function showReviewBadge(doc: Document, counts: ReviewCounts): void {
-  const total = reviewTotal(counts);
+export function showReviewBadge(doc: Document, total: number): void {
   for (const link of doc.querySelectorAll<HTMLElement>('.app-nav a[href="/review"], .review-shortcut')) {
     const shown = link.querySelector('.badge');
     shown?.previousSibling?.remove();  // the space before it
@@ -295,7 +294,7 @@ export async function renderReviewPage(doc: Document): Promise<void> {
       const { untyped, others } = groupReview(data.entries);
       root.replaceChildren(openDaysSection(data.open_days) ?? '', untypedSection(untyped, page) ?? '',
         entriesSection(others, page), ticketsSection(page));
-      showReviewBadge(doc, data.counts);
+      showReviewBadge(doc, reviewTotal(data.counts));
       show(message);
     } catch (error) {
       root.replaceChildren(el('div', { class: 'card is-warning', role: 'alert' }, errorText(error)));
