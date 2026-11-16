@@ -883,12 +883,18 @@ splitting an entry among several tickets went once they were all reviewed (TASKS
   so bytecode checked by time would count as outdated, and nothing changes a source on Lambda. The working tree's own
   `__pycache__` stays out. The deploying Python must be the runtime's, else the deploy stops. The zip: 42 MiB (31
   without bytecode), 121 MB unpacked (Lambda allows 250).
-- The app loads while an instance starts, not inside its first request (TASKS.md 14.2b): Lambda gives a starting
-  instance more CPU than the 512 MB give a request. `INSTANTIATE_LAMBDA_HANDLER_ON_IMPORT` in the function's
-  environment makes zappa do so. With the app, the instance loads what a first request would wait for: the holiday
+- The app loads while an instance starts, not inside its first request (TASKS.md 14.2b): measured at 512 MB, a
+  starting instance had more CPU than a request. `INSTANTIATE_LAMBDA_HANDLER_ON_IMPORT` in the function's environment
+  makes zappa do so. With the app, the instance loads what a first request would wait for: the holiday
   calendar (its package loads ~280 modules on first use) and the origin secret. A request that starts an instance
   waits about 2 s for it (4.3 s when the app loaded inside the request, 7.1 s without bytecode).
+- Memory: 1769 MB, which is one whole vCPU (TASKS.md 14.2c). Lambda gives CPU in proportion to memory, and reading
+  items from DynamoDB is CPU work: the dashboard's call takes 0.30 s in the app, against 0.44 s at 1024 MB and 0.82 s
+  at 512 MB. A new instance starts no faster with more memory.
 - Expected costs for a single user: a few cents per month (Lambda and DynamoDB on demand, no VPC, no NAT gateway).
+  Lambda bills memory times time, about 0.0000167 USD per GB-second: a dashboard view is about 0.6 s in the app, so
+  1.0 GB-second (0.7 at 512 MB, where it took 1.4 s), and 1,000 of them cost under 2 cents, before the monthly free
+  400,000 GB-seconds.
 
 ## 8. Future ideas
 

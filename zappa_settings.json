@@ -9,7 +9,7 @@
     "apigateway_enabled": false,
     "function_url_enabled": true,
     "function_url_config": {"authorizer": "NONE", "cors": {}},
-    "memory_size": 512,
+    "memory_size": 1769,
     "timeout_seconds": 60,
     "keep_warm": true,
     "log_level": "WARNING",

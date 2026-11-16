@@ -269,6 +269,9 @@ The app loads while an instance starts, not inside its first request (`INSTANTIA
 calendar with it, and the origin secret is read then too. On dev, a request that starts an instance now waits 2.1 s for
 it, and its first report is no slower than any other.
 
+The function has 1769 MB (`memory_size`), one whole vCPU: Lambda gives CPU in proportion to memory, and the app's
+time goes into reading from DynamoDB. The larger warm calls take about 40 % of the time they took at 512 MB.
+
 ## Measuring response times
 
 How long the pages take on a stage, measured from outside with the scripts in `deploy/measure/` (TASKS.md 14), as a
@@ -301,6 +304,11 @@ Before the tasks of 14 (dev on 2026-11-16, 512 MB, a test user with 159 work day
 A request that needs a new instance took 7–8 s (the week page sends 7 at once), the first report on an instance 2–3 s
 more. Warm, `GET /api/dashboard` took 920 ms, `GET /api/review/counts` (on every page) 400 ms, the year report 350 ms,
 the month report 200 ms and the smallest calls 60–80 ms.
+
+After 14.2 (bytecode in the package, the app loaded while the instance starts, 1769 MB), warm: dashboard 0.58 s, week
+0.27 s, month 0.30 s, year 0.36 s until the data shows. A request that needs a new instance takes about 2.1 s longer.
+`GET /api/dashboard` takes 370 ms, `GET /api/review/counts` 185 ms, the year report 150 ms, the month report 110 ms
+and the smallest calls 60–85 ms, of which about 25 ms are spent in the app.
 
 ## Run in a container (e.g. on a NAS)
 

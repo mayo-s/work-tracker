@@ -35,6 +35,7 @@ def test_the_function():
     assert BASE['log_level'] == 'WARNING'  # zappa's default, DEBUG, logs every request with cookies and body
     assert (BASE['function_url_enabled'], BASE['apigateway_enabled'], BASE['function_url_config']) == (
         True, False, {'authorizer': 'NONE', 'cors': {}})  # a function URL without CORS and without API Gateway
+    assert BASE['memory_size'] == 1769  # one whole vCPU: the app's time is CPU work (TASKS.md 14.2c)
     assert BASE['manage_roles'] is False and 'role_arn' not in BASE  # zappa finds work-tracker-<stage>-…Role
     assert BASE['aws_environment_variables'] == {
         'TZ': 'CET-1CEST,M3.5.0,M10.5.0/3',  # Berlin time

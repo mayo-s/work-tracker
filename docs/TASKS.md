@@ -408,8 +408,8 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
   `WORK_TRACKER_TIMING=on` (dev; not prod, since the numbers tell how much data the app holds), every answer says in a
   `Server-Timing` header how long the app and its DynamoDB calls took, how many items it read, and whether it was
   the instance's first request (SPEC 7.4). README: "Measuring response times" with the numbers above
-- [ ] **14.2** A new instance starts faster (SPEC 7.4), in steps, each deployed and measured on its own (a new
-  instance's first request, with the `Init Duration` of the Lambda log):
+- [x] **14.2** A new instance starts faster (SPEC 7.4), in steps, each deployed and measured on its own (a new
+  instance's first request):
     - [x] **14.2a** Bytecode in the package: the Lambda's code folder is read-only, so until now every new instance
       compiled every module it loads from the package (locally the app, with the holiday calendar, starts in 1.8 s
       without bytecode and in 0.7 s with it).
@@ -427,9 +427,13 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
       request: measured on dev, a request that starts an instance waits 2.1 s for it (before 4.3 s), from the app's
       start to its first request it takes 0.44 s (before 0.8 s without calendar and secret), and no report is slower
       on a new instance any more (before 0.6 s)
-    - [ ] **14.2c** Memory: Lambda gives CPU in proportion to memory, and both the start and reading thousands of
-      items are CPU work. 1024 and 1769 MB (one whole vCPU) measured against today's 512 MB, for a new instance and
-      for the warm calls; the smallest size that reaches the goal stays, with the expected costs of SPEC 7.4
+    - [x] **14.2c** Memory: Lambda gives CPU in proportion to memory, and reading thousands of items is CPU work.
+      1024 and 1769 MB (one whole vCPU) measured on dev against 512 MB. Time in the app, warm: `GET /api/dashboard`
+      823, 440 and 302 ms; `GET /api/review/counts` 335, 191 and 137 ms; the year report 303, 157 and 118 ms; the
+      smallest calls 40, 25 and 25 ms. A new instance starts no faster (about 2.1 s at every size: a starting
+      instance has the CPU anyway). 1769 MB stays, the smallest size measured that shows the dashboard in about half
+      a second (0.58 s; week 0.27 s, month 0.30 s, year 0.36 s); to be looked at again after 14.4, when less is
+      read. The expected costs: SPEC 7.4
 - [ ] **14.3** One call at a time: calls sent one after the other (or as one) are answered by the one warm instance,
   every further call sent at once needs an instance of its own. In steps:
     - [ ] **14.3a** The login status comes with the page: the server writes what `GET /api/auth/status` answers into
