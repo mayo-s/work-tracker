@@ -808,7 +808,8 @@ splitting an entry among several tickets went once they were all reviewed (TASKS
 
 - Two stages, `dev` and `prod`: zappa deploys each as a Lambda function `work-tracker-<stage>` in `eu-central-1`,
   runtime `python3.14`, from `zappa_settings.json` (committed; no secrets, no account id). Both extend its `base`
-  settings and differ only in the S3 bucket for the packages (`work-tracker-deploy-<stage>`).
+  settings and differ in the S3 bucket for the packages (`work-tracker-deploy-<stage>`); dev also says what its
+  answers took (below).
 - Each stage has its own table `work-tracker-<stage>`, setup token `/work-tracker-<stage>/setup-token` and imprint
   `/work-tracker-<stage>/imprint` (5.13): the app takes the names from the function's name (`WORK_TRACKER_TABLE`,
   `WORK_TRACKER_SETUP_TOKEN_PARAMETER` and `WORK_TRACKER_IMPRINT_PARAMETER` can name others).
@@ -838,6 +839,13 @@ splitting an entry among several tickets went once they were all reviewed (TASKS
   operator's domain), `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin` (links to other sites get no
   address of the app) and `Content-Security-Policy: frame-ancestors 'none'` with `X-Frame-Options: DENY` (no page of the
   app in a frame of another site). CloudFront keeps them with the cached static files.
+- **What an answer took** (TASKS.md 14.1), for measuring from outside: with `WORK_TRACKER_TIMING=on`, every answer
+  carries `Server-Timing`, e.g. `app;dur=84.3, db;dur=51.2;desc="12 calls, 2293 items"`: the milliseconds in the app
+  and, of them, waiting for DynamoDB, with the number of its calls and of the items read (no `db` on SQLite or without
+  calls). The first answer of an instance adds `first` with the time since the app began to start: a short one says
+  the request had to wait for a new instance, a long one that the instance was kept warm. On for dev (its environment
+  in `zappa_settings.json` replaces the base's as a whole, so it repeats `TZ`), off for prod and by default: the
+  numbers tell how much data the app holds, e.g. how many users.
 - Environment: `TZ=CET-1CEST,M3.5.0,M10.5.0/3` (Berlin time as a rule, so "today" is right even without time zone
   files in the image; Lambda runs in UTC).
 - zappa logs at WARNING: its default, DEBUG, writes every request with its cookies and body to CloudWatch.

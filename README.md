@@ -254,8 +254,42 @@ Root forgot its password: create the parameter again with a new token (the `put-
 above), use it in "Reset root login" on `/login`, then delete the parameter again.
 
 Later changes: `./deploy/zappa.sh dev update`, then `./deploy/zappa.sh prod update` (the domains stay). Both stages share the settings of
-`base` in `zappa_settings.json` and differ only in their S3 bucket for the packages (`work-tracker-deploy-<stage>`;
-bucket names are unique across all AWS accounts).
+`base` in `zappa_settings.json` and differ in their S3 bucket for the packages (`work-tracker-deploy-<stage>`;
+bucket names are unique across all AWS accounts); dev also says what its answers took (see "Measuring response
+times").
+
+## Measuring response times
+
+How long the pages take on a stage, measured from outside with the scripts in `deploy/measure/` (TASKS.md 14), as a
+test user without two-factor login. They work on the local app too (`http://127.0.0.1:8000`).
+
+```shell
+export WT_LOGIN=… WT_PASSWORD=…
+python3 deploy/measure/fill.py https://dev.<app-domain> 2026-03-02  # once: records from that day to today
+python3 deploy/measure/calls.py https://dev.<app-domain>            # each request of the four pages, warm
+node deploy/measure/pageload.mjs https://dev.<app-domain> 3         # the four pages in headless Chrome, 3 rounds
+node deploy/measure/pageload.mjs https://dev.<app-domain> 2 1200    # after 20 idle minutes: new instances
+```
+
+With `WORK_TRACKER_TIMING=on` (set for dev in `zappa_settings.json`; locally in `.env`), every answer says what it
+took, and the scripts show it: `Server-Timing: app;dur=84.3, db;dur=51.2;desc="12 calls, 2293 items"` is the
+milliseconds in the app and, of them, waiting for DynamoDB. The first answer of an instance adds `first` with the time
+since the app began to start: short if the request had to wait for a new instance, long if the instance was kept
+warm. The browser shows the header in a request's "Timing" tab. Prod leaves it off: the numbers tell how much data the
+app holds.
+
+Before the tasks of 14 (dev on 2026-11-16, 512 MB, a test user with 159 work days and 556 entries):
+
+| Page      | Data shown, warm | Network idle, warm | After 20 idle minutes |
+|-----------|------------------|--------------------|-----------------------|
+| Dashboard | 1.2 s            | 1.2 s              | 3.8 s                 |
+| Week      | 0.34 s           | 0.62 s             | 7.4 s                 |
+| Month     | 0.41 s           | 0.62 s             | 0.63 s                |
+| Year      | 0.57 s           | 0.60 s             | 0.63 s                |
+
+A request that needs a new instance took 7–8 s (the week page sends 7 at once), the first report on an instance 2–3 s
+more. Warm, `GET /api/dashboard` took 920 ms, `GET /api/review/counts` (on every page) 400 ms, the year report 350 ms,
+the month report 200 ms and the smallest calls 60–80 ms.
 
 ## Run in a container (e.g. on a NAS)
 
@@ -399,9 +433,10 @@ runs through `npx` with its own TypeScript 5, as it does not support the project
 | `src/lib`                    | Calculation rules: durations, breaks, holidays, targets, overtime, PTO                                                                                                                                                                                                                                                                                                                                                                                        |
 | `src/models`                 | Pydantic models                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `src/modules`                | Features: auth (login, registration, origin check), admin, teams, dashboard, storage, import, days, entries, tickets, catalog, settings, export (userdata), full backup (backup), setup, work schedules, PTO years, reports, review, pages, imprint, contact, support (the contact messages, their archive)                                                                                                                                                   |
-| `src/utils`                  | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types; `openapi`: spec file for the frontend types; `stages`: the stage (Local or AWS Lambda) and its storage                                                                                                                                                                                                                                                               |
+| `src/utils`                  | Shared helpers; `spec`: OpenAPI docs and validation (spectree); `api`: shared API types; `openapi`: spec file for the frontend types; `stages`: the stage (Local or AWS Lambda) and its storage; `timing`: the `Server-Timing` header                                                                                                                                                                                                                         |
 | `src/defaultresources`       | Default resource at `/health` (plain-text status)                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `src/templates`              | Frontend: `frame.html` (shared page frame), `pages/` (page content), `static/` (served at `/static`: `css/main.css` with the UI style variables (light and dark), Inter font with its OFL license in `fonts/`, the translations in `locales/`), TypeScript in `ts/` (`main.ts` loads the page code, e.g. `week.ts`; `api.ts`: typed API client, `api-types.ts`: generated) compiled to `static/js/` (git-ignored), `openapi.json`, frontend tests in `tests/` |
+| `deploy`                     | AWS: `zappa.sh` (deploy), policies and CloudFront settings, `measure/` (response times)                                                                                                                                                                                                                                                                                                                                                                       |
 | `Dockerfile`, `compose.yaml` | Container image and its start (see "Run in a container")                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `src/tests`                  | Tests, mirroring the packages above                                                                                                                                                                                                                                                                                                                                                                                                                           |
 

@@ -22,7 +22,8 @@
   },
   "dev": {
     "extends": "base",
-    "s3_bucket": "work-tracker-deploy-dev"
+    "s3_bucket": "work-tracker-deploy-dev",
+    "aws_environment_variables": {"TZ": "CET-1CEST,M3.5.0,M10.5.0/3", "WORK_TRACKER_TIMING": "on"}
   },
   "prod": {
     "extends": "base",

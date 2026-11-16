@@ -9,6 +9,8 @@ from typing import Any
 
 from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
 
+from src.utils.timing import storage_call
+
 REGION = 'eu-central-1'  # Frankfurt
 TTL_ATTRIBUTE = 'expires_at'  # epoch seconds: DynamoDB deletes the item some time after (e.g. sessions)
 
@@ -59,7 +61,7 @@ class Table:
         self.name = name
 
     def get(self, pk: str, sk: str) -> Item | None:
-        response = self.client.get_item(TableName=self.name, Key=key(pk, sk), ConsistentRead=True)
+        response = storage_call(self.client.get_item, TableName=self.name, Key=key(pk, sk), ConsistentRead=True)
         return from_dynamo(response['Item']) if 'Item' in response else None
 
     def query(self, pk: str, low: str, high: str, newest: int | None = None) -> list[Item]:
@@ -68,7 +70,7 @@ class Table:
         request = self._query(pk, low, high, newest)
         items = []
         while True:
-            response = self.client.query(**request)
+            response = storage_call(self.client.query, **request)
             items += [from_dynamo(item) for item in response['Items']]
             if 'LastEvaluatedKey' not in response or _enough(items, newest):
                 return items[:newest] if newest else items
@@ -83,7 +85,7 @@ class Table:
 
     def transact(self, operations: list[dict[str, Any]]) -> None:
         """Write all or nothing (at most 100 operations, each on another item)."""
-        self.client.transact_write_items(TransactItems=operations)
+        storage_call(self.client.transact_write_items, TransactItems=operations)
 
 
 def create_table(client: Any, name: str) -> None:

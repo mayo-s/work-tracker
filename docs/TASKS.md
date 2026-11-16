@@ -390,6 +390,59 @@ L.16 (a–i) → 9.1 (a–i).
   activity type in place of coding / other ticket work, "Top activity types" in place of "Coding hours"; "Times
   only" with entries optional ("Add entry", the search field, the work report when the period holds entries)
 
+## 14. Shorter waits on AWS
+
+Measured on dev on 2026-11-16, as a test user with 159 work days and 556 entries, in headless Chrome:
+
+- Warm: dashboard 1.2 s; week, month and year 0.6 s. Single calls: `GET /api/dashboard` 920 ms,
+  `GET /api/review/counts` 400 ms (on every page), year report 350 ms, month report 200 ms, the smallest calls 60–80 ms.
+- A page view that needs a new Lambda instance: 7–8 s; the first report on an instance 2–3 s more. One instance is kept
+  warm and the week page sends 7 calls at once: after 20 idle minutes it took 7.4 s, and 7.9 s on the next visit.
+
+Goal: a page shows its data in about half a second, one user's clicking does not wait for new instances, and a new
+instance answers within 2 s. Each task is deployed to dev and measured the same way before the next one starts.
+
+- [x] **14.1** Measuring, kept in the repository (`deploy/measure/`; the address as argument, the login in
+  `$WT_LOGIN` and `$WT_PASSWORD`): fill a test account through the API, time each call warm, and load the four pages
+  in headless Chrome (every request until the network is idle, also after an idle time). With
+  `WORK_TRACKER_TIMING=on` (dev; not prod, since the numbers tell how much data the app holds), every answer says in a
+  `Server-Timing` header how long the app and its DynamoDB calls took, how many items it read, and whether it was
+  the instance's first request (SPEC 7.4). README: "Measuring response times" with the numbers above
+- [ ] **14.2** A new instance starts faster (SPEC 7.4), in steps, each deployed and measured on its own (a new
+  instance's first request, with the `Init Duration` of the Lambda log):
+    - [ ] **14.2a** Bytecode in the package: the Lambda's code folder is read-only, so today every new instance
+      compiles all ~800 modules (locally the app starts in 1.6 s without bytecode, in 0.5 s with it).
+      `deploy/zappa.sh` compiles the deploy virtualenv's packages and `src`, hash-based (zappa writes the zip without
+      file times, so bytecode checked by time would count as outdated); `zappa_settings.json` no longer leaves out
+      `__pycache__` and `*.pyc`; the package size checked
+    - [ ] **14.2b** The app loads while the instance starts (zappa's `INSTANTIATE_LAMBDA_HANDLER_ON_IMPORT`), not
+      inside its first request, together with the DynamoDB client and the holiday calendar (`holidays` loads ~280
+      modules on first use: the 2–3 s of the first report, also on the instance kept warm). Kept only if the first
+      request gets faster: whether Lambda starts an instance with more CPU than it gives a request is to be measured
+    - [ ] **14.2c** Memory: Lambda gives CPU in proportion to memory, and both the start and reading thousands of
+      items are CPU work. 1024 and 1769 MB (one whole vCPU) measured against today's 512 MB, for a new instance and
+      for the warm calls; the smallest size that reaches the goal stays, with the expected costs of SPEC 7.4
+- [ ] **14.3** One call at a time: calls sent one after the other (or as one) are answered by the one warm instance,
+  every further call sent at once needs an instance of its own. In steps:
+    - [ ] **14.3a** The login status comes with the page: the server writes what `GET /api/auth/status` answers into
+      every page's HTML (never cached: `Cache-Control: no-store`), and the scripts' first read takes it from there (a
+      refresh after an action still calls the API). No call for the header, none for its second reader (the
+      dashboard's member chooser, team view, settings, admin)
+    - [ ] **14.3b** The review count: the dashboard takes it from its own answer (today counted twice, 400 ms each);
+      the other pages ask for it after their own data has arrived, not beside it
+    - [ ] **14.3c** The week in one call: `GET /api/weeks/{week}` answers the week's days, entries and report with the
+      service choices and activity types (today 5 calls at once), also for the team view (`?member=`)
+    - [ ] **14.3d** Member chooser and team view ask for teams (`/api/audits`, `/api/teams/{id}`) only for team admins
+      and auditors, as the status says (today `/api/audits` on every dashboard)
+- [ ] **14.4** Less read per call (after 14.2c: more CPU may already do part of it), in steps:
+    - [ ] **14.4a** A request reads each range once: the DynamoDB transaction remembers its queries, as it remembers
+      single items (its own writes still show). Today one dashboard answer takes 24 DynamoDB calls and 3,883 items
+      (1.2 MB) in a local replay of real data, reading the year's entries and the tickets several times
+    - [ ] **14.4b** Review counts without reading the history: the number of open review items is stored per user,
+      cleared in the same transaction by every change of days, entries, tickets, services or activity types, and
+      counted again on the next read (also on a new day: a past day left open is an item); on both backends. Today the
+      count reads all entries twice, all tickets and all days (2,293 items in that replay), for every page view
+
 ## Later (to be discussed)
 
 - [ ] **L.6** Overtime used in hours: record hours taken from the overtime balance on a work day (e.g.
@@ -494,3 +547,11 @@ L.16 (a–i) → 9.1 (a–i).
   HTTPS itself worked; the app now sends HSTS, so after the first visit the browser goes to HTTPS directly, plus
   `nosniff`, `Referrer-Policy: same-origin` and no framing (SPEC 7.4)
 - [ ] **L.24** Infrastructure as Code: using Terraform/Terragrunt to easily deploy and update infrastructure on AWS
+- [ ] **L.25** Static files under a path with the build's version, kept by the browser for good (`immutable`), and
+  `modulepreload` for a page's scripts: today a page view checks ~27 files with CloudFront, done after ~180 ms (worth
+  0.1–0.3 s per page view; see 14)
+- [ ] **L.26** Balances from stored month-end values: today every report reads all days since the balance start (about
+  50 ms for 8 months of days, growing with the years)
+- [ ] **L.27** The login check with fewer reads: 5 DynamoDB calls per request today (about 15 ms), one of them reading
+  every user's profile to count the users, growing with their number
+- [ ] **L.28** Metrics: anonymous metrics of how the service is use.

@@ -12,14 +12,15 @@ TRUST = (ROOT / 'deploy' / 'lambda-trust-policy.json').read_text()
 CLOUDFRONT = (ROOT / 'deploy' / 'cloudfront.json').read_text()
 DNS_ALIAS = (ROOT / 'deploy' / 'dns-alias.json').read_text()
 STATIC_POLICY = (ROOT / 'deploy' / 'cache-policy-static.json').read_text()
-STAGES = ['dev', 'prod']
-BASE = ZAPPA['base']  # the stages differ only in their bucket
+BASE = ZAPPA['base']  # the stages differ in their bucket; dev also says what its answers took
 
 
-def test_dev_and_prod_share_one_base_and_differ_only_in_their_bucket():
+def test_dev_and_prod_share_one_base_and_differ_in_their_bucket_and_dev_in_measuring():
+    """A stage's environment replaces the base's as a whole, so dev repeats the time zone."""
     assert set(ZAPPA) == {'base', 'dev', 'prod'}
-    for name in STAGES:
-        assert ZAPPA[name] == {'extends': 'base', 's3_bucket': f'work-tracker-deploy-{name}'}
+    assert ZAPPA['prod'] == {'extends': 'base', 's3_bucket': 'work-tracker-deploy-prod'}
+    assert ZAPPA['dev'] == {'extends': 'base', 's3_bucket': 'work-tracker-deploy-dev', 'aws_environment_variables':
+                            BASE['aws_environment_variables'] | {'WORK_TRACKER_TIMING': 'on'}}
 
 
 def test_no_account_id_in_the_settings_and_the_policy():
