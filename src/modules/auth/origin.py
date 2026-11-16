@@ -2,7 +2,7 @@
 the Function URL, and the app refuses requests without it, so nobody bypasses the domain.
 
 The secret is a SecureString in the SSM Parameter Store, created by hand and never in the repository, and read once per
-Lambda instance. Locally there is none, and no check.
+Lambda instance, when it starts. Locally there is none, and no check.
 """
 
 import hmac
@@ -28,6 +28,10 @@ class OriginSecret:
         self._client = client
         self._parameter = parameter
         self._value: str | None = None
+
+    def load(self) -> None:
+        """Reads the secret now, so the first request does not wait for it."""
+        self._stored()
 
     def matches(self, given: str | None) -> bool:
         """Whether the given secret is the stored one, compared in the same time for every secret; never without a

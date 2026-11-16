@@ -17,7 +17,7 @@ BASE = ZAPPA['base']  # the stages differ in their bucket; dev also says what it
 
 
 def test_dev_and_prod_share_one_base_and_differ_in_their_bucket_and_dev_in_measuring():
-    """A stage's environment replaces the base's as a whole, so dev repeats the time zone."""
+    """A stage's environment replaces the base's as a whole, so dev repeats it."""
     assert set(ZAPPA) == {'base', 'dev', 'prod'}
     assert ZAPPA['prod'] == {'extends': 'base', 's3_bucket': 'work-tracker-deploy-prod'}
     assert ZAPPA['dev'] == {'extends': 'base', 's3_bucket': 'work-tracker-deploy-dev', 'aws_environment_variables':
@@ -36,7 +36,9 @@ def test_the_function():
     assert (BASE['function_url_enabled'], BASE['apigateway_enabled'], BASE['function_url_config']) == (
         True, False, {'authorizer': 'NONE', 'cors': {}})  # a function URL without CORS and without API Gateway
     assert BASE['manage_roles'] is False and 'role_arn' not in BASE  # zappa finds work-tracker-<stage>-…Role
-    assert BASE['aws_environment_variables'] == {'TZ': 'CET-1CEST,M3.5.0,M10.5.0/3'}  # Berlin time
+    assert BASE['aws_environment_variables'] == {
+        'TZ': 'CET-1CEST,M3.5.0,M10.5.0/3',  # Berlin time
+        'INSTANTIATE_LAMBDA_HANDLER_ON_IMPORT': '1'}  # zappa loads the app while the instance starts (TASKS.md 14.2b)
 
 
 def test_private_data_tools_and_project_folders_stay_out_of_the_package():

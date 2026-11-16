@@ -420,10 +420,13 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
       working tree stay out. The package: 42 MiB zipped (before 31), 121 MB unpacked of the 250 allowed. Measured on
       dev: a request that starts an instance waits 4.3 s for it (before 7.1 s), 0.8 s of that in `create_app` as
       before; the first use of the holiday calendar on an instance takes 0.6 s (before 2.2 s)
-    - [ ] **14.2b** The app loads while the instance starts (zappa's `INSTANTIATE_LAMBDA_HANDLER_ON_IMPORT`), not
-      inside its first request, together with the DynamoDB client and the holiday calendar (`holidays` loads ~280
-      modules on first use: the 2–3 s of the first report, also on the instance kept warm). Kept only if the first
-      request gets faster: whether Lambda starts an instance with more CPU than it gives a request is to be measured
+    - [x] **14.2b** The app loads while the instance starts (zappa's `INSTANTIATE_LAMBDA_HANDLER_ON_IMPORT`, set in
+      `zappa_settings.json`), not inside its first request, and with it what a first request waited for: the holiday
+      calendar (`holidays` loads ~280 modules on first use; `src/lambda_app.py`) and the origin secret from SSM; the
+      DynamoDB client is used by the schema check already. Kept, as Lambda gives a starting instance more CPU than a
+      request: measured on dev, a request that starts an instance waits 2.1 s for it (before 4.3 s), from the app's
+      start to its first request it takes 0.44 s (before 0.8 s without calendar and secret), and no report is slower
+      on a new instance any more (before 0.6 s)
     - [ ] **14.2c** Memory: Lambda gives CPU in proportion to memory, and both the start and reading thousands of
       items are CPU work. 1024 and 1769 MB (one whole vCPU) measured against today's 512 MB, for a new instance and
       for the warm calls; the smallest size that reaches the goal stays, with the expected costs of SPEC 7.4

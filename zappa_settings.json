@@ -13,7 +13,7 @@
     "timeout_seconds": 60,
     "keep_warm": true,
     "log_level": "WARNING",
-    "aws_environment_variables": {"TZ": "CET-1CEST,M3.5.0,M10.5.0/3"},
+    "aws_environment_variables": {"TZ": "CET-1CEST,M3.5.0,M10.5.0/3", "INSTANTIATE_LAMBDA_HANDLER_ON_IMPORT": "1"},
     "exclude": ["*.db", ".env", ".env.example", ".git", ".idea", ".venv", "__pycache__", "*.pyc", "node_modules"],
     "exclude_glob": [
       "examples", "docs", "deploy", "src/tests", "src/templates/tests", "Dockerfile", "compose.yaml", "package.json",
@@ -24,7 +24,9 @@
   "dev": {
     "extends": "base",
     "s3_bucket": "work-tracker-deploy-dev",
-    "aws_environment_variables": {"TZ": "CET-1CEST,M3.5.0,M10.5.0/3", "WORK_TRACKER_TIMING": "on"}
+    "aws_environment_variables": {
+      "TZ": "CET-1CEST,M3.5.0,M10.5.0/3", "INSTANTIATE_LAMBDA_HANDLER_ON_IMPORT": "1", "WORK_TRACKER_TIMING": "on"
+    }
   },
   "prod": {
     "extends": "base",

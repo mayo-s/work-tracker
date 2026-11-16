@@ -830,7 +830,7 @@ splitting an entry among several tickets went once they were all reviewed (TASKS
 - **Only through the domain**: CloudFront adds the stage's secret, a SecureString `/work-tracker-<stage>/origin-secret`
   (or `WORK_TRACKER_ORIGIN_SECRET_PARAMETER`), as the header `X-Origin-Verify`; the app refuses every request without
   it, before anything else (403, "Open the app at its address"), also while the parameter is missing. The function
-  reads it once per instance. Locally there is no check.
+  reads it once per instance, when it starts. Locally there is no check.
 - **Security headers** (TASKS.md L.23) on every answer, refusals and static files included:
   `Strict-Transport-Security: max-age=31536000; includeSubDomains` (HSTS: after one visit over HTTPS the browser uses
   HTTPS only for a year, so typing the address no longer tries plain HTTP, which Chrome had warned about: "doesn't
@@ -883,6 +883,11 @@ splitting an entry among several tickets went once they were all reviewed (TASKS
   so bytecode checked by time would count as outdated, and nothing changes a source on Lambda. The working tree's own
   `__pycache__` stays out. The deploying Python must be the runtime's, else the deploy stops. The zip: 42 MiB (31
   without bytecode), 121 MB unpacked (Lambda allows 250).
+- The app loads while an instance starts, not inside its first request (TASKS.md 14.2b): Lambda gives a starting
+  instance more CPU than the 512 MB give a request. `INSTANTIATE_LAMBDA_HANDLER_ON_IMPORT` in the function's
+  environment makes zappa do so. With the app, the instance loads what a first request would wait for: the holiday
+  calendar (its package loads ~280 modules on first use) and the origin secret. A request that starts an instance
+  waits about 2 s for it (4.3 s when the app loaded inside the request, 7.1 s without bytecode).
 - Expected costs for a single user: a few cents per month (Lambda and DynamoDB on demand, no VPC, no NAT gateway).
 
 ## 8. Future ideas

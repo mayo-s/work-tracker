@@ -264,6 +264,11 @@ module it loads. `deploy/bytecode.py` adds it to the zip once zappa has written 
 which therefore has to be the runtime's (3.14). The zip grows from 31 to 42 MiB; on dev, a request that starts an
 instance waits 4.3 s for it instead of 7.1 s, and the first report on an instance takes 0.6 s longer instead of 2.2 s.
 
+The app loads while an instance starts, not inside its first request (`INSTANTIATE_LAMBDA_HANDLER_ON_IMPORT` in
+`zappa_settings.json`): Lambda gives a starting instance more CPU than a request. `src/lambda_app.py` loads the holiday
+calendar with it, and the origin secret is read then too. On dev, a request that starts an instance now waits 2.1 s for
+it, and its first report is no slower than any other.
+
 ## Measuring response times
 
 How long the pages take on a stage, measured from outside with the scripts in `deploy/measure/` (TASKS.md 14), as a

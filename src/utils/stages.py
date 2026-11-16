@@ -78,9 +78,12 @@ def stage_imprint() -> ImprintSource:
 
 def stage_origin_secret() -> OriginSecret | None:
     """The secret CloudFront sends with every request (SPEC 7.4): on AWS Lambda from the SSM parameter named like the
-    function (e.g. /work-tracker-prod/origin-secret), or $WORK_TRACKER_ORIGIN_SECRET_PARAMETER; locally none."""
+    function (e.g. /work-tracker-prod/origin-secret), or $WORK_TRACKER_ORIGIN_SECRET_PARAMETER, read right away;
+    locally none."""
     if current_stage() is Stage.LOCAL:
         return None
     function = os.environ['AWS_LAMBDA_FUNCTION_NAME']
     parameter = os.environ.get('WORK_TRACKER_ORIGIN_SECRET_PARAMETER') or f'/{function}/origin-secret'
-    return OriginSecret(boto3.client('ssm', region_name=REGION), parameter)
+    secret = OriginSecret(boto3.client('ssm', region_name=REGION), parameter)
+    secret.load()
+    return secret

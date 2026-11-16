@@ -7,6 +7,7 @@ import pytest
 from falcon import testing
 
 from src.app import create_app
+from src.lib import public_holidays
 from src.modules.storage.dynamodb.storage import DynamoStorage
 from src.modules.storage.dynamodb.table import REGION
 from src.modules.storage.sqlite import SqliteStorage
@@ -93,10 +94,21 @@ def test_locally_the_imprint_is_in_the_environment_and_requests_need_no_origin_s
     assert (stage_imprint().where, stage_origin_secret()) == ('$WORK_TRACKER_IMPRINT', None)
 
 
+def test_lambda_reads_the_origin_secret_when_the_app_starts(on_lambda, dynamo_table):
+    """Not with an instance's first request (TASKS.md 14.2b)."""
+    ssm = boto3.client('ssm', region_name=REGION)
+    ssm.put_parameter(Name='/work-tracker/origin-secret', Value='from CloudFront', Type='SecureString')
+    secret = stage_origin_secret()
+    ssm.delete_parameter(Name='/work-tracker/origin-secret')
+    assert secret.matches('from CloudFront')
+
+
 def test_the_lambda_app_answers_only_requests_through_the_domain(monkeypatch, on_lambda, dynamo_table):
     """CloudFront sends the secret of the SSM parameter named like the function (SPEC 7.4)."""
     monkeypatch.setenv('AWS_LAMBDA_FUNCTION_NAME', dynamo_table.name)
+    public_holidays._calendar.cache_clear()
     lambda_app = importlib.reload(importlib.import_module('src.lambda_app'))
+    assert public_holidays._calendar.cache_info().currsize == 1  # the holiday calendar is loaded with the app
     client = testing.TestClient(lambda_app.app)
     assert client.simulate_get('/health').status == falcon.HTTP_403  # no secret yet: nothing gets through
     secret = secrets.token_urlsafe(32)
