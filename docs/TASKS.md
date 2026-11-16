@@ -410,11 +410,16 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
   the instance's first request (SPEC 7.4). README: "Measuring response times" with the numbers above
 - [ ] **14.2** A new instance starts faster (SPEC 7.4), in steps, each deployed and measured on its own (a new
   instance's first request, with the `Init Duration` of the Lambda log):
-    - [ ] **14.2a** Bytecode in the package: the Lambda's code folder is read-only, so today every new instance
-      compiles all ~800 modules (locally the app starts in 1.6 s without bytecode, in 0.5 s with it).
-      `deploy/zappa.sh` compiles the deploy virtualenv's packages and `src`, hash-based (zappa writes the zip without
-      file times, so bytecode checked by time would count as outdated); `zappa_settings.json` no longer leaves out
-      `__pycache__` and `*.pyc`; the package size checked
+    - [x] **14.2a** Bytecode in the package: the Lambda's code folder is read-only, so until now every new instance
+      compiled every module it loads from the package (locally the app, with the holiday calendar, starts in 1.8 s
+      without bytecode and in 0.7 s with it).
+      `deploy/bytecode.py`, called by zappa once the zip is written (`callbacks` in `zappa_settings.json`), adds the
+      bytecode of every module in the zip: compiled there and not in the deploy virtualenv, since zappa swaps in
+      Linux builds of falcon, cryptography and others afterwards. Hash-based and unchecked (zappa writes the zip
+      without file times, so bytecode checked by time would count as outdated); `__pycache__` and `*.pyc` of the
+      working tree stay out. The package: 42 MiB zipped (before 31), 121 MB unpacked of the 250 allowed. Measured on
+      dev: a request that starts an instance waits 4.3 s for it (before 7.1 s), 0.8 s of that in `create_app` as
+      before; the first use of the holiday calendar on an instance takes 0.6 s (before 2.2 s)
     - [ ] **14.2b** The app loads while the instance starts (zappa's `INSTANTIATE_LAMBDA_HANDLER_ON_IMPORT`), not
       inside its first request, together with the DynamoDB client and the holiday calendar (`holidays` loads ~280
       modules on first use: the 2–3 s of the first report, also on the instance kept warm). Kept only if the first
@@ -442,6 +447,9 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
       cleared in the same transaction by every change of days, entries, tickets, services or activity types, and
       counted again on the next read (also on a new day: a past day left open is an item); on both backends. Today the
       count reads all entries twice, all tickets and all days (2,293 items in that replay), for every page view
+    - [ ] **14.4c** The login check with fewer reads: measured on dev, it takes 6–7 DynamoDB calls and 35–40 ms on
+      every request (nearly all the time the smallest calls spend in the app; `GET /api/auth/status` 12 calls and
+      77 ms), one of the calls reading every user's profile to count the users, growing with their number
 
 ## Later (to be discussed)
 
@@ -552,6 +560,4 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
   0.1–0.3 s per page view; see 14)
 - [ ] **L.26** Balances from stored month-end values: today every report reads all days since the balance start (about
   50 ms for 8 months of days, growing with the years)
-- [ ] **L.27** The login check with fewer reads: 5 DynamoDB calls per request today (about 15 ms), one of them reading
-  every user's profile to count the users, growing with their number
 - [ ] **L.28** Metrics: anonymous metrics of how the service is use.

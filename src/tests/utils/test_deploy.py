@@ -4,6 +4,7 @@ import importlib.util
 import json
 import pathlib
 import re
+import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 ZAPPA = json.loads((ROOT / 'zappa_settings.json').read_text())
@@ -41,6 +42,30 @@ def test_the_function():
 def test_private_data_tools_and_project_folders_stay_out_of_the_package():
     assert {'*.db', '.env', '.venv', 'node_modules'} <= set(BASE['exclude'])
     assert {'examples', 'docs', 'src/tests', 'src/templates/tests'} <= set(BASE['exclude_glob'])
+
+
+def _deploy_module(name: str):  # noqa: ANN202
+    spec = importlib.util.spec_from_file_location(name, ROOT / 'deploy' / f'{name}.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_the_package_gets_fresh_bytecode_that_an_instance_loads_without_reading_the_source(tmp_path):
+    """TASKS.md 14.2a: zappa calls it on the zip; the working tree's own bytecode stays out."""
+    assert BASE['callbacks'] == {'zip': 'deploy.bytecode.add_to_package'}
+    assert {'__pycache__', '*.pyc'} <= set(BASE['exclude'])
+    with zipfile.ZipFile(tmp_path / 'package.zip', 'w') as package:
+        package.writestr('greeting/hello.py', "TEXT = 'Hello Klara'\n")
+        package.writestr('greeting/template.py', 'Hello {{ name }}')
+    assert _deploy_module('bytecode').add_bytecode(tmp_path / 'package.zip') == 1
+    with zipfile.ZipFile(tmp_path / 'package.zip') as package:
+        package.extractall(tmp_path)
+    (tmp_path / 'greeting' / 'hello.py').write_text("TEXT = 'Hello Hans'\n")  # not read: the bytecode answers
+    spec = importlib.util.spec_from_file_location('hello', tmp_path / 'greeting' / 'hello.py')
+    hello = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(hello)
+    assert hello.TEXT == 'Hello Klara'
 
 
 def test_no_folder_name_that_packages_use_is_excluded_by_name():

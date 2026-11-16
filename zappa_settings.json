@@ -18,7 +18,8 @@
     "exclude_glob": [
       "examples", "docs", "deploy", "src/tests", "src/templates/tests", "Dockerfile", "compose.yaml", "package.json",
       "package-lock.json"
-    ]
+    ],
+    "callbacks": {"zip": "deploy.bytecode.add_to_package"}
   },
   "dev": {
     "extends": "base",

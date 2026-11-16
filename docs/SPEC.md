@@ -873,8 +873,16 @@ splitting an entry among several tickets went once they were all reviewed (TASKS
   `--overwrite`.
 - The package leaves out `examples/` (the real spreadsheet data), `*.db`, `.env`, the tests, `node_modules` and
   `.venv`; the compiled JavaScript is built before deploying (`npm run build`). `deploy/zappa.sh` packages from a
-  virtualenv outside the project that holds only what the app needs (no moto, pytest, …): about 26 MB. zappa copies the
-  active virtualenv's packages apart from the project files, so excluding `.venv` would not keep the dev tools out.
+  virtualenv outside the project that holds only what the app needs (no moto, pytest, …). zappa copies the active
+  virtualenv's packages apart from the project files, so excluding `.venv` would not keep the dev tools out.
+- The package holds the bytecode of all its modules (TASKS.md 14.2a): a Lambda cannot write bytecode, so without it
+  every new instance compiles each module it loads (locally the app starts in 0.7 s with bytecode and in 1.8 s
+  without). `deploy/bytecode.py` adds it as zappa's `zip` callback, from the sources in the finished zip: zappa swaps
+  in Linux builds of the packages with compiled parts (falcon, cryptography, …) after copying the virtualenv, so
+  bytecode compiled there would miss them. It is hash-based and unchecked: zappa writes the zip without file times,
+  so bytecode checked by time would count as outdated, and nothing changes a source on Lambda. The working tree's own
+  `__pycache__` stays out. The deploying Python must be the runtime's, else the deploy stops. The zip: 42 MiB (31
+  without bytecode), 121 MB unpacked (Lambda allows 250).
 - Expected costs for a single user: a few cents per month (Lambda and DynamoDB on demand, no VPC, no NAT gateway).
 
 ## 8. Future ideas
