@@ -5,6 +5,7 @@ from collections.abc import Iterable
 
 from src.models.catalog import Ticket
 from src.modules.storage.dynamodb.catalog import service_key
+from src.modules.storage.dynamodb.filters import missing, one_of
 from src.modules.storage.dynamodb.keys import user_partition
 from src.modules.storage.dynamodb.memberships import current_membership, team_partition
 from src.modules.storage.dynamodb.table import attributes
@@ -12,7 +13,7 @@ from src.modules.storage.dynamodb.unit import Unit
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.tickets import ticket_order
 
-TICKET = 'TICKET#'
+TICKET, ENTRY = 'TICKET#', 'ENTRY#'
 
 
 def ensure_ticket(unit: Unit, pk: str, key: str) -> Ticket:
@@ -41,11 +42,21 @@ class DynamoTickets:
         return sorted((Ticket(**attributes(item)) for item in self._unit.query_prefix(self._pk, TICKET)), key=ticket_order)
 
     def without_service(self) -> list[Ticket]:
-        return [ticket for ticket in self.all() if ticket.service_id is None]
+        items = self._unit.query_prefix(self._pk, TICKET, missing('service_id'))
+        return sorted((Ticket(**attributes(item)) for item in items), key=ticket_order)
+
+    def for_review(self) -> list[Ticket]:
+        """Tickets with entries but no service, sorted like all of them."""
+        tickets = self.without_service()
+        if not tickets:
+            return []
+        entries = self._unit.query_prefix(self._pk, ENTRY, one_of('ticket_key', [ticket.key for ticket in tickets]))
+        used = {entry['ticket_key'] for entry in entries}
+        return [ticket for ticket in tickets if ticket.key in used]
 
     def entry_counts(self) -> dict[str, int]:
         """Number of entries per ticket key (tickets without entries are missing)."""
-        return dict(Counter(entry['ticket_key'] for entry in self._unit.query_prefix(self._pk, 'ENTRY#')
+        return dict(Counter(entry['ticket_key'] for entry in self._unit.query_prefix(self._pk, ENTRY)
                             if entry.get('ticket_key')))
 
     def ensure(self, key: str) -> Ticket:

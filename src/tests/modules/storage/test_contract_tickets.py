@@ -72,6 +72,23 @@ def test_entry_counts(tickets, per_call, klara_id):
     assert tickets.entry_counts() == {'KP-1951': 2, 'TNG-5214': 1}
 
 
+def test_tickets_for_review_have_entries_but_no_service(tickets, per_call, klara_id, service_ids):
+    entries = per_call(lambda store: store.entries(klara_id))
+    tickets.ensure('TNG-4138')  # without entries
+    for key in ('TNG-5214', 'KP-1951', 'AGA-39', None):
+        entries.create(Entry(date=dt.date(2026, 1, 8), ticket_key=key, duration=60))
+    tickets.set_service('AGA-39', service_ids['HiS'])
+    assert [ticket.key for ticket in tickets.for_review()] == ['KP-1951', 'TNG-5214']
+
+
+def test_tickets_for_review_also_when_more_than_a_filter_of_dynamodb_takes(tickets, per_call, klara_id):
+    entries = per_call(lambda store: store.entries(klara_id))
+    for number in range(1, 121):
+        tickets.ensure(f'AGA-{number}')
+    entries.create(Entry(date=dt.date(2026, 1, 8), ticket_key='AGA-120', duration=60))
+    assert [ticket.key for ticket in tickets.for_review()] == ['AGA-120']
+
+
 def test_a_service_for_more_tickets_than_one_transaction_holds(tickets, service_ids):
     keys = [f'AGA-{number}' for number in range(1, 151)]
     for key in keys:

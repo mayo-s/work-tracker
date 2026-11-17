@@ -6,6 +6,7 @@ import pytest
 
 from src.modules.storage.dynamodb.__main__ import main
 from src.modules.storage.dynamodb.entry_kinds import to_one_kind
+from src.modules.storage.dynamodb.filters import both, either, equals, missing, present
 from src.modules.storage.dynamodb.keys import META, SCHEMA
 from src.modules.storage.dynamodb.storage import LATEST, DynamoStorage
 from src.modules.storage.dynamodb.table import TTL_ATTRIBUTE
@@ -92,6 +93,30 @@ def test_a_transaction_reads_each_range_once_also_as_a_part_of_one_read_before(d
     unit.flush()  # a chunk written: ranges are read again
     assert [item['note'] for item in unit.query_prefix(USER, 'DAY#')] == ['Monday', 'Tuesday', 'written', 'next']
     assert len(reads) == 2
+
+
+def test_a_filter_lets_dynamodb_pick_the_items_and_still_shows_the_own_writes(dynamo_table, monkeypatch):
+    """TASKS.md 14.4b: e.g. the open days, of a whole history; an item without the attribute counts as one without
+    its value."""
+    open_days = both(present('start'), missing('end'))
+    put_all(dynamo_table, day('2026-10-26', start=480, end=None), day('2026-10-27', start=480), day('2026-10-28', start=None),
+            day('2026-10-29', start=480, end=990), day('2026-10-30', start=480, end=None))
+    answers, query = [], dynamo_table.client.query
+    monkeypatch.setattr(dynamo_table.client, 'query', lambda **request: answers.append(query(**request)) or answers[-1])
+    unit = Unit(dynamo_table)
+    unit.put(day('2026-10-26', start=480, end=990))  # closed
+    unit.put(day('2026-10-29', start=480, end=None))  # opened again
+    unit.delete(USER, 'DAY#2026-10-30')
+    assert [item['SK'] for item in unit.query_prefix(USER, 'DAY#', open_days)] == ['DAY#2026-10-27', 'DAY#2026-10-29']
+    assert [len(answer['Items']) for answer in answers] == [3]  # of the 5 stored
+    unit.query_prefix(USER, 'DAY#')
+    assert [item['SK'] for item in unit.query_prefix(USER, 'DAY#', open_days)] == ['DAY#2026-10-27', 'DAY#2026-10-29']
+    assert len(answers) == 2  # the range is held now: no third read
+
+
+def test_a_filter_with_two_values_for_one_name_is_refused():
+    with pytest.raises(ValueError, match='Two values for one name'):
+        either(equals('duration', 0), equals('duration', 15))
 
 
 def test_a_query_reads_every_page(dynamo_table, monkeypatch):

@@ -780,6 +780,12 @@ splitting an entry among several tickets went once they were all reviewed (TASKS
     nothing; ids are random UUIDv7, in the order of creation. It reads the table once for each item and each range
     of a partition: asked again, or for a part of a range read before (e.g. the year's entries after all entries),
     it answers from what it read (TASKS.md 14.4a), until it writes a chunk.
+  - What the review needs (open past days, entries with something missing, tickets without service that have
+    entries) is picked by DynamoDB itself, with filter expressions, as SQLite does with `WHERE` (TASKS.md 14.4b): the
+    app gets the few matching items, not the whole history. Nothing is stored for it, so nothing can be outdated;
+    DynamoDB still reads the history, so the time grows with it, slowly. The same condition is checked by the app for
+    the transaction's own writes and for a range it holds already; a filter with more than 100 values (e.g. over 100
+    tickets without service) is checked by the app on the whole range.
   - A change touching at most 100 items is atomic, as in SQLite (DynamoDB's transaction limit). Larger changes
     (renaming or merging a ticket, assigning a service to many tickets, leaving a team) are written in atomic chunks,
     e.g. an entry together with its history line, and end with the step that closes them (deleting the old ticket,

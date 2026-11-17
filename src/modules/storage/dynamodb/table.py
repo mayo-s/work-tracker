@@ -9,6 +9,7 @@ from typing import Any
 
 from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
 
+from src.modules.storage.dynamodb.filters import Filter
 from src.utils.timing import storage_call
 
 REGION = 'eu-central-1'  # Frankfurt
@@ -49,6 +50,15 @@ def _enough(items: list[Item], newest: int | None) -> bool:
     return newest is not None and len(items) >= newest
 
 
+def _filtered(request: dict[str, Any], where: Filter | None) -> dict[str, Any]:
+    """The query request that makes DynamoDB return only the items matching the filter, if there is one."""
+    if where is None:
+        return request
+    values = request['ExpressionAttributeValues'] | to_dynamo(where.values)
+    return request | {'FilterExpression': where.expression, 'ExpressionAttributeNames': where.names,
+                      'ExpressionAttributeValues': values}
+
+
 def key(pk: str, sk: str) -> dict[str, Any]:
     return to_dynamo({'PK': pk, 'SK': sk})
 
@@ -64,10 +74,10 @@ class Table:
         response = storage_call(self.client.get_item, TableName=self.name, Key=key(pk, sk), ConsistentRead=True)
         return from_dynamo(response['Item']) if 'Item' in response else None
 
-    def query(self, pk: str, low: str, high: str, newest: int | None = None) -> list[Item]:
+    def query(self, pk: str, low: str, high: str, newest: int | None = None, where: Filter | None = None) -> list[Item]:
         """The items of a partition with a sort key from low to high (both included), in sort key order; all pages.
-        With `newest`, only that many of the last ones, last first."""
-        request = self._query(pk, low, high, newest)
+        With `newest`, only that many of the last ones, last first; with `where`, only those matching it."""
+        request = _filtered(self._query(pk, low, high, newest), where)
         items = []
         while True:
             response = storage_call(self.client.query, **request)

@@ -470,10 +470,15 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
       `GET /api/dashboard` 208 ms with 1,720 items (before 314 ms, 3,277), `GET /api/review/counts` 102 ms with 968
       (before 137 ms, 1,524), `GET /api/review` 110 ms (before 199 ms); the dashboard shows its data after about
       0.5 s (before 0.6 s)
-    - [ ] **14.4b** Review counts without reading the history: the number of open review items is stored per user,
-      cleared in the same transaction by every change of days, entries, tickets, services or activity types, and
-      counted again on the next read (also on a new day: a past day left open is an item); on both backends. Today the
-      count reads all entries twice, all tickets and all days (2,293 items in that replay), for every page view
+    - [x] **14.4b** The review reads without the history (SPEC 7.2): DynamoDB picks the open past days, the entries
+      with something missing and the tickets without service that have entries itself, by filter expressions, as
+      SQLite does with `WHERE`; the app read all entries, tickets and days for it and chose in Python. Each
+      condition is built once as the filter and as the check for the transaction's own writes
+      (`dynamodb/filters.py`). Instead of the count stored per user that was planned first: that one would have made
+      page views write, could fail two requests of one user at the same time, and would show a wrong count after a
+      missed write path. On a simulated table the review count reads 7 items (before 280), the dashboard 282
+      (before 498). Measured on dev, time in the app: `GET /api/review/counts` 57 ms with 126 items (before 102 ms,
+      968), `GET /api/dashboard` 160 ms with 1,047 (before 208 ms, 1,720); the review shows the same items as before
     - [ ] **14.4c** The login check with fewer reads: measured on dev, it takes 6–7 DynamoDB calls and 35–40 ms on
       every request (nearly all the time the smallest calls spend in the app; `GET /api/auth/status` 12 calls and
       77 ms), one of the calls reading every user's profile to count the users, growing with their number

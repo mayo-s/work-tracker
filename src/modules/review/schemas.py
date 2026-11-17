@@ -5,7 +5,6 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from src.models.catalog import Ticket
 from src.modules.days.schemas import DayView, day_view
 from src.modules.entries.schemas import EntryView, EntryViewer
 from src.modules.storage.store import Store
@@ -39,7 +38,7 @@ class ReviewView(BaseModel):
 
 def review(store: Store, user_id: str, today: dt.date) -> ReviewView:
     """What needs attention in the user's data."""
-    tickets = ticket_views(store, user_id, _open_tickets(store, user_id))
+    tickets = ticket_views(store, user_id, store.tickets(user_id).for_review())
     views = EntryViewer(store, user_id).views(store.entries(user_id).for_review())
     entries = [ReviewEntry(entry=view, reasons=_reasons(view)) for view in views]
     schedules = store.schedules(user_id).schedules()
@@ -54,16 +53,9 @@ def review(store: Store, user_id: str, today: dt.date) -> ReviewView:
 
 def review_counts(store: Store, user_id: str, today: dt.date) -> ReviewCounts:
     """The number of open items of each kind, without building them (for the navigation and the dashboard)."""
-    return ReviewCounts(tickets_without_service=len(_open_tickets(store, user_id)),
+    return ReviewCounts(tickets_without_service=len(store.tickets(user_id).for_review()),
                         entries=len(store.entries(user_id).for_review()),
                         open_days=len(store.days(user_id).open_before(today)))
-
-
-def _open_tickets(store: Store, user_id: str) -> list[Ticket]:
-    """Tickets with entries but no service."""
-    tickets = store.tickets(user_id)
-    counts = tickets.entry_counts()
-    return [ticket for ticket in tickets.without_service() if counts.get(ticket.key)]
 
 
 def _reasons(entry: EntryView) -> list[ReviewReason]:

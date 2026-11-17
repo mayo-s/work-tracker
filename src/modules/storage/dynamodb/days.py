@@ -4,12 +4,14 @@ import datetime as dt
 
 from src.lib.balances import DayRecord
 from src.models.days import Day
+from src.modules.storage.dynamodb.filters import both, missing, present
 from src.modules.storage.dynamodb.keys import user_partition
 from src.modules.storage.dynamodb.table import attributes
 from src.modules.storage.dynamodb.unit import Unit
 from src.modules.storage.errors import NotFoundError
 
 DAY = 'DAY#'
+_OPEN = both(present('start'), missing('end'))  # as Day.is_open
 
 
 def day_key(date: dt.date) -> str:
@@ -33,7 +35,8 @@ class DynamoDays:
 
     def open_before(self, date: dt.date) -> list[Day]:
         """Days before the date with a start but no end, in date order."""
-        return [day for day in self.between(dt.date.min, date - dt.timedelta(days=1)) if day.is_open]
+        items = self._unit.query(self._pk, day_key(dt.date.min), day_key(date - dt.timedelta(days=1)), _OPEN)
+        return [Day(**attributes(item)) for item in items]
 
     def records(self, start: dt.date, end: dt.date) -> dict[dt.date, DayRecord]:
         """Worked time and day type of the recorded days, as input for balances."""

@@ -14,9 +14,10 @@ from src.models.entries import Entry
 from src.models.history import EntryChange, HistoryAction
 from src.modules.storage.dynamodb.catalog import ACTIVITY_TYPE, activity_type_key
 from src.modules.storage.dynamodb.days import day_key
+from src.modules.storage.dynamodb.filters import Filter, both, either, equals, missing, one_of
 from src.modules.storage.dynamodb.keys import user_partition
 from src.modules.storage.dynamodb.table import Item, attributes
-from src.modules.storage.dynamodb.tickets import ensure_ticket
+from src.modules.storage.dynamodb.tickets import ENTRY, ensure_ticket
 from src.modules.storage.dynamodb.unit import Unit
 from src.modules.storage.entries import EntryRules, check_fits, history_time
 from src.modules.storage.errors import ConflictError, NotFoundError
@@ -26,7 +27,7 @@ _LAST = '\U0010ffff'  # sorts after every other character, as the end of a sort 
 
 
 def _entry_key(date: dt.date | str, entry_id: str) -> str:
-    return f'ENTRY#{date}#{entry_id}'
+    return f'{ENTRY}{date}#{entry_id}'
 
 
 def _id_key(entry_id: str) -> str:
@@ -41,10 +42,10 @@ def _entry(item: Item) -> Entry:
     return _ENTRY.validate_python(attributes(item))
 
 
-def _incomplete(entry: Entry, ticket_required: set[str]) -> bool:
+def _incomplete(ticket_required: set[str]) -> Filter:
     """0:00, no activity type, or no ticket though the activity type requires one."""
-    return (entry.duration == 0 or entry.activity_type_id is None
-            or (entry.ticket_key is None and entry.activity_type_id in ticket_required))
+    without_ticket = [both(missing('ticket_key'), one_of('activity_type_id', ticket_required))] if ticket_required else []
+    return either(equals('duration', 0), missing('activity_type_id'), *without_ticket)
 
 
 class DynamoEntries(EntryRules):
@@ -65,13 +66,12 @@ class DynamoEntries(EntryRules):
 
     def between(self, start: dt.date, end: dt.date) -> list[Entry]:
         """Entries from start to end (inclusive), by date and in the order they were created."""
-        items = self._unit.query(self._pk, f'ENTRY#{start.isoformat()}', f'ENTRY#{end.isoformat()}#{_LAST}')
+        items = self._unit.query(self._pk, f'{ENTRY}{start.isoformat()}', f'{ENTRY}{end.isoformat()}#{_LAST}')
         return [_entry(item) for item in items]
 
     def for_review(self) -> list[Entry]:
         """Entries with 0:00, without activity type or without the ticket their activity type requires, by date."""
-        required = self._ticket_required()
-        return [entry for entry in self.between(dt.date.min, dt.date.max) if _incomplete(entry, required)]
+        return [_entry(item) for item in self._unit.query_prefix(self._pk, ENTRY, _incomplete(self._ticket_required()))]
 
     def _ticket_required(self) -> set[str]:
         """The ids of the activity types that require a ticket."""

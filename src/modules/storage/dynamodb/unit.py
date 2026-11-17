@@ -1,7 +1,8 @@
 """One transaction on the table: writes wait and go out together, atomically, when it ends (SPEC 7.2).
 
 Reads see the transaction's own writes, and read the table once: an item or a range asked for again, or a part of a
-range read before, comes from what the transaction read (TASKS.md 14.4a). Up to 100 items are written all or nothing,
+range read before, comes from what the transaction read (TASKS.md 14.4a). A query with a filter lets DynamoDB pick
+the matching items (14.4b). Up to 100 items are written all or nothing,
 as in SQLite; a larger change writes atomic chunks with `flush()` and ends with the step that closes it, so repeating
 it completes it.
 """
@@ -13,6 +14,7 @@ from typing import Any
 from botocore.exceptions import ClientError
 
 from src.lib.texts import text
+from src.modules.storage.dynamodb.filters import Filter
 from src.modules.storage.dynamodb.table import Item, Table, key, to_dynamo
 from src.modules.storage.errors import ConflictError, TooManyChangesError
 
@@ -37,10 +39,10 @@ class _Range:
     def holds(self, pk: str, low: str, high: str) -> bool:
         return self.pk == pk and self.low <= low and high <= self.high
 
-    def part(self, low: str, high: str) -> list[Item]:
-        """The items from low to high, for the caller to keep: its own dicts (their values are shared, as nothing
-        changes them)."""
-        return [dict(item) for item in self.items if low <= item['SK'] <= high]
+    def part(self, low: str, high: str, where: Filter | None = None) -> list[Item]:
+        """The items from low to high (those matching the filter), for the caller to keep: its own dicts (their values
+        are shared, as nothing changes them)."""
+        return [dict(item) for item in self.items if low <= item['SK'] <= high and _matches(item, where)]
 
 
 class Unit:
@@ -57,27 +59,39 @@ class Unit:
             self._read[pk, sk] = self._table.get(pk, sk)
         return copy.deepcopy(self._read[pk, sk])
 
-    def query(self, pk: str, low: str, high: str) -> list[Item]:
-        """The items of a partition with a sort key from low to high (both included), in sort key order."""
-        items = {item['SK']: item for item in self._stored(pk, low, high)} | self._pending_between(pk, low, high)
+    def query(self, pk: str, low: str, high: str, where: Filter | None = None) -> list[Item]:
+        """The items of a partition with a sort key from low to high (both included), in sort key order; with `where`,
+        only those matching it (TASKS.md 14.4b)."""
+        items = {item['SK']: item for item in self._stored(pk, low, high, where)}
+        items |= self._pending_between(pk, low, high, where)
         return [items[sort_key] for sort_key in sorted(items) if items[sort_key] is not None]
 
-    def _stored(self, pk: str, low: str, high: str) -> list[Item]:
-        """The table's items of the range, read once: a range within one read before is taken from that."""
-        read = next((earlier for earlier in self._ranges if earlier.holds(pk, low, high)), None)
-        if read is None:
-            read = _Range(pk, low, high, self._table.query(pk, low, high))
-            self._ranges.append(read)
-        return read.part(low, high)
+    def _stored(self, pk: str, low: str, high: str, where: Filter | None) -> list[Item]:
+        """The table's items of the range, read once: a range within one read before is taken from that. With a filter
+        DynamoDB can take, it reads only the matching items, unless the transaction holds the range already."""
+        read = self._held(pk, low, high)
+        if read is None and where and where.fits:
+            return self._table.query(pk, low, high, where=where)
+        return (read or self._read_range(pk, low, high)).part(low, high, where)
 
-    def _pending_between(self, pk: str, low: str, high: str) -> dict[str, Item | None]:
-        """The transaction's own writes in that range by sort key; None for a deleted item."""
-        return {sort_key: copy.deepcopy(write.item) for (partition, sort_key), write in self._pending.items()
+    def _held(self, pk: str, low: str, high: str) -> _Range | None:
+        """A range read before that holds this one."""
+        return next((earlier for earlier in self._ranges if earlier.holds(pk, low, high)), None)
+
+    def _read_range(self, pk: str, low: str, high: str) -> _Range:
+        read = _Range(pk, low, high, self._table.query(pk, low, high))
+        self._ranges.append(read)
+        return read
+
+    def _pending_between(self, pk: str, low: str, high: str, where: Filter | None = None) -> dict[str, Item | None]:
+        """The transaction's own writes in that range by sort key; None for a deleted item and for one the filter
+        leaves out."""
+        return {sort_key: _kept(write.item, where) for (partition, sort_key), write in self._pending.items()
                 if partition == pk and low <= sort_key <= high}
 
-    def query_prefix(self, pk: str, prefix: str) -> list[Item]:
-        """The items of a partition whose sort key starts with the prefix, e.g. `DAY#`."""
-        return self.query(pk, prefix, prefix + '\U0010ffff')
+    def query_prefix(self, pk: str, prefix: str, where: Filter | None = None) -> list[Item]:
+        """The items of a partition whose sort key starts with the prefix, e.g. `DAY#`; with `where`, those matching."""
+        return self.query(pk, prefix, prefix + '\U0010ffff', where)
 
     def newest(self, pk: str, prefix: str, count: int) -> list[Item]:
         """The last `count` items whose sort key starts with the prefix, last first (e.g. a log by time)."""
@@ -131,6 +145,15 @@ class Unit:
             if conflict is None:
                 raise
             raise conflict from error
+
+
+def _matches(item: Item, where: Filter | None) -> bool:
+    return where is None or where.matches(item)
+
+
+def _kept(item: Item | None, where: Filter | None) -> Item | None:
+    """A copy of the written item, unless it is deleted or the filter leaves it out."""
+    return copy.deepcopy(item) if item is not None and _matches(item, where) else None
 
 
 def _operation(table: str, pk: str, sk: str, write: _Write) -> dict[str, Any]:

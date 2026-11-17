@@ -42,6 +42,13 @@ class TicketRepository:
         return _to_tickets(self._conn.execute('SELECT key, service_id FROM tickets WHERE user_id = ? AND service_id IS NULL',
                                               (self._user,)))
 
+    def for_review(self) -> list[Ticket]:
+        """Tickets with entries but no service, sorted like all of them."""
+        return _to_tickets(self._conn.execute(
+            'SELECT key, service_id FROM tickets WHERE user_id = ? AND service_id IS NULL AND EXISTS '
+            '(SELECT 1 FROM entries WHERE entries.user_id = tickets.user_id AND entries.ticket_key = tickets.key)',
+            (self._user,)))
+
     def entry_counts(self) -> dict[str, int]:
         """Number of entries per ticket key (tickets without entries are missing)."""
         rows = self._conn.execute('SELECT ticket_key, COUNT(*) FROM entries WHERE user_id = ? AND ticket_key IS NOT NULL '
