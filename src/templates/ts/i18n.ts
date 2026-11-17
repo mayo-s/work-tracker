@@ -1,6 +1,7 @@
 // Translations (SPEC 5.16): the texts are written in English; the page's language (<html lang>, chosen by the server)
-// brings its catalog, /static/locales/<language>.json, the same the server uses. A text without a translation shows in
-// English. Modules may translate their constants when they load: main.ts loads the catalog before any page code.
+// brings its catalog, locales/<language>.json beside the scripts' folder (both under the static files' version), the
+// same the server uses. A text without a translation shows in English. Modules may translate their constants when they
+// load: main.ts loads the catalog before any page code.
 
 export type Params = Record<string, string | number>;
 
@@ -21,7 +22,7 @@ export async function loadCatalog(code: string, fetcher: typeof fetch = fetch): 
     return;
   }
   try {
-    const response = await fetcher(`/static/locales/${code}.json`);
+    const response = await fetcher(new URL(`../locales/${code}.json`, import.meta.url));
     entries = response.ok ? await response.json() as Record<string, string> : {};
   } catch {
     entries = {};

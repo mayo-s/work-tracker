@@ -107,18 +107,16 @@ def test_cloudfront_passes_every_request_on_uncached_over_https_with_the_origin_
     assert origin['CustomHeaders']['Items'] == [{'HeaderName': 'X-Origin-Verify', 'HeaderValue': 'SECRET'}]
 
 
-def test_cloudfront_keeps_the_static_files_for_everyone_alike_until_a_deploy_clears_them():
-    """TASKS.md L.22: a page runs the Lambda only for its API calls."""
+def test_cloudfront_keeps_the_static_files_a_year_for_everyone_alike():
+    """TASKS.md L.22: a page runs the Lambda only for its API calls; a new version comes under a new path (L.25a)."""
     [behavior] = json.loads(CLOUDFRONT)['CacheBehaviors']['Items']
     assert (behavior['PathPattern'], behavior['CachePolicyId'], behavior['AllowedMethods']['Items'], behavior['Compress']) == (
         '/static/*', 'STATIC_POLICY', ['GET', 'HEAD'], True)
     policy = json.loads(STATIC_POLICY)
-    assert (policy['MinTTL'], policy['MaxTTL']) == (31536000, 31536000)  # a year, also despite the app's no-cache
+    assert (policy['MinTTL'], policy['MaxTTL']) == (31536000, 31536000)  # a year, whatever the app says
     key = policy['ParametersInCacheKeyAndForwardedToOrigin']
     assert (key['CookiesConfig'], key['HeadersConfig'], key['QueryStringsConfig']) == (
         {'CookieBehavior': 'none'}, {'HeaderBehavior': 'none'}, {'QueryStringBehavior': 'none'})
-    assert "create-invalidation --distribution-id \"$distribution\" --paths '/static/*'" in (
-        ROOT / 'deploy' / 'zappa.sh').read_text()
 
 
 def test_an_existing_distribution_gets_the_static_cache_with_everything_else_unchanged():

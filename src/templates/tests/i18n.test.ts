@@ -11,7 +11,7 @@ const GERMAN = { Week: 'Woche', '{count} open team invitation': '{count} offene 
 
 function serving(body: unknown, status = 200): typeof fetch {
   return async (input) => {
-    assert.equal(String(input), '/static/locales/de.json');
+    assert.equal(String(input), new URL('../locales/de.json', import.meta.url).href);  // beside the scripts' folder
     return Response.json(body, { status });
   };
 }

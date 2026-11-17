@@ -1,5 +1,6 @@
 """Frontend pages: the shared frame (src/templates/frame.html) around a page's content (src/templates/pages)."""
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -20,19 +21,20 @@ BEFORE_SETUP = ('password', 'two-factor', 'imprint', 'privacy', 'contact')
 OWN_LANGUAGE = ('components', 'imprint', 'privacy')
 
 
-def render_page(name: str, title: str, theme: str = 'system', language: Language = 'en',
+def render_page(name: str, title: str, static: str, theme: str = 'system', language: Language = 'en',
                 content_language: Language | None = None, status: AuthStatus | None = None) -> str:
     """The frame with the page's title, name, content and color theme filled in (`system` sets no theme), in the
-    language. The pages that keep their own (OWN_LANGUAGE) come as they are, in their translation into the content
-    language (by default the page's) if there is one. With the login status as the API answers it, for the page's
-    scripts (`null` without)."""
+    language, its static files under `static` (e.g. `/static/<version>`). The pages that keep their own (OWN_LANGUAGE)
+    come as they are, in their translation into the content language (by default the page's) if there is one. With the
+    login status as the API answers it, for the page's scripts (`null` without)."""
     frame = translate_html((TEMPLATES_DIR / 'frame.html').read_text(encoding='utf-8'), language)
     if name in OWN_LANGUAGE:
         content = _own_content(name, content_language or language)
     else:
         content = translate_html(_content(name), language)
     theme_attribute = '' if theme == 'system' else f' data-theme="{theme}"'
-    return (frame.replace('{{language}}', language).replace('{{title}}', translate(title, language))
+    return (frame.replace('{{static}}', static).replace('{{language}}', language)
+            .replace('{{title}}', translate(title, language))
             .replace('{{page}}', name).replace('{{theme}}', theme_attribute).replace('{{content}}', content)
             .replace('{{status}}', _json_in_html(status.model_dump(mode='json') if status else None)))  # last: it
     # holds what users typed, which must not be taken for a placeholder
@@ -65,8 +67,9 @@ class Page:
         resp.content_type = falcon.MEDIA_HTML
         resp.set_header('Cache-Control', 'no-store')
         content_language = req.get_param('lang')
-        resp.text = render_page(self.name, self._title, req.context.get('theme', 'system'), req.context.get('language', 'en'),
-                                content_language if content_language in LANGUAGES else None, req.context.get('status'))
+        resp.text = render_page(self.name, self._title, req.context.static, req.context.get('theme', 'system'),
+                                req.context.get('language', 'en'), content_language if content_language in LANGUAGES else None,
+                                req.context.get('status'))
 
 
 class StartPage(Page):
@@ -161,9 +164,46 @@ class SecurityHeaders:
         resp.set_headers(SECURITY_HEADERS)
 
 
-class RevalidateStaticFiles:
-    """Middleware: browsers re-check static files on each use (cheap thanks to their ETag), so changes show at once."""
+def static_version(directory: Path) -> str:
+    """The version of the static files: a hash of their paths and contents, so it changes with any of them."""
+    digest = hashlib.sha256()
+    for file in sorted(path for path in directory.rglob('*') if path.is_file()):
+        content = hashlib.sha256(file.read_bytes()).hexdigest()
+        digest.update(f'{file.relative_to(directory).as_posix()}\0{content}\n'.encode())
+    return digest.hexdigest()[:10]
+
+
+class StaticFiles:
+    """Middleware: the static files under their version, `/static/<version>/…`, and the pages pointing there (SPEC
+    7.4). With `fixed` (AWS Lambda, whose package does not change), the version is taken once and the files are kept
+    for good (`immutable`); locally it is taken anew, and browsers re-check the files on each use, so a new build shows
+    on the next page. Another version is not found; no refusal of a static file may be kept."""
+
+    def __init__(self, directory: Path = STATIC_DIR, fixed: bool = False) -> None:
+        self._directory = directory
+        self._version = static_version(directory) if fixed else None
+
+    def version(self) -> str:
+        return self._version or static_version(self._directory)
+
+    def process_request(self, req: falcon.Request, resp: falcon.Response) -> None:
+        if not req.path.startswith('/static/'):
+            return
+        version, _, path = req.path.removeprefix('/static/').partition('/')
+        if version != self.version():
+            raise falcon.HTTPNotFound()
+        req.path = f'/static/{path}'
+
+    def process_resource(self, req: falcon.Request, resp: falcon.Response, resource: object, params: dict) -> None:
+        if isinstance(resource, Page):
+            req.context.static = f'/static/{self.version()}'
 
     def process_response(self, req: falcon.Request, resp: falcon.Response, resource: object, req_succeeded: bool) -> None:
-        if req.path.startswith('/static/'):
+        if not req.path.startswith('/static/'):
+            return
+        if not req_succeeded:
+            resp.set_header('Cache-Control', 'no-store')
+        elif self._version:
+            resp.set_header('Cache-Control', 'public, max-age=31536000, immutable')
+        else:
             resp.set_header('Cache-Control', 'no-cache')

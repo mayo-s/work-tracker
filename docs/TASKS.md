@@ -592,7 +592,20 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
 - [ ] **L.24** Infrastructure as Code: using Terraform/Terragrunt to easily deploy and update infrastructure on AWS
 - [ ] **L.25** Static files under a path with the build's version, kept by the browser for good (`immutable`), and
   `modulepreload` for a page's scripts: today a page view checks ~27 files with CloudFront, done after ~180 ms (worth
-  0.1–0.3 s per page view; see 14)
+  0.1–0.3 s per page view; see 14). In steps:
+    - [x] **L.25a** Versioned paths (SPEC 7.4): the static files at `/static/<version>/…`, the version a hash of their
+      paths and contents (not the commit: the package has no `.git`, and a deploy without frontend changes keeps the
+      browsers' copies); on AWS Lambda taken once and the files kept for good (`immutable`), locally taken anew with
+      `no-cache`. Fonts and catalogs relative to the CSS and the scripts. Only the current version is served (else 404),
+      no refusal of a static file is kept (`no-store`); `deploy/zappa.sh` no longer clears CloudFront (README: by hand,
+      should a file have to go at once). Measured on dev: the version there is the local build's; CloudFront keeps the
+      files and no 404 (each repeat reaches the app). Once the browser has a page's 26–28 files, it takes all of them
+      from its cache (`pageload.mjs` now counts those); the pages show their data after 0.31 s (dashboard), 0.24 s
+      (week), 0.22 s (month) and 0.27 s (year), before 0.41, 0.31, 0.31 and 0.38 s. After 20 idle minutes 0.67, 0.25,
+      0.28 and 0.35 s (before 0.71, 0.36, 0.40, 0.40): the dashboard, the first page, fetches 17 scripts import by
+      import before its API call goes out (at 0.47 s), which is what L.25b would shorten
+    - [ ] **L.25b** `modulepreload` for a page's scripts and a `preload` of the regular font, so the first visit after
+      a deploy does not load them step by step; decided after measuring L.25a, dropped if it gains nothing
 - [ ] **L.26** Balances from stored month-end values: today every report reads all days since the balance start (about
   50 ms for 8 months of days, growing with the years)
 - [ ] **L.28** Metrics: anonymous metrics of how the service is use.

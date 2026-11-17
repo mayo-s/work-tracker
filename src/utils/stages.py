@@ -13,6 +13,7 @@ from src.modules.auth.origin import OriginSecret
 from src.modules.auth.sessions import auth_enabled
 from src.modules.auth.setup_token import SetupToken
 from src.modules.imprint.sources import EnvironmentImprint, ImprintSource, ParameterImprint
+from src.modules.pages.resources import StaticFiles
 from src.modules.storage.database import Database, database_path
 from src.modules.storage.dynamodb.storage import DynamoStorage
 from src.modules.storage.dynamodb.table import REGION, Table
@@ -87,3 +88,9 @@ def stage_origin_secret() -> OriginSecret | None:
     secret = OriginSecret(boto3.client('ssm', region_name=REGION), parameter)
     secret.load()
     return secret
+
+
+def stage_static_files() -> StaticFiles:
+    """The static files under their version (SPEC 7.4): on AWS Lambda, whose package does not change, taken once and
+    kept by browsers for good; locally taken anew for each page."""
+    return StaticFiles(fixed=current_stage() is Stage.LAMBDA)

@@ -30,7 +30,7 @@ from src.modules.imprint.resources import ImprintResource
 from src.modules.imprint.sources import EnvironmentImprint, ImprintSource
 from src.modules.pages.languages import RequestLanguage, serialize_error
 from src.modules.pages.resources import (
-    STATIC_DIR, Page, PageSettings, Redirect, RegisterPage, RevalidateStaticFiles, SecurityHeaders, StartPage,
+    STATIC_DIR, Page, PageSettings, Redirect, RegisterPage, SecurityHeaders, StartPage, StaticFiles,
 )
 from src.modules.pto.resources import PtoYearCollection, PtoYearItem
 from src.modules.reports.resources import (
@@ -54,27 +54,28 @@ from src.modules.tickets.resources import TicketCollection, TicketItem, TicketRe
 from src.modules.userdata.resources import ExportResource
 from src.modules.weeks.resources import WeekResource
 from src.utils.spec import spec
-from src.utils.stages import stage_imprint, stage_origin_secret, stage_setup_token, stage_storage
+from src.utils.stages import stage_imprint, stage_origin_secret, stage_setup_token, stage_static_files, stage_storage
 from src.utils.timing import ServerTiming, server_timing
 
 
 def _middleware(
     storage: Storage, clock: Callable[[], dt.datetime], enabled: bool, origin_secret: OriginSecret | None,
-    timing: ServerTiming | None, status: LoginStatus,
+    timing: ServerTiming | None, status: LoginStatus, static_files: StaticFiles,
 ) -> list[object]:
     """What answering took (only when measuring), the security headers on every answer and its language; first the
-    origin check (only with a secret), then the login (or the first user with the login off)."""
+    origin check (only with a secret), then the login (or the first user with the login off), then the static files'
+    version."""
     origin = [OriginCheck(origin_secret)] if origin_secret else []
     login = [Authentication(storage, clock)] if enabled else [LocalUser(storage)]
     return [*([timing] if timing else []), SecurityHeaders(), RequestLanguage(), *origin, *login,
-            RevalidateStaticFiles(), PageSettings(storage, status)]
+            static_files, PageSettings(storage, status)]
 
 
 def create_app(
     database: Database | None = None, today: Callable[[], dt.date] = dt.date.today, auth: bool | None = None,
     clock: Callable[[], dt.datetime] = dt.datetime.now, storage: Storage | None = None,
     setup_token: SetupToken | None = None, imprint: ImprintSource = EnvironmentImprint(),
-    origin_secret: OriginSecret | None = None, timing: bool | None = None,
+    origin_secret: OriginSecret | None = None, timing: bool | None = None, static_files: StaticFiles | None = None,
 ) -> falcon.App:
     """The app on the given storage or SQLite database, or by default on the storage of the stage it runs in
     (stages.py), migrated on start; a wrong stage raises a StageError.
@@ -84,17 +85,19 @@ def create_app(
     The imprint comes from `imprint`, by default from the stage's source, or $WORK_TRACKER_IMPRINT with a given storage.
     The login is on unless `auth` is False or, by default, WORK_TRACKER_AUTH=off. With `origin_secret` (by default the
     stage's, only on AWS Lambda), requests without it are refused: they did not come through the domain. With `timing`
-    (by default with WORK_TRACKER_TIMING=on), every answer says in `Server-Timing` what it took.
+    (by default with WORK_TRACKER_TIMING=on), every answer says in `Server-Timing` what it took. The static files come
+    under their version, by default taken anew for each page as locally, on AWS Lambda once (`static_files`).
     """
     measuring = server_timing(timing)  # created first: it knows when the app began to start
     if storage is None and database is None:
         storage, setup_token, imprint = stage_storage(), stage_setup_token(), stage_imprint()
-        origin_secret = stage_origin_secret()
+        origin_secret, static_files = stage_origin_secret(), stage_static_files()
     storage = storage or SqliteStorage(database)
     storage.migrate()
     enabled = auth_enabled() if auth is None else auth
     status = LoginStatus(clock, enabled, setup_token)
-    app = falcon.App(middleware=_middleware(storage, clock, enabled, origin_secret, measuring, status))
+    app = falcon.App(middleware=_middleware(storage, clock, enabled, origin_secret, measuring, status,
+                                            static_files or StaticFiles()))
     app.add_error_handler(NotFoundError, _not_found)
     app.add_error_handler(ConflictError, _conflict)
     app.set_error_serializer(serialize_error)

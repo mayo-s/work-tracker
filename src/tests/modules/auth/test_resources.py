@@ -10,7 +10,7 @@ from src.app import create_app
 from src.modules.storage.database import Database
 from src.modules.auth.__main__ import main
 from src.modules.storage.owners import NO_OWNER
-from src.tests.helpers import Clock, login, session
+from src.tests.helpers import STATIC, Clock, login, session
 from src.tests.users import PASSWORD
 
 RAINER = {'username': 'rainer', 'email': 'rainer.zufall@example.com', 'first_name': 'Rainer', 'last_name': 'Zufall',
@@ -95,7 +95,7 @@ def test_root_runs_the_app_and_tracks_no_work(app, root):
 
 
 # What a visitor gets who is not logged in: the open paths; pages forward to the login, the API answers 401
-VISITOR_ACCESS = {'/login': 200, '/health': 200, '/static/css/main.css': 200, '/api/auth/status': 200,
+VISITOR_ACCESS = {'/login': 200, '/health': 200, f'{STATIC}/css/main.css': 200, '/api/auth/status': 200,
                   '/imprint': 200, '/settings': 303, '/api/dashboard': 401}
 
 

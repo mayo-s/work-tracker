@@ -1,11 +1,15 @@
-"""Helpers of many tests: logging in through the API, a clock to set, a step in a transaction of its own."""
+"""Helpers of many tests: logging in through the API, a clock to set, a step in a transaction of its own, the static
+files' path."""
 
 import datetime as dt
 from collections.abc import Callable
 
 from falcon import testing
 
+from src.modules.pages.resources import STATIC_DIR, static_version
 from src.tests.users import PASSWORD
+
+STATIC = f'/static/{static_version(STATIC_DIR)}'  # where the app serves the static files (SPEC 7.4)
 
 
 def login(client: testing.TestClient, name: str, password: str = PASSWORD, cookies: dict[str, str] | None = None,

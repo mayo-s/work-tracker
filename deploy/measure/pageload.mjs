@@ -6,8 +6,9 @@
 //
 // Logs in (an account without two-factor login) in a new browser context with an empty cache and loads the four pages
 // ROUNDS times (default 3; round 1 is the first visit of each page). With IDLE_SECONDS it waits that long after the
-// login, so the app's instances go away (e.g. 1200). Prints each load with its document and API calls (when sent, how
-// long, and what the app says it took on a stage with WORK_TRACKER_TIMING=on), then the median per page.
+// login, so the app's instances go away (e.g. 1200). Prints each load with its static files (how many the browser took
+// from its cache) and its document and API calls (when sent, how long, and what the app says it took on a stage with
+// WORK_TRACKER_TIMING=on), then the median per page.
 import { spawn } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -82,8 +83,12 @@ async function load(path) {
       if (!requests.has(params.requestId)) open += 1;  // a redirect reuses the id
       requests.set(params.requestId, { url: params.request.url.replace(BASE, ''), start: params.timestamp });
     } else if (method === 'Network.responseReceived' && requests.has(params.requestId)) {
-      Object.assign(requests.get(params.requestId), { status: params.response.status,
-        timing: serverTiming(params.response.headers) });
+      const { response } = params;
+      const request = requests.get(params.requestId);
+      Object.assign(request, { status: response.status, timing: serverTiming(response.headers),
+        cached: request.cached || response.fromDiskCache || response.fromMemoryCache });
+    } else if (method === 'Network.requestServedFromCache' && requests.has(params.requestId)) {
+      requests.get(params.requestId).cached = true;
     } else if ((method === 'Network.loadingFinished' || method === 'Network.loadingFailed') && requests.has(params.requestId)) {
       const request = requests.get(params.requestId);
       if (request.end === undefined) open -= 1;
@@ -111,8 +116,9 @@ function report(round, page, requests) {
   const api = requests.filter((request) => request.url.startsWith('/api/'));
   const files = requests.filter((request) => request.url.startsWith('/static/'));
   const data = last(api.filter((request) => !HEADER_CALLS.some((call) => request.url.startsWith(call))));
-  console.log(`round ${round} ${page}: data after ${data} ms, idle after ${last(requests)} ms; ${files.length} static files, `
-    + `the last after ${last(files)} ms`);
+  const cached = files.filter((request) => request.cached).length;
+  console.log(`round ${round} ${page}: data after ${data} ms, idle after ${last(requests)} ms; ${files.length} static files `
+    + `(${cached} from the browser's cache), the last after ${last(files)} ms`);
   for (const request of [requests[0], ...api]) {
     console.log(`    ${request.url.padEnd(44)} sent at ${String(request.start).padStart(5)}  took `
       + `${String(request.end - request.start).padStart(5)} ms  ${request.status}  ${request.timing ?? ''}`);

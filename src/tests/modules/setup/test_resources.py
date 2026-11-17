@@ -3,7 +3,7 @@ import pytest
 from falcon import testing
 
 from src.app import create_app
-from src.tests.helpers import session
+from src.tests.helpers import STATIC, session
 
 SETUP = {
     'balance_start': '2027-03-01',
@@ -40,7 +40,7 @@ def test_pages_forward_to_setup_until_it_is_done(new):
 
 def test_api_and_static_files_stay_reachable(new):
     assert new.simulate_get('/api/settings').status == falcon.HTTP_200
-    assert new.simulate_get('/static/css/main.css').status == falcon.HTTP_200
+    assert new.simulate_get(f'{STATIC}/css/main.css').status == falcon.HTTP_200
 
 
 def test_setup_page(new):

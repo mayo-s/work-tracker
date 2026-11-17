@@ -843,13 +843,26 @@ splitting an entry among several tickets went once they were all reviewed (TASKS
   Route 53 holds the zone `<app-domain>` (ALIAS records to the distributions); the DNS provider of the operator's
   domain, which keeps the rest of it (e.g. its mail), delegates it by four NS records. The settings are
   `deploy/cloudfront.json` and `deploy/dns-alias.json`.
-- **Static files at CloudFront**: `/static/*` (scripts, CSS, fonts, icon) is kept a year by the cache policy
+- **Static files at CloudFront**: `/static/*` (scripts, CSS, fonts, icon, catalogs) is kept a year by the cache policy
   `work-tracker-static` (`deploy/cache-policy-static.json`, once per account), the same for everyone (no cookies,
-  query or headers in its key), compressed with gzip or Brotli; browsers still check it with CloudFront on each use
-  (their `no-cache`, by the ETag). So a page runs the function only for its API calls: about 20 scripts at once over
-  HTTP/2 had reached the function's concurrency limit (429). `deploy/zappa.sh` clears `/static/*` from the stage's
-  distribution after each `deploy` or `update`, so a new version shows at once; `deploy/static_cache.py` adds the rule
-  to a distribution created before.
+  query or headers in its key), compressed with gzip or Brotli. So a page runs the function only for its API calls:
+  about 20 scripts at once over HTTP/2 had reached the function's concurrency limit (429). `deploy/static_cache.py`
+  adds the rule to a distribution created before.
+- **Static files under their version** (TASKS.md L.25a): the app serves them at `/static/<version>/…`, the version
+  being the first 10 hex digits of a SHA-256 over every file's path and content, and the frame points there; the
+  scripts' imports, the CSS's fonts and the catalogs (`../locales/`) are relative, so they follow. A deploy that
+  changes a file changes the version, one that changes none keeps it (and the browsers' copies). On AWS Lambda,
+  whose package does not change, the version is taken once per instance, while it starts, and the files are kept for
+  good (`Cache-Control: public, max-age=31536000, immutable`): browsers no longer ask CloudFront on each use, and a
+  deploy no longer clears CloudFront. Locally it is taken anew (a few ms) and browsers re-check (`no-cache`), so a
+  new build shows on the next page.
+  - Only the current version is served: another one, or a path without one, is not found (404), so CloudFront never
+    keeps new files under an old version. A page left open across a deploy loads no further page code until it is
+    reloaded. No refusal of a static file may be kept (`no-store`), so a passing error is not kept a year either.
+  - The static files are the same for everyone: never anything of a user nor a secret; what belongs to a user comes
+    from the page or the API.
+  - A version's files stay with CloudFront for up to a year after no page links them. Should one have to go at once
+    (e.g. a script with a flaw), it is cleared by hand (README, "Deploy to AWS").
 - **Only through the domain**: CloudFront adds the stage's secret, a SecureString `/work-tracker-<stage>/origin-secret`
   (or `WORK_TRACKER_ORIGIN_SECRET_PARAMETER`), as the header `X-Origin-Verify`; the app refuses every request without
   it, before anything else (403, "Open the app at its address"), also while the parameter is missing. The function
