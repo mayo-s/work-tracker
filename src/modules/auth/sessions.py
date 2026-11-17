@@ -12,7 +12,7 @@ from src.lib.texts import text
 from src.models.users import User
 from src.modules.auth.two_factor import may_restore_instead, required
 from src.modules.storage.owners import NO_OWNER
-from src.modules.storage.store import Storage
+from src.modules.storage.store import Storage, Store
 from src.modules.storage.users import BROWSER_LIFETIME, SESSION_LIFETIME, session_lifetime
 
 COOKIE = 'wt_session'
@@ -88,21 +88,30 @@ class Authentication:
         token = req.cookies.get(COOKIE)
         with self._storage.transaction() as store:
             user_id, renewed = store.sessions().user_id(token, self._clock()) if token else (None, False)
-            user = store.users().get(user_id) if user_id is not None else None
-            users = store.users().count()
-            access = _Access(user, not users, store.setup_done(NO_OWNER), store.restore_unfinished(), users)
+            access = _access(store, store.users().get(user_id) if user_id is not None else None)
         req.context.user_id = user_id
         if renewed:
-            set_session_cookie(req, resp, token, session_lifetime(user.role))
+            set_session_cookie(req, resp, token, session_lifetime(access.user.role))
         _check(req, access)
 
 
 class _Access(NamedTuple):
     user: User | None  # logged in
-    first_user_missing: bool
-    set_up: bool  # the database (not logged in)
+    first_user_missing: bool = False
+    set_up: bool = True  # the database (not logged in)
     restoring: bool = False  # a restore of the full backup is unfinished: only root uses the app
     users: int = 0  # in the database
+
+
+def _access(store: Store, user: User | None) -> _Access:
+    """What the check needs, read only as far as it asks (TASKS.md 14.4c): without a login whether there are users and
+    the database is set up; with one whether a restore is unfinished (not for root), and the number of users only for
+    someone who still has to set up two-factor login."""
+    if user is None:
+        users = store.users().count()
+        return _Access(None, not users, store.setup_done(NO_OWNER), users=users)
+    users = store.users().count() if required(user) and not user.two_factor else 0
+    return _Access(user, restoring=user.role != 'root' and store.restore_unfinished(), users=users)
 
 
 def _check(req: falcon.Request, access: _Access) -> None:

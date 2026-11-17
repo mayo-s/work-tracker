@@ -461,7 +461,7 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
       (before twice in the team view: for the banner and for the member chooser) (SPEC 5.7). Measured on dev after
       14.3: the dashboard sends 1 API call (before 5), the week 2 (before 8), month and year 2 each (before 3),
       never more than one at once; warm, the data shows as before (dashboard 0.6 s, week, month and year 0.32–0.37 s)
-- [ ] **14.4** Less read per call (after 14.2c: more CPU may already do part of it), in steps:
+- [x] **14.4** Less read per call, in steps:
     - [x] **14.4a** A request reads each range once (SPEC 7.2): the DynamoDB transaction remembers the ranges it
       read, as it remembers single items, and answers from them when asked again or for a part of one (its own
       writes still show; after a written chunk it reads again). Before, one dashboard answer read all entries four
@@ -479,9 +479,12 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
       missed write path. On a simulated table the review count reads 7 items (before 280), the dashboard 282
       (before 498). Measured on dev, time in the app: `GET /api/review/counts` 57 ms with 126 items (before 102 ms,
       968), `GET /api/dashboard` 160 ms with 1,047 (before 208 ms, 1,720); the review shows the same items as before
-    - [ ] **14.4c** The login check with fewer reads: measured on dev, it takes 6–7 DynamoDB calls and 35–40 ms on
-      every request (nearly all the time the smallest calls spend in the app; `GET /api/auth/status` 12 calls and
-      77 ms), one of the calls reading every user's profile to count the users, growing with their number
+    - [x] **14.4c** The login check with fewer reads (SPEC 5.6): for a logged-in user it reads the session, the user
+      and whether a restore is unfinished, 3 DynamoDB calls (before 5: also every user's profile, to count the users,
+      and the setup state of the data without owner, which only matter without a login). The login status counts
+      the users only if nobody is logged in. An API call takes 2 calls less, a page's HTML 10 (before 13), `GET
+      /api/auth/status` 9 (before 12). Measured on dev, time in the app: a page's HTML 36 ms (before 45 ms), the
+      smallest API call 15 ms (before 21 ms)
 
 ## Later (to be discussed)
 

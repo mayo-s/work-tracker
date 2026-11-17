@@ -310,6 +310,12 @@ After 14.2 (bytecode in the package, the app loaded while the instance starts, 1
 `GET /api/dashboard` takes 370 ms, `GET /api/review/counts` 185 ms, the year report 150 ms, the month report 110 ms
 and the smallest calls 60–85 ms, of which about 25 ms are spent in the app.
 
+After 14.3 and 14.4 (one call at a time, less read per call), warm: dashboard 0.41 s, week 0.31 s, month 0.31 s, year
+0.38 s until the data shows. The dashboard sends 1 API call (before 5), the week 2 (before 8), month and year 2
+(before 3), never two at once. `GET /api/dashboard` takes 165 ms in the app (1,039 items read, before 3,277), `GET
+/api/review/counts` 54 ms, the week in one call 77 ms, a page's HTML 36 ms and the smallest call 15 ms. The login check
+of a logged-in request reads 3 items, not 5. A request that needs a new instance still takes about 2.1 s longer.
+
 ## Run in a container (e.g. on a NAS)
 
 Not working for now: the container sets no `STAGE`, so the app stops on start (to be fixed or removed).

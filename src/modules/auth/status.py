@@ -20,14 +20,17 @@ class LoginStatus:
         """Whether the login is on, whether users and root exist, who is logged in (with their team, number of open
         invitations, whether they audit a team and, for support, the number of new contact messages), whether new users
         can register, and whether creating root needs the setup token. With the login off, nobody is logged in."""
+        logged_in = self._enabled and user_id is not None
+        status = self._without_user(store, has_users=logged_in)
+        return _with_user(status, store, user_id, self._clock().date()) if logged_in else status
+
+    def _without_user(self, store: Store, has_users: bool) -> AuthStatus:
+        """The status for anyone; the users are counted only if nobody is logged in (TASKS.md 14.4c)."""
         users, token = store.users(), self._setup_token is not None
         has_root = users.root_id() is not None
-        status = AuthStatus(enabled=self._enabled, has_users=users.count() > 0, has_root=has_root, user=None,
-                            registration=self._enabled and store.registration_open(), setup_token=token and not has_root,
-                            root_reset=token and has_root)
-        if user_id is None or not self._enabled:
-            return status
-        return _with_user(status, store, user_id, self._clock().date())
+        return AuthStatus(enabled=self._enabled, has_users=has_users or users.count() > 0, has_root=has_root, user=None,
+                          registration=self._enabled and store.registration_open(), setup_token=token and not has_root,
+                          root_reset=token and has_root)
 
 
 def _with_user(status: AuthStatus, store: Store, user_id: str, today: dt.date) -> AuthStatus:

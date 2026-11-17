@@ -359,6 +359,9 @@ below 40rem (640 px), where the narrow-screen rules start; the desktop does not 
   (the header, the member chooser, settings, admin) take it from there and send no request for it; once the page has
   changed something, they ask the API. A page is therefore never stored (`Cache-Control: no-store`): going back in the
   browser loads it anew.
+- The login check of a request reads only what it asks for (TASKS.md 14.4c): for a logged-in user the session, the
+  user and whether a restore is unfinished (not for root); whether there are users at all and whether the database is
+  set up only without a login; the number of users only for someone who still has to set up two-factor login.
 - Every page and the API need a login (pages forward to `/login?next=…`, the API answers 401); `/login`, `/register`,
   `/health`, the API docs and the static files stay open. A new database creates root in the setup (5.7); one with
   users but no root offers "Create root admin" once on `/login`; on AWS Lambda both only with the setup token (7.4).
