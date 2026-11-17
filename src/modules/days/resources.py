@@ -10,7 +10,7 @@ from src.modules.days.ranges import DayRangeInput, DayRangeResult, book_range
 from src.modules.days.schemas import DayInput, DayView, day_view, team_view_day
 from src.modules.auth.sessions import current_user
 from src.modules.storage.store import Storage, Store
-from src.modules.teams.view import MemberPeriodQuery, viewing
+from src.modules.teams.view import MemberPeriodQuery, Viewing, viewing
 from src.utils.spec import spec
 
 TAGS = ['Days']
@@ -27,12 +27,7 @@ class DayCollection:
         (team view: no notes; days before they joined the team without data)."""
         start, end = query.period()
         with self._storage.transaction() as store:
-            view = viewing(req, store, query.member)
-            days = store.days(view.user_id)
-            recorded = {day.date: day for day in days.between(start, end)}
-            schedules = store.schedules(view.user_id).schedules()
-        shown = [day_view(date, recorded.get(date), schedules.on(date)) for date in each_day(start, end)]
-        resp.media = [team_view_day(day, view.stays) for day in shown] if view.stays else shown
+            resp.media = days_shown(store, viewing(req, store, query.member), start, end)
 
 
 class DayItem:
@@ -73,6 +68,15 @@ class DayRange:
         """
         with self._storage.transaction() as store:
             resp.media = book_range(store, current_user(req), json)
+
+
+def days_shown(store: Store, view: Viewing, start: dt.date, end: dt.date) -> list[DayView]:
+    """Every calendar day from start to end, recorded or not; in the team view without notes and, before the member
+    joined the team, without data."""
+    recorded = {day.date: day for day in store.days(view.user_id).between(start, end)}
+    schedules = store.schedules(view.user_id).schedules()
+    shown = [day_view(date, recorded.get(date), schedules.on(date)) for date in each_day(start, end)]
+    return [team_view_day(day, view.stays) for day in shown] if view.stays else shown
 
 
 def _view(store: Store, user_id: str, date: dt.date) -> DayView:

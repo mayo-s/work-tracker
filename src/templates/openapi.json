@@ -31,6 +31,9 @@
       "name": "Reports"
     },
     {
+      "name": "Weeks"
+    },
+    {
       "name": "Search"
     },
     {
@@ -1421,6 +1424,74 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/weeks/{week}": {
+      "get": {
+        "summary": "A week (Monday to Sunday) as its page shows it: the days, the entries, the week's report and the lists to choose from. The same as `/api/days`, `/api/entries`, `/api/reports/weeks/{week}`, `/api/service-choices` and `/api/activity-types` answer one by one.",
+        "operationId": "get__api_weeks_{week}",
+        "description": "",
+        "tags": [
+          "Weeks"
+        ],
+        "parameters": [
+          {
+            "name": "week",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ISO week, e.g. 2026-W44"
+          },
+          {
+            "name": "member",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Team view: id (UUID) of a member of the team admin's or auditor's team",
+              "title": "Member"
+            },
+            "required": false,
+            "description": "Team view: id (UUID) of a member of the team admin's or auditor's team"
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekView"
                 }
               }
             }
@@ -9262,6 +9333,54 @@
           "history"
         ],
         "title": "UserData",
+        "type": "object"
+      },
+      "WeekView": {
+        "properties": {
+          "days": {
+            "description": "Monday to Sunday, recorded or not",
+            "items": {
+              "$ref": "#/components/schemas/DayView"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "entries": {
+            "description": "By date and in the order they were created",
+            "items": {
+              "$ref": "#/components/schemas/EntryView"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "report": {
+            "$ref": "#/components/schemas/WeekReport"
+          },
+          "services": {
+            "description": "The services to choose in entries: the team's first, then the personal ones; none in the team view, where nothing is edited",
+            "items": {
+              "$ref": "#/components/schemas/ServiceChoice"
+            },
+            "title": "Services",
+            "type": "array"
+          },
+          "activity_types": {
+            "description": "The activity types to choose; none in the team view",
+            "items": {
+              "$ref": "#/components/schemas/ActivityType"
+            },
+            "title": "Activity Types",
+            "type": "array"
+          }
+        },
+        "required": [
+          "days",
+          "entries",
+          "report",
+          "services",
+          "activity_types"
+        ],
+        "title": "WeekView",
         "type": "object"
       },
       "ValidationErrorElement": {

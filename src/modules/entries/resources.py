@@ -1,5 +1,6 @@
 """Entries endpoints: /api/entries, /api/entries/{entry_id} and its history."""
 
+import datetime as dt
 
 import falcon
 from spectree import Response
@@ -12,7 +13,7 @@ from src.modules.auth.sessions import current_user
 from src.models.entries import Entry
 from src.modules.storage.errors import ConflictError, NotFoundError
 from src.modules.storage.store import Storage, Store
-from src.modules.teams.view import MemberPeriodQuery, viewing
+from src.modules.teams.view import MemberPeriodQuery, Viewing, viewing
 from src.utils.spec import spec
 
 TAGS = ['Entries']
@@ -30,10 +31,7 @@ class EntryCollection:
         team admin's team (team view: from the day they joined the team)."""
         start, end = query.period()
         with self._storage.transaction() as store:
-            view = viewing(req, store, query.member)
-            entries = store.entries(view.user_id).between(start, end)
-            shown = [entry for entry in entries if view.stays.shows(entry.date)] if view.stays else entries
-            resp.media = EntryViewer(store, view.user_id).views(shown)
+            resp.media = entries_shown(store, viewing(req, store, query.member), start, end)
 
     @spec.validate(json=EntryInput, resp=Response('HTTP_409', HTTP_201=EntryView), tags=TAGS)
     def on_post(self, req: falcon.Request, resp: falcon.Response, json: EntryInput) -> None:
@@ -45,6 +43,14 @@ class EntryCollection:
         resp.status = falcon.HTTP_201
         resp.location = f'{req.path}/{view.id}'
         resp.media = view
+
+
+def entries_shown(store: Store, view: Viewing, start: dt.date, end: dt.date) -> list[EntryView]:
+    """The entries from start to end, by date and in the order they were created; in the team view from the day the
+    member joined the team."""
+    entries = store.entries(view.user_id).between(start, end)
+    shown = [entry for entry in entries if view.stays.shows(entry.date)] if view.stays else entries
+    return EntryViewer(store, view.user_id).views(shown)
 
 
 class EntryItem:

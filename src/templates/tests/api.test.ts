@@ -34,10 +34,10 @@ afterEach(() => {
 });
 
 describe('requests', () => {
-  test('days of a week', async () => {
-    await api.days({ week: '2026-W44' });
+  test('a week', async () => {
+    await api.week('2026-W44');
     assert.deepEqual(calls[0], {
-      url: '/api/days?week=2026-W44', method: 'GET', body: undefined,
+      url: '/api/weeks/2026-W44', method: 'GET', body: undefined,
       headers: { Accept: 'application/json', 'Accept-Language': 'en' },
     });
   });
@@ -56,7 +56,7 @@ describe('requests', () => {
 
   test('each call reaches its route', async () => {
     respond(200, {});
-    await api.entries({ start: '2026-10-01', end: '2026-10-31' });
+    await api.week('2026-W44', 'a member');
     await api.saveDay('2026-10-28', { start: '07:15', end: '16:00' });
     await api.renameTicket('TNG-2035', 'KP-2035');
     await api.ticket('a/b');
@@ -67,7 +67,7 @@ describe('requests', () => {
     await api.savePtoYear(2027, { allowance: 25 });
     await api.bookRange({ start: '2026-07-13', end: '2026-07-31', day_type: 'pto', preview: true });
     assert.deepEqual(calls.map((call) => [call.method, call.url, call.body]), [
-      ['GET', '/api/entries?start=2026-10-01&end=2026-10-31', undefined],
+      ['GET', '/api/weeks/2026-W44?member=a%20member', undefined],  // the team view
       ['PUT', '/api/days/2026-10-28', { start: '07:15', end: '16:00' }],
       ['POST', '/api/tickets/TNG-2035/rename', { new_key: 'KP-2035' }],
       ['GET', '/api/tickets/a%2Fb', undefined],  // keys are encoded in paths

@@ -28,6 +28,7 @@ export type ReviewEntry = Schemas['ReviewEntry'];
 export type ReviewReason = Schemas['ReviewReason'];
 export type PeriodTotals = Schemas['PeriodTotals'];
 export type WeekReport = Schemas['WeekReport'];
+export type WeekView = Schemas['WeekView'];
 export type MonthReport = Schemas['MonthReport'];
 export type YearReport = Schemas['YearReport'];
 export type SearchResult = Schemas['SearchResult'];
@@ -78,9 +79,6 @@ export type ContactInput = Schemas['ContactInput'];
 export type MessageView = Schemas['MessageView'];
 export type MessageStatus = MessageView['status'];
 export type SupportMessages = Schemas['SupportMessages'];
-
-/** A week like `2026-W44`, or an inclusive date range in ISO format. */
-export type Period = { week: string } | { start: string; end: string };
 
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -182,11 +180,6 @@ export function loginLink(next: string): string {
   return `/login?next=${encodeURIComponent(next)}`;
 }
 
-/** The query of a period, with the member of the team view if any. */
-function periodQuery(period: Period, member: string | null = null): string {
-  return new URLSearchParams({ ...period, ...(member ? { member } : {}) }).toString();
-}
-
 /** `?member=…` for the team view, or nothing for the user's own data. */
 function memberQuery(member: string | null): string {
   return member ? `?member=${encodeURIComponent(member)}` : '';
@@ -197,15 +190,11 @@ function segment(value: string | number): string {
 }
 
 export const api = {
-  days: (period: Period, member: string | null = null) =>
-    request<DayView[]>('GET', `/api/days?${periodQuery(period, member)}`),
   day: (date: string) => request<DayView>('GET', `/api/days/${segment(date)}`),
   saveDay: (date: string, input: DayInput) => request<DayView>('PUT', `/api/days/${segment(date)}`, input),
   deleteDay: (date: string) => request<void>('DELETE', `/api/days/${segment(date)}`),
   bookRange: (input: DayRangeInput) => request<DayRangeResult>('POST', '/api/days/range', input),
 
-  entries: (period: Period, member: string | null = null) =>
-    request<EntryView[]>('GET', `/api/entries?${periodQuery(period, member)}`),
   entry: (id: string) => request<EntryView>('GET', `/api/entries/${segment(id)}`),
   createEntry: (input: EntryInput) => request<EntryView>('POST', '/api/entries', input),
   updateEntry: (id: string, input: EntryInput) => request<EntryView>('PUT', `/api/entries/${segment(id)}`, input),
@@ -240,8 +229,9 @@ export const api = {
   review: () => request<ReviewView>('GET', '/api/review'),
   reviewCounts: () => request<ReviewCounts>('GET', '/api/review/counts'),
 
-  weekReport: (week: string, member: string | null = null) =>
-    request<WeekReport>('GET', `/api/reports/weeks/${segment(week)}${memberQuery(member)}`),
+  /** Everything the week page shows, in one call: days, entries, report and the lists to choose from. */
+  week: (week: string, member: string | null = null) =>
+    request<WeekView>('GET', `/api/weeks/${segment(week)}${memberQuery(member)}`),
   monthReport: (month: string, member: string | null = null) =>
     request<MonthReport>('GET', `/api/reports/months/${segment(month)}${memberQuery(member)}`),
   yearReport: (year: number, member: string | null = null) =>

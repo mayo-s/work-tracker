@@ -42,7 +42,7 @@ class WeekReportResource(_Report):
                    path_parameter_descriptions={'week': 'ISO week, e.g. 2026-W44'})
     def on_get(self, req: falcon.Request, resp: falcon.Response, week: str, query: MemberQuery) -> None:
         """Totals of a week (Monday to Sunday) and the overtime balance before and after it."""
-        monday = _monday_of(week)
+        monday = monday_of(week)
         with self._storage.transaction() as store:
             resp.media = self._reports(req, store, query, 'week', week).week(week, monday)
 
@@ -97,7 +97,7 @@ class TeamReportCsvResource(_TeamReport):
         resp.downloadable_as = f'{team_report_file_name(report.team, self._clock())}.csv'
 
 
-def _monday_of(week: str) -> dt.date:
+def monday_of(week: str) -> dt.date:
     """Monday of an ISO week like 2026-W44; 404 for anything else."""
     match = _WEEK.fullmatch(week)
     try:

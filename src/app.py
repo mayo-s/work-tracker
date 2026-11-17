@@ -52,6 +52,7 @@ from src.modules.teams.resources import (
 )
 from src.modules.tickets.resources import TicketCollection, TicketItem, TicketRenaming, TicketServiceAssignment
 from src.modules.userdata.resources import ExportResource
+from src.modules.weeks.resources import WeekResource
 from src.utils.spec import spec
 from src.utils.stages import stage_imprint, stage_origin_secret, stage_setup_token, stage_storage
 from src.utils.timing import ServerTiming, server_timing
@@ -137,6 +138,7 @@ def create_app(
     app.add_route('/api/tickets/{key}', TicketItem(storage))
     app.add_route('/api/tickets/{key}/rename', TicketRenaming(storage))
     app.add_route('/api/dashboard', DashboardResource(storage, today, clock))
+    app.add_route('/api/weeks/{week}', WeekResource(storage, today, clock))
     app.add_route('/api/reports/weeks/{week}', WeekReportResource(storage, today, clock))
     app.add_route('/api/reports/months/{month:dt("%Y-%m")}', MonthReportResource(storage, today, clock))
     app.add_route('/api/reports/years/{year:int(4)}', YearReportResource(storage, today, clock))

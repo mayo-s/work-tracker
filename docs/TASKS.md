@@ -449,8 +449,13 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
       pages show their data as fast as before (dashboard 0.56 s, week 0.30 s, month 0.33 s, year 0.37 s); the
       dashboard sends two calls at once (before four), month and year one; the count arrives about 0.2 s after the
       data
-    - [ ] **14.3c** The week in one call: `GET /api/weeks/{week}` answers the week's days, entries and report with the
-      service choices and activity types (today 5 calls at once), also for the team view (`?member=`)
+    - [x] **14.3c** The week in one call (SPEC 5.1): `GET /api/weeks/{week}` answers the week's days, entries and
+      report with the service choices and activity types (before 5 calls at once), also for the team view
+      (`?member=`, without the lists); built from the same functions as the single endpoints, which stay. The
+      frontend's client loses its calls for days, entries and the week report, which nothing else used. Measured
+      on dev: the one call takes 98 ms in the app with 20 DynamoDB calls (the five took 174 ms with 40, side by side
+      on five instances); the week shows its data after about 0.33 s, 0.03–0.05 s later than with five warm
+      instances, and needs one instance
     - [ ] **14.3d** Member chooser and team view ask for teams (`/api/audits`, `/api/teams/{id}`) only for team admins
       and auditors, as the status says (today `/api/audits` on every dashboard)
 - [ ] **14.4** Less read per call (after 14.2c: more CPU may already do part of it), in steps:

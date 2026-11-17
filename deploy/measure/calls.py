@@ -17,13 +17,12 @@ def pages(today: dt.date) -> dict[str, list[str]]:
     year, week, _ = today.isocalendar()
     week, month = f'{year}-W{week:02d}', f'{today:%Y-%m}'
     return {
-        'every page': ['/api/auth/status', '/api/review/counts'],
+        'every page but the dashboard': ['/api/review/counts'],
         'dashboard': ['/', '/api/dashboard', '/api/audits'],
-        'week': ['/week', f'/api/days?week={week}', f'/api/entries?week={week}', f'/api/reports/weeks/{week}',
-                 '/api/service-choices', '/api/activity-types'],
+        'week': ['/week', f'/api/weeks/{week}'],
         'month': ['/month', f'/api/reports/months/{month}'],
         'year': ['/year', f'/api/reports/years/{today.year}'],
-        'other': ['/api/review', '/api/tickets'],
+        'other': ['/api/review', '/api/tickets', '/api/auth/status'],
     }
 
 

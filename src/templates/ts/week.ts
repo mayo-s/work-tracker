@@ -406,13 +406,10 @@ function errorCard(error: unknown): HTMLElement {
   return el('div', { class: 'card is-warning', role: 'alert' }, message);
 }
 
-/** The week of the user, or in the team view of the member (without the lists to choose from, as nothing is edited);
- * its report brings the way of working of whose week it is. */
+/** The week of the user, or in the team view of the member (without the lists to choose from, as nothing is edited),
+ * in one call; its report brings the way of working of whose week it is. */
 async function loadWeek(week: string, member: string | null): Promise<WeekData> {
-  const [days, entries, report, services, activityTypes] = await Promise.all([
-    api.days({ week }, member), api.entries({ week }, member), api.weekReport(week, member),
-    member ? [] : api.serviceChoices(), member ? [] : api.activityTypes(),
-  ]);
+  const { days, entries, report, services, activity_types: activityTypes } = await api.week(week, member);
   return { days, entries: entriesByDate(entries), report, services, activityTypes, workMode: report.work_mode };
 }
 

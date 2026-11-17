@@ -324,6 +324,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/weeks/{week}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A week (Monday to Sunday) as its page shows it: the days, the entries, the week's report and the lists to choose from. The same as `/api/days`, `/api/entries`, `/api/reports/weeks/{week}`, `/api/service-choices` and `/api/activity-types` answer one by one. */
+        get: operations["get__api_weeks_{week}"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reports/weeks/{week}": {
         parameters: {
             query?: never;
@@ -3334,6 +3351,30 @@ export interface components {
              */
             history: components["schemas"]["EntryChange"][];
         };
+        /** WeekView */
+        WeekView: {
+            /**
+             * Days
+             * @description Monday to Sunday, recorded or not
+             */
+            days: components["schemas"]["DayView"][];
+            /**
+             * Entries
+             * @description By date and in the order they were created
+             */
+            entries: components["schemas"]["EntryView"][];
+            report: components["schemas"]["WeekReport"];
+            /**
+             * Services
+             * @description The services to choose in entries: the team's first, then the personal ones; none in the team view, where nothing is edited
+             */
+            services: components["schemas"]["ServiceChoice"][];
+            /**
+             * Activity Types
+             * @description The activity types to choose; none in the team view
+             */
+            activity_types: components["schemas"]["ActivityType"][];
+        };
         /**
          * ValidationErrorElement
          * @description Model of a validation error response element.
@@ -5333,6 +5374,55 @@ export interface operations {
             };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+        };
+    };
+    "get__api_weeks_{week}": {
+        parameters: {
+            query?: {
+                /** @description Team view: id (UUID) of a member of the team admin's or auditor's team */
+                member?: string | null;
+            };
+            header?: never;
+            path: {
+                /** @description ISO week, e.g. 2026-W44 */
+                week: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeekView"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

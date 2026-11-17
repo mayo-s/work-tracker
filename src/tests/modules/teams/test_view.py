@@ -103,6 +103,21 @@ def test_member_sees_who_can_look_and_who_looked(app, hans, ids):
                                   'viewed_at': '2026-11-06T12:00:00'}]
 
 
+def test_the_week_in_one_call_shows_the_member_like_the_single_calls_without_lists_to_choose_from(app, hans, ids):
+    """TASKS.md 14.3c: nothing is edited in the team view; one look is logged for the member."""
+    member = {'member': ids['rainer']}
+    view = app.simulate_get('/api/weeks/2026-W45', cookies=hans, params=member).json
+    assert view == {'days': week(app, hans, ids['rainer']).json,
+                    'entries': week(app, hans, ids['rainer'], '/api/entries').json,
+                    'report': app.simulate_get('/api/reports/weeks/2026-W45', cookies=hans, params=member).json,
+                    'services': [], 'activity_types': []}
+    assert [day['in_team'] for day in view['days']] == [False, False, True, True, True, True, True]
+    looks = app.simulate_get('/api/team', cookies=logged_in(app, 'rainer')).json['viewed_by']
+    assert len(looks) == 2  # the week in one call, and the single report call above
+    refused = app.simulate_get('/api/weeks/2026-W45', cookies=logged_in(app, 'rainer'), params={'member': ids['hans']})
+    assert refused.status == falcon.HTTP_403
+
+
 @pytest.mark.parametrize('viewer, member', [
     ('rainer', 'hans'),  # a member, not team admin
     ('klara', 'rainer'),  # the admin, not team admin of the team

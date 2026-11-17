@@ -224,6 +224,9 @@ and the import of an export file of version 1 (5.8) convert them:
   the days and the PTO used, and names company half days in the range with their 0.5 PTO, booked automatically; days that already hold times or entries are listed in a popup to skip them, book them too
   (keeping times and entries) or cancel. Clearing a range is not offered: single days can be deleted.
 - Week totals and the overtime balance at the end of the week.
+- The page loads with one call, `GET /api/weeks/{week}` (TASKS.md 14.3c): the week's days, entries and report with
+  the services and activity types to choose from, and loads the same again after each change. In the team view
+  (`?member=`) it answers the member's week without the lists, as nothing is edited, and the look is logged once.
 
 ### 5.2 Month report
 
