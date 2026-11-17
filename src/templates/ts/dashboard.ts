@@ -6,7 +6,7 @@ import { el, scrolling } from './dom.ts';
 import { decimal, t, tn } from './i18n.ts';
 import { DAY_TYPE_LABELS } from './labels.ts';
 import { showReviewBadge } from './review.ts';
-import { fullName, viewedMember } from './team-view.ts';
+import { fullName, viewableTeams, viewedMember } from './team-view.ts';
 import { valueClass } from './week.ts';
 import { hasTickets } from './work-modes.ts';
 import { formatDays } from './year.ts';
@@ -301,18 +301,19 @@ function yearSection(figures: DashboardView['this_year'], mode: WorkMode): HTMLE
 type Choice = [string, string];  // user id, name
 
 /** For team admins and auditors: whose data to see, their own or a member's (read-only), grouped by team: the current
- * members of the own team, everyone who was ever in an audited team. */
+ * members of the own team, everyone who was ever in an audited team. Nobody else asks for teams. */
 async function memberChooser(member: string | null): Promise<HTMLElement | null> {
   const status = await api.authStatus();
   if (!status.user) {
     return null;
   }
   const me = status.user.id;
-  const groups: [string, Choice[]][] = (await api.audits()).map((team) => [t('{team} (audit)', { team: team.team }),
-    team.members.map((item): Choice => [item.user_id, item.name])]);
-  if (status.team?.team_role === 'team_admin') {
-    const members = (await api.team(status.team.id)).members.filter((item) => item.user_id !== me);
-    groups.unshift([status.team.name, members.map((item): Choice => [item.user_id, fullName(item)])]);
+  const { team, audits } = await viewableTeams(status);
+  const groups: [string, Choice[]][] = audits.map((audit) => [t('{team} (audit)', { team: audit.team }),
+    audit.members.map((item): Choice => [item.user_id, item.name])]);
+  if (team) {
+    const members = team.members.filter((item) => item.user_id !== me);
+    groups.unshift([team.name, members.map((item): Choice => [item.user_id, fullName(item)])]);
   }
   const shown = groups.filter(([, choices]) => choices.length);
   if (!shown.length) {

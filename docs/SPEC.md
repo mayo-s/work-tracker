@@ -476,7 +476,9 @@ below 40rem (640 px), where the narrow-screen rules start; the desktop does not 
   figures over the whole time. Admins get no such view unless they are team admin or auditor of that team; former
   members drop out (auditors still see them, see above). Members see in their settings which team admins and
   auditors can look, and a log of who looked at which report and when. They are also told there that these people see
-  the summary of the team report (5.12), which is not in the log.
+  the summary of the team report (5.12), which is not in the log. The pages ask for the teams (the member chooser,
+  the banner of the team view, the team report) only for team admins and auditors, as the login status says, and once
+  per page (TASKS.md 14.3d).
 
 ### 5.8 Export and import (own data)
 

@@ -1,7 +1,7 @@
 // Team view: a team admin or an auditor looks at a member's dashboard, week, month and year, read-only
 // (`?member=<id>`).
 
-import { api, type AuditedTeam, type MemberView } from './api.ts';
+import { api, type AuditedTeam, type AuthStatus, type MemberView, type TeamPageView } from './api.ts';
 import { addDays, formatDate } from './dates.ts';
 import { el } from './dom.ts';
 import { listOf, t } from './i18n.ts';
@@ -84,6 +84,19 @@ export function reportLink(team: string, search: string): string {
   return `/team/report?${params}`;
 }
 
+type ViewableTeams = { team: TeamPageView | null; audits: AuditedTeam[] };
+let viewable: Promise<ViewableTeams> | null = null;
+
+/** The team the user is team admin of and the teams they audit, with their members. Asked for only if the login status
+ * says they are one, and once per page: the banner of the team view and the member chooser share the answer. */
+export function viewableTeams(status: AuthStatus): Promise<ViewableTeams> {
+  viewable ??= Promise.all([
+    status.team?.team_role === 'team_admin' ? api.team(status.team.id) : null,
+    status.auditor ? api.audits() : [],
+  ]).then(([team, audits]) => ({ team, audits }));
+  return viewable;
+}
+
 /** Keeps the member in all links to the team view pages, also in those the page renders later. */
 function keepMember(root: Node & ParentNode, member: string): void {
   const update = (): void => {
@@ -102,9 +115,7 @@ function keepMember(root: Node & ParentNode, member: string): void {
 /** The banner of the team view on top of the page, and the member kept in the links. */
 export async function showTeamView(doc: Document, member: string): Promise<void> {
   keepMember(doc.body, member);
-  const status = await api.authStatus();
-  const [team, audits] = await Promise.all([
-    status.team?.team_role === 'team_admin' ? api.team(status.team.id) : null, api.audits()]);
+  const { team, audits } = await viewableTeams(await api.authStatus());
   const [name, days] = viewedText(member, team, audits) ?? [t('A member'), ''];
   const report = memberTeam(member, team, audits);
   doc.querySelector('main')?.prepend(el('div', { class: 'card team-view-banner', role: 'status' },

@@ -434,7 +434,7 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
       instance has the CPU anyway). 1769 MB stays, the smallest size measured that shows the dashboard in about half
       a second (0.58 s; week 0.27 s, month 0.30 s, year 0.36 s); to be looked at again after 14.4, when less is
       read. The expected costs: SPEC 7.4
-- [ ] **14.3** One call at a time: calls sent one after the other (or as one) are answered by the one warm instance,
+- [x] **14.3** One call at a time: calls sent one after the other (or as one) are answered by the one warm instance,
   every further call sent at once needs an instance of its own. In steps:
     - [x] **14.3a** The login status comes with the page (SPEC 5.6): the server writes what `GET /api/auth/status`
       answers into every page's HTML (never stored: `Cache-Control: no-store`), and the scripts take it from there
@@ -456,8 +456,11 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
       on dev: the one call takes 98 ms in the app with 20 DynamoDB calls (the five took 174 ms with 40, side by side
       on five instances); the week shows its data after about 0.33 s, 0.03–0.05 s later than with five warm
       instances, and needs one instance
-    - [ ] **14.3d** Member chooser and team view ask for teams (`/api/audits`, `/api/teams/{id}`) only for team admins
-      and auditors, as the status says (today `/api/audits` on every dashboard)
+    - [x] **14.3d** Member chooser, team view and team report ask for teams (`/api/audits`, `/api/teams/{id}`) only
+      for team admins and auditors, as the status says (before `/api/audits` on every dashboard), and once per page
+      (before twice in the team view: for the banner and for the member chooser) (SPEC 5.7). Measured on dev after
+      14.3: the dashboard sends 1 API call (before 5), the week 2 (before 8), month and year 2 each (before 3),
+      never more than one at once; warm, the data shows as before (dashboard 0.6 s, week, month and year 0.32–0.37 s)
 - [ ] **14.4** Less read per call (after 14.2c: more CPU may already do part of it), in steps:
     - [ ] **14.4a** A request reads each range once: the DynamoDB transaction remembers its queries, as it remembers
       single items (its own writes still show). Today one dashboard answer takes 24 DynamoDB calls and 3,883 items

@@ -295,6 +295,30 @@ def test_the_dashboard_shows_the_review_count_of_its_own_answer_and_other_pages_
     assert calls == ['reports/years/2026', 'review/counts']
 
 
+def test_only_team_admins_and_auditors_ask_for_teams_and_once_per_page(logged_in):
+    """TASKS.md 14.3d: Klara is a member and asks for nothing; Hans, team admin and no auditor, for his team, once for
+    the banner and the member chooser together."""
+    calls = []
+
+    def dashboard_calls(name):
+        page = logged_in(name)
+        page.on('request', lambda request: calls.extend(re.findall(r'/api/(\w+(?:/counts)?)', request.url)))
+        page.goto('/')
+        expect(page.locator('.dashboard-columns')).to_be_visible()
+        return page
+
+    dashboard_calls('klara')
+    assert calls == ['dashboard']
+    page = dashboard_calls('hans')
+    calls.clear()
+    page.select_option('#dashboard-member', label='Klara Himmel')
+    page.click('.member-chooser button')
+    expect(page.locator('.team-view-banner')).to_contain_text("Klara Himmel's data")
+    expect(page.locator('#dashboard-member')).to_have_value(re.compile('.+'))
+    page.locator('.app-nav a[href="/review"] .badge').wait_for()  # the last call of the page
+    assert sorted(calls) == ['dashboard', 'review/counts', 'teams']
+
+
 def test_on_phones_the_header_is_one_row_with_a_menu(logged_in):
     page = logged_in('hans')
     page.goto('/week')

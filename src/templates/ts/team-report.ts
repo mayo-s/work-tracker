@@ -204,7 +204,8 @@ export async function renderTeamReportPage(doc: Document): Promise<void> {
   try {
     const today = isoDate(new Date());
     const period = periodFromSearch(doc.location.search, today);
-    const [status, audits] = await Promise.all([api.authStatus(), api.audits()]);
+    const status = await api.authStatus();
+    const audits = status.auditor ? await api.audits() : [];  // a team admin who audits no team need not ask
     const teams = reportTeams(status, audits);
     const team = chosenTeam(doc.location.search, teams);
     periodHeader(doc, 'team-report', header(period, team, today));
