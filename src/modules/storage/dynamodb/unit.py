@@ -1,7 +1,9 @@
 """One transaction on the table: writes wait and go out together, atomically, when it ends (SPEC 7.2).
 
-Reads see the transaction's own writes. Up to 100 items are written all or nothing, as in SQLite; a larger change
-writes atomic chunks with `flush()` and ends with the step that closes it, so repeating it completes it.
+Reads see the transaction's own writes, and read the table once: an item or a range asked for again, or a part of a
+range read before, comes from what the transaction read (TASKS.md 14.4a). Up to 100 items are written all or nothing,
+as in SQLite; a larger change writes atomic chunks with `flush()` and ends with the step that closes it, so repeating
+it completes it.
 """
 
 import copy
@@ -23,11 +25,30 @@ class _Write:
     unique: str | None = None  # put only if the item does not exist yet; else a ConflictError with this message
 
 
+@dataclass
+class _Range:
+    """The items of a partition with a sort key from low to high, as read from the table."""
+
+    pk: str
+    low: str
+    high: str
+    items: list[Item]
+
+    def holds(self, pk: str, low: str, high: str) -> bool:
+        return self.pk == pk and self.low <= low and high <= self.high
+
+    def part(self, low: str, high: str) -> list[Item]:
+        """The items from low to high, for the caller to keep: its own dicts (their values are shared, as nothing
+        changes them)."""
+        return [dict(item) for item in self.items if low <= item['SK'] <= high]
+
+
 class Unit:
     def __init__(self, table: Table) -> None:
         self._table = table
         self._pending: dict[tuple[str, str], _Write] = {}
         self._read: dict[tuple[str, str], Item | None] = {}  # items read or written before, so each is read once
+        self._ranges: list[_Range] = []  # the ranges read before, so each is read once
 
     def get(self, pk: str, sk: str) -> Item | None:
         if (pk, sk) in self._pending:
@@ -38,8 +59,16 @@ class Unit:
 
     def query(self, pk: str, low: str, high: str) -> list[Item]:
         """The items of a partition with a sort key from low to high (both included), in sort key order."""
-        items = {item['SK']: item for item in self._table.query(pk, low, high)} | self._pending_between(pk, low, high)
+        items = {item['SK']: item for item in self._stored(pk, low, high)} | self._pending_between(pk, low, high)
         return [items[sort_key] for sort_key in sorted(items) if items[sort_key] is not None]
+
+    def _stored(self, pk: str, low: str, high: str) -> list[Item]:
+        """The table's items of the range, read once: a range within one read before is taken from that."""
+        read = next((earlier for earlier in self._ranges if earlier.holds(pk, low, high)), None)
+        if read is None:
+            read = _Range(pk, low, high, self._table.query(pk, low, high))
+            self._ranges.append(read)
+        return read.part(low, high)
 
     def _pending_between(self, pk: str, low: str, high: str) -> dict[str, Item | None]:
         """The transaction's own writes in that range by sort key; None for a deleted item."""
@@ -91,6 +120,7 @@ class Unit:
                                            count=len(writes), most=MAX_ITEMS))
         self._transact(writes)
         self._read |= {key: write.item for key, write in writes}
+        self._ranges.clear()  # read again after a chunk; the transaction usually ends here
         self._pending.clear()
 
     def _transact(self, writes: list[tuple[tuple[str, str], _Write]]) -> None:

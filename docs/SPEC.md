@@ -777,7 +777,9 @@ splitting an entry among several tickets went once they were all reviewed (TASKS
   - The rules of a data change are written once in Python and shared by the SQLite migration, the DynamoDB migration
     and the import of an older export file (5.8), so they cannot drift apart.
   - A transaction collects its writes and sends them at its end, so its reads see them and a failure writes
-    nothing; ids are random UUIDv7, in the order of creation.
+    nothing; ids are random UUIDv7, in the order of creation. It reads the table once for each item and each range
+    of a partition: asked again, or for a part of a range read before (e.g. the year's entries after all entries),
+    it answers from what it read (TASKS.md 14.4a), until it writes a chunk.
   - A change touching at most 100 items is atomic, as in SQLite (DynamoDB's transaction limit). Larger changes
     (renaming or merging a ticket, assigning a service to many tickets, leaving a team) are written in atomic chunks,
     e.g. an entry together with its history line, and end with the step that closes them (deleting the old ticket,

@@ -462,9 +462,14 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
       14.3: the dashboard sends 1 API call (before 5), the week 2 (before 8), month and year 2 each (before 3),
       never more than one at once; warm, the data shows as before (dashboard 0.6 s, week, month and year 0.32–0.37 s)
 - [ ] **14.4** Less read per call (after 14.2c: more CPU may already do part of it), in steps:
-    - [ ] **14.4a** A request reads each range once: the DynamoDB transaction remembers its queries, as it remembers
-      single items (its own writes still show). Today one dashboard answer takes 24 DynamoDB calls and 3,883 items
-      (1.2 MB) in a local replay of real data, reading the year's entries and the tickets several times
+    - [x] **14.4a** A request reads each range once (SPEC 7.2): the DynamoDB transaction remembers the ranges it
+      read, as it remembers single items, and answers from them when asked again or for a part of one (its own
+      writes still show; after a written chunk it reads again). Before, one dashboard answer read all entries four
+      times (all, all by date, twice the year's) and the tickets three times: on a simulated table it took 20 reads
+      and 949 items, now 12 and 498; the review count 6 and 442, now 5 and 280. Measured on dev, time in the app:
+      `GET /api/dashboard` 208 ms with 1,720 items (before 314 ms, 3,277), `GET /api/review/counts` 102 ms with 968
+      (before 137 ms, 1,524), `GET /api/review` 110 ms (before 199 ms); the dashboard shows its data after about
+      0.5 s (before 0.6 s)
     - [ ] **14.4b** Review counts without reading the history: the number of open review items is stored per user,
       cleared in the same transaction by every change of days, entries, tickets, services or activity types, and
       counted again on the next read (also on a new day: a past day left open is an item); on both backends. Today the

@@ -77,6 +77,23 @@ def test_a_transaction_reads_each_item_once(dynamo_table, monkeypatch):
     assert len(reads) == 1
 
 
+def test_a_transaction_reads_each_range_once_also_as_a_part_of_one_read_before(dynamo_table, monkeypatch):
+    """TASKS.md 14.4a: e.g. the dashboard asks for the year's entries after all entries."""
+    put_all(dynamo_table, day('2026-10-26', note='Monday'), day('2026-10-27', note='Tuesday'), day('2026-11-02', note='next'))
+    reads, query = [], dynamo_table.client.query
+    monkeypatch.setattr(dynamo_table.client, 'query', lambda **request: reads.append(request) or query(**request))
+    unit = Unit(dynamo_table)
+    unit.query_prefix(USER, 'DAY#')[0]['note'] = 'changed by its reader only'
+    assert [item['note'] for item in unit.query_prefix(USER, 'DAY#')] == ['Monday', 'Tuesday', 'next']
+    assert [item['note'] for item in unit.query(USER, 'DAY#2026-10-27', 'DAY#2026-10-31')] == ['Tuesday']
+    unit.put(day('2026-10-28', note='written'))
+    assert [item['note'] for item in unit.query(USER, 'DAY#2026-10-27', 'DAY#2026-10-31')] == ['Tuesday', 'written']
+    assert len(reads) == 1
+    unit.flush()  # a chunk written: ranges are read again
+    assert [item['note'] for item in unit.query_prefix(USER, 'DAY#')] == ['Monday', 'Tuesday', 'written', 'next']
+    assert len(reads) == 2
+
+
 def test_a_query_reads_every_page(dynamo_table, monkeypatch):
     note = 'x' * 50_000  # 25 items of 50 KB are more than the 1 MB of one page
     for start in range(0, 25, 5):
