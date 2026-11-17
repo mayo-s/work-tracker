@@ -459,7 +459,7 @@ instance answers within 2 s. Each task is deployed to dev and measured the same 
     - [x] **14.3d** Member chooser, team view and team report ask for teams (`/api/audits`, `/api/teams/{id}`) only
       for team admins and auditors, as the status says (before `/api/audits` on every dashboard), and once per page
       (before twice in the team view: for the banner and for the member chooser) (SPEC 5.7). Measured on dev after
-      14.3: the dashboard sends 1 API call (before 5), the week 2 (before 8), month and year 2 each (before 3),
+      14.3: the dashboard sends 1 API call (before 5), the week 2 (before 7), month and year 2 each (before 3),
       never more than one at once; warm, the data shows as before (dashboard 0.6 s, week, month and year 0.32–0.37 s)
 - [x] **14.4** Less read per call, in steps:
     - [x] **14.4a** A request reads each range once (SPEC 7.2): the DynamoDB transaction remembers the ranges it

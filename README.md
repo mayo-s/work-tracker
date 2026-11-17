@@ -285,36 +285,52 @@ node deploy/measure/pageload.mjs https://dev.<app-domain> 3         # the four p
 node deploy/measure/pageload.mjs https://dev.<app-domain> 2 1200    # after 20 idle minutes: new instances
 ```
 
-With `WORK_TRACKER_TIMING=on` (set for dev in `zappa_settings.json`; locally in `.env`), every answer says what it
-took, and the scripts show it: `Server-Timing: app;dur=84.3, db;dur=51.2;desc="12 calls, 2293 items"` is the
-milliseconds in the app and, of them, waiting for DynamoDB. The first answer of an instance adds `first` with the time
-since the app began to start: short if the request had to wait for a new instance, long if the instance was kept
-warm. The browser shows the header in a request's "Timing" tab. Prod leaves it off: the numbers tell how much data the
-app holds.
+With `WORK_TRACKER_TIMING=on` (set for dev in `zappa_settings.json`; locally in `.env`), every answer says in a
+`Server-Timing` header what it took, and the scripts show it. The browser shows it in a request's "Timing" tab. Prod
+leaves it off: the numbers tell how much data the app holds.
 
-Before the tasks of 14 (dev on 2026-11-16, 512 MB, a test user with 159 work days and 556 entries):
+- `app;dur=84.3`: milliseconds in the app.
+- `db;dur=51.2;desc="12 calls, 2293 items"`: of them, the time waiting for DynamoDB, with its calls and the items read.
+- `first;dur=…`: only on the first answer of an instance, the time since the app began to start. Short means the
+  request had to wait for a new instance, long that the instance was kept warm.
 
-| Page      | Data shown, warm | Network idle, warm | After 20 idle minutes |
-|-----------|------------------|--------------------|-----------------------|
-| Dashboard | 1.2 s            | 1.2 s              | 3.8 s                 |
-| Week      | 0.34 s           | 0.62 s             | 7.4 s                 |
-| Month     | 0.41 s           | 0.62 s             | 0.63 s                |
-| Year      | 0.57 s           | 0.60 s             | 0.63 s                |
+### Results on dev
 
-A request that needs a new instance took 7–8 s (the week page sends 7 at once), the first report on an instance 2–3 s
-more. Warm, `GET /api/dashboard` took 920 ms, `GET /api/review/counts` (on every page) 400 ms, the year report 350 ms,
-the month report 200 ms and the smallest calls 60–80 ms.
+Measured on dev from 2026-11-16 to 2026-11-17 as a test user with 159 work days and 556 entries. "Before" is the state
+before section 14 of TASKS.md (512 MB); the steps in between:
 
-After 14.2 (bytecode in the package, the app loaded while the instance starts, 1769 MB), warm: dashboard 0.58 s, week
-0.27 s, month 0.30 s, year 0.36 s until the data shows. A request that needs a new instance takes about 2.1 s longer.
-`GET /api/dashboard` takes 370 ms, `GET /api/review/counts` 185 ms, the year report 150 ms, the month report 110 ms
-and the smallest calls 60–85 ms, of which about 25 ms are spent in the app.
+- 14.2: a new instance starts faster (bytecode in the package, the app loaded while the instance starts, 1769 MB).
+- 14.3: one call at a time (the login status in the page, the week in one call, fewer calls beside the page's own).
+- 14.4: less read per call (each range read once, the review's items picked by DynamoDB, a lighter login check).
 
-After 14.3 and 14.4 (one call at a time, less read per call), warm: dashboard 0.41 s, week 0.31 s, month 0.31 s, year
-0.38 s until the data shows. The dashboard sends 1 API call (before 5), the week 2 (before 8), month and year 2
-(before 3), never two at once. `GET /api/dashboard` takes 165 ms in the app (1,039 items read, before 3,277), `GET
-/api/review/counts` 54 ms, the week in one call 77 ms, a page's HTML 36 ms and the smallest call 15 ms. The login check
-of a logged-in request reads 3 items, not 5. A request that needs a new instance still takes about 2.1 s longer.
+Until a page shows its data, in headless Chrome (medians). Warm: the instance kept warm answers; after 20 idle minutes:
+the first visit of each page.
+
+| Page      | Before | After 14.2 | After 14.4 | After 20 idle minutes, before | After 20 idle minutes, after 14.4 | API calls, before → after 14.4 |
+|-----------|--------|------------|------------|-------------------------------|-----------------------------------|--------------------------------|
+| Dashboard | 1.2 s  | 0.58 s     | 0.41 s     | 3.8 s                         | 0.71 s                            | 5 → 1                          |
+| Week      | 0.34 s | 0.27 s     | 0.31 s     | 7.4 s                         | 0.36 s                            | 7 → 2                          |
+| Month     | 0.41 s | 0.30 s     | 0.31 s     | 0.63 s                        | 0.40 s                            | 3 → 2                          |
+| Year      | 0.57 s | 0.36 s     | 0.38 s     | 0.63 s                        | 0.40 s                            | 3 → 2                          |
+
+Each request, time in the app (warm, medians; CloudFront and the network add 40–60 ms to each), and what a new
+instance adds:
+
+| Request                              | Before              | After 14.2 | After 14.4                   |
+|--------------------------------------|---------------------|------------|------------------------------|
+| `GET /api/dashboard`                 | 823 ms, 3,276 items | 302 ms     | 165 ms, 1,039 items          |
+| `GET /api/review/counts`             | 335 ms, 1,523 items | 137 ms     | 54 ms, 118 items             |
+| The week: 5 calls, one since 14.3c   | 327 ms              | 162 ms     | 77 ms                        |
+| Year report                          | 303 ms              | 118 ms     | 116 ms                       |
+| Month report                         | 167 ms              | 72 ms      | 73 ms                        |
+| A page's HTML                        | 43 ms               | 26 ms      | 36 ms, with the login status |
+| `GET /api/audits`, the smallest call | 32 ms               | 21 ms      | 15 ms                        |
+| Wait for a new instance              | 7.1 s               | 2.1 s      | 2.1 s                        |
+| First report on an instance, extra   | 2.2 s               | none       | none                         |
+
+14.3 sends a page's calls one after the other instead of side by side. Warm, that changed little, as the warm
+instances answered side by side before; but one instance now answers a whole page, so after an idle time no page
+waits for a new instance any more. Each step and its numbers: TASKS.md 14.
 
 ## Run in a container (e.g. on a NAS)
 
